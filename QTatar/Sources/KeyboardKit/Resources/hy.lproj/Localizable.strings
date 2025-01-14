@@ -1,0 +1,33 @@
+/*
+ Localizable.strings
+ KeyboardKit
+
+ Created by Daniel Saidi on 2022-12-30.
+ Copyright © 2022 Daniel Saidi. All rights reserved.
+ */
+
+"locale" = "hy";
+
+"capsLock" = "";
+"continue" = "continue";
+"done" = "հաստատել";
+"emergencyCall" = "Emergency Call";
+"go" = "գնալ";
+"join" = "միանալ";
+"next" = "հաջորդը";
+"ok" = "լավ";
+"return" = "վերադառնալ";
+"route" = "route";
+"search" = "որոնել";
+"send" = "ուղարկել";
+"space" = "բացատ";
+"switcherAlphabetic" = "ԱԲԳ";
+"switcherNumeric" = "123";
+"switcherSymbolic" = "#+=";
+
+"searchEmoji" = "Որոնել էմոձի";
+
+/**
+ For emojis localization, copy the text in `Emojis.md`, then
+ replace this comment with it and translate the keys.
+ */

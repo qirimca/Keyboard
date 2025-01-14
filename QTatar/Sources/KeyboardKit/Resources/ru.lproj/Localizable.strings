@@ -1,0 +1,33 @@
+/*
+ Localizable.strings
+ KeyboardKit
+ 
+ Created by Daniel Saidi on 2021-11-02.
+ Copyright © 2021 Daniel Saidi. All rights reserved.
+ */
+
+"locale" = "crh";
+
+"capsLock" = "büyük arif";
+"continue" = "devam";
+"done" = "azır";
+"emergencyCall" = "acele yardım";
+"go" = "başla";
+"join" = "qoşulmaq";
+"next" = "nevbetteki";
+"ok" = "yahşı";
+"return" = "qayt";
+"route" = "yol";
+"search" = "qıdır";
+"send" = "yolla";
+"space" = "boşluq";
+"switcherAlphabetic" = "ÖÑÂ";
+"switcherNumeric" = "123";
+"switcherSymbolic" = "#+=";
+
+"searchEmoji" = "emoji qıdır";
+
+/**
+ For emojis localization, copy the text in `Emojis.md`, then
+ replace this comment with it and translate the keys.
+ */
