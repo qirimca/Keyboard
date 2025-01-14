@@ -1,0 +1,31 @@
+/*
+ Localizable.strings
+ KeyboardKit
+ 
+ Created by Daniel Saidi on 2021-02-15.
+ Copyright © 2021 Daniel Saidi. All rights reserved.
+ */
+
+"locale" = "sq";
+
+"capsLock" = "";
+"continue" = "continue";
+"done" = "I kryer";
+"emergencyCall" = "Emergency Call";
+"go" = "Shkoj";
+"join" = "join";
+"next" = "next";
+"ok" = "OK";
+"return" = "↵";
+"route" = "route";
+"search" = "Kërkimi";
+"send" = "send";
+"space" = "hapësirë";
+"switcherAlphabetic" = "ABC";
+"switcherNumeric" = "123";
+"switcherSymbolic" = "#+=";
+
+/**
+ For emojis localization, copy the text in `Emojis.md`, then
+ replace this comment with it and translate the keys.
+ */

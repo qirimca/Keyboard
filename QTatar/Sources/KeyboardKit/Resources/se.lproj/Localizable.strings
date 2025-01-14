@@ -1,0 +1,29 @@
+/*
+ Localizable.strings
+ KeyboardKit
+ 
+ Created by Daniel Saidi on 2023-12-22.
+ Copyright © 2023 Daniel Saidi. All rights reserved.
+ */
+
+"locale" = "se";
+
+"capsLock" = "";
+"continue" = "continue";
+"done" = "geargan";
+"go" = "raba";
+"join" = "searvva";
+"next" = "boahtte";
+"return" = "↵";
+"route" = "ruvtu";
+"search" = "oza";
+"send" = "sádde";
+"space" = "gaska";
+"switcherAlphabetic" = "ABC";
+"switcherNumeric" = "123";
+"switcherSymbolic" = "#+=";
+
+/**
+ For emojis localization, copy the text in `Emojis.md`, then
+ replace this comment with it and translate the keys.
+ */
