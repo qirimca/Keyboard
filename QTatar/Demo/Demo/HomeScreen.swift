@@ -6,8 +6,8 @@
 //  Copyright © 2021-2024 Daniel Saidi. All rights reserved.
 //
 
-import KeyboardKitPro
 import SwiftUI
+import KeyboardKitPro
 
 /**
  This is the main demo app screen.
@@ -17,20 +17,15 @@ import SwiftUI
  */
 struct HomeScreen: View {
 
-    @State
-    private var appearance = ColorScheme.light
+    @State private var appearance = ColorScheme.light
 
-    @State
-    private var isAppearanceDark = false
+    @State private var isAppearanceDark = false
 
-    @AppStorage("crh.key.text")
-    private var text = ""
+    @AppStorage("crh.key.text") private var text = ""
 
-    @StateObject
-    private var dictationContext = DictationContext(config: .app)
+    @StateObject private var dictationContext = DictationContext(config: .app)
 
-    @StateObject
-    private var keyboardState = KeyboardStateContext(
+    @StateObject private var keyboardState = KeyboardStateContext(
         bundleId: "crh.key.*")
 
     @Environment(\.colorScheme)
