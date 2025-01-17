@@ -37,7 +37,7 @@ struct HomeScreen: View {
                 statusIndicatorsSection
                 ScrollView(.vertical, showsIndicators: false) {
                     writingAreaSection
-                }.padding(10)
+                }
             }
             .padding(Device.iPhone ? 12 : 24)
             .keyboardDictation(
@@ -180,7 +180,7 @@ private extension HomeScreen {
                     .cornerRadius(20)
                     .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
             } else {
-            TextEditor(text: $text)
+                TextEditor(text: $text)
                     .frame(minHeight: 200)
                     .padding([.horizontal, .bottom])
                     .cornerRadius(20)
