@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import StoreKit
 
 @available(iOS 16.0, *)
 struct FeedbackView: View {
