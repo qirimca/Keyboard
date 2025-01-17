@@ -47,18 +47,16 @@ final class SuggestionsDataBaseManager {
         databaseQueue.sync {
             var array = fetchWordsStartingWith(prefix: text)
             var result = [Autocomplete.Suggestion]()
-            
-            // Капитализация первой буквы каждого слова в результате
             if let first = array.first, array.count == 3 {
-                result.append(.init(text: first.capitalized, isAutocorrect: true))
+                result.append(.init(text: first, isAutocorrect: true))
                 array.removeFirst()
             }
             if let first = array.first {
-                result.insert(.init(text: first.capitalized, isUnknown: false), at: 0)
+                result.insert(.init(text: first, isUnknown: false), at: 0)
                 array.removeFirst()
             }
             if let first = array.first {
-                result.append(.init(text: first.capitalized, isAutocorrect: false))
+                result.append(.init(text: first, isAutocorrect: false))
             }
             
             return result
