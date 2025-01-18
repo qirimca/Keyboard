@@ -10,21 +10,42 @@ import SwiftUI
 import StoreKit
 
 struct FeedbackView: View {
+    @Environment(\.dismiss) var dismiss
     @Environment(\.requestReview) var requestReview
     
     var body: some View {
-        VStack {
-            Button {
-                withAnimation(.snappy) {
-                    HapticFeedback.playSelection()
-                    requestReview()
+        ZStack {
+            VStack {
+                navBarSection
+                Button {
+                    withAnimation(.snappy) {
+                        HapticFeedback.playSelection()
+                        requestReview()
+                    }
+                } label: {
+                    Text("Rate Us")
                 }
-            } label: {
-                Text("Rate Us")
+                
+                ShareLink(item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
             }
+        }
+    }
+}
+
+private extension FeedbackView {
+    var navBarSection: some View {
+        HStack {
+            NavButton(symbol: "chevron.backward") {
+                dismiss()
+            }
+            Spacer()
+            Text("General").titleText()
+            Spacer()
             
-            ShareLink(item: URL(string: "https://apps.apple.com/app/id6739430313?action=write-review")!) {
-                Label("Share", systemImage: "square.and.arrow.up")
+            NavButton(symbol: "chevron.backward") {
+                dismiss()
             }
         }
     }
