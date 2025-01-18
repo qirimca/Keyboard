@@ -9,17 +9,20 @@
 import SwiftUI
 import StoreKit
 
-@available(iOS 16.0, *)
 struct FeedbackView: View {
     @Environment(\.requestReview) var requestReview
     
     var body: some View {
         VStack {
             Button {
-                requestReview()
+                withAnimation(.snappy) {
+                    HapticFeedback.playSelection()
+                    requestReview()
+                }
             } label: {
                 Text("Rate Us")
             }
+            
             ShareLink(item: URL(string: "https://apps.apple.com/app/id6739430313?action=write-review")!) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
