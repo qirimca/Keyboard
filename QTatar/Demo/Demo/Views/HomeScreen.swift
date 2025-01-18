@@ -26,6 +26,7 @@ struct HomeScreen: View {
     
     
     @State private var isIndicatorAction: Bool = false
+    @State private var showAboutBlock: Bool = false
     
     var body: some View {
         ZStack {
@@ -58,11 +59,12 @@ struct HomeScreen: View {
         .overlay(alignment: .bottom, content: {
             getStartedButton
         })
-        .gesture(
-            TapGesture()
-                .onEnded {
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                }, including: .gesture)
+        .fullScreenCover(isPresented: $showAboutBlock) {
+            FeedbackView()
+        }
+        .gesture(TapGesture().onEnded {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }, including: .gesture)
     }
 }
 
@@ -172,19 +174,11 @@ private extension HomeScreen {
             
             Divider().padding(.horizontal)
             
-            if #available(iOS 16.0, *) {
-                TextField("Type something...", text: $text, axis: .vertical)
-                    .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
-                    .padding([.horizontal, .bottom])
-                    .cornerRadius(20)
-                    .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
-            } else {
-                TextEditor(text: $text)
-                    .frame(minHeight: 200)
-                    .padding([.horizontal, .bottom])
-                    .cornerRadius(20)
-                    .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
-            }
+            TextField("Type something...", text: $text, axis: .vertical)
+                .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+                .padding([.horizontal, .bottom])
+                .cornerRadius(20)
+                .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
         }
         .background(Color("BackgroungColor"))
         .overlay {
@@ -195,7 +189,7 @@ private extension HomeScreen {
     
     var getStartedButton: some View {
         Button {
-            
+            showAboutBlock.toggle()
         } label: {
             Text("Get Started Now!")
                 .mediumText()
