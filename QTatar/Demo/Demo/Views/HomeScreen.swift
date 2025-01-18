@@ -20,10 +20,7 @@ struct HomeScreen: View {
     @AppStorage("crh.key.text") private var text = ""
     
     @StateObject private var dictationContext = DictationContext(config: .app)
-    @StateObject private var keyboardState = KeyboardStateContext(
-        bundleId: "crh.key.*")
-    
-    
+    @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
     
     @State private var isIndicatorAction: Bool = false
     @State private var showAboutBlock: Bool = false
@@ -57,7 +54,9 @@ struct HomeScreen: View {
             }
         }
         .overlay(alignment: .bottom, content: {
-            getStartedButton
+            PrimaryButton(text: "Get Started Now!") {
+                showAboutBlock.toggle()
+            }.padding(Device.iPhone ? 12 : 24)
         })
         .fullScreenCover(isPresented: $showAboutBlock) {
             FeedbackView()
@@ -92,45 +91,22 @@ private extension HomeScreen {
             Text("Qırımtatar\nklaviaturası").titleText(size: 34)
             Spacer()
             
-            Image(systemName: "questionmark")
-                .imageScale(.medium)
-                .foregroundStyle(.black)
-                .padding()
-                .overlay {
-                    Circle()
-                        .stroke(Color.black, lineWidth: 2)
-                        .frame(width: 36)
-                }
+            NavButton(symbol: "questionmark") {
+                // onboarding action
+            }
             
-            Image(systemName: "gear")
-                .imageScale(.medium)
-                .foregroundStyle(.black)
-                .padding()
-                .overlay {
-                    Circle()
-                        .stroke(Color.black, lineWidth: 2)
-                        .frame(width: 36)
+            NavButton(symbol: "gear") {
+                if let url = URL(string: UIApplication.openSettingsURLString),
+                   UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                } else {
+                    debugPrint("Не удалось открыть настройки.")
                 }
-                .onTapGesture {
-                    withAnimation {
-                        if let url = URL(string: UIApplication.openSettingsURLString),
-                           UIApplication.shared.canOpenURL(url) {
-                            UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                        } else {
-                            debugPrint("Не удалось открыть настройки.")
-                        }
-                    }
-                }
+            }
             
-            Image(systemName: "info")
-                .imageScale(.medium)
-                .foregroundStyle(.black)
-                .padding()
-                .overlay {
-                    Circle()
-                        .stroke(Color.black, lineWidth: 2)
-                        .frame(width: 36)
-                }
+            NavButton(symbol: "info") {
+                showAboutBlock.toggle()
+            }
         }
     }
     
@@ -185,23 +161,6 @@ private extension HomeScreen {
             RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
         }
         .padding(1)
-    }
-    
-    var getStartedButton: some View {
-        Button {
-            showAboutBlock.toggle()
-        } label: {
-            Text("Get Started Now!")
-                .mediumText()
-                .padding(.vertical)
-                .frame(maxWidth: .infinity)
-                .background(Color("CrayolaColor"))
-                .clipShape(Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Color.black, lineWidth: 2)
-                }
-        }.padding(Device.iPhone ? 12 : 24)
     }
     
     var isRtl: Bool {
