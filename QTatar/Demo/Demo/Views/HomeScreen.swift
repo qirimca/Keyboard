@@ -22,106 +22,85 @@ struct HomeScreen: View {
     @StateObject private var dictationContext = DictationContext(config: .app)
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
     
-    @State private var isIndicatorAction: Bool = false
-    @State private var showAboutBlock: Bool = false
+    @State private var showOnboardingView: Bool = false
+    @State private var showAboutView: Bool = false
     
     var body: some View {
-        ZStack {
-            Color(.backgroung).ignoresSafeArea()
-            backgroundGrid()
-            VStack {
-                navbarSection
-                statusIndicatorsSection
-                ScrollView(.vertical, showsIndicators: false) {
-                    writingAreaSection
+        NavigationStack {
+            ZStack {
+                Color("BackgroungColor").ignoresSafeArea()
+                BackgroundGrid()
+                VStack {
+                    statusIndicatorsSection
+                    ScrollView(.vertical, showsIndicators: false) {
+                        writingAreaSection
+                    }
+                }
+                .padding(Device.iPhone ? 12 : 24)
+                .keyboardDictation(
+                    context: dictationContext,
+                    config: .app,
+                    speechRecognizer: StandardSpeechRecognizer()
+                ) {
+                    Dictation.Screen(
+                        dictationContext: dictationContext) {
+                            EmptyView()
+                        } indicator: {
+                            Dictation.BarVisualizer(isAnimating: $0)
+                        } doneButton: { action in
+                            Button("âhşı", action: action)
+                                .buttonStyle(.borderedProminent)
+                        }
                 }
             }
-            .padding(Device.iPhone ? 12 : 24)
-            .keyboardDictation(
-                context: dictationContext,
-                config: .app,
-                speechRecognizer: StandardSpeechRecognizer()
-            ) {
-                Dictation.Screen(
-                    dictationContext: dictationContext) {
-                        EmptyView()
-                    } indicator: {
-                        Dictation.BarVisualizer(isAnimating: $0)
-                    } doneButton: { action in
-                        Button("âhşı", action: action)
-                            .buttonStyle(.borderedProminent)
+            .overlay(alignment: .bottom, content: {
+                PrimaryButton(text: "Get Started Now!") {
+                    showOnboardingView.toggle()
+                }.padding(Device.iPhone ? 12 : 24)
+            })
+            .fullScreenCover(isPresented: $showOnboardingView) {
+                Text("Onboarding Screen")
+            }
+            .gesture(TapGesture().onEnded {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }, including: .gesture)
+            .navigationDestination(isPresented: $showAboutView, destination: {
+                AboutView()
+            })
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavButton(symbol: "questionmark") {
+                        showOnboardingView.toggle()
                     }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavButton(symbol: "info") {
+                        showAboutView.toggle()
+                    }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text("QırımKey").titleText(size: 34)
+                }
             }
         }
-        .overlay(alignment: .bottom, content: {
-            PrimaryButton(text: "Get Started Now!") {
-                showAboutBlock.toggle()
-            }.padding(Device.iPhone ? 12 : 24)
-        })
-        .fullScreenCover(isPresented: $showAboutBlock) {
-            FeedbackView()
-        }
-        .gesture(TapGesture().onEnded {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }, including: .gesture)
     }
 }
 
 private extension HomeScreen {
     
-    func backgroundGrid(gridSize: CGFloat = 20, dotSize: CGFloat = 2.0) -> some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                ForEach(0..<Int(geometry.size.height / gridSize), id: \.self) { row in
-                    HStack(spacing: 0) {
-                        ForEach(0..<Int(geometry.size.width / gridSize), id: \.self) { column in
-                            Circle()
-                                .fill(Color.gray.opacity(0.3)) // Dot color and opacity
-                                .frame(width: dotSize, height: dotSize) // Dot size
-                                .frame(width: gridSize, height: gridSize) // Center the dot in its grid cell
-                        }
-                    }
-                }
-            }
-        }.ignoresSafeArea()
-    }
-    
-    var navbarSection: some View {
-        HStack {
-            Text("Qırımtatar\nklaviaturası").titleText(size: 34)
-            Spacer()
-            
-            NavButton(symbol: "questionmark") {
-                // onboarding action
-            }
-            
-            NavButton(symbol: "gear") {
-                if let url = URL(string: UIApplication.openSettingsURLString),
-                   UIApplication.shared.canOpenURL(url) {
-                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                } else {
-                    debugPrint("Не удалось открыть настройки.")
-                }
-            }
-            
-            NavButton(symbol: "info") {
-                showAboutBlock.toggle()
-            }
-        }
-    }
-    
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Klaviatura").mediumText()
+            Text("Qırımtatar klaviaturası — siz içün, siznen birge.").mediumText() // Crimean Tatar Keyboard — for you, with you.
             HStack {
                 KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
-                    isIndicatorAction.toggle()
+                    // pop up menu
                 }
                 KeyboardStateItem(state: .enable(keyboardState.isKeyboardEnabled)) {
-                    isIndicatorAction.toggle()
+                    // pop up menu
                 }
                 KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
-                    isIndicatorAction.toggle()
+                    // pop up menu
                 }
             }
             Text("İlk olaraq Sistem Sazlamalarda klaviaturanı qoşıp, soñra yazğanda 🌐 vastasınen onı saylanız.").regularText(color: .secondary)
@@ -156,7 +135,7 @@ private extension HomeScreen {
                 .cornerRadius(20)
                 .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
         }
-        .background(Color("BackgroungColor"))
+        .background(Color.backgroundLight)
         .overlay {
             RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
         }
