@@ -17,7 +17,7 @@ struct AboutView: View {
     
     let socialMediaLinks = [
         ("Website", "https://example.com"),
-        ("Instagram", "https://instagram.com"),
+        ("Instagram", "https://www.instagram.com/crimeantatar_corpora/"),
         ("Facebook", "https://facebook.com"),
         ("TikTok", "https://tiktok.com"),
         ("LinkedIn", "https://linkedin.com"),
@@ -44,7 +44,7 @@ struct AboutView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .navigationDestination(isPresented: $showOnboardingView, destination: {
-            Text("Onboarding")
+            OnboardingView()
         })
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -203,12 +203,12 @@ private extension AboutView {
             }
             
             Text(description).regularText()
-            Spacer()
+            Spacer(minLength: 1)
         }
         .padding(12)
         .background(Color.backgroundLight)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.black, lineWidth: 2))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2))
         .frame(maxWidth: .infinity)
     }
 }
