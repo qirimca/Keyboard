@@ -54,18 +54,18 @@ struct HomeScreen: View {
                 }
             }
             .overlay(alignment: .bottom, content: {
-                PrimaryButton(text: "Get Started Now!") {
+                PrimaryButton(text: "Get Started Now!", background: Color.crayola) {
                     showOnboardingView.toggle()
                 }.padding(Device.iPhone ? 12 : 24)
             })
-            .fullScreenCover(isPresented: $showOnboardingView) {
-                Text("Onboarding Screen")
-            }
             .gesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }, including: .gesture)
             .navigationDestination(isPresented: $showAboutView, destination: {
                 AboutView()
+            })
+            .navigationDestination(isPresented: $showOnboardingView, destination: {
+                OnboardingView()
             })
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

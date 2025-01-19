@@ -10,7 +10,7 @@ import SwiftUI
 
 struct PrimaryButton: View {
     var text: String
-    var background: Color = .backgroundLight
+    var background: Color
     var action: () -> Void
     
     var body: some View {
@@ -24,7 +24,7 @@ struct PrimaryButton: View {
                 .mediumText()
                 .padding(.vertical)
                 .frame(maxWidth: .infinity)
-                .background(Color.crayola)
+                .background(background)
                 .clipShape(Capsule())
                 .overlay {
                     Capsule()
