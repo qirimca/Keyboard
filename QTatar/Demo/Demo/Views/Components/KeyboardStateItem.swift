@@ -45,18 +45,26 @@ struct KeyboardStateItem: View {
     var action: () -> Void
     
     var body: some View {
-        Button(action: action) {
+        Button {
+            withAnimation {
+                HapticFeedback.playSelection()
+                action()
+            }
+        } label: {
             HStack {
                 Image(systemName: state.stateSymbol)
                     .imageScale(Device.iPhone ? .medium : .large)
-                    .foregroundStyle(state.state ? Color("CrayolaColor") : Color.black)
+                    .foregroundStyle(state.state ? Color.crayola : Color.black)
                 
-                VStack(alignment: .leading) {
-                    Text(state.title).mediumText().frame(maxWidth: .infinity, alignment: .leading).lineLimit(2).minimumScaleFactor(0.5)
-                }
+                Text(state.title)
+                    .mediumText()
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
-            .frame(maxHeight: 80)
+            .padding(8)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .overlay {
                 RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
             }
