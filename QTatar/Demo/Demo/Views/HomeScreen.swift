@@ -129,11 +129,13 @@ private extension HomeScreen {
             
             Divider().padding(.horizontal)
             
-            TextField("Type something...", text: $text, axis: .vertical)
-                .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
-                .padding([.horizontal, .bottom])
-                .cornerRadius(20)
-                .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
+            TextField(text: $text, axis: .vertical) {
+                Text("Type something...").regularText()
+            }
+            .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+            .padding([.horizontal, .bottom])
+            .cornerRadius(20)
+            .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
         }
         .background(Color.backgroundLight)
         .overlay {

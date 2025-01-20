@@ -45,16 +45,18 @@ struct OnboardingView: View {
                         }
                         
                         if selected == sortedKeys()[2] {
-                            TextField("Check the Keyboard", text: $text)
-                                .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
-                                .padding()
-                                .cornerRadius(20)
-                                .lineLimit(1)
-                                .submitLabel(.done)
-                                .background(Color.backgroundLight)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
-                                }
+                            TextField(text: $text) {
+                                Text("Check the Keyboard").regularText()
+                            }
+                            .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+                            .padding()
+                            .cornerRadius(20)
+                            .lineLimit(1)
+                            .submitLabel(.done)
+                            .background(Color.backgroundLight)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
+                            }
                         }
                         
                         Image(key)
