@@ -8,21 +8,22 @@
 
 import SwiftUI
 import StoreKit
-
+// TODO: - Send email feedback and share message
 struct AboutView: View {
-    @Environment(\.dismiss) var dismiss
     @Environment(\.requestReview) var requestReview
+    @Environment(\.openURL) var openURL
+    @Environment(\.dismiss) var dismiss
     
     @State private var showOnboardingView: Bool = false
     
     let socialMediaLinks = [
-        ("Website", "https://example.com"),
-        ("Instagram", "https://www.instagram.com/crimeantatar_corpora/"),
-        ("Facebook", "https://facebook.com"),
-        ("TikTok", "https://tiktok.com"),
-        ("LinkedIn", "https://linkedin.com"),
-        ("GitHub", "https://github.com"),
-        ("Telegram", "https://t.me")
+        ("Website", Configurations.website),
+        ("Instagram", Configurations.instagram),
+        ("Facebook", Configurations.facebook),
+        ("TikTok", Configurations.tiktok),
+        ("LinkedIn", Configurations.linkedin),
+        ("GitHub", Configurations.github),
+        ("Telegram", Configurations.telegram)
     ]
     
     var body: some View {
@@ -88,8 +89,8 @@ private extension AboutView {
             containerTitle(title: "Our Initiatives", icon: "atom")
             
             HStack {
-                projectContainer(illustration: "quizlet", projectName: "Crimean Tatar Spelling Checker", description: "Take your Crimean Tatar writing to the next level! This tool, integrated with the first Crimean Tatar keyboard for iOS, helps you find and fix spelling and grammar issues, making it easier than ever to write confidently in your native language.")
-                projectContainer(illustration: "languagetool", projectName: "LanguageTool for iOS", description: "Explore powerful writing assistance for Crimean Tatar and over 30 other languages, now available in the first Crimean Tatar keyboard for iOS. Correct errors, refine your style, and embrace clear communication with this intelligent writing assistant.")
+                projectContainer(illustration: "quizlet", projectName: "Crimean Tatar Spelling Checker", description: "Take your Crimean Tatar writing to the next level! This tool, integrated with the first Crimean Tatar keyboard for iOS, helps you find and fix spelling and grammar issues, making it easier than ever to write confidently in your native language.", link: Configurations.quizlet)
+                projectContainer(illustration: "languagetool", projectName: "LanguageTool for iOS", description: "Explore powerful writing assistance for Crimean Tatar and over 30 other languages, now available in the first Crimean Tatar keyboard for iOS. Correct errors, refine your style, and embrace clear communication with this intelligent writing assistant.", link: Configurations.languagetool)
             }
         }
         .padding(12)
@@ -105,11 +106,7 @@ private extension AboutView {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .center, spacing: 15) {
                     ForEach(socialMediaLinks, id: \.0) { social, link in
-                        Button {
-                            // link
-                        } label: {
-                            linkButton(name: social, link: link)
-                        }
+                        linkButton(name: social, link: link)
                     }
                 }
             }
@@ -125,10 +122,24 @@ private extension AboutView {
             containerTitle(title: "Feedback", icon: "ellipsis.message")
             
             cellItem(title: "Rate Us", icon: "star")
+                .onTapGesture {
+                    withAnimation {
+                        HapticFeedback.playSelection()
+                        requestReview()
+                    }
+                }
+            
             ShareLink(item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!) {
                 cellItem(title: "Share", icon: "arrowshape.turn.up.forward")
             }
+            
             cellItem(title: "Send Feedback", icon: "paperplane")
+                .onTapGesture {
+                    withAnimation {
+                        HapticFeedback.playSelection()
+                        // sender
+                    }
+                }
         }
         .padding(12)
         .background(Color.backgroundLight)
@@ -148,7 +159,10 @@ private extension AboutView {
     
     func linkButton(name: String, link: String) -> some View {
         Button {
-            // Link
+            withAnimation {
+                HapticFeedback.playSelection()
+                openURL(URL(string: link)!)
+            }
         } label: {
             HStack {
                 Text(name).regularText(size: 14, color: .white)
@@ -176,7 +190,7 @@ private extension AboutView {
             endPoint: .bottomTrailing), lineWidth: 2))
     }
     
-    func projectContainer(illustration: String, projectName: String, description: String) -> some View {
+    func projectContainer(illustration: String, projectName: String, description: String, link: String) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             Image(illustration)
                 .resizable()
@@ -188,7 +202,10 @@ private extension AboutView {
             Text(projectName).mediumText()
             
             Button {
-                // Link
+                withAnimation {
+                    HapticFeedback.playSelection()
+                    openURL(URL(string: link)!)
+                }
             } label: {
                 HStack {
                     Text("View More").regularText(size: 14, color: .white)
