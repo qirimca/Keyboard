@@ -1,5 +1,5 @@
 //
-//  HomeScreen.swift
+//  HomeView.swift
 //  KeyboardKit
 //
 //  Created by Daniel Saidi on 2021-02-11.
@@ -16,7 +16,7 @@ import KeyboardKitPro
  items that show various keyboard-specific states.
  */
 // TODO: - Pop up menu for indicators + localization
-struct HomeScreen: View {
+struct HomeView: View {
     @AppStorage("crh.key.text") private var text = ""
     
     @StateObject private var dictationContext = DictationContext(config: .app)
@@ -83,10 +83,10 @@ struct HomeScreen: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("QırımKey").titleText(size: 34)
+                    Text("QırımKey").titleText(size: 24)
                 }
             }
-            .sheet(isPresented: $showIndicatorSheet){
+            .sheet(isPresented: $showIndicatorSheet) {
                 OnboardingView()
                     .presentationCornerRadius(20)
                     .presentationDetents([.medium])
@@ -96,7 +96,7 @@ struct HomeScreen: View {
     }
 }
 
-private extension HomeScreen {
+private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -166,5 +166,5 @@ private extension HomeScreen {
 }
 
 #Preview {
-    HomeScreen()
+    HomeView()
 }

@@ -21,7 +21,7 @@ struct DemoApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                HomeScreen()
+                HomeView()
             }
         }
     }
