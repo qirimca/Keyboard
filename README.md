@@ -1,4 +1,6 @@
-# QırımKey - The First Crimean Tatar Keyboard for iOS 📱  
+# QırımKey - The First Crimean Tatar Keyboard for iOS 📱
+
+![QırımKey Vision Board](assets/main_banner.png)
 
 **QırımKey** is the first keyboard designed specifically for the Crimean Tatar language on iOS. Built with the powerful [KeyboardKit](https://github.com/KeyboardKit), this app offers seamless language support, quick language switching, and customization options. The app supports both light and dark themes, integrates with iOS system settings, and unlocks professional-grade features using a license key.
 

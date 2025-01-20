@@ -119,6 +119,7 @@
 		6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Localization/LocalizationKeys.swift,
 				Localization/TextConst.swift,
 			);
 			target = A921153825D58AC7003510D9 /* Keyboard */;
@@ -126,6 +127,7 @@
 		6AE9732D2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Localization/LocalizationKeys.swift,
 				Localization/TextConst.swift,
 			);
 			target = 410E987C2CF8F6BB00993128 /* Keyboard LPress */;
