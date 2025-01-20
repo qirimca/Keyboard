@@ -15,7 +15,7 @@ import KeyboardKitPro
  This screen has a text field, an appearance toggle and list
  items that show various keyboard-specific states.
  */
-
+// TODO: - Pop up menu for indicators + localization
 struct HomeScreen: View {
     @AppStorage("crh.key.text") private var text = ""
     

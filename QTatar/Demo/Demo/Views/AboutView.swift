@@ -8,7 +8,7 @@
 
 import SwiftUI
 import StoreKit
-// TODO: - Send email feedback and share message
+// TODO: - Send email feedback and share message/ fix iPad UI
 struct AboutView: View {
     @Environment(\.requestReview) var requestReview
     @Environment(\.openURL) var openURL
