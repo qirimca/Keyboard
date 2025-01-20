@@ -23,6 +23,7 @@ struct HomeScreen: View {
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
     
     @State private var showOnboardingView: Bool = false
+    @State private var showIndicatorSheet: Bool = false
     @State private var showAboutView: Bool = false
     
     var body: some View {
@@ -54,9 +55,11 @@ struct HomeScreen: View {
                 }
             }
             .overlay(alignment: .bottom, content: {
-                PrimaryButton(text: "Get Started Now!", background: Color.crayola) {
-                    showOnboardingView.toggle()
-                }.padding(Device.iPhone ? 12 : 24)
+                if !areAllIndicatorsEnabled {
+                    PrimaryButton(text: "Get Started Now!", background: Color.crayola) {
+                        showOnboardingView.toggle()
+                    }.padding(Device.iPhone ? 12 : 24)
+                }
             })
             .gesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -83,6 +86,12 @@ struct HomeScreen: View {
                     Text("QırımKey").titleText(size: 34)
                 }
             }
+            .sheet(isPresented: $showIndicatorSheet){
+                OnboardingView()
+                    .presentationCornerRadius(20)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+            }
         }
     }
 }
@@ -94,13 +103,13 @@ private extension HomeScreen {
             Text("Qırımtatar klaviaturası — siz içün, siznen birge.").mediumText() // Crimean Tatar Keyboard — for you, with you.
             HStack {
                 KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
-                    // pop up menu
+                    showIndicatorSheet.toggle()
                 }
                 KeyboardStateItem(state: .enable(keyboardState.isKeyboardEnabled)) {
-                    // pop up menu
+                    showIndicatorSheet.toggle()
                 }
                 KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
-                    // pop up menu
+                    showIndicatorSheet.toggle()
                 }
             }
             Text("İlk olaraq Sistem Sazlamalarda klaviaturanı qoşıp, soñra yazğanda 🌐 vastasınen onı saylanız.").regularText(color: .secondary)
@@ -147,6 +156,12 @@ private extension HomeScreen {
     var isRtl: Bool {
         let keyboardId = keyboardState.activeKeyboardBundleIds.first
         return keyboardId?.hasSuffix("rtl") ?? false
+    }
+    
+    var areAllIndicatorsEnabled: Bool {
+        keyboardState.isKeyboardActive &&
+        keyboardState.isKeyboardEnabled &&
+        keyboardState.isFullAccessEnabled
     }
 }
 
