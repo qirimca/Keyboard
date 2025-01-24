@@ -64,7 +64,7 @@ struct KeyboardStateItem: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(8)
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
                 RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
             }

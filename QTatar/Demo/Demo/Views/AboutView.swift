@@ -59,7 +59,10 @@ struct AboutView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text("About").titleText(size: 34)
+                Text("About")
+                    .titleText(size: 24)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
             }
         }
     }
@@ -133,7 +136,7 @@ private extension AboutView {
                 cellItem(title: "Share", icon: "arrowshape.turn.up.forward")
             }
             
-            cellItem(title: "Send Feedback", icon: "paperplane")
+            cellItem(title: "Send Email", icon: "paperplane")
                 .onTapGesture {
                     withAnimation {
                         HapticFeedback.playSelection()
