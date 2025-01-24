@@ -8,7 +8,7 @@
 
 import SwiftUI
 import StoreKit
-// TODO: - Send email feedback and share message/ fix iPad UI
+
 struct AboutView: View {
     @Environment(\.requestReview) var requestReview
     @Environment(\.openURL) var openURL
@@ -20,8 +20,6 @@ struct AboutView: View {
         ("Website", Configurations.website),
         ("Instagram", Configurations.instagram),
         ("Facebook", Configurations.facebook),
-        ("TikTok", Configurations.tiktok),
-        ("LinkedIn", Configurations.linkedin),
         ("GitHub", Configurations.github),
         ("Telegram", Configurations.telegram)
     ]
@@ -136,11 +134,11 @@ private extension AboutView {
                 cellItem(title: "Share", icon: "arrowshape.turn.up.forward")
             }
             
-            cellItem(title: "Send Email", icon: "paperplane")
+            cellItem(title: "Support Us", icon: "heart")
                 .onTapGesture {
                     withAnimation {
                         HapticFeedback.playSelection()
-                        // sender
+                        openURL(URL(string: Configurations.donatello)!)
                     }
                 }
         }

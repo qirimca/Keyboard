@@ -13,17 +13,15 @@ enum Configurations {
     static let appID = 6739430313
     static let appGroupID = "group.crh.key.boardplus"
     static let appDeepLink = "kkdemo://dictation"
-    static let defaults = UserDefaults(suiteName: "group.com.sun.vpn.app")
     static let localization = "Loading localization data..."
     
     // Social media 
-    static let website = "https://example.com"
+    static let website = "https://ctcorpus.org/index.php/uk/"
     static let instagram = "https://www.instagram.com/crimeantatar_corpora/"
-    static let facebook = "https://facebook.com"
-    static let tiktok = "https://tiktok.com"
-    static let linkedin = "https://linkedin.com"
-    static let github = "https://github.com"
-    static let telegram = "https://t.me"
+    static let facebook = "https://www.facebook.com/OnlineTerciman/"
+    static let github = "https://github.com/qirimca"
+    static let telegram = "https://t.me/qirim_young"
+    static let donatello = "https://donatello.to/crimeantatar_corpora"
     
     // Projects
     static let quizlet = "https://quizlet.com/class/18053920/materials"
