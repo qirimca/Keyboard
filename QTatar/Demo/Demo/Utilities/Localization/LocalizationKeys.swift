@@ -9,21 +9,18 @@
 import SwiftUI
 
 enum Home: String {
-    case home_crimea_key // Crimean Tatar Keyboard — for you, with you.
-    case home_getkeyboard_key // İlk olaraq Sistem Sazlamalarda klaviaturanı qoşıp, soñra yazğanda 🌐 vastasınen onı saylanız.
-    
-    case home_keyboard_visible_key // Клавиатура появилась
-    case home_keyboard_hidden_key // Клавиатура не показывается
-    case home_keyboard_on_key // Клавиатура подключена
-    case home_keyboard_off_key // Клавиатура не подключена
-    case home_full_on_key // Активирован полный доступ
-    case home_full_off_key // Полный доступ не предоставлен
-    
-    case home_writearea_key // Metin meydanı
-    case home_typing_key // Type something...
-    
-    case home_ok_key // âhşı
-    case home_start_key // Get Started Now!
+    case home_crimea_key
+    case home_getkeyboard_key
+    case home_keyboard_visible_key
+    case home_keyboard_hidden_key
+    case home_keyboard_on_key
+    case home_keyboard_off_key
+    case home_full_on_key
+    case home_full_off_key
+    case home_writearea_key
+    case home_typing_key
+    case home_ok_key
+    case home_start_key
     
     var localized: String {
         NSLocalizedString(self.rawValue, tableName: "Home", comment: "")

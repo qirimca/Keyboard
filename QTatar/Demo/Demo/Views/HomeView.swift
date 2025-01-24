@@ -15,7 +15,7 @@ import KeyboardKitPro
  This screen has a text field, an appearance toggle and list
  items that show various keyboard-specific states.
  */
-// TODO: - Pop up menu for indicators + localization
+
 struct HomeView: View {
     @AppStorage("crh.key.text") private var text = ""
     
@@ -115,7 +115,10 @@ private extension HomeView {
                     showIndicatorSheet.toggle()
                 }
             }.frame(height: 60)
-            Text("İlk olaraq Sistem Sazlamalarda klaviaturanı qoşıp, soñra yazğanda 🌐 vastasınen onı saylanız.").regularText(color: .secondary)
+            
+            if !keyboardState.isKeyboardActive {
+                Text("While typing, tap the 🌐 icon (or long-press it) and select Qırımtatar from the list.").regularText()
+            }
         }
     }
     

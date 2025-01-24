@@ -16,11 +16,11 @@ enum KeyboardState {
     var title: String {
         switch self {
         case .active(let value):
-            return (value ? TextConst.keyboardVisible : .keyboardHidden).rawValue
+            return value ? "The keyboard appears" : "The keyboard is not shown"
         case .enable(let value):
-            return (value ? TextConst.keyboardOn : .keyboardOff).rawValue
+            return value ? "Keyboard is connected" : "Keyboard not connected"
         case .fullAccess(let value):
-            return (value ? TextConst.fullAccessOn : .fullAccessOff).rawValue
+            return value ? "Full access activated" : "Full access not granted"
         }
     }
     

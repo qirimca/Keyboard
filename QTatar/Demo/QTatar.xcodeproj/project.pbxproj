@@ -120,7 +120,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Localization/LocalizationKeys.swift,
-				Localization/TextConst.swift,
 			);
 			target = A921153825D58AC7003510D9 /* Keyboard */;
 		};
@@ -128,7 +127,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Localization/LocalizationKeys.swift,
-				Localization/TextConst.swift,
 			);
 			target = 410E987C2CF8F6BB00993128 /* Keyboard LPress */;
 		};
