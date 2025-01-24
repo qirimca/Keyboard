@@ -105,7 +105,10 @@ struct OnboardingView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text("Setting Up the Keyboard").titleText()
+                Text("Setting Up the Keyboard")
+                    .titleText()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
             }
         }
     }

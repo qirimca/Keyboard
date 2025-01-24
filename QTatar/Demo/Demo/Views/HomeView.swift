@@ -49,7 +49,7 @@ struct HomeView: View {
                         } indicator: {
                             Dictation.BarVisualizer(isAnimating: $0)
                         } doneButton: { action in
-                            Button("âhşı", action: action)
+                            Button("Ok", action: action)
                                 .buttonStyle(.borderedProminent)
                         }
                 }
@@ -83,7 +83,10 @@ struct HomeView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("QırımKey").titleText(size: 24)
+                    Text("QırımKey")
+                        .titleText(size: 24)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                 }
             }
             .sheet(isPresented: $showIndicatorSheet) {
@@ -100,7 +103,7 @@ private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Qırımtatar klaviaturası — siz içün, siznen birge.").mediumText() // Crimean Tatar Keyboard — for you, with you.
+            Text("Qırımtatar klaviaturası — siz içün, siznen birge.").mediumText()
             HStack {
                 KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
                     showIndicatorSheet.toggle()
@@ -111,7 +114,7 @@ private extension HomeView {
                 KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
                     showIndicatorSheet.toggle()
                 }
-            }
+            }.frame(height: 60)
             Text("İlk olaraq Sistem Sazlamalarda klaviaturanı qoşıp, soñra yazğanda 🌐 vastasınen onı saylanız.").regularText(color: .secondary)
         }
     }
@@ -139,7 +142,7 @@ private extension HomeView {
             Divider().padding(.horizontal)
             
             TextField(text: $text, axis: .vertical) {
-                Text("Type something...").regularText()
+                Text("Type something...").regularText(size: 14)
             }
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
             .padding([.horizontal, .bottom])

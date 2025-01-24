@@ -30,39 +30,40 @@ enum Home: String {
     }
 }
 
-//enum About: String {
-//    case about_onb1_key
-//    case about_onb2_key
-//    case about_onb3_key
-//    case about_onb3_key
-//    case about_onb4_key
-//    case about_open_key
-//    case about_check_key
-//    case about_back_key
-//    case about_next_key
-//    case about_finish_key
-//    case about_settings_key
-//    
-//    
-//    var localized: String {
-//        NSLocalizedString(self.rawValue, tableName: "About", comment: "")
-//    }
-//}
-//
-//enum Onboarding: String {
-//    case about_onb1_key
-//    case about_onb2_key
-//    case about_onb3_key
-//    case about_onb3_key
-//    case about_onb4_key
-//    case about_open_key
-//    case about_check_key
-//    case about_back_key
-//    case about_next_key
-//    case about_finish_key
-//    case about_settings_key
-//    
-//    var localized: String {
-//        NSLocalizedString(self.rawValue, tableName: "Onboarding", comment: "")
-//    }
-//}
+enum About: String {
+    case about_title_key
+    case about_first_key
+    case about_description_key
+    case about_init_key
+    case about_spell_title_key
+    case about_spell_description_key
+    case about_language_title_key
+    case about_language_description_key
+    case about_join_key
+    case about_feedback_key
+    case about_rate_key
+    case about_share_key
+    case about_send_key
+    case about_more_key
+    
+    var localized: String {
+        NSLocalizedString(self.rawValue, tableName: "About", comment: "")
+    }
+}
+
+enum Onboarding: String {
+    case onb_onb1_key
+    case onb_onb2_key
+    case onb_onb3_key
+    case onb_onb4_key
+    case onb_open_key
+    case onb_check_key
+    case onb_back_key
+    case onb_next_key
+    case onb_finish_key
+    case onb_settings_key
+    
+    var localized: String {
+        NSLocalizedString(self.rawValue, tableName: "Onboarding", comment: "")
+    }
+}
