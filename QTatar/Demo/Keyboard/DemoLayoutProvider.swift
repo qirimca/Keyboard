@@ -19,6 +19,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
         let layout = super.keyboardLayout(for: context)
         layout.tryInsertRocketButton()
         layout.tryInsertLocaleSwitcher(for: context)
+        
         return layout
     }
 }
