@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13,8 +13,6 @@
 		410E98822CF8F6BB00993128 /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
 		410E98832CF8F6BB00993128 /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
 		410E98842CF8F6BB00993128 /* DemoActionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */; };
-		410E98852CF8F6BB00993128 /* TextConst.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FD887E2CF7A66A00506060 /* TextConst.swift */; };
-		410E98862CF8F6BB00993128 /* FakeAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921156D25D5902F003510D9 /* FakeAutocompleteProvider.swift */; };
 		410E98882CF8F6BB00993128 /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 41F4DEFC2CF4D96D00D1D7E8 /* libsqlite3.tbd */; };
 		410E98892CF8F6BB00993128 /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 410E987D2CF8F6BB00993128 /* KeyboardKit */; };
 		410E988B2CF8F6BB00993128 /* qırım_tatar.db in Resources */ = {isa = PBXBuildFile; fileRef = 41FD88792CF772FA00506060 /* qırım_tatar.db */; };
@@ -28,15 +26,13 @@
 		41F4DF022CF5163200D1D7E8 /* SuggestionsDataBaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */; };
 		41F4DF032CF5386500D1D7E8 /* SuggestionsDataBaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */; };
 		41FD887A2CF772FA00506060 /* qırım_tatar.db in Resources */ = {isa = PBXBuildFile; fileRef = 41FD88792CF772FA00506060 /* qırım_tatar.db */; };
-		41FD887F2CF7A66A00506060 /* TextConst.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FD887E2CF7A66A00506060 /* TextConst.swift */; };
-		41FD88802CF7A66A00506060 /* TextConst.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41FD887E2CF7A66A00506060 /* TextConst.swift */; };
+		6AE973B12D3AFD6A007D41BC /* FakeAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B02D3AFD6A007D41BC /* FakeAutocompleteProvider.swift */; };
+		6AE973B22D3AFD6A007D41BC /* FakeAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B02D3AFD6A007D41BC /* FakeAutocompleteProvider.swift */; };
 		A91322652AB9C5BE00780625 /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
 		A921152625D58A94003510D9 /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921152525D58A94003510D9 /* DemoApp.swift */; };
-		A921152825D58A94003510D9 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921152725D58A94003510D9 /* HomeScreen.swift */; };
 		A921152A25D58A96003510D9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A921152925D58A96003510D9 /* Assets.xcassets */; };
 		A921153C25D58AC7003510D9 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921153B25D58AC7003510D9 /* KeyboardViewController.swift */; };
 		A921154025D58AC7003510D9 /* Keyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A921153925D58AC7003510D9 /* Keyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		A921156F25D5902F003510D9 /* FakeAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921156D25D5902F003510D9 /* FakeAutocompleteProvider.swift */; };
 		A9521CF329A3941400C62ECE /* Settings.bundle in Resources */ = {isa = PBXBuildFile; fileRef = A9521CF229A3941400C62ECE /* Settings.bundle */; };
 		A96AA3632B28AE0C00A6F6E8 /* DictationConfig+App.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C9395029FD514E00EFFCD7 /* DictationConfig+App.swift */; };
 		A96AA3652B28B09700A6F6E8 /* StandardSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A96AA3642B28B09700A6F6E8 /* StandardSpeechRecognizer.swift */; };
@@ -94,17 +90,15 @@
 		41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionsDataBaseManager.swift; sourceTree = "<group>"; };
 		41F4DEFC2CF4D96D00D1D7E8 /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 		41FD88792CF772FA00506060 /* qırım_tatar.db */ = {isa = PBXFileReference; lastKnownFileType = file; path = "qırım_tatar.db"; sourceTree = "<group>"; };
-		41FD887E2CF7A66A00506060 /* TextConst.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextConst.swift; sourceTree = "<group>"; };
+		6AE973B02D3AFD6A007D41BC /* FakeAutocompleteProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeAutocompleteProvider.swift; sourceTree = "<group>"; };
 		A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCalloutActionProvider.swift; sourceTree = "<group>"; };
 		A921152225D58A94003510D9 /* QTatar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QTatar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A921152525D58A94003510D9 /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
-		A921152725D58A94003510D9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreen.swift; sourceTree = "<group>"; };
 		A921152925D58A96003510D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A921152E25D58A96003510D9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A921153925D58AC7003510D9 /* Keyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = Keyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A921153B25D58AC7003510D9 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		A921153D25D58AC7003510D9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A921156D25D5902F003510D9 /* FakeAutocompleteProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FakeAutocompleteProvider.swift; sourceTree = "<group>"; };
 		A92E4A1D2B15101500F957C6 /* DemoToolbar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoToolbar.swift; sourceTree = "<group>"; };
 		A93342CD299A855F008FAA95 /* KeyboardPro.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardPro.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A93342CF299A855F008FAA95 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
@@ -120,6 +114,28 @@
 		A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoLayoutProvider.swift; sourceTree = "<group>"; };
 		A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoActionHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Localization/LocalizationKeys.swift,
+			);
+			target = A921153825D58AC7003510D9 /* Keyboard */;
+		};
+		6AE9732D2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Localization/LocalizationKeys.swift,
+			);
+			target = 410E987C2CF8F6BB00993128 /* Keyboard LPress */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		6AE9732B2D3A9AE8007D41BC /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 6AE9732D2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
+		6AE973562D3AB305007D41BC /* Views */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Views; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		410E98872CF8F6BB00993128 /* Frameworks */ = {
@@ -199,8 +215,8 @@
 				A921155925D58E39003510D9 /* Supporting Files */,
 				A921152925D58A96003510D9 /* Assets.xcassets */,
 				A921152525D58A94003510D9 /* DemoApp.swift */,
-				A921152725D58A94003510D9 /* HomeScreen.swift */,
-				41FD887E2CF7A66A00506060 /* TextConst.swift */,
+				6AE973562D3AB305007D41BC /* Views */,
+				6AE9732B2D3A9AE8007D41BC /* Utilities */,
 			);
 			path = Demo;
 			sourceTree = "<group>";
@@ -216,7 +232,7 @@
 				A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */,
 				A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */,
 				A9C672642A7BCE37004A5721 /* DemoStyleProvider.swift */,
-				A921156D25D5902F003510D9 /* FakeAutocompleteProvider.swift */,
+				6AE973B02D3AFD6A007D41BC /* FakeAutocompleteProvider.swift */,
 				41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */,
 			);
 			path = Keyboard;
@@ -300,6 +316,10 @@
 				41C4AA962BBA5DB70094EF1C /* PBXTargetDependency */,
 				A921153F25D58AC7003510D9 /* PBXTargetDependency */,
 				410E98922CF8FA5700993128 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				6AE9732B2D3A9AE8007D41BC /* Utilities */,
+				6AE973562D3AB305007D41BC /* Views */,
 			);
 			name = QTatar;
 			packageProductDependencies = (
@@ -436,12 +456,11 @@
 			files = (
 				410E987F2CF8F6BB00993128 /* KeyboardViewController.swift in Sources */,
 				410E98802CF8F6BB00993128 /* SuggestionsDataBaseManager.swift in Sources */,
+				6AE973B22D3AFD6A007D41BC /* FakeAutocompleteProvider.swift in Sources */,
 				410E98812CF8F6BB00993128 /* DemoStyleProvider.swift in Sources */,
 				410E98822CF8F6BB00993128 /* DemoCalloutActionProvider.swift in Sources */,
 				410E98832CF8F6BB00993128 /* DemoLayoutProvider.swift in Sources */,
 				410E98842CF8F6BB00993128 /* DemoActionHandler.swift in Sources */,
-				410E98852CF8F6BB00993128 /* TextConst.swift in Sources */,
-				410E98862CF8F6BB00993128 /* FakeAutocompleteProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,8 +468,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				41FD887F2CF7A66A00506060 /* TextConst.swift in Sources */,
-				A921152825D58A94003510D9 /* HomeScreen.swift in Sources */,
 				A921152625D58A94003510D9 /* DemoApp.swift in Sources */,
 				A96AA3652B28B09700A6F6E8 /* StandardSpeechRecognizer.swift in Sources */,
 				41F4DF032CF5386500D1D7E8 /* SuggestionsDataBaseManager.swift in Sources */,
@@ -464,12 +481,11 @@
 			files = (
 				A921153C25D58AC7003510D9 /* KeyboardViewController.swift in Sources */,
 				41F4DF022CF5163200D1D7E8 /* SuggestionsDataBaseManager.swift in Sources */,
+				6AE973B12D3AFD6A007D41BC /* FakeAutocompleteProvider.swift in Sources */,
 				A9C672652A7BCE37004A5721 /* DemoStyleProvider.swift in Sources */,
 				A91322652AB9C5BE00780625 /* DemoCalloutActionProvider.swift in Sources */,
 				A9EAA6F627B165B600BC9376 /* DemoLayoutProvider.swift in Sources */,
 				A9EAA6F727B165B600BC9376 /* DemoActionHandler.swift in Sources */,
-				41FD88802CF7A66A00506060 /* TextConst.swift in Sources */,
-				A921156F25D5902F003510D9 /* FakeAutocompleteProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -510,7 +526,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = "Keyboard Press.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
@@ -524,6 +541,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboardPress;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -534,7 +552,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = "Keyboard Press.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
@@ -548,6 +567,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboardPress;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -679,14 +699,16 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
+				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -694,9 +716,11 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -710,14 +734,15 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
+				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -729,6 +754,7 @@
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -738,7 +764,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
@@ -752,6 +779,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -762,7 +790,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatar";
@@ -776,6 +805,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboard;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -787,7 +817,8 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = KeyboardPro/KeyboardPro.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -803,6 +834,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboard.pro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -815,7 +847,8 @@
 			buildSettings = {
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_ENTITLEMENTS = KeyboardPro/KeyboardPro.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
@@ -831,6 +864,7 @@
 				MARKETING_VERSION = 3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.boardplus.keyboard.pro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

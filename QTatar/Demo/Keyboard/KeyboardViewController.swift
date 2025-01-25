@@ -6,8 +6,8 @@
 //  Copyright © 2021-2024 Daniel Saidi. All rights reserved.
 //
 
-import KeyboardKit
 import SwiftUI
+import KeyboardKit
 
 /**
  This keyboard demonstrates how to setup KeyboardKit and how
