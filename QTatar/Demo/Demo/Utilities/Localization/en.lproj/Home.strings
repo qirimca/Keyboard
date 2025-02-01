@@ -1,0 +1,20 @@
+/* 
+  Home.strings
+  QTatar
+
+  Created by Mustafa Bekirov on 01.02.2025.
+  Copyright © 2025 Daniel Saidi. All rights reserved.
+*/
+
+"home_crimea_key" = "Qırımtatar Klaviaturası — siziñ içün, siznen beraber";
+"home_getkeyboard_key" = "Yazğanda 🌐 işaretini basıñız (ya da devamlı basıñız) ve cedvelden Qırımtatarcanı saylañız";
+"home_keyboard_visible_key" = "Klaviatura peyda oldı";
+"home_keyboard_hidden_key" = "Klaviatura körünmey";
+"home_keyboard_on_key" = "Klaviatura bağlanğan";
+"home_keyboard_off_key" = "Klaviatura bağlanmağan";
+"home_full_on_key" = "Tam erişim faalleştirildi";
+"home_full_off_key" = "Tam irişim berilmedi";
+"home_writearea_key" = "Yazı meydanı";
+"home_typing_key" = "Bir şey yazıñız...";
+"home_ok_key" = "Yahşı";
+"home_start_key" = "Başlañız";

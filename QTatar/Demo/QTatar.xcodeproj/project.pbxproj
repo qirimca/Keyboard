@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 76;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -119,6 +119,7 @@
 		6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				/Localized/Localization/Onboarding.strings,
 				Localization/LocalizationKeys.swift,
 			);
 			target = A921153825D58AC7003510D9 /* Keyboard */;
@@ -126,6 +127,7 @@
 		6AE9732D2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				/Localized/Localization/Onboarding.strings,
 				Localization/LocalizationKeys.swift,
 			);
 			target = 410E987C2CF8F6BB00993128 /* Keyboard LPress */;
@@ -391,7 +393,6 @@
 				};
 			};
 			buildConfigurationList = A921151D25D58A94003510D9 /* Build configuration list for PBXProject "QTatar" */;
-			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -402,6 +403,7 @@
 			packageReferences = (
 				A97599952B266CB9000EDCC1 /* XCRemoteSwiftPackageReference "KeyboardKitPro" */,
 			);
+			preferredProjectObjectVersion = 50;
 			productRefGroup = A921152325D58A94003510D9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";

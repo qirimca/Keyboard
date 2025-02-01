@@ -15,10 +15,10 @@ struct OnboardingView: View {
     @State private var text = ""
     
     var components = [
-        "Onboard1": "Allow Full Access: Go to Settings > Apps > QırımKey > Keyboards > Allow Full Access and enable the option.",
-        "Onboard2": "Add the Keyboard: Navigate to Settings > General > Keyboards > Add New Keyboard and select Crimean Tatar Keyboard (QırımKey).",
-        "Onboard3": "Choose the Keyboard While Typing: While typing, tap the 🌐 icon (or long-press it) and select QırımKey from the list.",
-        "Onboard4": "Start Using It: Enjoy using QırımKey with features like haptic feedback and advanced input support."
+        "Onboard1": Onboarding.onb_onb1_key.localized,
+        "Onboard2": Onboarding.onb_onb2_key.localized,
+        "Onboard3": Onboarding.onb_onb3_key.localized,
+        "Onboard4": Onboarding.onb_onb4_key.localized
     ]
     
     private func sortedKeys() -> [String] {
@@ -39,14 +39,14 @@ struct OnboardingView: View {
                             .padding(.horizontal, 20)
                         
                         if selected == sortedKeys().first || selected == sortedKeys()[1] {
-                            navButton(text: "Open Settings", gradient: Color.crayola) {
+                            navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
                                 openURL(URL(string: UIApplication.openSettingsURLString)!)
                             }.padding(.horizontal, 20)
                         }
                         
                         if selected == sortedKeys()[2] {
                             TextField(text: $text) {
-                                Text("Check the Keyboard").regularText()
+                                Text(Onboarding.onb_check_key.localized).regularText()
                             }
                             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
                             .padding()
@@ -65,7 +65,7 @@ struct OnboardingView: View {
                             .padding(.bottom, 10)
                         
                         HStack {
-                            navButton(text: "Go Back", gradient: Color.coral, action: {
+                            navButton(text: Onboarding.onb_back_key.localized, gradient: Color.coral, action: {
                                 if selected != sortedKeys().first {
                                     if let currentIndex = sortedKeys().firstIndex(of: key) {
                                         selected = sortedKeys()[(currentIndex - 1 + sortedKeys().count) % sortedKeys().count]
@@ -80,7 +80,7 @@ struct OnboardingView: View {
                             
                             Spacer()
                             
-                            navButton(text: selected != sortedKeys().last ? "Go Next" : "Finish", gradient: selected != sortedKeys().last ? Color.french : Color.crayola) {
+                            navButton(text: selected != sortedKeys().last ? Onboarding.onb_next_key.localized : Onboarding.onb_finish_key.localized, gradient: selected != sortedKeys().last ? Color.french : Color.crayola) {
                                 if selected != sortedKeys().last {
                                     if let currentIndex = sortedKeys().firstIndex(of: key) {
                                         selected = sortedKeys()[(currentIndex + 1) % sortedKeys().count]
@@ -105,7 +105,7 @@ struct OnboardingView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text("Setting Up the Keyboard")
+                Text(Onboarding.onb_settings_key.localized)
                     .titleText()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)

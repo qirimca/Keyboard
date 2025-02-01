@@ -16,11 +16,11 @@ enum KeyboardState {
     var title: String {
         switch self {
         case .active(let value):
-            return value ? "The keyboard appears" : "The keyboard is not shown"
+            return value ? Home.home_keyboard_visible_key.localized : Home.home_keyboard_hidden_key.localized
         case .enable(let value):
-            return value ? "Keyboard is connected" : "Keyboard not connected"
+            return value ? Home.home_keyboard_on_key.localized : Home.home_keyboard_off_key.localized
         case .fullAccess(let value):
-            return value ? "Full access activated" : "Full access not granted"
+            return value ? Home.home_full_on_key.localized : Home.home_full_off_key.localized
         }
     }
     
@@ -54,7 +54,7 @@ struct KeyboardStateItem: View {
             HStack {
                 Image(systemName: state.stateSymbol)
                     .imageScale(Device.iPhone ? .medium : .large)
-                    .foregroundStyle(state.state ? Color.crayola : Color.black)
+                    .foregroundStyle(Color.black, Color.crayola)
                 
                 Text(state.title)
                     .mediumText()

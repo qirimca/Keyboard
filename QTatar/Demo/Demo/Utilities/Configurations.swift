@@ -16,7 +16,7 @@ enum Configurations {
     static let localization = "Loading localization data..."
     
     // Social media 
-    static let website = "https://ctcorpus.org/index.php/uk/"
+    static let website = "https://qirimca.org/index.php/en/"
     static let instagram = "https://www.instagram.com/crimeantatar_corpora/"
     static let facebook = "https://www.facebook.com/OnlineTerciman/"
     static let github = "https://github.com/qirimca"
