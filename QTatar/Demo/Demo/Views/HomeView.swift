@@ -49,14 +49,14 @@ struct HomeView: View {
                         } indicator: {
                             Dictation.BarVisualizer(isAnimating: $0)
                         } doneButton: { action in
-                            Button("Ok", action: action)
+                            Button(Home.home_ok_key.localized, action: action)
                                 .buttonStyle(.borderedProminent)
                         }
                 }
             }
             .overlay(alignment: .bottom, content: {
                 if !areAllIndicatorsEnabled {
-                    PrimaryButton(text: "Get Started Now!", background: Color.crayola) {
+                    PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
                         showOnboardingView.toggle()
                     }.padding(Device.iPhone ? 12 : 24)
                 }
@@ -103,7 +103,7 @@ private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Qırımtatar klaviaturası — siz içün, siznen birge.").mediumText()
+            Text(Home.home_crimea_key.localized).mediumText()
             HStack {
                 KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
                     showIndicatorSheet.toggle()
@@ -117,7 +117,7 @@ private extension HomeView {
             }.frame(height: 60)
             
             if !keyboardState.isKeyboardActive {
-                Text("While typing, tap the 🌐 icon (or long-press it) and select Qırımtatar from the list.").regularText()
+                Text(Home.home_getkeyboard_key.localized).regularText()
             }
         }
     }
@@ -125,7 +125,7 @@ private extension HomeView {
     var writingAreaSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Metin meydanı").mediumText()
+                Text(Home.home_writearea_key.localized).mediumText()
                 Spacer()
                 if !text.isEmpty {
                     HStack {
@@ -145,7 +145,7 @@ private extension HomeView {
             Divider().padding(.horizontal)
             
             TextField(text: $text, axis: .vertical) {
-                Text("Type something...").regularText(size: 14)
+                Text(Home.home_typing_key.localized).regularText(size: 14)
             }
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
             .padding([.horizontal, .bottom])

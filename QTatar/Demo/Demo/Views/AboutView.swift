@@ -57,7 +57,7 @@ struct AboutView: View {
                 }
             }
             ToolbarItem(placement: .principal) {
-                Text("About")
+                Text(About.about_title_key.localized)
                     .titleText(size: 24)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
@@ -75,10 +75,10 @@ private extension AboutView {
                 .scaledToFit()
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .frame(height: 84)
-            Text("QırımKey\nThe First Crimean Tatar Keyboard")
+            Text(About.about_first_key.localized)
                 .titleText()
                 .multilineTextAlignment(.center)
-            Text("QırımKey is the first-ever iOS keyboard designed specifically for the Crimean Tatar language. Created by volunteers, this project aims to make typing in Crimean Tatar seamless and accessible for everyone")
+            Text(About.about_description_key.localized)
                 .regularText(size: 14)
                 .multilineTextAlignment(.center)
             
@@ -87,11 +87,10 @@ private extension AboutView {
     
     var projectSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            containerTitle(title: "Our Initiatives", icon: "atom")
-            
+            containerTitle(title: About.about_init_key.localized, icon: "atom")
             HStack {
-                projectContainer(illustration: "quizlet", projectName: "Crimean Tatar Spelling Checker", description: "Take your Crimean Tatar writing to the next level! This tool, integrated with the first Crimean Tatar keyboard for iOS, helps you find and fix spelling and grammar issues, making it easier than ever to write confidently in your native language.", link: Configurations.quizlet)
-                projectContainer(illustration: "languagetool", projectName: "LanguageTool for iOS", description: "Explore powerful writing assistance for Crimean Tatar and over 30 other languages, now available in the first Crimean Tatar keyboard for iOS. Correct errors, refine your style, and embrace clear communication with this intelligent writing assistant.", link: Configurations.languagetool)
+                projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
+                projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
             }
         }
         .padding(12)
@@ -102,7 +101,7 @@ private extension AboutView {
     
     var contactSection: some View {
         VStack(spacing: 6) {
-            containerTitle(title: "Join our social networks!", icon: "hand.thumbsup")
+            containerTitle(title: About.about_join_key.localized, icon: "hand.thumbsup")
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .center, spacing: 15) {
@@ -120,9 +119,9 @@ private extension AboutView {
     
     var feedbackSection: some View {
         VStack(spacing: 6) {
-            containerTitle(title: "Feedback", icon: "ellipsis.message")
+            containerTitle(title: About.about_feedback_key.localized, icon: "ellipsis.message")
             
-            cellItem(title: "Rate Us", icon: "star")
+            cellItem(title: About.about_rate_key.localized, icon: "star")
                 .onTapGesture {
                     withAnimation {
                         HapticFeedback.playSelection()
@@ -131,10 +130,10 @@ private extension AboutView {
                 }
             
             ShareLink(item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!) {
-                cellItem(title: "Share", icon: "arrowshape.turn.up.forward")
+                cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
             }
             
-            cellItem(title: "Support Us", icon: "heart")
+            cellItem(title: About.about_send_key.localized, icon: "heart")
                 .onTapGesture {
                     withAnimation {
                         HapticFeedback.playSelection()
@@ -209,7 +208,7 @@ private extension AboutView {
                 }
             } label: {
                 HStack {
-                    Text("View More").regularText(size: 14, color: .white)
+                    Text(About.about_more_key.localized).regularText(size: 14, color: .white)
                     Image(systemName: "arrow.up.forward.app")
                         .imageScale(.small)
                         .foregroundStyle(.white)

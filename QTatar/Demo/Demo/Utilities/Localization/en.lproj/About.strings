@@ -1,0 +1,23 @@
+/* 
+  About.strings
+  QTatar
+
+  Created by Mustafa Bekirov on 01.02.2025.
+  Copyright © 2025 Daniel Saidi. All rights reserved.
+*/
+
+"about_title_key" = "Aqqında";
+"about_first_key" = "QırımKey\nİlk Qırımtatar Klaviaturası";
+"about_description_key" = "QırımKey - bu iOS içün ilk qırımtatar tili klaviaturasıdır. Gönülliler tarafından becerilgen bu proyekt qırımtatarca yazmaqnı episine qolay ve irişimli yapmaq içün yasaldı";
+"about_init_key" = "Teşebbüslerimiz";
+"about_spell_title_key" = "Qırımtatar imlâ teşkergici";
+"about_spell_description_key" = "Qırımtatarca yazuvuñıznı yañı seviyege köteriñiz! Bu alet qırımtatar tili içün imlâ ve grammatika meselelerni tapıp tüzetmege yardım ete, ana tiliñizde işançlı yazmaqnı qolaylaştıra.";
+"about_language_title_key" = "iOS içün\nTil Aleti";
+"about_language_description_key" = "Qırımtatar tili ve diger 30-dan ziyade til içün küçlü yazuv yardımını siñap baqıñız. Bu aqıllı yazuv yardımcısınen hatalarnı tüzetiñiz, üslübiñizni yahşılaştırıñız ve açıq-aydın iletişimni quruñız.";
+"about_join_key" = "Sosyal ağlarımızğa qoşulıñız!";
+"about_feedback_key" = "Fikirler";
+"about_rate_key" = "Qıymet kesiñiz";
+"about_share_key" = "Paylaşıñız";
+"about_send_key" = "Qoltutuñız";
+"about_more_key" = "Daa kösteriñiz";
+"about_rights_key" = "Müelliflik aqqı © 2025 Qırım Young\nAqqları saqlanğandır";

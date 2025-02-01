@@ -20,7 +20,7 @@ struct FooterView: View {
                 .saturation(0)
                 .layoutPriority(0)
             
-            Text("Copyright © 2025 Qırım Young\nAll rights reserved.")
+            Text(About.about_rights_key.localized)
                 .regularText(color: .black.opacity(0.5))
                 .multilineTextAlignment(.center)
                 .layoutPriority(1)

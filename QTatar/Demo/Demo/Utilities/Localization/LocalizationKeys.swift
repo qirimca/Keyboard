@@ -42,6 +42,7 @@ enum About: String {
     case about_share_key
     case about_send_key
     case about_more_key
+    case about_rights_key
     
     var localized: String {
         NSLocalizedString(self.rawValue, tableName: "About", comment: "")
