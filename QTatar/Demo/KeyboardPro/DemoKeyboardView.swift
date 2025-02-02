@@ -27,11 +27,9 @@ struct DemoKeyboardView: View {
     
     unowned var controller: KeyboardInputViewController
     
-    @State
-    private var theme: KeyboardTheme?
+    @State private var theme: KeyboardTheme?
     
-    @EnvironmentObject
-    private var keyboardContext: KeyboardContext
+    @EnvironmentObject private var keyboardContext: KeyboardContext
     
     var body: some View {
         SystemKeyboard(
