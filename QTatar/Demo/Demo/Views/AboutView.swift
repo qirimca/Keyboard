@@ -154,6 +154,7 @@ private extension AboutView {
             Spacer()
             Image(systemName: icon)
                 .imageScale(.large)
+                .foregroundStyle(.black)
         }.padding(.bottom, 6)
     }
     
@@ -181,7 +182,9 @@ private extension AboutView {
         HStack {
             Text(title).regularText(size: 14)
             Spacer()
-            Image(systemName: icon).imageScale(.medium)
+            Image(systemName: icon)
+                .imageScale(.medium)
+                .foregroundStyle(.black)
         }
         .padding()
         .overlay(Capsule().stroke(LinearGradient(

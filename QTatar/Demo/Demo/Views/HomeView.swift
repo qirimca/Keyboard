@@ -148,6 +148,7 @@ private extension HomeView {
                 Text(Home.home_typing_key.localized).regularText(size: 14)
             }
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+            .foregroundColor(.black)
             .padding([.horizontal, .bottom])
             .cornerRadius(20)
             .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
