@@ -16,7 +16,7 @@ enum Configurations {
     static let localization = "Loading localization data..."
     
     // Social media 
-    static let website = "https://qirimca.org/index.php/en/"
+    static let website = "https://ctcorpus.org/index.php/uk/"
     static let instagram = "https://www.instagram.com/crimeantatar_corpora/"
     static let facebook = "https://www.facebook.com/OnlineTerciman/"
     static let github = "https://github.com/qirimca"
@@ -25,5 +25,5 @@ enum Configurations {
     
     // Projects
     static let quizlet = "https://quizlet.com/class/18053920/materials"
-    static let languagetool = "https://languagetool.org/ios"
+    static let languagetool = "https://apps.apple.com/app/id1534275760"
 }

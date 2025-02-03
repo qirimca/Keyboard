@@ -70,7 +70,7 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// Without KeyboardKit Pro, changing locale will by
         /// default only affects localized texts.
-        state.keyboardContext.setLocale(.english)
+        state.keyboardContext.setLocale(.tatar) //english
 
         /// 💡 Add more locales to the keyboard.
         ///

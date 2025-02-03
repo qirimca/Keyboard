@@ -36,7 +36,7 @@ enum KeyboardState {
     }
     
     var stateSymbol: String {
-        state ? "checkmark.circle.fill" : "circle"
+        state ? "checkmark.circle.fill" : "xmark.circle.fill"
     }
 }
 
@@ -54,7 +54,7 @@ struct KeyboardStateItem: View {
             HStack {
                 Image(systemName: state.stateSymbol)
                     .imageScale(Device.iPhone ? .medium : .large)
-                    .foregroundStyle(Color.black, Color.crayola)
+                    .foregroundStyle(Color.black, state.state ? Color.crayola : Color.coral)
                 
                 Text(state.title)
                     .mediumText()
