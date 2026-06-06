@@ -54,7 +54,7 @@ private extension KeyboardLayout {
         guard bottomIndex >= 0 else { return }
         
         for rowIndex in itemRows.indices {
-            let vertical: CGFloat = rowIndex == bottomIndex ? 4 : 6
+            let vertical: CGFloat = rowIndex == bottomIndex ? 2 : 3
             for index in itemRows[rowIndex].indices {
                 var item = itemRows[rowIndex][index]
                 guard !item.action.isSpacer else { continue }

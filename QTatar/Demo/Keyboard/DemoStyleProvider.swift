@@ -12,13 +12,29 @@ import SwiftUI
 /// Styles the keyboard to match the native iOS system appearance.
 class DemoStyleProvider: StandardKeyboardStyleProvider {
     
-    /// Bottom row is taller on the native iOS keyboard.
+    /// Bottom system row is slightly taller on the native iOS keyboard.
     private let bottomRowExtraHeight: CGFloat = 8
+    
+    /// Matches the native iPhone letter-row height (KeyboardKit default is 43).
+    private let letterRowHeight: CGFloat = 43
+    
+    /// Space below the bottom row for the system globe/mic chrome.
+    private let bottomChromeHeight: CGFloat = 18
     
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         config.buttonCornerRadius = 5
+        config.rowHeight = letterRowHeight
+        config.buttonInsets = EdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3)
         return config
+    }
+    
+    override var keyboardEdgeInsets: EdgeInsets {
+        guard keyboardContext.deviceType == .phone,
+              keyboardContext.interfaceOrientation.isPortrait else {
+            return super.keyboardEdgeInsets
+        }
+        return EdgeInsets(top: 0, leading: 0, bottom: bottomChromeHeight, trailing: 0)
     }
     
     override func rowHeight(
