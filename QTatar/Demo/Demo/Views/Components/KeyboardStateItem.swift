@@ -40,8 +40,50 @@ enum KeyboardState {
     }
 }
 
+struct KeyboardStateIndicatorsRow: View {
+    let states: [KeyboardState]
+    var action: () -> Void
+    
+    private let rowHeight: CGFloat = Device.iPad ? 72 : 60
+    private let spacing: CGFloat = Device.iPad ? 12 : 8
+    private let baseFontSize: CGFloat = Device.iPad ? 20 : 14
+    private let iconWidth: CGFloat = Device.iPad ? 28 : 22
+    private let horizontalPadding: CGFloat = Device.iPad ? 10 : 8
+    private let verticalPadding: CGFloat = Device.iPad ? 10 : 8
+    private let maxLines = 2
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let titles = states.map(\.title)
+            let cellWidth = max((geometry.size.width - spacing * 2) / 3, 1)
+            let textWidth = max(cellWidth - iconWidth - horizontalPadding * 2, 1)
+            let textHeight = max(rowHeight - verticalPadding * 2, 1)
+            let fontSize = String.uniformFontSize(
+                for: titles,
+                maxTextWidth: textWidth,
+                maxTextHeight: textHeight,
+                baseSize: baseFontSize,
+                maxLines: maxLines
+            )
+            
+            HStack(spacing: spacing) {
+                ForEach(Array(states.enumerated()), id: \.offset) { _, state in
+                    KeyboardStateItem(
+                        state: state,
+                        titleFontSize: fontSize,
+                        action: action
+                    )
+                }
+            }
+        }
+        .frame(height: rowHeight)
+        .layoutPriority(2)
+    }
+}
+
 struct KeyboardStateItem: View {
     let state: KeyboardState
+    var titleFontSize: CGFloat = Device.iPad ? 20 : 13
     var action: () -> Void
     
     var body: some View {
@@ -51,23 +93,30 @@ struct KeyboardStateItem: View {
                 action()
             }
         } label: {
-            HStack {
+            HStack(spacing: 6) {
                 Image(systemName: state.stateSymbol)
-                    .imageScale(Device.iPhone ? .medium : .large)
+                    .font(.system(size: Device.iPad ? 22 : 18, weight: .semibold))
                     .foregroundStyle(Color.black, state.state ? Color.crayola : Color.coral)
+                    .frame(width: Device.iPad ? 28 : 22)
                 
                 Text(state.title)
-                    .mediumText()
+                    .font(.custom("GeneralSans-Medium", size: titleFontSize))
+                    .foregroundStyle(.black)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(8)
+            .padding(.horizontal, Device.iPad ? 10 : 8)
+            .padding(.vertical, Device.iPad ? 10 : 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.backgroundLight)
             .overlay {
-                RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.black, lineWidth: 2)
             }
-        }.disabled(state.state)
+        }
+        .buttonStyle(.plain)
+        .allowsHitTesting(!state.state)
     }
 }

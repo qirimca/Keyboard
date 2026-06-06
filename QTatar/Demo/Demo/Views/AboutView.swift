@@ -46,15 +46,11 @@ struct AboutView: View {
             OnboardingView()
         })
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                NavButton(symbol: "chevron.backward") {
-                    dismiss()
-                }
+            NavToolbarItem(placement: .navigationBarLeading, symbol: "chevron.backward") {
+                dismiss()
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavButton(symbol: "questionmark") {
-                    showOnboardingView.toggle()
-                }
+            NavToolbarItem(placement: .navigationBarTrailing, symbol: "questionmark") {
+                showOnboardingView.toggle()
             }
             ToolbarItem(placement: .principal) {
                 Text(About.about_title_key.localized)
@@ -121,25 +117,20 @@ private extension AboutView {
         VStack(spacing: 6) {
             containerTitle(title: About.about_feedback_key.localized, icon: "ellipsis.message")
             
-            cellItem(title: About.about_rate_key.localized, icon: "star")
-                .onTapGesture {
-                    withAnimation {
-                        HapticFeedback.playSelection()
-                        requestReview()
-                    }
-                }
-            
-            ShareLink(item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!) {
-                cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
+            feedbackButton(title: About.about_rate_key.localized, icon: "star") {
+                requestReview()
             }
             
-            cellItem(title: About.about_send_key.localized, icon: "heart")
-                .onTapGesture {
-                    withAnimation {
-                        HapticFeedback.playSelection()
-                        openURL(URL(string: Configurations.donatello)!)
-                    }
-                }
+            ShareLink(
+                item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!
+            ) {
+                cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
+            }
+            .buttonStyle(.plain)
+            
+            feedbackButton(title: About.about_send_key.localized, icon: "heart") {
+                openURL(URL(string: Configurations.donatello)!)
+            }
         }
         .padding(12)
         .background(Color.backgroundLight)
@@ -178,19 +169,43 @@ private extension AboutView {
         }
     }
     
+    func feedbackButton(
+        title: String,
+        icon: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            HapticFeedback.playSelection()
+            action()
+        } label: {
+            cellItem(title: title, icon: icon)
+        }
+        .buttonStyle(.plain)
+    }
+    
     func cellItem(title: String, icon: String) -> some View {
         HStack {
             Text(title).regularText(size: 14)
-            Spacer()
+            Spacer(minLength: 8)
             Image(systemName: icon)
                 .imageScale(.medium)
                 .foregroundStyle(.black)
         }
-        .padding()
-        .overlay(Capsule().stroke(LinearGradient(
-            colors: [Color.french, Color.black],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing), lineWidth: 2))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .contentShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.french, Color.black],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 2
+                )
+        }
     }
     
     func projectContainer(illustration: String, projectName: String, description: String, link: String) -> some View {

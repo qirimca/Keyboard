@@ -99,10 +99,8 @@ struct OnboardingView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                NavButton(symbol: "chevron.backward") {
-                    dismiss()
-                }
+            NavToolbarItem(placement: .navigationBarLeading, symbol: "chevron.backward") {
+                dismiss()
             }
             ToolbarItem(placement: .principal) {
                 Text(Onboarding.onb_settings_key.localized)

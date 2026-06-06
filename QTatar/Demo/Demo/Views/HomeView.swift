@@ -31,13 +31,16 @@ struct HomeView: View {
             ZStack {
                 Color("BackgroungColor").ignoresSafeArea()
                 BackgroundGrid()
-                VStack {
+                VStack(spacing: 12) {
                     statusIndicatorsSection
+                        .fixedSize(horizontal: false, vertical: true)
                     ScrollView(.vertical, showsIndicators: false) {
                         writingAreaSection
                     }
+                    .layoutPriority(1)
                 }
                 .padding(Device.iPhone ? 12 : 24)
+                .scrollDismissesKeyboard(.interactively)
                 .keyboardDictation(
                     context: dictationContext,
                     config: .app,
@@ -72,15 +75,11 @@ struct HomeView: View {
             })
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavButton(symbol: "questionmark") {
-                        showOnboardingView.toggle()
-                    }
+                NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
+                    showOnboardingView.toggle()
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavButton(symbol: "info") {
-                        showAboutView.toggle()
-                    }
+                NavToolbarItem(placement: .navigationBarTrailing, symbol: "info") {
+                    showAboutView.toggle()
                 }
                 ToolbarItem(placement: .principal) {
                     Text("QırımKey")
@@ -103,18 +102,20 @@ private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(Home.home_crimea_key.localized).mediumText()
-            HStack {
-                KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .enable(keyboardState.isKeyboardEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-            }.frame(height: 60)
+            Text(Home.home_crimea_key.localized)
+                .mediumText(size: Device.iPad ? 16 : 14)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            
+            KeyboardStateIndicatorsRow(
+                states: [
+                    .active(keyboardState.isKeyboardActive),
+                    .enable(keyboardState.isKeyboardEnabled),
+                    .fullAccess(keyboardState.isFullAccessEnabled)
+                ]
+            ) {
+                showIndicatorSheet.toggle()
+            }
             
             if !keyboardState.isKeyboardActive {
                 Text(Home.home_getkeyboard_key.localized).regularText()
