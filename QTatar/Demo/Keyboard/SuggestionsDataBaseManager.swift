@@ -163,7 +163,7 @@ final class SuggestionsDataBaseManager {
     
     private func setupDatabase() {
         let fileManager = FileManager.default
-        let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.crh.key.boardplus")!
+        let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID)!
         let dbPath = containerURL.appendingPathComponent("words.db").path
         
         if sqlite3_open(dbPath, &db) == SQLITE_OK {

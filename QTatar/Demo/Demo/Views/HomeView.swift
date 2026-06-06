@@ -20,7 +20,7 @@ struct HomeView: View {
     @AppStorage("crh.key.text") private var text = ""
     
     @StateObject private var dictationContext = DictationContext(config: .app)
-    @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
+    @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
     
     @State private var showOnboardingView: Bool = false
     @State private var showIndicatorSheet: Bool = false

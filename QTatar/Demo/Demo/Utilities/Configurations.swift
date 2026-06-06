@@ -11,8 +11,8 @@ import Foundation
 enum Configurations {
     static var appName: String = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "Unknown App Name"
     static let appID = 6739430313
-    static let appGroupID = "group.crh.key.boardplus"
-    static let appDeepLink = "kkdemo://dictation"
+    static let appGroupID = AppConfiguration.appGroupID
+    static let appDeepLink = AppConfiguration.appDeepLink
     static let localization = "Loading localization data..."
     
     // Social media 
