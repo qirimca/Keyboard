@@ -55,14 +55,26 @@ class FakeAutocompleteProvider: AutocompleteProvider {
             proxy: keyboardContext.textDocumentProxy
         )
         
-        if query.isEmpty, !Self.isDocumentEmpty(keyboardContext.textDocumentProxy) {
-            return []
-        }
+        let proxy = keyboardContext.textDocumentProxy
+        let suggestions: [Autocomplete.Suggestion]
         
-        let suggestions = manager.suggestions(
-            for: query,
-            shouldCapitalize: shouldCapitalize
-        )
+        if query.isEmpty {
+            if Self.isDocumentEmpty(proxy) {
+                suggestions = manager.starterSuggestions(shouldCapitalize: shouldCapitalize)
+            } else if let previousWord = proxy.wordBeforeInput {
+                suggestions = manager.nextWordSuggestions(
+                    after: previousWord,
+                    shouldCapitalize: shouldCapitalize
+                )
+            } else {
+                suggestions = []
+            }
+        } else {
+            suggestions = manager.suggestions(
+                for: query,
+                shouldCapitalize: shouldCapitalize
+            )
+        }
         
         guard query == latestQuery else { return [] }
         
@@ -94,7 +106,7 @@ enum AutocompleteQueryResolver {
         
         if proxy.documentContextBeforeInput == nil,
            proxy.documentContextAfterInput == nil {
-            return nil
+            return ""
         }
         
         return ""

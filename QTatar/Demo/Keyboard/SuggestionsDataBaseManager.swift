@@ -58,6 +58,33 @@ final class SuggestionsDataBaseManager {
         openDB()
     }
     
+    func starterSuggestions(shouldCapitalize: Bool) -> [Autocomplete.Suggestion] {
+        databaseQueue.sync {
+            ensureDB()
+            return fetchPopularWords(limit: 3).map {
+                Autocomplete.Suggestion(text: formatWord($0, capitalize: shouldCapitalize))
+            }
+        }
+    }
+    
+    func nextWordSuggestions(
+        after previousWord: String,
+        shouldCapitalize: Bool
+    ) -> [Autocomplete.Suggestion] {
+        databaseQueue.sync {
+            ensureDB()
+            let previous = previousWord.lowercased(with: Self.casingLocale)
+            let predicted = fetchNextWords(after: previous, limit: 8)
+            let words = predicted.isEmpty
+                ? fetchPopularWords(limit: 8).filter { $0.lowercased(with: Self.casingLocale) != previous }
+                : predicted
+            
+            return Array(words.prefix(3)).map {
+                Autocomplete.Suggestion(text: formatWord($0, capitalize: shouldCapitalize))
+            }
+        }
+    }
+    
     func suggestions(
         for text: String,
         shouldCapitalize: Bool
@@ -120,6 +147,40 @@ final class SuggestionsDataBaseManager {
             return firstChar + rest
         }
         return word.lowercased(with: Self.casingLocale)
+    }
+    
+    private func fetchNextWords(after previousWord: String, limit: Int) -> [String] {
+        guard let db else { return [] }
+        var results: [String] = []
+        var stmt: OpaquePointer?
+        let query = """
+            SELECT word2 FROM bigrams
+            WHERE LOWER(word1) = ?
+            ORDER BY freq DESC
+            LIMIT ?;
+            """
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+            return []
+        }
+        
+        guard bindText(stmt, index: 1, value: previousWord) else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let word = sqlite3_column_text(stmt, 0) {
+                results.append(String(cString: word))
+            }
+        }
+        
+        return results
     }
     
     private func fetchPopularWords(limit: Int) -> [String] {
