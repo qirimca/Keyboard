@@ -11,89 +11,42 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) var openURL
-    @State private var selected = "Onboard1"
+    @State private var selected = Page.onboard1.rawValue
     @State private var text = ""
     
-    var components = [
-        "Onboard1": Onboarding.onb_onb1_key.localized,
-        "Onboard2": Onboarding.onb_onb2_key.localized,
-        "Onboard3": Onboarding.onb_onb3_key.localized,
-        "Onboard4": Onboarding.onb_onb4_key.localized
-    ]
-    
-    private func sortedKeys() -> [String] {
-        return components.keys.sorted()
+    private enum Page: String, CaseIterable {
+        case onboard1 = "Onboard1"
+        case onboard2 = "Onboard2"
+        case onboard3 = "Onboard3"
+        case onboard4 = "Onboard4"
+        
+        var instruction: String {
+            switch self {
+            case .onboard1: Onboarding.onb_onb1_key.localized
+            case .onboard2: Onboarding.onb_onb2_key.localized
+            case .onboard3: Onboarding.onb_onb3_key.localized
+            case .onboard4: Onboarding.onb_onb4_key.localized
+            }
+        }
+        
+        var index: Int {
+            Self.allCases.firstIndex(of: self) ?? 0
+        }
     }
     
     var body: some View {
-        
         ZStack {
             Color("BackgroungColor").ignoresSafeArea()
             BackgroundGrid()
             TabView(selection: $selected) {
-                ForEach(sortedKeys(), id: \.self) { key in
-                    VStack {
-                        formattedInstructionText(for: components[key] ?? "")
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                        
-                        if selected == sortedKeys().first || selected == sortedKeys()[1] {
-                            navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
-                                openURL(URL(string: UIApplication.openSettingsURLString)!)
-                            }.padding(.horizontal, 20)
-                        }
-                        
-                        if selected == sortedKeys()[2] {
-                            TextField(text: $text) {
-                                Text(Onboarding.onb_check_key.localized).regularText()
-                            }
-                            .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
-                            .padding()
-                            .cornerRadius(20)
-                            .lineLimit(1)
-                            .submitLabel(.done)
-                            .background(Color.backgroundLight)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
-                            }
-                        }
-                        
-                        Image(key)
-                            .resizable()
-                            .scaledToFit()
-                            .padding(.bottom, 10)
-                        
-                        HStack {
-                            navButton(text: Onboarding.onb_back_key.localized, gradient: Color.coral, action: {
-                                if selected != sortedKeys().first {
-                                    if let currentIndex = sortedKeys().firstIndex(of: key) {
-                                        selected = sortedKeys()[(currentIndex - 1 + sortedKeys().count) % sortedKeys().count]
-                                    }
-                                }
-                            }).opacity(selected != sortedKeys().first ? 1.0 : 0.0)
-                            
-                            Spacer()
-                            
-                            Text("\(sortedKeys().firstIndex(of: key)! + 1)/\(components.count)")
-                                .mediumText()
-                            
-                            Spacer()
-                            
-                            navButton(text: selected != sortedKeys().last ? Onboarding.onb_next_key.localized : Onboarding.onb_finish_key.localized, gradient: selected != sortedKeys().last ? Color.french : Color.crayola) {
-                                if selected != sortedKeys().last {
-                                    if let currentIndex = sortedKeys().firstIndex(of: key) {
-                                        selected = sortedKeys()[(currentIndex + 1) % sortedKeys().count]
-                                    }
-                                } else {
-                                    dismiss()
-                                }
-                            }
-                        }
-                    }
-                    .tag(key)
-                    .padding(12)
+                ForEach(Page.allCases, id: \.rawValue) { page in
+                    onboardingPage(page)
+                        .tag(page.rawValue)
+                        .padding(12)
                 }
-            }.tabViewStyle(.page(indexDisplayMode: .never))
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut(duration: 0.25), value: selected)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
@@ -113,12 +66,78 @@ struct OnboardingView: View {
 
 private extension OnboardingView {
     
-    func navButton(text: String, gradient: Color, action: @escaping () -> Void) -> some View {
-        Button {
-            withAnimation {
-                HapticFeedback.playSelection()
-                action()
+    private func onboardingPage(_ page: Page) -> some View {
+        VStack {
+            formattedInstructionText(for: page.instruction)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            
+            if page == .onboard1 || page == .onboard2 {
+                navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
+                    openURL(URL(string: UIApplication.openSettingsURLString)!)
+                }
+                .padding(.horizontal, 20)
             }
+            
+            if page == .onboard3 {
+                TextField(text: $text) {
+                    Text(Onboarding.onb_check_key.localized).regularText()
+                }
+                .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+                .padding()
+                .cornerRadius(20)
+                .lineLimit(1)
+                .submitLabel(.done)
+                .background(Color.backgroundLight)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
+                }
+            }
+            
+            Image(page.rawValue)
+                .resizable()
+                .scaledToFit()
+                .padding(.bottom, 10)
+            
+            HStack {
+                navButton(text: Onboarding.onb_back_key.localized, gradient: Color.coral) {
+                    let pages = Page.allCases
+                    let index = page.index
+                    guard index > 0 else { return }
+                    selected = pages[index - 1].rawValue
+                }
+                .opacity(page == .onboard1 ? 0 : 1)
+                .disabled(page == .onboard1)
+                
+                Spacer()
+                
+                Text("\(page.index + 1)/\(Page.allCases.count)")
+                    .mediumText()
+                
+                Spacer()
+                
+                navButton(
+                    text: page == .onboard4
+                        ? Onboarding.onb_finish_key.localized
+                        : Onboarding.onb_next_key.localized,
+                    gradient: page == .onboard4 ? Color.crayola : Color.french
+                ) {
+                    let pages = Page.allCases
+                    let nextIndex = page.index + 1
+                    if nextIndex < pages.count {
+                        selected = pages[nextIndex].rawValue
+                    } else {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func navButton(text: String, gradient: Color, action: @escaping () -> Void) -> some View {
+        Button {
+            HapticFeedback.playSelection()
+            action()
         } label: {
             Text(text)
                 .mediumText()
@@ -131,9 +150,10 @@ private extension OnboardingView {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing), lineWidth: 2))
         }
+        .buttonStyle(.plain)
     }
     
-    func formattedInstructionText(for text: String) -> Text {
+    private func formattedInstructionText(for text: String) -> Text {
         let parts = text.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
         let title = parts.first.map { String($0) } ?? ""
         let description = parts.count > 1
@@ -164,5 +184,7 @@ private extension OnboardingView {
 }
 
 #Preview {
-    OnboardingView()
+    NavigationStack {
+        OnboardingView()
+    }
 }

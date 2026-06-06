@@ -10,11 +10,11 @@ import SwiftUI
 import StoreKit
 
 struct AboutView: View {
+    @Binding var navigationPath: NavigationPath
+    
     @Environment(\.requestReview) var requestReview
     @Environment(\.openURL) var openURL
     @Environment(\.dismiss) var dismiss
-    
-    @State private var showOnboardingView: Bool = false
     
     let socialMediaLinks = [
         ("Website", Configurations.website),
@@ -37,20 +37,17 @@ struct AboutView: View {
                         feedbackSection
                         FooterView()
                     }.padding(1)
-                }.refreshable {}
+                }
             }.padding(12)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
-        .navigationDestination(isPresented: $showOnboardingView, destination: {
-            OnboardingView()
-        })
         .toolbar {
             NavToolbarItem(placement: .navigationBarLeading, symbol: "chevron.backward") {
                 dismiss()
             }
             NavToolbarItem(placement: .navigationBarTrailing, symbol: "questionmark") {
-                showOnboardingView.toggle()
+                navigationPath.append(DemoRoute.onboarding)
             }
             ToolbarItem(placement: .principal) {
                 Text(About.about_title_key.localized)
@@ -249,5 +246,8 @@ private extension AboutView {
 }
 
 #Preview {
-    AboutView()
+    @Previewable @State var navigationPath = NavigationPath()
+    NavigationStack(path: $navigationPath) {
+        AboutView(navigationPath: $navigationPath)
+    }
 }

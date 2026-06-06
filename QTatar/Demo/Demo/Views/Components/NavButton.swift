@@ -16,10 +16,8 @@ struct NavButton: View {
     
     var body: some View {
         Button {
-            withAnimation {
-                HapticFeedback.playSelection()
-                action()
-            }
+            HapticFeedback.playSelection()
+            action()
         } label: {
             Image(systemName: symbol)
                 .imageScale(.medium)
