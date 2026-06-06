@@ -187,19 +187,19 @@ private extension iPhoneKeyboardLayoutProvider {
         if [.numeric, .symbolic].contains(context.keyboardType) {
             return actions.count == 3
         }
-        return actions.count == 3 // TODO, INFO: Shrinked ugly 4 rows error when set actions.count == 3, so set actions.count == 4
+        return actions.count == 4
     }
     
     func isExpectedNumericActionSet(
         _ actions: KeyboardAction.Rows
     ) -> Bool {
-        return actions.count == 3 // TODO, INFO: Shrinked ugly 3 rows error when set actions.count == 4, so set actions.count == 3
+        return actions.count == 3
     }
-    
+
     func isExpectedLetterActionSet(
         _ actions: KeyboardAction.Rows
     ) -> Bool {
-        return actions.count == 3 // TODO, INFO: Shrinked ugly 4 rows error when set actions.count == 3, so set actions.count == 4
+        return actions.count == 4
     }
 
     func isPortrait(
