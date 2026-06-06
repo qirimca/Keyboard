@@ -18,10 +18,20 @@ import SwiftUI
 @main
 struct DemoApp: App {
     
+    @State private var navigationPath = NavigationPath()
+    
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                HomeView()
+            NavigationStack(path: $navigationPath) {
+                HomeView(navigationPath: $navigationPath)
+                    .navigationDestination(for: DemoRoute.self) { route in
+                        switch route {
+                        case .about:
+                            AboutView(navigationPath: $navigationPath)
+                        case .onboarding:
+                            OnboardingView()
+                        }
+                    }
             }
         }
     }

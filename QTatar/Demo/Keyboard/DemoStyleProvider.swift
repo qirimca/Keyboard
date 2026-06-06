@@ -9,67 +9,108 @@
 import KeyboardKit
 import SwiftUI
 
-/**
- This demo-specific provider inherits the standard one, then
- makes the rocket button font larger.
- 
- There's a bunch of disabled code that you can enable to see
- how the style of the keyboard changes.
- */
+/// Styles the keyboard to match the native iOS system appearance.
 class DemoStyleProvider: StandardKeyboardStyleProvider {
     
-    override func buttonFontSize(
-        for action: KeyboardAction
-    ) -> CGFloat {
-        let standard = super.buttonFontSize(for: action)
-        return action.isRocket ? 1.8 * standard : standard
+    /// Bottom system row is slightly taller on the native iOS keyboard.
+    private let bottomRowExtraHeight: CGFloat = 8
+    
+    /// Matches the native iPhone letter-row height (KeyboardKit default is 43).
+    private let letterRowHeight: CGFloat = 43
+    
+    /// Space below the bottom row for the system globe/mic chrome.
+    private let bottomChromeHeight: CGFloat = 18
+    
+    /// Side inset for the iPad key grid (matches system keyboard).
+    private let iPadHorizontalKeyboardInset: CGFloat = 12
+    
+    override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
+        var config = super.keyboardLayoutConfiguration
+        config.buttonCornerRadius = 5
+        
+        guard keyboardContext.deviceType == .phone else {
+            return config
+        }
+        
+        config.rowHeight = letterRowHeight
+        config.buttonInsets = EdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3)
+        return config
     }
     
-//    override func buttonStyle(
-//        for action: KeyboardAction,
-//        isPressed: Bool
-//    ) -> Keyboard.ButtonStyle {
-//        if action.isRocket {
-//            return super.buttonStyle(for: .primary(.continue), isPressed: isPressed)
-//        }
-//        return super.buttonStyle(for: action, isPressed: isPressed)
-//    }
-    
-//     override func buttonImage(for action: KeyboardAction) -> Image? {
-//         switch action {
-//         case .primary: Image.keyboardBrightnessUp
-//         default: super.buttonImage(for: action)
-//         }
-//     }
-
-     override func buttonText(for action: KeyboardAction) -> String? {
-         switch action {
-         case .primary: "⏎"
-         case .space: "Qırımtatar"
-         default: super.buttonText(for: action)
-         }
-     }
-
-//    override var actionCalloutStyle: Callouts.ActionCalloutStyle {
-//        var style = super.actionCalloutStyle
-//        style.callout.backgroundColor = .red
-//        return style
-//    }
-
-//    override var inputCalloutStyle: Callouts.InputCalloutStyle {
-//        var style = super.inputCalloutStyle
-//        style.callout.backgroundColor = .blue
-//        style.callout.textColor = .yellow
-//        return style
-//    }
-}
-
-private extension KeyboardAction {
-    
-    var isRocket: Bool {
-        switch self {
-        case .character(let char): char == "🚀"
-        default: false
+    override var keyboardEdgeInsets: EdgeInsets {
+        switch keyboardContext.deviceType {
+        case .phone where keyboardContext.interfaceOrientation.isPortrait:
+            return EdgeInsets(top: 0, leading: 0, bottom: bottomChromeHeight, trailing: 0)
+        case .pad:
+            return EdgeInsets(
+                top: 0,
+                leading: iPadHorizontalKeyboardInset,
+                bottom: 4,
+                trailing: iPadHorizontalKeyboardInset
+            )
+        default:
+            return super.keyboardEdgeInsets
         }
+    }
+    
+    override func rowHeight(
+        forRowAt rowIndex: Int,
+        in layout: KeyboardLayout
+    ) -> CGFloat {
+        let base = keyboardLayoutConfiguration.rowHeight
+        guard keyboardContext.deviceType == .phone,
+              rowIndex == layout.bottomRowIndex else {
+            return base
+        }
+        return base + bottomRowExtraHeight
+    }
+    
+    override func buttonBackgroundColor(
+        for action: KeyboardAction,
+        isPressed: Bool
+    ) -> Color {
+        guard usesNativeWhiteKeyStyle(for: action) else {
+            return super.buttonBackgroundColor(for: action, isPressed: isPressed)
+        }
+        
+        let context = keyboardContext
+        if isPressed {
+            return context.hasDarkColorScheme
+                ? .keyboardButtonBackground(for: context)
+                : .white
+        }
+        return .keyboardButtonBackground(for: context)
+    }
+    
+    override func buttonForegroundColor(
+        for action: KeyboardAction,
+        isPressed: Bool
+    ) -> Color {
+        guard usesNativeWhiteKeyStyle(for: action) else {
+            return super.buttonForegroundColor(for: action, isPressed: isPressed)
+        }
+        return Color.keyboardButtonForeground(for: keyboardContext)
+    }
+    
+    override func buttonText(for action: KeyboardAction) -> String? {
+        switch action {
+        case .space:
+            return nil
+        case .keyboardType(let type):
+            switch type {
+            case .numeric, .symbolic:
+                return "123"
+            case .alphabetic:
+                return "ABC"
+            default:
+                return super.buttonText(for: action)
+            }
+        default:
+            return super.buttonText(for: action)
+        }
+    }
+    
+    private func usesNativeWhiteKeyStyle(for action: KeyboardAction) -> Bool {
+        action.isSystemAction || action.isPrimaryAction
     }
 }

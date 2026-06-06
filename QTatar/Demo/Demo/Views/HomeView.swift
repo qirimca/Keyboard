@@ -17,27 +17,30 @@ import KeyboardKitPro
  */
 
 struct HomeView: View {
+    @Binding var navigationPath: NavigationPath
+    
     @AppStorage("crh.key.text") private var text = ""
     
     @StateObject private var dictationContext = DictationContext(config: .app)
-    @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
+    @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
     
-    @State private var showOnboardingView: Bool = false
-    @State private var showIndicatorSheet: Bool = false
-    @State private var showAboutView: Bool = false
+    @State private var showIndicatorSheet = false
+    @FocusState private var isWritingFieldFocused: Bool
     
     var body: some View {
-        NavigationStack {
-            ZStack {
+        ZStack {
                 Color("BackgroungColor").ignoresSafeArea()
                 BackgroundGrid()
-                VStack {
+                VStack(spacing: 12) {
                     statusIndicatorsSection
+                        .fixedSize(horizontal: false, vertical: true)
                     ScrollView(.vertical, showsIndicators: false) {
                         writingAreaSection
                     }
+                    .layoutPriority(1)
                 }
                 .padding(Device.iPhone ? 12 : 24)
+                .scrollDismissesKeyboard(.interactively)
                 .keyboardDictation(
                     context: dictationContext,
                     config: .app,
@@ -57,30 +60,20 @@ struct HomeView: View {
             .overlay(alignment: .bottom, content: {
                 if !areAllIndicatorsEnabled {
                     PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
-                        showOnboardingView.toggle()
+                        navigationPath.append(DemoRoute.onboarding)
                     }.padding(Device.iPhone ? 12 : 24)
                 }
             })
             .gesture(TapGesture().onEnded {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }, including: .gesture)
-            .navigationDestination(isPresented: $showAboutView, destination: {
-                AboutView()
-            })
-            .navigationDestination(isPresented: $showOnboardingView, destination: {
-                OnboardingView()
-            })
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavButton(symbol: "questionmark") {
-                        showOnboardingView.toggle()
-                    }
+                NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
+                    navigationPath.append(DemoRoute.onboarding)
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavButton(symbol: "info") {
-                        showAboutView.toggle()
-                    }
+                NavToolbarItem(placement: .navigationBarTrailing, symbol: "info") {
+                    navigationPath.append(DemoRoute.about)
                 }
                 ToolbarItem(placement: .principal) {
                     Text("QırımKey")
@@ -95,7 +88,14 @@ struct HomeView: View {
                     .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
             }
-        }
+            .onAppear {
+                keyboardState.refresh()
+                scheduleKeyboardWarmupIfNeeded()
+            }
+            .onChange(of: keyboardState.isKeyboardEnabled) { _, isEnabled in
+                guard isEnabled else { return }
+                scheduleKeyboardWarmupIfNeeded()
+            }
     }
 }
 
@@ -103,21 +103,27 @@ private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(Home.home_crimea_key.localized).mediumText()
-            HStack {
-                KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .enable(keyboardState.isKeyboardEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-            }.frame(height: 60)
+            Text(Home.home_crimea_key.localized)
+                .mediumText(size: Device.iPad ? 16 : 14)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            
+            KeyboardStateIndicatorsRow(
+                states: [
+                    .active(keyboardState.isKeyboardActive),
+                    .enable(keyboardState.isKeyboardEnabled),
+                    .fullAccess(keyboardState.isFullAccessEnabled)
+                ]
+            ) {
+                showIndicatorSheet = true
+            }
             
             if !keyboardState.isKeyboardActive {
-                Text(Home.home_getkeyboard_key.localized).regularText()
+                Text.customFontText(
+                    Home.home_getkeyboard_key.localized,
+                    fontName: "GeneralSans-Regular",
+                    size: 12
+                )
             }
         }
     }
@@ -147,6 +153,7 @@ private extension HomeView {
             TextField(text: $text, axis: .vertical) {
                 Text(Home.home_typing_key.localized).regularText(size: 14)
             }
+            .focused($isWritingFieldFocused)
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
             .foregroundColor(.black)
             .padding([.horizontal, .bottom])
@@ -170,8 +177,17 @@ private extension HomeView {
         keyboardState.isKeyboardEnabled &&
         keyboardState.isFullAccessEnabled
     }
+    
+    func scheduleKeyboardWarmupIfNeeded() {
+        KeyboardExtensionWarmup.scheduleIfNeeded(
+            isKeyboardEnabled: keyboardState.isKeyboardEnabled
+        ) { isWritingFieldFocused = $0 }
+    }
 }
 
 #Preview {
-    HomeView()
+    @Previewable @State var navigationPath = NavigationPath()
+    NavigationStack(path: $navigationPath) {
+        HomeView(navigationPath: $navigationPath)
+    }
 }

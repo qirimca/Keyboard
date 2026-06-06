@@ -8,17 +8,22 @@
 
 import Foundation
 import KeyboardKit
+import UIKit
 
-/**
- This fake autocomplete provider is used in the non-pro demo,
- to show fake suggestions while typing.
- */
+/// Crimean Tatar autocomplete backed by the local SQLite dictionary.
 class FakeAutocompleteProvider: AutocompleteProvider {
 
-    let manager = SuggestionsDataBaseManager()
+    private let manager = SuggestionsDataBaseManager.shared
+    private let keyboardContext: KeyboardContext
+    private var latestQuery = ""
     
-    init(context: AutocompleteContext) {
+    init(
+        context: AutocompleteContext,
+        keyboardContext: KeyboardContext
+    ) {
         self.context = context
+        self.keyboardContext = keyboardContext
+        manager.prepareAsync()
     }
 
     private var context: AutocompleteContext
@@ -40,19 +45,104 @@ class FakeAutocompleteProvider: AutocompleteProvider {
     func autocompleteSuggestions(
         for text: String
     ) async throws -> [Autocomplete.Suggestion] {
-        guard text.count > 0 else { return [] }
-        return fakeSuggestions(for: text)
-            .map {
-                var suggestion = $0
-                suggestion.isAutocorrect = $0.isAutocorrect && context.isAutocorrectEnabled
-                return suggestion
+        let query = AutocompleteQueryResolver.queryText(
+            for: keyboardContext.textDocumentProxy
+        ) ?? text
+        latestQuery = query
+        
+        let shouldCapitalize = Self.shouldCapitalize(
+            typedText: query,
+            proxy: keyboardContext.textDocumentProxy
+        )
+        
+        let proxy = keyboardContext.textDocumentProxy
+        let suggestions: [Autocomplete.Suggestion]
+        
+        if query.isEmpty {
+            if Self.isDocumentEmpty(proxy) {
+                suggestions = manager.starterSuggestions(shouldCapitalize: shouldCapitalize)
+            } else if !Self.completedContextWords(before: proxy).isEmpty {
+                suggestions = manager.nextWordSuggestions(
+                    contextWords: Self.completedContextWords(before: proxy),
+                    shouldCapitalize: shouldCapitalize
+                )
+            } else {
+                suggestions = []
             }
+        } else {
+            suggestions = manager.suggestions(
+                for: query,
+                shouldCapitalize: shouldCapitalize
+            )
+        }
+        
+        guard query == latestQuery else { return [] }
+        
+        return suggestions.map { suggestion in
+            var mapped = suggestion
+            mapped.isAutocorrect = suggestion.isAutocorrect && context.isAutocorrectEnabled
+            return mapped
+        }
+    }
+}
+
+/// Resolves the word that autocomplete should query in the dictionary.
+enum AutocompleteQueryResolver {
+    
+    static func queryText(for proxy: UITextDocumentProxy) -> String? {
+        if let word = proxy.currentWord, !word.isEmpty {
+            return word
+        }
+        
+        if let before = proxy.documentContextBeforeInput {
+            let fragment = before.wordFragmentAtEnd
+            if !fragment.isEmpty {
+                return fragment
+            }
+            if proxy.isCursorAtNewWord {
+                return ""
+            }
+        }
+        
+        if proxy.documentContextBeforeInput == nil,
+           proxy.documentContextAfterInput == nil {
+            return ""
+        }
+        
+        return ""
     }
 }
 
 private extension FakeAutocompleteProvider {
     
-    func fakeSuggestions(for text: String) -> [Autocomplete.Suggestion] {
-        manager.top3(for: text)
+    static func completedContextWords(before proxy: UITextDocumentProxy) -> [String] {
+        guard let before = proxy.documentContextBeforeInput else { return [] }
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        return before
+            .components(separatedBy: delimiters)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+    
+    static func isDocumentEmpty(_ proxy: UITextDocumentProxy) -> Bool {
+        let before = proxy.documentContextBeforeInput?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let after = proxy.documentContextAfterInput?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return before.isEmpty && after.isEmpty
+    }
+    
+    static func shouldCapitalize(
+        typedText: String,
+        proxy: UITextDocumentProxy
+    ) -> Bool {
+        if typedText.first?.isUppercase == true { return true }
+        if proxy.isCursorAtNewSentence { return true }
+        if proxy.isCursorAtNewWord,
+           let before = proxy.documentContextBeforeInput,
+           before.trimmingCharacters(in: .whitespaces).isEmpty {
+            return true
+        }
+        return false
     }
 }

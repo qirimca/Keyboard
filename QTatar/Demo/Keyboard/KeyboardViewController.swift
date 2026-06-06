@@ -18,11 +18,14 @@ import KeyboardKit
  access to features like haptic feedback.
  */
 class KeyboardViewController: KeyboardInputViewController {
+    
+    private var didSetupKeyboard = false
 
     /// This function is called when the controller loads.
     ///
     /// Here, we make demo-specific service keyboard configs.
     override func viewDidLoad() {
+        SuggestionsDataBaseManager.shared.prepareAsync()
         
         /// 💡 Setup a demo-specific action handler.
         ///
@@ -40,9 +43,12 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// This fake provider will provide fake suggestions.
         /// Try the Pro demo for real suggestions.
-        services.autocompleteProvider = FakeAutocompleteProvider(
-            context: state.autocompleteContext
+        let autocompleteProvider = FakeAutocompleteProvider(
+            context: state.autocompleteContext,
+            keyboardContext: state.keyboardContext
         )
+        autocompleteProvider.locale = Locale(identifier: "crh")
+        services.autocompleteProvider = autocompleteProvider
         
         /// 💡 Setup a demo-specific callout action provider.
         ///
@@ -70,7 +76,10 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// Without KeyboardKit Pro, changing locale will by
         /// default only affects localized texts.
-        state.keyboardContext.setLocale(.tatar) //english
+        state.keyboardContext.setLocale(.tatar)
+        state.keyboardContext.keyboardType = .alphabetic(.lowercased)
+        state.autocompleteContext.isAutocompleteEnabled = true
+        state.autocompleteContext.isAutocorrectEnabled = true
 
         /// 💡 Add more locales to the keyboard.
         ///
@@ -79,11 +88,8 @@ class KeyboardViewController: KeyboardInputViewController {
         state.keyboardContext.localePresentationLocale = .current
         state.keyboardContext.locales = [] // KeyboardLocale.all.locales
         
-        /// 💡 Setup a custom dictation key replacement.
-        ///
-        /// Since dictation is not available by default, the
-        /// dictation button is removed if we don't set this.
-        state.keyboardContext.keyboardDictationReplacement = .character("-")// .character("😀")
+        /// Emoji is already on the bottom row; avoid a duplicate key.
+        state.keyboardContext.keyboardDictationReplacement = nil
         
         /// 💡 Configure the space long press behavior.
         ///
@@ -96,16 +102,30 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// The code below enabled haptic feedback and plays
         /// a rocket sound when a rocket button is tapped.
+        #if targetEnvironment(simulator)
+        state.feedbackConfiguration.isHapticFeedbackEnabled = false
+        state.feedbackConfiguration.isAudioFeedbackEnabled = false
+        #else
         state.feedbackConfiguration.isHapticFeedbackEnabled = true
-//        state.feedbackConfiguration.audio.actions = [
-//            .init(action: .character("🚀"), feedback: .custom(id: 1303))
-//        ]
-        
-        // state.feedbackConfiguration.disableAudioFeedback()
-        // state.feedbackConfiguration.disableHapticFeedback()
+        #endif
         
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
+        setupKeyboardEarlyIfNeeded()
+    }
+    
+    private func setupKeyboardEarlyIfNeeded() {
+        guard !didSetupKeyboard else { return }
+        viewWillSetupKeyboard()
+    }
+    
+    override var autocompleteText: String? {
+        AutocompleteQueryResolver.queryText(for: textDocumentProxy)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        performAutocomplete()
     }
 
     /// This function is called whenever the keyboard should
@@ -115,17 +135,28 @@ class KeyboardViewController: KeyboardInputViewController {
     /// the library does it, just to show how it's done. You
     /// can customize anything you want.
     override func viewWillSetupKeyboard() {
-        super.viewWillSetupKeyboard()
+        guard !didSetupKeyboard else { return }
+        didSetupKeyboard = true
 
         /// 💡 Make the demo use a standard ``SystemKeyboard``.
         setup { controller in
             SystemKeyboard(
                 state: controller.state,
                 services: controller.services,
-                buttonContent: { $0.view },
+                renderBackground: false,
+                buttonContent: { params in
+                    if params.item.action == .space {
+                        SpaceBarLabel(title: "Qırımtatar tili (β)")
+                    } else {
+                        params.view
+                    }
+                },
                 buttonView: { $0.view },
                 emojiKeyboard: { $0.view },
-                toolbar: { $0.view }
+                toolbar: { params in
+                    params.view
+                        .autocompleteToolbarStyle(.native)
+                }
             )
             // .autocorrectionDisabled()
         }

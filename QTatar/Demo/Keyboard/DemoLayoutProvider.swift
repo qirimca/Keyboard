@@ -14,11 +14,24 @@ import UIKit
  adds a rocket and a locale key around the space key.
  */
 class DemoLayoutProvider: StandardKeyboardLayoutProvider {
+    
+    init() {
+        let baseProvider = InputSetBasedKeyboardLayoutProvider()
+        baseProvider.iPadProvider = CrimeanTatarIPadKeyboardLayoutProvider(
+            alphabeticInputSet: baseProvider.alphabeticInputSet,
+            numericInputSet: baseProvider.numericInputSet,
+            symbolicInputSet: baseProvider.symbolicInputSet
+        )
+        super.init(baseProvider: baseProvider)
+    }
 
     override func keyboardLayout(for context: KeyboardContext) -> KeyboardLayout {
         let layout = super.keyboardLayout(for: context)
         layout.tryInsertRocketButton()
         layout.tryInsertLocaleSwitcher(for: context)
+        layout.useNativeReturnKey()
+        layout.applyNativeRowInsets(for: context)
+        layout.applyIPadTrailingGutter(for: context)
         
         return layout
     }
@@ -30,6 +43,72 @@ private extension KeyboardLayout {
         guard context.hasMultipleLocales else { return }
         guard let button = tryCreateBottomRowItem(for:  .nextLocale) else { return }
         itemRows.insert(button, after: .space, atRow: bottomRowIndex)
+    }
+    
+    func useNativeReturnKey() {
+        let rowIndex = bottomRowIndex
+        guard rowIndex >= 0, rowIndex < itemRows.count else { return }
+        let row = itemRows[rowIndex]
+        for (index, item) in row.enumerated() {
+            guard case .primary = item.action else { continue }
+            itemRows[rowIndex][index] = .init(
+                action: .primary(.newLine),
+                size: item.size,
+                alignment: item.alignment,
+                edgeInsets: item.edgeInsets
+            )
+        }
+    }
+    
+    func applyNativeRowInsets(for context: KeyboardContext) {
+        let bottomIndex = bottomRowIndex
+        guard bottomIndex >= 0 else { return }
+        
+        let isPhone = context.deviceType == .phone
+        let padConfig = KeyboardLayout.Configuration.standard(for: context)
+        let horizontal = isPhone ? CGFloat(3) : padConfig.buttonInsets.leading
+        let letterVertical = isPhone ? CGFloat(3) : padConfig.buttonInsets.top
+        let bottomVertical = isPhone ? CGFloat(2) : padConfig.buttonInsets.top
+        
+        for rowIndex in itemRows.indices {
+            let vertical = rowIndex == bottomIndex ? bottomVertical : letterVertical
+            let lastIndex = itemRows[rowIndex].count - 1
+            
+            for index in itemRows[rowIndex].indices {
+                var item = itemRows[rowIndex][index]
+                guard !item.action.isSpacer else { continue }
+                
+                let isFirst = index == 0
+                let isLast = index == lastIndex
+                let outerHorizontal = isPhone ? horizontal : horizontal * 1.5
+                
+                item.edgeInsets = .init(
+                    top: vertical,
+                    leading: isFirst ? outerHorizontal : horizontal,
+                    bottom: vertical,
+                    trailing: isLast ? outerHorizontal : horizontal
+                )
+                itemRows[rowIndex][index] = item
+            }
+        }
+    }
+    
+    /// Adds a fixed trailing gutter on iPad letter rows.
+    func applyIPadTrailingGutter(for context: KeyboardContext) {
+        guard context.deviceType == .pad else { return }
+        
+        let gutter = KeyboardLayout.Item(
+            action: .none,
+            size: .init(
+                width: .inputPercentage(0.45),
+                height: idealItemHeight
+            ),
+            edgeInsets: .init()
+        )
+        
+        for rowIndex in 0..<bottomRowIndex {
+            itemRows[rowIndex].append(gutter)
+        }
     }
     
     func tryInsertRocketButton() {

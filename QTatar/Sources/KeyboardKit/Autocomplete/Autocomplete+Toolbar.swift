@@ -76,9 +76,10 @@ public extension Autocomplete {
         }
         
         public var body: some View {
-            HStack {
+            HStack(spacing: 0) {
                 ForEach(items) { item in
                     itemButton(for: item.suggestion)
+                        .frame(maxWidth: .infinity)
                     if useSeparator(for: item) {
                         separatorView(item.suggestion, style)
                             .autocompleteToolbarSeparatorStyle(style.separator)

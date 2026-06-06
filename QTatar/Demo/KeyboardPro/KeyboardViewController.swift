@@ -72,7 +72,11 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// The code below enabled haptic feedback and plays
         /// a rocket sound when a rocket button is tapped.
+        #if targetEnvironment(simulator)
+        state.feedbackConfiguration.isHapticFeedbackEnabled = false
+        #else
         state.feedbackConfiguration.isHapticFeedbackEnabled = true
+        #endif
         state.feedbackConfiguration.audio.actions = [
             .init(action: .character("🚀"), feedback: .custom(id: 1303))
         ]
@@ -119,8 +123,8 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// The demo will fall back to English, if it hasn't
         /// persisted a locale.
-        let english = KeyboardLocale.english.locale
-        state.keyboardContext.locale = persistedLocale ?? english
+        let defaultLocale = Locale(identifier: "crh")
+        state.keyboardContext.locale = persistedLocale ?? defaultLocale
         
         /// 💡 Setup semi-working dictation.
         ///
@@ -152,7 +156,7 @@ class KeyboardViewController: KeyboardInputViewController {
     var defaults: UserDefaults { .standard }
 
     /// The key used when persisting locales
-    let persistedLocaleKey = "com.keyboardkit.demo.locale"
+    let persistedLocaleKey = "crh.key.boardplus.locale"
 
     /// The last locale used by the keyboard, if any.
     var persistedLocale: Locale? {
