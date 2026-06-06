@@ -35,10 +35,22 @@ public struct InputSet: Equatable {
 public extension InputSet {
     
     static var qwerty: InputSet {
+        crimeanTatar
+    }
+    
+    /// Crimean Tatar Latin alphabet (no W, X, or Â).
+    ///
+    /// All official letters are on the layout: A–Z plus Ç Ğ I ı İ Ñ Ö Ş Ü.
+    static var crimeanTatar: InputSet {
         .init(rows: [
-            .init(chars: "qwertyuıopğü"),
+            .init(lowercased: "qertyuıopğü", uppercased: "QERTYUIOPĞÜ"),
             .init(lowercased: "asdfghjklşiñ", uppercased: "ASDFGHJKLŞİÑ"),
-            .init(phone: "zxcvbnmöçâ", pad: "zxcvbnmöçâ,")
+            .init(
+                phoneLowercased: "zcvbnmöç",
+                phoneUppercased: "ZCVBNMÖÇ",
+                padLowercased: "zcvbnmöç,",
+                padUppercased: "ZCVBNMÖÇ,"
+            )
         ])
     }
     
