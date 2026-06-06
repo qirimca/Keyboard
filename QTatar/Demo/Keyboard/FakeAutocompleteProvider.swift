@@ -8,17 +8,21 @@
 
 import Foundation
 import KeyboardKit
+import UIKit
 
-/**
- This fake autocomplete provider is used in the non-pro demo,
- to show fake suggestions while typing.
- */
+/// Crimean Tatar autocomplete backed by the local SQLite dictionary.
 class FakeAutocompleteProvider: AutocompleteProvider {
 
-    let manager = SuggestionsDataBaseManager()
+    private let manager = SuggestionsDataBaseManager()
+    private let keyboardContext: KeyboardContext
     
-    init(context: AutocompleteContext) {
+    init(
+        context: AutocompleteContext,
+        keyboardContext: KeyboardContext
+    ) {
         self.context = context
+        self.keyboardContext = keyboardContext
+        manager.prepare()
     }
 
     private var context: AutocompleteContext
@@ -40,19 +44,35 @@ class FakeAutocompleteProvider: AutocompleteProvider {
     func autocompleteSuggestions(
         for text: String
     ) async throws -> [Autocomplete.Suggestion] {
-        guard text.count > 0 else { return [] }
-        return fakeSuggestions(for: text)
-            .map {
-                var suggestion = $0
-                suggestion.isAutocorrect = $0.isAutocorrect && context.isAutocorrectEnabled
-                return suggestion
-            }
+        let shouldCapitalize = Self.shouldCapitalize(
+            typedText: text,
+            proxy: keyboardContext.textDocumentProxy
+        )
+        
+        return manager.suggestions(
+            for: text,
+            shouldCapitalize: shouldCapitalize
+        ).map { suggestion in
+            var mapped = suggestion
+            mapped.isAutocorrect = suggestion.isAutocorrect && context.isAutocorrectEnabled
+            return mapped
+        }
     }
 }
 
 private extension FakeAutocompleteProvider {
     
-    func fakeSuggestions(for text: String) -> [Autocomplete.Suggestion] {
-        manager.top3(for: text)
+    static func shouldCapitalize(
+        typedText: String,
+        proxy: UITextDocumentProxy
+    ) -> Bool {
+        if typedText.first?.isUppercase == true { return true }
+        if proxy.isCursorAtNewSentence { return true }
+        if proxy.isCursorAtNewWord,
+           let before = proxy.documentContextBeforeInput,
+           before.trimmingCharacters(in: .whitespaces).isEmpty {
+            return true
+        }
+        return false
     }
 }

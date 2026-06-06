@@ -9,67 +9,54 @@
 import KeyboardKit
 import SwiftUI
 
-/**
- This demo-specific provider inherits the standard one, then
- makes the rocket button font larger.
- 
- There's a bunch of disabled code that you can enable to see
- how the style of the keyboard changes.
- */
+/// Styles the keyboard to match the native iOS system appearance.
 class DemoStyleProvider: StandardKeyboardStyleProvider {
     
-    override func buttonFontSize(
-        for action: KeyboardAction
-    ) -> CGFloat {
-        let standard = super.buttonFontSize(for: action)
-        return action.isRocket ? 1.8 * standard : standard
+    override func buttonBackgroundColor(
+        for action: KeyboardAction,
+        isPressed: Bool
+    ) -> Color {
+        if action.isPrimaryAction {
+            let context = keyboardContext
+            if isPressed {
+                return context.hasDarkColorScheme
+                    ? .keyboardDarkButtonBackground(for: context)
+                    : .white
+            }
+            return .blue
+        }
+        return super.buttonBackgroundColor(for: action, isPressed: isPressed)
     }
     
-//    override func buttonStyle(
-//        for action: KeyboardAction,
-//        isPressed: Bool
-//    ) -> Keyboard.ButtonStyle {
-//        if action.isRocket {
-//            return super.buttonStyle(for: .primary(.continue), isPressed: isPressed)
-//        }
-//        return super.buttonStyle(for: action, isPressed: isPressed)
-//    }
+    override func buttonForegroundColor(
+        for action: KeyboardAction,
+        isPressed: Bool
+    ) -> Color {
+        if action.isPrimaryAction {
+            let context = keyboardContext
+            if isPressed {
+                return context.hasDarkColorScheme ? .white : .blue
+            }
+            return .white
+        }
+        return super.buttonForegroundColor(for: action, isPressed: isPressed)
+    }
     
-//     override func buttonImage(for action: KeyboardAction) -> Image? {
-//         switch action {
-//         case .primary: Image.keyboardBrightnessUp
-//         default: super.buttonImage(for: action)
-//         }
-//     }
-
-     override func buttonText(for action: KeyboardAction) -> String? {
-         switch action {
-         case .primary: "⏎"
-         case .space: "Qırımtatar"
-         default: super.buttonText(for: action)
-         }
-     }
-
-//    override var actionCalloutStyle: Callouts.ActionCalloutStyle {
-//        var style = super.actionCalloutStyle
-//        style.callout.backgroundColor = .red
-//        return style
-//    }
-
-//    override var inputCalloutStyle: Callouts.InputCalloutStyle {
-//        var style = super.inputCalloutStyle
-//        style.callout.backgroundColor = .blue
-//        style.callout.textColor = .yellow
-//        return style
-//    }
-}
-
-private extension KeyboardAction {
-    
-    var isRocket: Bool {
-        switch self {
-        case .character(let char): char == "🚀"
-        default: false
+    override func buttonText(for action: KeyboardAction) -> String? {
+        switch action {
+        case .space:
+            return nil
+        case .keyboardType(let type):
+            switch type {
+            case .numeric, .symbolic:
+                return "123"
+            case .alphabetic:
+                return "ABC"
+            default:
+                return super.buttonText(for: action)
+            }
+        default:
+            return super.buttonText(for: action)
         }
     }
 }

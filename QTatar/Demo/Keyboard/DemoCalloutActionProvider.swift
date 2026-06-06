@@ -7,31 +7,52 @@
 //
 
 import KeyboardKit
-import UIKit
 
-/**
- This demo-specific callout action provider adds a couple of
- dummy callouts when typing.
- */
+/// Long-press pairs for the official Crimean Tatar Latin alphabet.
 class DemoCalloutActionProvider: BaseCalloutActionProvider {
     
-    override func calloutActionString(for char: String) -> String {
+    override func calloutActions(
+        for char: String
+    ) -> [KeyboardAction] {
+        guard let alternatives = Self.alternatives(for: char) else { return [] }
+        return alternatives.map { .character($0) }
+    }
+}
+
+private extension DemoCalloutActionProvider {
+    
+    /// Only official Crimean Tatar letter pairs — no extra diacritics.
+    static func alternatives(for char: String) -> [String]? {
         switch char {
-        case "ь": "ъь"
-        case "Ь": "ЪЬ"
-        case "е": "ёе"
-        case "Е": "ЁЕ"
-        case "о": "өо"
-        case "н": "ңн"
-        case "у": "үу"
-        case "О": "ӨО"
-        case "Н": "ҢН"
-        case "У": "ҮҮ"
-        case "ж": "җЖ"
-        case "Ж": "ҖЖ"
-        case "э": "әэ"
-        case "Э": "ӘЭ"
-        default: super.calloutActionString(for: char)
+        case "c": return ["c", "ç"]
+        case "C": return ["C", "Ç"]
+        case "ç": return ["ç", "c"]
+        case "Ç": return ["Ç", "C"]
+        case "g": return ["g", "ğ"]
+        case "G": return ["G", "Ğ"]
+        case "ğ": return ["ğ", "g"]
+        case "Ğ": return ["Ğ", "G"]
+        case "ı": return ["ı", "I"]
+        case "I": return ["I", "ı"]
+        case "i": return ["i", "İ"]
+        case "İ": return ["İ", "i"]
+        case "n": return ["n", "ñ"]
+        case "N": return ["N", "Ñ"]
+        case "ñ": return ["ñ", "n"]
+        case "Ñ": return ["Ñ", "N"]
+        case "o": return ["o", "ö"]
+        case "O": return ["O", "Ö"]
+        case "ö": return ["ö", "o"]
+        case "Ö": return ["Ö", "O"]
+        case "s": return ["s", "ş"]
+        case "S": return ["S", "Ş"]
+        case "ş": return ["ş", "s"]
+        case "Ş": return ["Ş", "S"]
+        case "u": return ["u", "ü"]
+        case "U": return ["U", "Ü"]
+        case "ü": return ["ü", "u"]
+        case "Ü": return ["Ü", "U"]
+        default: return nil
         }
     }
 }

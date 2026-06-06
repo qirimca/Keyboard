@@ -19,6 +19,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
         let layout = super.keyboardLayout(for: context)
         layout.tryInsertRocketButton()
         layout.tryInsertLocaleSwitcher(for: context)
+        layout.useNativeReturnKey()
         
         return layout
     }
@@ -30,6 +31,21 @@ private extension KeyboardLayout {
         guard context.hasMultipleLocales else { return }
         guard let button = tryCreateBottomRowItem(for:  .nextLocale) else { return }
         itemRows.insert(button, after: .space, atRow: bottomRowIndex)
+    }
+    
+    func useNativeReturnKey() {
+        let rowIndex = bottomRowIndex
+        guard rowIndex >= 0, rowIndex < itemRows.count else { return }
+        let row = itemRows[rowIndex]
+        for (index, item) in row.enumerated() {
+            guard case .primary = item.action else { continue }
+            itemRows[rowIndex][index] = .init(
+                action: .primary(.newLine),
+                size: item.size,
+                alignment: item.alignment,
+                edgeInsets: item.edgeInsets
+            )
+        }
     }
     
     func tryInsertRocketButton() {

@@ -13,10 +13,18 @@ final class SuggestionsDataBaseManager {
     
     private var db: OpaquePointer?
     private let databaseQueue = DispatchQueue(label: "crh.keyboard.databaseQueue")
+    private static let crimeanLocale = Locale(identifier: "crh")
+    /// i/ı/İ/I casing for Crimean Tatar Latin (same rules as Turkish script).
+    private static let casingLocale = Locale(identifier: "tr")
     
     init() {
+        prepare()
+    }
+    
+    /// Opens the dictionary before the first autocomplete query.
+    func prepare() {
         databaseQueue.sync {
-            openDB()
+            ensureDB()
         }
     }
     
@@ -45,41 +53,102 @@ final class SuggestionsDataBaseManager {
         }
     }
     
-    func top3(for text: String) -> [Autocomplete.Suggestion] {
+    private func ensureDB() {
+        if db != nil { return }
+        openDB()
+    }
+    
+    func suggestions(
+        for text: String,
+        shouldCapitalize: Bool
+    ) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
-            guard !text.isEmpty else { return [] }
+            ensureDB()
             
-            let isUppercased = text.first?.isUppercase ?? false
-            var matches = fetchWordsStartingWith(prefix: text)
-            let hasMatches = !matches.isEmpty
-            
-            var result: [Autocomplete.Suggestion] = [
-                Autocomplete.Suggestion(text: text, isUnknown: !hasMatches)
-            ]
-            
-            matches = matches.filter { $0.lowercased() != text.lowercased() }
-            
-            if let first = matches.first {
-                matches.removeFirst()
-                result.append(.init(text: first, isAutocorrect: false))
-                
-                if let second = matches.first {
-                    let displayText = isUppercased ? second.capitalizeFirstLetter() : second
-                    result.append(.init(text: displayText, isAutocorrect: false))
+            if text.isEmpty {
+                return fetchPopularWords(limit: 3).map {
+                    Autocomplete.Suggestion(text: formatWord($0, capitalize: shouldCapitalize))
                 }
             }
             
-            return result
+            let matches = fetchWordsStartingWith(prefix: text, limit: 8)
+            let queryLower = text.lowercased(with: Self.casingLocale)
+            
+            guard let best = matches.first else {
+                return [Autocomplete.Suggestion(text: text, isUnknown: true)]
+            }
+            
+            let bestFormatted = formatWord(best, capitalize: shouldCapitalize)
+            let bestLower = best.lowercased(with: Self.casingLocale)
+            var result: [Autocomplete.Suggestion] = []
+            
+            if bestLower == queryLower {
+                result.append(.init(text: bestFormatted))
+            } else if bestLower.hasPrefix(queryLower) {
+                result.append(.init(text: bestFormatted, isAutocorrect: true))
+                if text != bestFormatted {
+                    result.insert(.init(text: text, isUnknown: true), at: 0)
+                }
+            } else {
+                result.append(.init(text: text, isUnknown: true))
+                result.append(.init(text: bestFormatted, isAutocorrect: true))
+            }
+            
+            let used = Set(result.map { $0.text.lowercased(with: Self.casingLocale) })
+            for match in matches.dropFirst() {
+                guard result.count < 3 else { break }
+                let formatted = formatWord(match, capitalize: shouldCapitalize)
+                let key = formatted.lowercased(with: Self.casingLocale)
+                guard !used.contains(key) else { continue }
+                result.append(.init(text: formatted))
+            }
+            
+            return Array(result.prefix(3))
         }
     }
     
-    private func fetchWordsStartingWith(prefix: String) -> [String] {
+    private func formatWord(_ word: String, capitalize: Bool) -> String {
+        if capitalize {
+            guard let first = word.first else { return word }
+            let firstChar = String(first).uppercased(with: Self.casingLocale)
+            let rest = String(word.dropFirst()).lowercased(with: Self.casingLocale)
+            return firstChar + rest
+        }
+        return word.lowercased(with: Self.casingLocale)
+    }
+    
+    private func fetchPopularWords(limit: Int) -> [String] {
+        guard let db else { return [] }
+        var results: [String] = []
+        var stmt: OpaquePointer?
+        let query = "SELECT word FROM words ORDER BY freq DESC LIMIT ?;"
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 1, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let word = sqlite3_column_text(stmt, 0) {
+                results.append(String(cString: word))
+            }
+        }
+        
+        return results
+    }
+    
+    private func fetchWordsStartingWith(prefix: String, limit: Int) -> [String] {
         guard let db else { return [] }
         var results: [String] = []
         
         var stmt: OpaquePointer?
-        let query = "SELECT word FROM words WHERE LOWER(word) LIKE ? ORDER BY freq DESC LIMIT 3;"
-        let lowercasePrefix = prefix.lowercased() + "%"
+        let query = "SELECT word FROM words WHERE LOWER(word) LIKE ? ORDER BY freq DESC LIMIT ?;"
+        let lowercasePrefix = prefix.lowercased(with: Self.casingLocale) + "%"
         
         defer { sqlite3_finalize(stmt) }
         
@@ -93,6 +162,10 @@ final class SuggestionsDataBaseManager {
             return []
         }
         
+        guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let word = sqlite3_column_text(stmt, 0) {
                 results.append(String(cString: word))
@@ -100,148 +173,5 @@ final class SuggestionsDataBaseManager {
         }
         
         return results
-    }
-    
-    func checkDatabaseContents(db: OpaquePointer?) {
-        guard let db else { return }
-        
-        let countQuery = "SELECT COUNT(*) FROM words;"
-        var stmt: OpaquePointer?
-        if sqlite3_prepare_v2(db, countQuery, -1, &stmt, nil) == SQLITE_OK {
-            if sqlite3_step(stmt) == SQLITE_ROW {
-                let count = sqlite3_column_int(stmt, 0)
-                debugPrint("Number of rows: \(count)")
-            }
-        }
-        sqlite3_finalize(stmt)
-        
-        let existsQuery = "SELECT EXISTS(SELECT 1 FROM words WHERE word = ?);"
-        if sqlite3_prepare_v2(db, existsQuery, -1, &stmt, nil) == SQLITE_OK {
-            sqlite3_bind_text(stmt, 1, "men", -1, nil)
-            if sqlite3_step(stmt) == SQLITE_ROW {
-                let exists = sqlite3_column_int(stmt, 0)
-                debugPrint(exists == 1 ? "The word exists." : "The word does not exist.")
-            }
-        }
-        sqlite3_finalize(stmt)
-        
-        let pragmaQuery = "PRAGMA table_info(words);"
-        if sqlite3_prepare_v2(db, pragmaQuery, -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                let columnName = String(cString: sqlite3_column_text(stmt, 1))
-                debugPrint("Column: \(columnName)")
-            }
-        } else {
-            debugPrint("Failed to fetch table info: \(String(cString: sqlite3_errmsg(db)!))")
-        }
-        sqlite3_finalize(stmt)
-        
-        let fetchQuery = "SELECT word, freq FROM words LIMIT 10;"
-        if sqlite3_prepare_v2(db, fetchQuery, -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let wordPointer = sqlite3_column_text(stmt, 0) {
-                    let word = String(cString: wordPointer)
-                    let frequency = sqlite3_column_int(stmt, 1)
-                    debugPrint("Word: \(word), Frequency: \(frequency)")
-                } else {
-                    debugPrint("Empty row")
-                }
-            }
-        }
-        sqlite3_finalize(stmt)
-    }
-    
-    
-    // MARK: Creation from words-tatar.csv
-    
-    func createDB() {
-        setupDatabase()
-        if let csvURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "csv") {
-            importCSVToSQLite(csvURL: csvURL)
-        }
-    }
-    
-    private func setupDatabase() {
-        let fileManager = FileManager.default
-        let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID)!
-        let dbPath = containerURL.appendingPathComponent("words.db").path
-        
-        if sqlite3_open(dbPath, &db) == SQLITE_OK {
-            print("Successfully opened SQLite database at \(dbPath)")
-            createTable()
-        } else {
-            print("Failed to open SQLite database")
-        }
-    }
-    
-    private func createTable() {
-        let createTableQuery = """
-CREATE TABLE IF NOT EXISTS words (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    word TEXT,
-    freq INTEGER
-);
-"""
-        if sqlite3_exec(db, createTableQuery, nil, nil, nil) == SQLITE_OK {
-            print("Table created successfully")
-        } else {
-            print("Failed to create table")
-        }
-    }
-    
-    
-    /// Does not work!!!
-    private func importCSVToSQLite(csvURL: URL) {
-        guard let db else { return }
-        
-        let insertQuery = "INSERT INTO words (word, freq) VALUES (?, ?);"
-        var stmt: OpaquePointer?
-        
-        sqlite3_prepare_v2(db, insertQuery, -1, &stmt, nil)
-        
-        do {
-            let rawData = try String(contentsOf: csvURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleanedData = rawData.replacingOccurrences(of: "\u{FEFF}", with: "")
-            let rows = cleanedData.components(separatedBy: .newlines)
-            
-            var i = 0
-            for row in rows {
-                let columns = parseCSVLine(row)
-                if columns.count == 2, let frequency = Int32(columns[1]) {
-                    let word = columns[0].trimmingCharacters(in: .whitespacesAndNewlines)
-                    if sqlite3_bind_text(stmt, 1, word.cString(using: .utf8), -1, nil) != SQLITE_OK {
-                        debugPrint("Error binding word: \(String(cString: sqlite3_errmsg(db)!))")
-                    }
-                    if sqlite3_bind_int(stmt, 2, frequency) != SQLITE_OK {
-                        debugPrint("Error binding frequency: \(String(cString: sqlite3_errmsg(db)!))")
-                    }
-                    
-                    if sqlite3_step(stmt) == SQLITE_DONE {
-                        debugPrint(i)
-                    } else {
-                        debugPrint("Error inserting \(word): \(String(cString: sqlite3_errmsg(db)!))")
-                    }
-                    i += 1
-                    sqlite3_reset(stmt)
-                }
-            }
-            
-            sqlite3_finalize(stmt)
-            debugPrint("CSV data imported into SQLite successfully!")
-        } catch {
-            debugPrint("Error importing CSV: \(error)")
-        }
-    }
-    
-    private func parseCSVLine(_ line: String) -> [String] {
-        line
-            .replacingOccurrences(of: "\"", with: "")
-            .components(separatedBy: ";")
-    }
-}
-
-extension String {
-    func capitalizeFirstLetter() -> String {
-        return prefix(1).uppercased() + dropFirst()
     }
 }
