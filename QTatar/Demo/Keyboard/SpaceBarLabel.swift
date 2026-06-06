@@ -6,15 +6,20 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Native-style space bar label centered on the key.
 struct SpaceBarLabel: View {
     
     let title: String
     
+    private var fontSize: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 13 : 11
+    }
+    
     var body: some View {
         Text(title)
-            .font(.system(size: 11, weight: .regular))
+            .font(.system(size: fontSize, weight: .regular))
             .foregroundStyle(Color.primary.opacity(0.32))
             .lineLimit(1)
             .minimumScaleFactor(0.6)

@@ -10,8 +10,12 @@ import SwiftUI
 
 extension Autocomplete.ToolbarStyle {
     
+    private static var nativeHeight: CGFloat {
+        UIDevice.current.userInterfaceIdiom == .pad ? 50 : 44
+    }
+    
     static let native = Self(
-        height: 44,
+        height: nativeHeight,
         item: .init(
             titleFont: .body,
             titleColor: .primary,

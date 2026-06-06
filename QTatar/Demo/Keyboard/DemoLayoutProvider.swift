@@ -14,13 +14,24 @@ import UIKit
  adds a rocket and a locale key around the space key.
  */
 class DemoLayoutProvider: StandardKeyboardLayoutProvider {
+    
+    init() {
+        let baseProvider = InputSetBasedKeyboardLayoutProvider()
+        baseProvider.iPadProvider = CrimeanTatarIPadKeyboardLayoutProvider(
+            alphabeticInputSet: baseProvider.alphabeticInputSet,
+            numericInputSet: baseProvider.numericInputSet,
+            symbolicInputSet: baseProvider.symbolicInputSet
+        )
+        super.init(baseProvider: baseProvider)
+    }
 
     override func keyboardLayout(for context: KeyboardContext) -> KeyboardLayout {
         let layout = super.keyboardLayout(for: context)
         layout.tryInsertRocketButton()
         layout.tryInsertLocaleSwitcher(for: context)
         layout.useNativeReturnKey()
-        layout.applyNativeRowInsets()
+        layout.applyNativeRowInsets(for: context)
+        layout.applyIPadTrailingGutter(for: context)
         
         return layout
     }
@@ -49,23 +60,54 @@ private extension KeyboardLayout {
         }
     }
     
-    func applyNativeRowInsets() {
+    func applyNativeRowInsets(for context: KeyboardContext) {
         let bottomIndex = bottomRowIndex
         guard bottomIndex >= 0 else { return }
         
+        let isPhone = context.deviceType == .phone
+        let padConfig = KeyboardLayout.Configuration.standard(for: context)
+        let horizontal = isPhone ? CGFloat(3) : padConfig.buttonInsets.leading
+        let letterVertical = isPhone ? CGFloat(3) : padConfig.buttonInsets.top
+        let bottomVertical = isPhone ? CGFloat(2) : padConfig.buttonInsets.top
+        
         for rowIndex in itemRows.indices {
-            let vertical: CGFloat = rowIndex == bottomIndex ? 2 : 3
+            let vertical = rowIndex == bottomIndex ? bottomVertical : letterVertical
+            let lastIndex = itemRows[rowIndex].count - 1
+            
             for index in itemRows[rowIndex].indices {
                 var item = itemRows[rowIndex][index]
                 guard !item.action.isSpacer else { continue }
+                
+                let isFirst = index == 0
+                let isLast = index == lastIndex
+                let outerHorizontal = isPhone ? horizontal : horizontal * 1.5
+                
                 item.edgeInsets = .init(
                     top: vertical,
-                    leading: 3,
+                    leading: isFirst ? outerHorizontal : horizontal,
                     bottom: vertical,
-                    trailing: 3
+                    trailing: isLast ? outerHorizontal : horizontal
                 )
                 itemRows[rowIndex][index] = item
             }
+        }
+    }
+    
+    /// Adds a fixed trailing gutter on iPad letter rows.
+    func applyIPadTrailingGutter(for context: KeyboardContext) {
+        guard context.deviceType == .pad else { return }
+        
+        let gutter = KeyboardLayout.Item(
+            action: .none,
+            size: .init(
+                width: .inputPercentage(0.45),
+                height: idealItemHeight
+            ),
+            edgeInsets: .init()
+        )
+        
+        for rowIndex in 0..<bottomRowIndex {
+            itemRows[rowIndex].append(gutter)
         }
     }
     

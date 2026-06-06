@@ -21,20 +21,36 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Space below the bottom row for the system globe/mic chrome.
     private let bottomChromeHeight: CGFloat = 18
     
+    /// Side inset for the iPad key grid (matches system keyboard).
+    private let iPadHorizontalKeyboardInset: CGFloat = 12
+    
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         config.buttonCornerRadius = 5
+        
+        guard keyboardContext.deviceType == .phone else {
+            return config
+        }
+        
         config.rowHeight = letterRowHeight
         config.buttonInsets = EdgeInsets(top: 3, leading: 3, bottom: 3, trailing: 3)
         return config
     }
     
     override var keyboardEdgeInsets: EdgeInsets {
-        guard keyboardContext.deviceType == .phone,
-              keyboardContext.interfaceOrientation.isPortrait else {
+        switch keyboardContext.deviceType {
+        case .phone where keyboardContext.interfaceOrientation.isPortrait:
+            return EdgeInsets(top: 0, leading: 0, bottom: bottomChromeHeight, trailing: 0)
+        case .pad:
+            return EdgeInsets(
+                top: 0,
+                leading: iPadHorizontalKeyboardInset,
+                bottom: 4,
+                trailing: iPadHorizontalKeyboardInset
+            )
+        default:
             return super.keyboardEdgeInsets
         }
-        return EdgeInsets(top: 0, leading: 0, bottom: bottomChromeHeight, trailing: 0)
     }
     
     override func rowHeight(
@@ -42,7 +58,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         in layout: KeyboardLayout
     ) -> CGFloat {
         let base = keyboardLayoutConfiguration.rowHeight
-        guard rowIndex == layout.bottomRowIndex else { return base }
+        guard keyboardContext.deviceType == .phone,
+              rowIndex == layout.bottomRowIndex else {
+            return base
+        }
         return base + bottomRowExtraHeight
     }
     

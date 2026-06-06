@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.crh.key.boardplus</string>
+		<string>group.crh.key.keyboardplus</string>
 	</array>
 </dict>
 </plist>
