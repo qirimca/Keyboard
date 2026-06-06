@@ -94,11 +94,10 @@ public struct SystemKeyboard<
         @ViewBuilder emojiKeyboard: @escaping EmojiKeyboardBuilder,
         @ViewBuilder toolbar: @escaping ToolbarBuilder
     ) {
-        if !Emoji.KeyboardWrapper.isPro {
-            layout.itemRows.remove(.keyboardType(.emojis))
-        }
         self.layout = layout
-        self.layoutConfig = .standard(for: keyboardContext)
+        self.layoutConfig = (styleProvider as? StandardKeyboardStyleProvider)?
+            .keyboardLayoutConfiguration
+            ?? .standard(for: keyboardContext)
         self.actionHandler = actionHandler
         self.styleProvider = styleProvider
         self.renderBackground = renderBackground
@@ -204,7 +203,7 @@ public struct SystemKeyboard<
             .opacity(shouldShowEmojiKeyboard ? 0 : 1)
             .overlay(emojiKeyboard(), alignment: .bottom)
             .foregroundColor(styleProvider.foregroundColor)
-            .background(renderBackground ? styleProvider.backgroundStyle : nil)
+            .background(keyboardChromeBackground)
             .keyboardCalloutContainer(
                 calloutContext: calloutContext,
                 keyboardContext: keyboardContext
@@ -215,6 +214,14 @@ public struct SystemKeyboard<
 }
 
 private extension SystemKeyboard {
+    
+    @ViewBuilder
+    var keyboardChromeBackground: some View {
+        if renderBackground {
+            Color.keyboardBackground(for: keyboardContext)
+                .ignoresSafeArea()
+        }
+    }
     
     var shouldShowEmojiKeyboard: Bool {
         switch keyboardContext.keyboardType {
@@ -240,16 +247,31 @@ private extension SystemKeyboard {
     }
     
     func bodyContent(for size: CGSize) -> some View {
-        VStack(spacing: 0) {
+        let rowHeight = layoutConfig.rowHeight
+        
+        return VStack(spacing: 0) {
             toolbar()
-            systemKeyboard(for: size)
+            systemKeyboard(for: size, rowHeight: rowHeight)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+    
+    func toolbarHeight() -> CGFloat {
+        styleProvider.autocompleteToolbarStyle.height ?? 0
     }
 
-    func systemKeyboard(for size: CGSize) -> some View {
+    func systemKeyboard(
+        for size: CGSize,
+        rowHeight: CGFloat
+    ) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(layout.itemRows.enumerated()), id: \.offset) {
-                items(for: size, layout: layout, itemRow: $0.element)
+                items(
+                    for: size,
+                    layout: layout,
+                    itemRow: $0.element,
+                    rowHeight: rowHeight
+                )
             }
         }
         .padding(styleProvider.keyboardEdgeInsets)
@@ -259,17 +281,29 @@ private extension SystemKeyboard {
     func items(
         for size: CGSize,
         layout: KeyboardLayout,
-        itemRow: KeyboardLayout.ItemRow
+        itemRow: KeyboardLayout.ItemRow,
+        rowHeight: CGFloat
     ) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(itemRow.enumerated()), id: \.offset) {
                 buttonView(
                     for: $0.element,
-                    totalWidth: size.width
+                    totalWidth: size.width,
+                    rowHeight: rowHeight
                 )
             }
             .id(keyboardContext.locale.identifier)
         }
+        .frame(height: rowHeight)
+    }
+    
+    func layoutItem(
+        _ item: KeyboardLayout.Item,
+        rowHeight: CGFloat
+    ) -> KeyboardLayout.Item {
+        var item = item
+        item.size = .init(width: item.size.width, height: rowHeight)
+        return item
     }
 }
 
@@ -290,9 +324,11 @@ private extension SystemKeyboard {
     
     func buttonView(
         for item: KeyboardLayout.Item,
-        totalWidth width: CGFloat
+        totalWidth width: CGFloat,
+        rowHeight: CGFloat
     ) -> ButtonView {
-        buttonViewBuilder((
+        let item = layoutItem(item, rowHeight: rowHeight)
+        return buttonViewBuilder((
             item: item,
             view: SystemKeyboardItem(
                 item: item,
@@ -331,7 +367,7 @@ private extension SystemKeyboard {
                 suggestionAction: actionHandler.handle(_:)
             )
         ))
-        .frame(minHeight: styleProvider.autocompleteToolbarStyle.height)
+        .frame(height: toolbarHeight())
     }
 }
 

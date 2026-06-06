@@ -224,7 +224,7 @@ open class StandardKeyboardStyleProvider: KeyboardStyleProvider {
         let context = keyboardContext
         if context.isSpaceDragGestureActive { return 0.5 }
         if context.hasDarkColorScheme || isPressed { return 1 }
-        return 0.95
+        return 1
     }
 
     /// The border style to use for a certain action.

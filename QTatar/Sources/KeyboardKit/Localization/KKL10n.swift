@@ -75,7 +75,7 @@ public extension KKL10n {
 
     /// Get the localized text for a certain `Locale`.
     func text(for locale: Locale) -> String {
-        Self.text(forKey: key, locale: .russian)
+        Self.text(forKey: key, locale: locale)
     }
 
     /// Get a localized text for a certain locale.
