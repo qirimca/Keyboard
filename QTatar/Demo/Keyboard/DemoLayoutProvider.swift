@@ -20,6 +20,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
         layout.tryInsertRocketButton()
         layout.tryInsertLocaleSwitcher(for: context)
         layout.useNativeReturnKey()
+        layout.applyNativeRowInsets()
         
         return layout
     }
@@ -45,6 +46,26 @@ private extension KeyboardLayout {
                 alignment: item.alignment,
                 edgeInsets: item.edgeInsets
             )
+        }
+    }
+    
+    func applyNativeRowInsets() {
+        let bottomIndex = bottomRowIndex
+        guard bottomIndex >= 0 else { return }
+        
+        for rowIndex in itemRows.indices {
+            let vertical: CGFloat = rowIndex == bottomIndex ? 4 : 6
+            for index in itemRows[rowIndex].indices {
+                var item = itemRows[rowIndex][index]
+                guard !item.action.isSpacer else { continue }
+                item.edgeInsets = .init(
+                    top: vertical,
+                    leading: 3,
+                    bottom: vertical,
+                    trailing: 3
+                )
+                itemRows[rowIndex][index] = item
+            }
         }
     }
     

@@ -247,11 +247,9 @@ private extension SystemKeyboard {
     }
     
     func bodyContent(for size: CGSize) -> some View {
-        let rowHeight = layoutConfig.rowHeight
-        
-        return VStack(spacing: 0) {
+        VStack(spacing: 0) {
             toolbar()
-            systemKeyboard(for: size, rowHeight: rowHeight)
+            systemKeyboard(for: size)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
@@ -261,21 +259,28 @@ private extension SystemKeyboard {
     }
 
     func systemKeyboard(
-        for size: CGSize,
-        rowHeight: CGFloat
+        for size: CGSize
     ) -> some View {
         VStack(spacing: 0) {
-            ForEach(Array(layout.itemRows.enumerated()), id: \.offset) {
+            ForEach(Array(layout.itemRows.enumerated()), id: \.offset) { row in
+                let rowHeight = rowHeight(forRowAt: row.offset)
                 items(
                     for: size,
                     layout: layout,
-                    itemRow: $0.element,
+                    itemRow: row.element,
                     rowHeight: rowHeight
                 )
             }
         }
         .padding(styleProvider.keyboardEdgeInsets)
         .environment(\.layoutDirection, .leftToRight)
+    }
+    
+    func rowHeight(forRowAt rowIndex: Int) -> CGFloat {
+        if let provider = styleProvider as? StandardKeyboardStyleProvider {
+            return provider.rowHeight(forRowAt: rowIndex, in: layout)
+        }
+        return layoutConfig.rowHeight
     }
     
     func items(

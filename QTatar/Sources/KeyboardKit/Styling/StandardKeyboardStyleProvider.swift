@@ -91,6 +91,14 @@ open class StandardKeyboardStyleProvider: KeyboardStyleProvider {
     open var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         .standard(for: keyboardContext)
     }
+    
+    /// The row height to use for a certain row.
+    open func rowHeight(
+        forRowAt rowIndex: Int,
+        in layout: KeyboardLayout
+    ) -> CGFloat {
+        keyboardLayoutConfiguration.rowHeight
+    }
 
 
     // MARK: - Buttons
