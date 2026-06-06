@@ -15,6 +15,17 @@ import UIKit
  */
 class DemoActionHandler: StandardKeyboardActionHandler {
 
+    override func handle(
+        _ gesture: Gestures.KeyboardGesture,
+        on action: KeyboardAction,
+        replaced: Bool = false
+    ) {
+        super.handle(gesture, on: action, replaced: replaced)
+        guard gesture == .release, action.isInputAction else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+            self?.keyboardController?.performAutocomplete()
+        }
+    }
 
     // MARK: - Overrides
     

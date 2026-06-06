@@ -162,7 +162,7 @@ final class SuggestionsDataBaseManager {
             return []
         }
         
-        guard sqlite3_bind_text(stmt, 1, lowercasePrefix, -1, nil) == SQLITE_OK else {
+        guard bindText(stmt, index: 1, value: lowercasePrefix) else {
             debugPrint("Failed to bind query parameter")
             return []
         }
@@ -179,4 +179,25 @@ final class SuggestionsDataBaseManager {
         
         return results
     }
+    
+    private func bindText(
+        _ statement: OpaquePointer?,
+        index: Int32,
+        value: String
+    ) -> Bool {
+        value.withCString { pointer in
+            sqlite3_bind_text(
+                statement,
+                index,
+                pointer,
+                -1,
+                Self.sqliteTransientDestructor
+            )
+        } == SQLITE_OK
+    }
+    
+    private static let sqliteTransientDestructor = unsafeBitCast(
+        -1,
+        to: sqlite3_destructor_type.self
+    )
 }

@@ -42,10 +42,12 @@ class KeyboardViewController: KeyboardInputViewController {
         ///
         /// This fake provider will provide fake suggestions.
         /// Try the Pro demo for real suggestions.
-        services.autocompleteProvider = FakeAutocompleteProvider(
+        let autocompleteProvider = FakeAutocompleteProvider(
             context: state.autocompleteContext,
             keyboardContext: state.keyboardContext
         )
+        autocompleteProvider.locale = Locale(identifier: "crh")
+        services.autocompleteProvider = autocompleteProvider
         
         /// 💡 Setup a demo-specific callout action provider.
         ///
@@ -111,7 +113,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
     
     override var autocompleteText: String? {
-        textDocumentProxy.currentWord ?? ""
+        AutocompleteQueryResolver.queryText(for: textDocumentProxy)
     }
     
     override func viewDidAppear(_ animated: Bool) {

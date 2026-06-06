@@ -15,6 +15,7 @@ class FakeAutocompleteProvider: AutocompleteProvider {
 
     private let manager = SuggestionsDataBaseManager()
     private let keyboardContext: KeyboardContext
+    private var latestQuery = ""
     
     init(
         context: AutocompleteContext,
@@ -44,15 +45,28 @@ class FakeAutocompleteProvider: AutocompleteProvider {
     func autocompleteSuggestions(
         for text: String
     ) async throws -> [Autocomplete.Suggestion] {
+        let query = AutocompleteQueryResolver.queryText(
+            for: keyboardContext.textDocumentProxy
+        ) ?? text
+        latestQuery = query
+        
         let shouldCapitalize = Self.shouldCapitalize(
-            typedText: text,
+            typedText: query,
             proxy: keyboardContext.textDocumentProxy
         )
         
-        return manager.suggestions(
-            for: text,
+        if query.isEmpty, !Self.isDocumentEmpty(keyboardContext.textDocumentProxy) {
+            return []
+        }
+        
+        let suggestions = manager.suggestions(
+            for: query,
             shouldCapitalize: shouldCapitalize
-        ).map { suggestion in
+        )
+        
+        guard query == latestQuery else { return [] }
+        
+        return suggestions.map { suggestion in
             var mapped = suggestion
             mapped.isAutocorrect = suggestion.isAutocorrect && context.isAutocorrectEnabled
             return mapped
@@ -60,7 +74,42 @@ class FakeAutocompleteProvider: AutocompleteProvider {
     }
 }
 
+/// Resolves the word that autocomplete should query in the dictionary.
+enum AutocompleteQueryResolver {
+    
+    static func queryText(for proxy: UITextDocumentProxy) -> String? {
+        if let word = proxy.currentWord, !word.isEmpty {
+            return word
+        }
+        
+        if let before = proxy.documentContextBeforeInput {
+            let fragment = before.wordFragmentAtEnd
+            if !fragment.isEmpty {
+                return fragment
+            }
+            if proxy.isCursorAtNewWord {
+                return ""
+            }
+        }
+        
+        if proxy.documentContextBeforeInput == nil,
+           proxy.documentContextAfterInput == nil {
+            return nil
+        }
+        
+        return ""
+    }
+}
+
 private extension FakeAutocompleteProvider {
+    
+    static func isDocumentEmpty(_ proxy: UITextDocumentProxy) -> Bool {
+        let before = proxy.documentContextBeforeInput?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let after = proxy.documentContextAfterInput?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return before.isEmpty && after.isEmpty
+    }
     
     static func shouldCapitalize(
         typedText: String,
