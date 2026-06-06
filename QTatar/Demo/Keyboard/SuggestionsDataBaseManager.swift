@@ -11,33 +11,35 @@ import SQLite3
 
 final class SuggestionsDataBaseManager {
     
-    var db: OpaquePointer?
+    private var db: OpaquePointer?
     private let databaseQueue = DispatchQueue(label: "crh.keyboard.databaseQueue")
     
     init() {
-        Task(priority: .background) {
-            await asyncOpenDB()
+        databaseQueue.sync {
+            openDB()
         }
     }
     
-    private func asyncOpenDB() async {
-        databaseQueue.sync { [weak self] in
-            self?.openDB()
+    deinit {
+        databaseQueue.sync {
+            if let db {
+                sqlite3_close(db)
+                self.db = nil
+            }
         }
     }
     
     private func openDB() {
-        guard let csvURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "db") else {
+        guard let dbURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "db") else {
             debugPrint("Cant open DB")
             return
         }
         
-        // Открытие базы данных
-        guard sqlite3_open(csvURL.absoluteString, &db) == SQLITE_OK else {
+        guard sqlite3_open(dbURL.path, &db) == SQLITE_OK else {
             debugPrint("Failed to open SQLite database")
             return
         }
-        debugPrint("Successfully opened SQLite database at \(csvURL.absoluteString)")
+        debugPrint("Successfully opened SQLite database at \(dbURL.path)")
         if sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil) != SQLITE_OK {
             debugPrint("Failed to enable WAL mode: \(String(cString: sqlite3_errmsg(db)!))")
         }
@@ -45,34 +47,25 @@ final class SuggestionsDataBaseManager {
     
     func top3(for text: String) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
+            guard !text.isEmpty else { return [] }
+            
             let isUppercased = text.first?.isUppercase ?? false
-            var array = fetchWordsStartingWith(prefix: text)
-            var result: [Autocomplete.Suggestion] = []
+            var matches = fetchWordsStartingWith(prefix: text)
+            let hasMatches = !matches.isEmpty
             
-            // Check if the input is the same as the first word in the list
-            array = array.filter { $0.lowercased() != text.lowercased() } // Remove exact match
+            var result: [Autocomplete.Suggestion] = [
+                Autocomplete.Suggestion(text: text, isUnknown: !hasMatches)
+            ]
             
-            let count = array.count
+            matches = matches.filter { $0.lowercased() != text.lowercased() }
             
-            // If there is no match for the input text, create an unknown suggestion
-            if count == array.count {
-                result = [Autocomplete.Suggestion(text: text, isUnknown: true)]
-            } else {
-                result = [Autocomplete.Suggestion(text: text, isUnknown: false)]
-            }
-            
-            // If the first word exists in the array, modify the result list
-            if let first = array.first {
-                array.removeFirst()
+            if let first = matches.first {
+                matches.removeFirst()
                 result.append(.init(text: first, isAutocorrect: false))
                 
-                if let second = array.first {
-                    // Apply the capitalization based on whether the input is uppercased
-                    if isUppercased {
-                        result.append(.init(text: second.capitalizeFirstLetter(), isAutocorrect: false))
-                    } else {
-                        result.append(.init(text: second, isAutocorrect: false))
-                    }
+                if let second = matches.first {
+                    let displayText = isUppercased ? second.capitalizeFirstLetter() : second
+                    result.append(.init(text: displayText, isAutocorrect: false))
                 }
             }
             
@@ -81,32 +74,37 @@ final class SuggestionsDataBaseManager {
     }
     
     private func fetchWordsStartingWith(prefix: String) -> [String] {
-        guard let db = db else { return [] }
+        guard let db else { return [] }
         var results: [String] = []
         
         var stmt: OpaquePointer?
+        let query = "SELECT word FROM words WHERE LOWER(word) LIKE ? ORDER BY freq DESC LIMIT 3;"
         let lowercasePrefix = prefix.lowercased() + "%"
-        let query = "SELECT word FROM words WHERE LOWER(word) LIKE '\(lowercasePrefix)' ORDER BY freq DESC LIMIT 3;"
         
-        if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let word = sqlite3_column_text(stmt, 0) {
-                    results.append(String(cString: word))
-                    debugPrint(String(cString: word))
-                }
-            }
-        } else {
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
             debugPrint("Failed to prepare query")
+            return []
         }
         
-        sqlite3_finalize(stmt)
+        guard sqlite3_bind_text(stmt, 1, lowercasePrefix, -1, nil) == SQLITE_OK else {
+            debugPrint("Failed to bind query parameter")
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let word = sqlite3_column_text(stmt, 0) {
+                results.append(String(cString: word))
+            }
+        }
+        
         return results
     }
     
     func checkDatabaseContents(db: OpaquePointer?) {
-        guard let db = db else { return }
+        guard let db else { return }
         
-        // Подсчёт строк
         let countQuery = "SELECT COUNT(*) FROM words;"
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, countQuery, -1, &stmt, nil) == SQLITE_OK {
@@ -117,7 +115,6 @@ final class SuggestionsDataBaseManager {
         }
         sqlite3_finalize(stmt)
         
-        // Проверка конкретного значения
         let existsQuery = "SELECT EXISTS(SELECT 1 FROM words WHERE word = ?);"
         if sqlite3_prepare_v2(db, existsQuery, -1, &stmt, nil) == SQLITE_OK {
             sqlite3_bind_text(stmt, 1, "men", -1, nil)
@@ -139,7 +136,6 @@ final class SuggestionsDataBaseManager {
         }
         sqlite3_finalize(stmt)
         
-        // Печать всех данных
         let fetchQuery = "SELECT word, freq FROM words LIMIT 10;"
         if sqlite3_prepare_v2(db, fetchQuery, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
@@ -166,12 +162,10 @@ final class SuggestionsDataBaseManager {
     }
     
     private func setupDatabase() {
-        // Путь к файлу базы данных в контейнере клавиатуры
         let fileManager = FileManager.default
         let containerURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.crh.key.boardplus")!
-        let dbPath = containerURL.appendingPathComponent("words.db").path // TODO: это для создания новой базы данных и импорта данных из `qırım_tatar.csv`
+        let dbPath = containerURL.appendingPathComponent("words.db").path
         
-        // Открытие базы данных
         if sqlite3_open(dbPath, &db) == SQLITE_OK {
             print("Successfully opened SQLite database at \(dbPath)")
             createTable()
@@ -198,7 +192,7 @@ CREATE TABLE IF NOT EXISTS words (
     
     /// Does not work!!!
     private func importCSVToSQLite(csvURL: URL) {
-        guard let db = db else { return }
+        guard let db else { return }
         
         let insertQuery = "INSERT INTO words (word, freq) VALUES (?, ?);"
         var stmt: OpaquePointer?
@@ -207,7 +201,7 @@ CREATE TABLE IF NOT EXISTS words (
         
         do {
             let rawData = try String(contentsOf: csvURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleanedData = rawData.replacingOccurrences(of: "\u{FEFF}", with: "") // Убираем BOM
+            let cleanedData = rawData.replacingOccurrences(of: "\u{FEFF}", with: "")
             let rows = cleanedData.components(separatedBy: .newlines)
             
             var i = 0
@@ -241,8 +235,8 @@ CREATE TABLE IF NOT EXISTS words (
     
     private func parseCSVLine(_ line: String) -> [String] {
         line
-            .replacingOccurrences(of: "\"", with: "") // Убираем кавычки
-            .components(separatedBy: ";")            // Разделяем по запятой
+            .replacingOccurrences(of: "\"", with: "")
+            .components(separatedBy: ";")
     }
 }
 
