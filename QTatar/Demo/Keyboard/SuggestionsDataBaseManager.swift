@@ -83,7 +83,12 @@ final class SuggestionsDataBaseManager {
             var result: [Autocomplete.Suggestion] = []
             
             if bestLower == queryLower {
-                result.append(.init(text: bestFormatted))
+                if text != bestFormatted {
+                    result.append(.init(text: bestFormatted, isAutocorrect: true))
+                    result.insert(.init(text: text, isUnknown: true), at: 0)
+                } else {
+                    result.append(.init(text: bestFormatted))
+                }
             } else if bestLower.hasPrefix(queryLower) {
                 result.append(.init(text: bestFormatted, isAutocorrect: true))
                 if text != bestFormatted {
