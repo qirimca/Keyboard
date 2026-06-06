@@ -252,6 +252,7 @@
 			buildPhases = (
 				A921153525D58AC7003510D9 /* Sources */,
 				A921153625D58AC7003510D9 /* Frameworks */,
+				6AE973D02D3B2000007D41BC /* Rebuild Prediction Tables */,
 				A921153725D58AC7003510D9 /* Resources */,
 			);
 			buildRules = (
@@ -325,6 +326,32 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		6AE973D02D3B2000007D41BC /* Rebuild Prediction Tables */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 0;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../Scripts/build_corpus.py",
+				"$(SRCROOT)/../Scripts/build_ngrams.py",
+				"$(SRCROOT)/../Scripts/corpus/seed_sentences.txt",
+			);
+			name = "Rebuild Prediction Tables";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Keyboard/qırım_tatar.db",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "\"${SRCROOT}/../Scripts/xcode_build_predictions.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A921151E25D58A94003510D9 /* Sources */ = {

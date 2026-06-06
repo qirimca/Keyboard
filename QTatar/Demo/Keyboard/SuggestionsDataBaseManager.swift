@@ -153,10 +153,20 @@ final class SuggestionsDataBaseManager {
         
         var scores: [String: Int] = [:]
         
-        for length in stride(from: min(3, normalized.count), through: 1, by: -1) {
-            let prefix = normalized.suffix(length).joined(separator: " ")
-            addPhraseContinuations(prefix: prefix, into: &scores)
-            if scores.count >= 3 { break }
+        if normalized.count >= 2 {
+            addTrigramContinuations(
+                word1: normalized[normalized.count - 2],
+                word2: normalized[normalized.count - 1],
+                into: &scores
+            )
+        }
+        
+        if scores.count < 3 {
+            for length in stride(from: min(3, normalized.count), through: 1, by: -1) {
+                let prefix = normalized.suffix(length).joined(separator: " ")
+                addPhraseContinuations(prefix: prefix, into: &scores)
+                if scores.count >= 3 { break }
+            }
         }
         
         if scores.count < 3, let lastWord = normalized.last {
@@ -175,6 +185,22 @@ final class SuggestionsDataBaseManager {
                 return lhs.value > rhs.value
             }
             .map(\.key)
+    }
+    
+    private func addTrigramContinuations(
+        word1: String,
+        word2: String,
+        into scores: inout [String: Int]
+    ) {
+        for (nextWord, frequency) in fetchTrigramContinuations(
+            after: word1,
+            and: word2,
+            limit: 8
+        ) {
+            let key = nextWord.lowercased(with: Self.casingLocale)
+            guard !Self.genericNextWordBlocklist.contains(key) else { continue }
+            scores[key] = max(scores[key] ?? 0, frequency)
+        }
     }
     
     private func addPhraseContinuations(
@@ -278,6 +304,49 @@ final class SuggestionsDataBaseManager {
         }
         
         guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let word = sqlite3_column_text(stmt, 0) else { continue }
+            let frequency = Int(sqlite3_column_int(stmt, 1))
+            results.append((String(cString: word), frequency))
+        }
+        
+        return results
+    }
+    
+    private func fetchTrigramContinuations(
+        after word1: String,
+        and word2: String,
+        limit: Int
+    ) -> [(String, Int)] {
+        guard let db else { return [] }
+        
+        var results: [(String, Int)] = []
+        var stmt: OpaquePointer?
+        let query = """
+            SELECT word3, freq FROM trigrams
+            WHERE LOWER(word1) = ? AND LOWER(word2) = ?
+            ORDER BY freq DESC
+            LIMIT ?;
+            """
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+            return []
+        }
+        
+        guard bindText(stmt, index: 1, value: word1) else {
+            return []
+        }
+        
+        guard bindText(stmt, index: 2, value: word2) else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
             return []
         }
         
