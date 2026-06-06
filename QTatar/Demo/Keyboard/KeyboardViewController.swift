@@ -25,6 +25,7 @@ class KeyboardViewController: KeyboardInputViewController {
     ///
     /// Here, we make demo-specific service keyboard configs.
     override func viewDidLoad() {
+        SuggestionsDataBaseManager.shared.prepareAsync()
         
         /// 💡 Setup a demo-specific action handler.
         ///
@@ -110,6 +111,12 @@ class KeyboardViewController: KeyboardInputViewController {
         
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
+        setupKeyboardEarlyIfNeeded()
+    }
+    
+    private func setupKeyboardEarlyIfNeeded() {
+        guard !didSetupKeyboard else { return }
+        viewWillSetupKeyboard()
     }
     
     override var autocompleteText: String? {

@@ -13,7 +13,7 @@ import UIKit
 /// Crimean Tatar autocomplete backed by the local SQLite dictionary.
 class FakeAutocompleteProvider: AutocompleteProvider {
 
-    private let manager = SuggestionsDataBaseManager()
+    private let manager = SuggestionsDataBaseManager.shared
     private let keyboardContext: KeyboardContext
     private var latestQuery = ""
     
@@ -23,7 +23,7 @@ class FakeAutocompleteProvider: AutocompleteProvider {
     ) {
         self.context = context
         self.keyboardContext = keyboardContext
-        manager.prepare()
+        manager.prepareAsync()
     }
 
     private var context: AutocompleteContext
@@ -61,9 +61,9 @@ class FakeAutocompleteProvider: AutocompleteProvider {
         if query.isEmpty {
             if Self.isDocumentEmpty(proxy) {
                 suggestions = manager.starterSuggestions(shouldCapitalize: shouldCapitalize)
-            } else if let previousWord = proxy.wordBeforeInput {
+            } else if !Self.completedContextWords(before: proxy).isEmpty {
                 suggestions = manager.nextWordSuggestions(
-                    after: previousWord,
+                    contextWords: Self.completedContextWords(before: proxy),
                     shouldCapitalize: shouldCapitalize
                 )
             } else {
@@ -114,6 +114,15 @@ enum AutocompleteQueryResolver {
 }
 
 private extension FakeAutocompleteProvider {
+    
+    static func completedContextWords(before proxy: UITextDocumentProxy) -> [String] {
+        guard let before = proxy.documentContextBeforeInput else { return [] }
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        return before
+            .components(separatedBy: delimiters)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
     
     static func isDocumentEmpty(_ proxy: UITextDocumentProxy) -> Bool {
         let before = proxy.documentContextBeforeInput?

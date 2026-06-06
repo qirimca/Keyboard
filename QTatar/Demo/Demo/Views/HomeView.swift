@@ -25,6 +25,7 @@ struct HomeView: View {
     @State private var showOnboardingView: Bool = false
     @State private var showIndicatorSheet: Bool = false
     @State private var showAboutView: Bool = false
+    @FocusState private var isWritingFieldFocused: Bool
     
     var body: some View {
         NavigationStack {
@@ -94,6 +95,14 @@ struct HomeView: View {
                     .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
             }
+            .onAppear {
+                keyboardState.refresh()
+                scheduleKeyboardWarmupIfNeeded()
+            }
+            .onChange(of: keyboardState.isKeyboardEnabled) { _, isEnabled in
+                guard isEnabled else { return }
+                scheduleKeyboardWarmupIfNeeded()
+            }
         }
     }
 }
@@ -118,7 +127,11 @@ private extension HomeView {
             }
             
             if !keyboardState.isKeyboardActive {
-                Text(Home.home_getkeyboard_key.localized).regularText()
+                Text.customFontText(
+                    Home.home_getkeyboard_key.localized,
+                    fontName: "GeneralSans-Regular",
+                    size: 12
+                )
             }
         }
     }
@@ -148,6 +161,7 @@ private extension HomeView {
             TextField(text: $text, axis: .vertical) {
                 Text(Home.home_typing_key.localized).regularText(size: 14)
             }
+            .focused($isWritingFieldFocused)
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
             .foregroundColor(.black)
             .padding([.horizontal, .bottom])
@@ -170,6 +184,12 @@ private extension HomeView {
         keyboardState.isKeyboardActive &&
         keyboardState.isKeyboardEnabled &&
         keyboardState.isFullAccessEnabled
+    }
+    
+    func scheduleKeyboardWarmupIfNeeded() {
+        KeyboardExtensionWarmup.scheduleIfNeeded(
+            isKeyboardEnabled: keyboardState.isKeyboardEnabled
+        ) { isWritingFieldFocused = $0 }
     }
 }
 

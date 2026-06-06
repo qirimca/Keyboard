@@ -33,8 +33,7 @@ struct OnboardingView: View {
             TabView(selection: $selected) {
                 ForEach(sortedKeys(), id: \.self) { key in
                     VStack {
-                        Text(formattedText(for: components[key] ?? ""))
-                            .mediumText()
+                        formattedInstructionText(for: components[key] ?? "")
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
                         
@@ -134,27 +133,33 @@ private extension OnboardingView {
         }
     }
     
-    func formattedText(for text: String) -> AttributedString {
+    func formattedInstructionText(for text: String) -> Text {
         let parts = text.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: true)
         let title = parts.first.map { String($0) } ?? ""
-        let description = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let description = parts.count > 1
+            ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
+            : ""
+        let size: CGFloat = Device.iPad ? 20 : 16
         
-        var attributedString = AttributedString("")
+        var result = Text.customFontText(
+            title,
+            fontName: "GeneralSans-Semibold",
+            size: size
+        )
         
-        // Форматирование заголовка
-        if !title.isEmpty {
-            var titleAttributes = AttributeContainer()
-            titleAttributes.font = .boldSystemFont(ofSize: Device.iPad ? 20 : 16)
-            attributedString.append(AttributedString(title, attributes: titleAttributes))
-        }
-        
-        // Добавление разделителя и описания
         if !description.isEmpty {
-            attributedString.append(AttributedString(": "))
-            attributedString.append(AttributedString(description))
+            result = result
+                + Text(": ")
+                    .font(.custom("GeneralSans-Medium", size: Device.iPad ? size + 4 : size))
+                    .foregroundStyle(.black)
+                + Text.customFontText(
+                    description,
+                    fontName: "GeneralSans-Medium",
+                    size: size
+                )
         }
         
-        return attributedString
+        return result
     }
 }
 

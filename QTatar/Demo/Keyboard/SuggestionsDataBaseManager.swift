@@ -11,20 +11,23 @@ import SQLite3
 
 final class SuggestionsDataBaseManager {
     
+    static let shared = SuggestionsDataBaseManager()
+    
     private var db: OpaquePointer?
     private let databaseQueue = DispatchQueue(label: "crh.keyboard.databaseQueue")
     private static let crimeanLocale = Locale(identifier: "crh")
     /// i/ı/İ/I casing for Crimean Tatar Latin (same rules as Turkish script).
     private static let casingLocale = Locale(identifier: "tr")
+    /// Ignore low-confidence synthetic bigrams for next-word prediction.
+    private static let minimumNextWordFrequency = 200
+    private static let genericNextWordBlocklist: Set<String> = [
+        "ve", "bir", "bu", "o", "de", "da", "edi", "men", "onıñ", "dep"
+    ]
     
-    init() {
-        prepare()
-    }
-    
-    /// Opens the dictionary before the first autocomplete query.
-    func prepare() {
-        databaseQueue.sync {
-            ensureDB()
+    /// Opens the dictionary on a background queue before the first autocomplete query.
+    func prepareAsync() {
+        databaseQueue.async { [weak self] in
+            self?.ensureDB()
         }
     }
     
@@ -68,18 +71,13 @@ final class SuggestionsDataBaseManager {
     }
     
     func nextWordSuggestions(
-        after previousWord: String,
+        contextWords: [String],
         shouldCapitalize: Bool
     ) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
             ensureDB()
-            let previous = previousWord.lowercased(with: Self.casingLocale)
-            let predicted = fetchNextWords(after: previous, limit: 8)
-            let words = predicted.isEmpty
-                ? fetchPopularWords(limit: 8).filter { $0.lowercased(with: Self.casingLocale) != previous }
-                : predicted
-            
-            return Array(words.prefix(3)).map {
+            let candidates = rankNextWordCandidates(contextWords: contextWords)
+            return candidates.prefix(3).map {
                 Autocomplete.Suggestion(text: formatWord($0, capitalize: shouldCapitalize))
             }
         }
@@ -149,13 +147,161 @@ final class SuggestionsDataBaseManager {
         return word.lowercased(with: Self.casingLocale)
     }
     
-    private func fetchNextWords(after previousWord: String, limit: Int) -> [String] {
+    private func rankNextWordCandidates(contextWords: [String]) -> [String] {
+        let normalized = contextWords.map { $0.lowercased(with: Self.casingLocale) }
+        guard !normalized.isEmpty else { return [] }
+        
+        var scores: [String: Int] = [:]
+        
+        for length in stride(from: min(3, normalized.count), through: 1, by: -1) {
+            let prefix = normalized.suffix(length).joined(separator: " ")
+            addPhraseContinuations(prefix: prefix, into: &scores)
+            if scores.count >= 3 { break }
+        }
+        
+        if scores.count < 3, let lastWord = normalized.last {
+            addMorphologicalContinuations(after: lastWord, into: &scores)
+        }
+        
+        if scores.count < 3, let lastWord = normalized.last {
+            addBigramContinuations(after: lastWord, minFrequency: Self.minimumNextWordFrequency, into: &scores)
+        }
+        
+        return scores
+            .sorted { lhs, rhs in
+                if lhs.value == rhs.value {
+                    return lhs.key < rhs.key
+                }
+                return lhs.value > rhs.value
+            }
+            .map(\.key)
+    }
+    
+    private func addPhraseContinuations(
+        prefix: String,
+        into scores: inout [String: Int]
+    ) {
+        for (phrase, frequency) in fetchPhrases(startingWith: prefix, limit: 24) {
+            guard let nextWord = nextToken(in: phrase, afterPrefix: prefix) else { continue }
+            let key = nextWord.lowercased(with: Self.casingLocale)
+            guard !Self.genericNextWordBlocklist.contains(key) else { continue }
+            scores[key] = max(scores[key] ?? 0, frequency)
+        }
+    }
+    
+    private func addMorphologicalContinuations(
+        after word: String,
+        into scores: inout [String: Int]
+    ) {
+        let wordLower = word.lowercased(with: Self.casingLocale)
+        for (phrase, frequency) in fetchPhrases(containingTokenPrefix: wordLower, limit: 32) {
+            for token in phrase.split(separator: " ").map(String.init) {
+                let tokenLower = token.lowercased(with: Self.casingLocale)
+                guard tokenLower.hasPrefix(wordLower), tokenLower.count > wordLower.count else { continue }
+                scores[tokenLower] = max(scores[tokenLower] ?? 0, frequency)
+            }
+        }
+    }
+    
+    private func addBigramContinuations(
+        after word: String,
+        minFrequency: Int,
+        into scores: inout [String: Int]
+    ) {
+        for (nextWord, frequency) in fetchNextWordsWithFrequency(
+            after: word,
+            minFrequency: minFrequency,
+            limit: 8
+        ) {
+            let key = nextWord.lowercased(with: Self.casingLocale)
+            guard !Self.genericNextWordBlocklist.contains(key) else { continue }
+            scores[key] = max(scores[key] ?? 0, frequency)
+        }
+    }
+    
+    private func nextToken(in phrase: String, afterPrefix prefix: String) -> String? {
+        let parts = phrase.split(separator: " ").map(String.init)
+        let prefixParts = prefix.split(separator: " ").map(String.init)
+        guard parts.count > prefixParts.count else { return nil }
+        
+        let leading = parts.prefix(prefixParts.count)
+            .map { $0.lowercased(with: Self.casingLocale) }
+        let expected = prefixParts.map { $0.lowercased(with: Self.casingLocale) }
+        guard leading == expected else { return nil }
+        
+        return parts[prefixParts.count]
+    }
+    
+    private func fetchPhrases(
+        startingWith prefix: String,
+        limit: Int
+    ) -> [(String, Int)] {
+        fetchPhrases(
+            matching: prefix.lowercased(with: Self.casingLocale) + " %",
+            limit: limit
+        )
+    }
+    
+    private func fetchPhrases(
+        containingTokenPrefix tokenPrefix: String,
+        limit: Int
+    ) -> [(String, Int)] {
+        fetchPhrases(
+            matching: "% \(tokenPrefix)%",
+            limit: limit
+        )
+    }
+    
+    private func fetchPhrases(
+        matching pattern: String,
+        limit: Int
+    ) -> [(String, Int)] {
         guard let db else { return [] }
-        var results: [String] = []
+        
+        var results: [(String, Int)] = []
         var stmt: OpaquePointer?
         let query = """
-            SELECT word2 FROM bigrams
-            WHERE LOWER(word1) = ?
+            SELECT word, freq FROM words
+            WHERE instr(word, ' ') > 0 AND LOWER(word) LIKE ?
+            ORDER BY freq DESC
+            LIMIT ?;
+            """
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+            return []
+        }
+        
+        guard bindText(stmt, index: 1, value: pattern) else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let word = sqlite3_column_text(stmt, 0) else { continue }
+            let frequency = Int(sqlite3_column_int(stmt, 1))
+            results.append((String(cString: word), frequency))
+        }
+        
+        return results
+    }
+    
+    private func fetchNextWordsWithFrequency(
+        after previousWord: String,
+        minFrequency: Int,
+        limit: Int
+    ) -> [(String, Int)] {
+        guard let db else { return [] }
+        
+        var results: [(String, Int)] = []
+        var stmt: OpaquePointer?
+        let query = """
+            SELECT word2, freq FROM bigrams
+            WHERE LOWER(word1) = ? AND freq >= ?
             ORDER BY freq DESC
             LIMIT ?;
             """
@@ -170,7 +316,49 @@ final class SuggestionsDataBaseManager {
             return []
         }
         
-        guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+        guard sqlite3_bind_int(stmt, 2, Int32(minFrequency)) == SQLITE_OK else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
+            return []
+        }
+        
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let word = sqlite3_column_text(stmt, 0) else { continue }
+            let frequency = Int(sqlite3_column_int(stmt, 1))
+            results.append((String(cString: word), frequency))
+        }
+        
+        return results
+    }
+    
+    private func fetchNextWords(after previousWord: String, limit: Int) -> [String] {
+        guard let db else { return [] }
+        var results: [String] = []
+        var stmt: OpaquePointer?
+        let query = """
+            SELECT word2 FROM bigrams
+            WHERE LOWER(word1) = ? AND freq >= ?
+            ORDER BY freq DESC
+            LIMIT ?;
+            """
+        
+        defer { sqlite3_finalize(stmt) }
+        
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
+            return []
+        }
+        
+        guard bindText(stmt, index: 1, value: previousWord) else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 2, Int32(Self.minimumNextWordFrequency)) == SQLITE_OK else {
+            return []
+        }
+        
+        guard sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
             return []
         }
         

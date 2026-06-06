@@ -49,7 +49,7 @@ public class KeyboardStateContext: KeyboardStateInspector, ObservableObject {
             .sink(receiveValue: { [weak self] _ in self?.refresh() })
             .store(in: &cancellables)
         textPublisher
-            .delay(for: 0.5, scheduler: RunLoop.main)
+            .debounce(for: .milliseconds(50), scheduler: RunLoop.main)
             .sink(receiveValue: { [weak self] _ in self?.refresh() })
             .store(in: &cancellables)
         refresh()
