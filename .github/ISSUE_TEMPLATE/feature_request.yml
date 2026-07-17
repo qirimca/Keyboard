@@ -1,0 +1,35 @@
+name: Feature request
+description: Suggest an improvement for QırımKey
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Яку проблему це вирішує?
+      description: Опишіть потребу користувача або волонтера.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Запропоноване покращення
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Напрям
+      options:
+        - Keyboard layout
+        - Autocomplete / corpus
+        - Onboarding / instructions
+        - Localization
+        - GitHub workflow
+        - Documentation
+        - Other
+  - type: textarea
+    id: volunteer-help
+    attributes:
+      label: Як волонтери можуть допомогти?
+      description: Наприклад тестування, тексти, дизайн, код, перевірка на пристроях.

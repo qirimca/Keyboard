@@ -1,0 +1,47 @@
+name: Volunteer task
+description: Create a task that volunteers can help with
+title: "[Volunteer]: "
+labels: ["help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        QırımKey — громадська ініціатива. Описуйте задачі так, щоб нова людина могла долучитися без додаткового контексту.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Мета
+      description: Що треба зробити і для кого це корисно?
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Кроки
+      description: Список невеликих дій.
+      placeholder: |
+        - [ ] Перевірити ...
+        - [ ] Зібрати ...
+        - [ ] Написати ...
+    validations:
+      required: true
+  - type: dropdown
+    id: skills
+    attributes:
+      label: Яка допомога потрібна?
+      multiple: true
+      options:
+        - Device testing
+        - Crimean Tatar language review
+        - Ukrainian/English translation
+        - UX/UI review
+        - Swift development
+        - Documentation
+        - Outreach
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: Як зрозуміти, що задача завершена?
+    validations:
+      required: true
