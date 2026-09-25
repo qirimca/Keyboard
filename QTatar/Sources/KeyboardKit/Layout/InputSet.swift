@@ -35,10 +35,20 @@ public struct InputSet: Equatable {
 public extension InputSet {
     
     static var qwerty: InputSet {
+        crimeanTatar
+    }
+    
+    /// Crimean Tatar Latin alphabet.
+    static var crimeanTatar: InputSet {
         .init(rows: [
-            .init(chars: "qwertyuıopğü"),
+            .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
             .init(lowercased: "asdfghjklşiñ", uppercased: "ASDFGHJKLŞİÑ"),
-            .init(phone: "zxcvbnmöçâ", pad: "zxcvbnmöçâ,")
+            .init(
+                phoneLowercased: "zxcvbnmöçâ",
+                phoneUppercased: "ZXCVBNMÖÇÂ",
+                padLowercased: "zxcvbnmöçâ",
+                padUppercased: "ZXCVBNMÖÇÂ"
+            )
         ])
     }
     

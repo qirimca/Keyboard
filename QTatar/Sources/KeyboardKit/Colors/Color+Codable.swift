@@ -22,7 +22,7 @@ import AppKit
 #endif
 
 /// This extension extends `Color` with codable capabilities.
-extension Color: Codable {
+extension Color: @retroactive Codable {
     
     enum CodingKeys: String, CodingKey {
         case red, green, blue, alpha

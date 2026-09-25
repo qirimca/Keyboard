@@ -1,0 +1,23 @@
+/*
+ Localizable.strings
+ KeyboardKit — Crimean Tatar (crh)
+ */
+
+"locale" = "crh";
+
+"capsLock" = "büyük arif";
+"continue" = "devam";
+"done" = "azır";
+"emergencyCall" = "acele yardım";
+"go" = "başla";
+"join" = "qoşulmaq";
+"next" = "nevbetteki";
+"ok" = "yahşı";
+"return" = "↵";
+"route" = "yol";
+"search" = "qıdır";
+"send" = "yolla";
+"space" = "boşluq";
+"switcherAlphabetic" = "ABC";
+"switcherNumeric" = "123";
+"switcherSymbolic" = "#+=";

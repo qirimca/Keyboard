@@ -21,7 +21,7 @@ extension Dictation.KeyboardConfiguration {
      but the keyboard isn't able to access the dictated text.
      */
     static let app = Dictation.KeyboardConfiguration(
-        appGroupId: "group.crh.key.boardplus",
-        appDeepLink: "kkdemo://dictation"
+        appGroupId: AppConfiguration.appGroupID,
+        appDeepLink: AppConfiguration.appDeepLink
     )
 }

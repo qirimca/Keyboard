@@ -76,9 +76,11 @@ public extension Color {
 
 public extension Color {
     
-    /// The standard keyboard button background color.
+    /// The standard keyboard background color.
     static func keyboardBackground(for context: KeyboardContext) -> Color {
-        .keyboardBackground
+        context.hasDarkColorScheme ?
+            .keyboardBackgroundForDarkAppearance :
+            .keyboardBackground
     }
     
     /// The standard keyboard button background color.

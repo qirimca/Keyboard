@@ -33,8 +33,19 @@ public extension KeyboardStateInspector {
     /// Get a list of all active keyboard bundle IDs.
     var activeKeyboardBundleIds: [String] {
         let modes = UITextInputMode.activeInputModes
-        let displayed = modes.filter { $0.value(forKey: "isDisplayed") as? Int == 1 }
-        let ids = displayed.compactMap { $0.value(forKey: "identifier") as? String }
+        let displayed = modes.filter { ($0.value(forKey: "isDisplayed") as? Int) == 1 }
+        var ids = displayed.compactMap { $0.value(forKey: "identifier") as? String }
+        if ids.isEmpty {
+            for mode in modes {
+                if mode.primaryLanguage?.hasPrefix("crh") == true {
+                    if let id = mode.value(forKey: "identifier") as? String {
+                        ids.append(id)
+                    } else {
+                        ids.append("crh.key.keyboard.keyboard")
+                    }
+                }
+            }
+        }
         return ids
     }
 
@@ -42,7 +53,16 @@ public extension KeyboardStateInspector {
     func enabledKeyboardBundleIds(
         defaults: UserDefaults = .standard
     ) -> [String] {
-        defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
+        var ids = defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
+        let modeIds = UITextInputMode.activeInputModes.compactMap { $0.value(forKey: "identifier") as? String }
+        ids.append(contentsOf: modeIds)
+        for mode in UITextInputMode.activeInputModes {
+            if mode.primaryLanguage?.hasPrefix("crh") == true {
+                ids.append("crh.key.keyboard.keyboard")
+                ids.append("crh.key.keyboard")
+            }
+        }
+        return Array(Set(ids))
     }
     
     /// Whether the full access is enabled in System Settings.
@@ -88,9 +108,10 @@ extension KeyboardStateInspector {
 extension String {
 
     func matchesBundleId(_ bundleId: String) -> Bool {
-        if !bundleId.hasSuffix("*") { return self == bundleId }
-        let wildcard = bundleId.replacingOccurrences(of: "*", with: "")
-        return hasPrefix(wildcard)
+        if self == bundleId { return true }
+        let pattern = bundleId.replacingOccurrences(of: "*", with: "")
+        if self.contains(pattern) || pattern.contains(self) { return true }
+        return false
     }
 }
 

@@ -129,7 +129,15 @@ private extension Gestures.GestureButton {
         GeometryReader { geo in
             Color.clear
                 .contentShape(Rectangle())
-                .gesture(
+                ._onButtonGesture(
+                    pressing: { pressing in
+                        if pressing {
+                            tryHandlePressInstant()
+                        }
+                    },
+                    perform: {}
+                )
+                .highPriorityGesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             tryHandlePress(value)
@@ -144,6 +152,14 @@ private extension Gestures.GestureButton {
 }
 
 private extension Gestures.GestureButton {
+
+    func tryHandlePressInstant() {
+        if isPressed { return }
+        isPressed = true
+        pressAction?()
+        tryTriggerLongPressAfterDelay()
+        tryTriggerRepeatAfterDelay()
+    }
 
     func tryHandlePress(_ value: DragGesture.Value) {
         if isPressed { return }

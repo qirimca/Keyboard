@@ -17,84 +17,109 @@ import KeyboardKitPro
  */
 
 struct HomeView: View {
+    @Binding var navigationPath: NavigationPath
+    
     @AppStorage("crh.key.text") private var text = ""
     
     @StateObject private var dictationContext = DictationContext(config: .app)
-    @StateObject private var keyboardState = KeyboardStateContext(bundleId: "crh.key.*")
+    @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
     
-    @State private var showOnboardingView: Bool = false
-    @State private var showIndicatorSheet: Bool = false
-    @State private var showAboutView: Bool = false
+    @State private var showIndicatorSheet = false
+    @FocusState private var isWritingFieldFocused: Bool
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color("BackgroungColor").ignoresSafeArea()
-                BackgroundGrid()
-                VStack {
-                    statusIndicatorsSection
-                    ScrollView(.vertical, showsIndicators: false) {
-                        writingAreaSection
-                    }
+        ZStack {
+            Color("BackgroungColor").ignoresSafeArea()
+            BackgroundGrid()
+            VStack(spacing: Device.iPad ? 16 : 12) {
+                statusIndicatorsSection
+                    .fixedSize(horizontal: false, vertical: true)
+                ScrollView(.vertical, showsIndicators: false) {
+                    writingAreaSection
                 }
-                .padding(Device.iPhone ? 12 : 24)
-                .keyboardDictation(
-                    context: dictationContext,
-                    config: .app,
-                    speechRecognizer: StandardSpeechRecognizer()
-                ) {
-                    Dictation.Screen(
-                        dictationContext: dictationContext) {
-                            EmptyView()
-                        } indicator: {
-                            Dictation.BarVisualizer(isAnimating: $0)
-                        } doneButton: { action in
-                            Button(Home.home_ok_key.localized, action: action)
-                                .buttonStyle(.borderedProminent)
-                        }
+                .layoutPriority(1)
+            }
+            .padding(.horizontal, Device.iPhone ? 12 : 24)
+            .padding(.top, Device.iPhone ? 12 : 16)
+            .padding(.bottom, Device.iPhone ? 12 : 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            .keyboardDictation(
+                context: dictationContext,
+                config: .app,
+                speechRecognizer: StandardSpeechRecognizer()
+            ) {
+                Dictation.Screen(
+                    dictationContext: dictationContext) {
+                        EmptyView()
+                    } indicator: {
+                        Dictation.BarVisualizer(isAnimating: $0)
+                    } doneButton: { action in
+                        Button(Home.home_ok_key.localized, action: action)
+                            .buttonStyle(.borderedProminent)
+                    }
+            }
+        }
+        .overlay(alignment: .bottom, content: {
+            if !areAllIndicatorsEnabled {
+                PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
+                    navigationPath.append(DemoRoute.onboarding)
+                }.padding(Device.iPhone ? 12 : 24)
+            }
+        })
+        .gesture(TapGesture().onEnded {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }, including: .gesture)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
+                navigationPath.append(DemoRoute.onboarding)
+            }
+            NavToolbarItem(placement: .navigationBarTrailing, symbol: "info") {
+                navigationPath.append(DemoRoute.about)
+            }
+            ToolbarItem(placement: .principal) {
+                Text("QırımKey")
+                    .titleText(size: 24)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+        }
+        .sheet(isPresented: $showIndicatorSheet) {
+            OnboardingView()
+                .presentationCornerRadius(20)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            keyboardState.refresh()
+            scheduleKeyboardWarmupIfNeeded()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isWritingFieldFocused = true
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                keyboardState.refresh()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    isWritingFieldFocused = true
                 }
             }
-            .overlay(alignment: .bottom, content: {
-                if !areAllIndicatorsEnabled {
-                    PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
-                        showOnboardingView.toggle()
-                    }.padding(Device.iPhone ? 12 : 24)
-                }
-            })
-            .gesture(TapGesture().onEnded {
-                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }, including: .gesture)
-            .navigationDestination(isPresented: $showAboutView, destination: {
-                AboutView()
-            })
-            .navigationDestination(isPresented: $showOnboardingView, destination: {
-                OnboardingView()
-            })
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavButton(symbol: "questionmark") {
-                        showOnboardingView.toggle()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavButton(symbol: "info") {
-                        showAboutView.toggle()
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text("QırımKey")
-                        .titleText(size: 24)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
+        }
+        .onChange(of: isWritingFieldFocused) { _, isFocused in
+            if isFocused {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    keyboardState.refresh()
                 }
             }
-            .sheet(isPresented: $showIndicatorSheet) {
-                OnboardingView()
-                    .presentationCornerRadius(20)
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
-            }
+        }
+        .onChange(of: text) { _, _ in
+            keyboardState.refresh()
+        }
+        .onChange(of: keyboardState.isKeyboardEnabled) { _, isEnabled in
+            guard isEnabled else { return }
+            scheduleKeyboardWarmupIfNeeded()
         }
     }
 }
@@ -103,21 +128,27 @@ private extension HomeView {
     
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(Home.home_crimea_key.localized).mediumText()
-            HStack {
-                KeyboardStateItem(state: .active(keyboardState.isKeyboardActive)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .enable(keyboardState.isKeyboardEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-                KeyboardStateItem(state: .fullAccess(keyboardState.isFullAccessEnabled)) {
-                    showIndicatorSheet.toggle()
-                }
-            }.frame(height: 60)
+            Text(Home.home_crimea_key.localized)
+                .mediumText(size: Device.iPad ? 16 : 14)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+            
+            KeyboardStateIndicatorsRow(
+                states: [
+                    .active(keyboardState.isKeyboardActive),
+                    .enable(keyboardState.isKeyboardEnabled),
+                    .fullAccess(keyboardState.isFullAccessEnabled)
+                ]
+            ) {
+                showIndicatorSheet = true
+            }
             
             if !keyboardState.isKeyboardActive {
-                Text(Home.home_getkeyboard_key.localized).regularText()
+                Text.customFontText(
+                    Home.home_getkeyboard_key.localized,
+                    fontName: "GeneralSans-Regular",
+                    size: 12
+                )
             }
         }
     }
@@ -147,6 +178,8 @@ private extension HomeView {
             TextField(text: $text, axis: .vertical) {
                 Text(Home.home_typing_key.localized).regularText(size: 14)
             }
+            .focused($isWritingFieldFocused)
+            .background(AutoFirstResponderView())
             .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
             .foregroundColor(.black)
             .padding([.horizontal, .bottom])
@@ -170,8 +203,53 @@ private extension HomeView {
         keyboardState.isKeyboardEnabled &&
         keyboardState.isFullAccessEnabled
     }
+    
+    func scheduleKeyboardWarmupIfNeeded() {
+        KeyboardExtensionWarmup.scheduleIfNeeded(
+            isKeyboardEnabled: keyboardState.isKeyboardEnabled
+        ) { isWritingFieldFocused = $0 }
+    }
 }
 
 #Preview {
-    HomeView()
+    @Previewable @State var navigationPath = NavigationPath()
+    NavigationStack(path: $navigationPath) {
+        HomeView(navigationPath: $navigationPath)
+    }
+}
+
+private struct AutoFirstResponderView: UIViewRepresentable {
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            findAndFocus(from: view)
+        }
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            findAndFocus(from: uiView)
+        }
+    }
+    
+    private func findAndFocus(from view: UIView) {
+        guard let window = view.window else { return }
+        if let target = findTextResponder(in: window) {
+            target.becomeFirstResponder()
+        }
+    }
+    
+    private func findTextResponder(in view: UIView) -> UIView? {
+        if view is UITextField || view is UITextView {
+            return view
+        }
+        for sub in view.subviews {
+            if let found = findTextResponder(in: sub) {
+                return found
+            }
+        }
+        return nil
+    }
 }

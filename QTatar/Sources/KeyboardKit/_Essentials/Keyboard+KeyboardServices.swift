@@ -94,16 +94,14 @@ public extension Keyboard.KeyboardServices {
     
     // Setup the action handler for the provided controller.
     func setupActionHandler(for controller: KeyboardInputViewController) {
-        weak var weakController = controller
-        (actionHandler as? StandardKeyboardActionHandler)?.keyboardController = weakController
+        (actionHandler as? StandardKeyboardActionHandler)?.keyboardController = controller
     }
     
     // Setup space gestures for the provided controller.
     func setupSpaceGesture(for controller: KeyboardInputViewController) {
-        weak var weakController = controller
-        spaceDragGestureHandler.action = { [weak self] in
+        spaceDragGestureHandler.action = { [weak self, weak controller] in
             let offset = self?.state.keyboardContext.spaceDragOffset(for: $0)
-            weakController?.adjustTextPosition(by: offset ?? $0)
+            controller?.adjustTextPosition(by: offset ?? $0)
         }
     }
 }
