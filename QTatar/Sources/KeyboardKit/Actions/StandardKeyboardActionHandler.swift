@@ -61,8 +61,7 @@ open class StandardKeyboardActionHandler: NSObject, KeyboardActionHandler {
         feedbackConfiguration: FeedbackConfiguration,
         spaceDragGestureHandler: Gestures.SpaceDragGestureHandler
     ) {
-        weak var weakController = controller
-        self.keyboardController = weakController
+        self.keyboardController = controller
         self.keyboardContext = keyboardContext
         self.keyboardBehavior = keyboardBehavior
         self.autocompleteContext = autocompleteContext

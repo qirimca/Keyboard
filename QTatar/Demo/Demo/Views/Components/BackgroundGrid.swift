@@ -13,20 +13,21 @@ struct BackgroundGrid: View {
     var dotSize: CGFloat = 2.0
     
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                ForEach(0..<Int(geometry.size.height / gridSize), id: \.self) { row in
-                    HStack(spacing: 0) {
-                        ForEach(0..<Int(geometry.size.width / gridSize), id: \.self) { column in
-                            Circle()
-                                .fill(Color.gray.opacity(0.3)) // Dot color and opacity
-                                .frame(width: dotSize, height: dotSize) // Dot size
-                                .frame(width: gridSize, height: gridSize) // Center the dot in its grid cell
-                        }
-                    }
+        Canvas { context, size in
+            let dotRadius = dotSize / 2
+            let dotColor = Color.gray.opacity(0.3)
+            let columns = Int(size.width / gridSize)
+            let rows = Int(size.height / gridSize)
+            for row in 0..<rows {
+                let y = CGFloat(row) * gridSize + gridSize / 2
+                for col in 0..<columns {
+                    let x = CGFloat(col) * gridSize + gridSize / 2
+                    let rect = CGRect(x: x - dotRadius, y: y - dotRadius, width: dotSize, height: dotSize)
+                    context.fill(Path(ellipseIn: rect), with: .color(dotColor))
                 }
             }
-        }.ignoresSafeArea()
+        }
+        .ignoresSafeArea()
     }
 }
 

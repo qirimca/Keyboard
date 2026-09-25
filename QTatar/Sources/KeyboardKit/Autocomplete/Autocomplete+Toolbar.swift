@@ -76,12 +76,23 @@ public extension Autocomplete {
         }
         
         public var body: some View {
-            HStack {
-                ForEach(items) { item in
-                    itemButton(for: item.suggestion)
-                    if useSeparator(for: item) {
-                        separatorView(item.suggestion, style)
-                            .autocompleteToolbarSeparatorStyle(style.separator)
+            HStack(spacing: 0) {
+                if items.isEmpty {
+                    Color.clear.frame(maxWidth: .infinity)
+                    separatorView(.init(text: ""), style)
+                        .autocompleteToolbarSeparatorStyle(style.separator)
+                    Color.clear.frame(maxWidth: .infinity)
+                    separatorView(.init(text: ""), style)
+                        .autocompleteToolbarSeparatorStyle(style.separator)
+                    Color.clear.frame(maxWidth: .infinity)
+                } else {
+                    ForEach(items) { item in
+                        itemButton(for: item.suggestion)
+                            .frame(maxWidth: .infinity)
+                        if useSeparator(for: item) {
+                            separatorView(item.suggestion, style)
+                                .autocompleteToolbarSeparatorStyle(style.separator)
+                        }
                     }
                 }
             }

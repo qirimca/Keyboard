@@ -30,10 +30,12 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
         super.viewDidLoad()
         setupController()
         viewWillRegisterSharedController()
+        syncKeyboardChromeAppearance()
     }
 
     open override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        syncKeyboardChromeAppearance()
         viewWillSetupKeyboard()
         viewWillSyncWithContext()
     }
@@ -50,6 +52,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
     open override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         viewWillSyncWithContext()
+        syncKeyboardChromeAppearance()
         super.traitCollectionDidChange(previousTraitCollection)
     }
 

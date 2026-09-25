@@ -168,8 +168,17 @@ private extension Callouts.ActionCallout {
     }
     
     var positionY: CGFloat {
-        buttonFrame.origin.y - style.verticalTextPadding
+        let ideal = buttonFrame.origin.y - style.verticalTextPadding
+        let minCenterY = totalCalloutHeight / 2 + Self.topEdgeInset
+        return max(ideal, minCenterY)
     }
+    
+    var totalCalloutHeight: CGFloat {
+        let bubbleHeight = calloutButtonSize.height + 2 * style.verticalTextPadding
+        return bubbleHeight + buttonFrameSize.height
+    }
+    
+    static let topEdgeInset: CGFloat = 4
 }
 
 

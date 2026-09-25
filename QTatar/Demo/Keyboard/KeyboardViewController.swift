@@ -8,6 +8,7 @@
 
 import SwiftUI
 import KeyboardKit
+import Combine
 
 /**
  This keyboard demonstrates how to setup KeyboardKit and how
@@ -18,11 +19,34 @@ import KeyboardKit
  access to features like haptic feedback.
  */
 class KeyboardViewController: KeyboardInputViewController {
+    
+    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
+        super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
+        self.hasDictationKey = true
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        self.hasDictationKey = true
+    }
+
+    /// Setting hasDictationKey to true informs iOS that this keyboard handles its own dictation,
+    /// thereby suppressing the default system microphone key from being inserted into the accessory bar.
+    override var hasDictationKey: Bool {
+        get { true }
+        set { }
+    }
+
+    private var didSetupKeyboard = false
+    private var cancellables = Set<AnyCancellable>()
 
     /// This function is called when the controller loads.
     ///
     /// Here, we make demo-specific service keyboard configs.
     override func viewDidLoad() {
+        self.hasDictationKey = true
+        view.backgroundColor = .clear
+        SuggestionsDataBaseManager.shared.prepareAsync()
         
         /// 💡 Setup a demo-specific action handler.
         ///
@@ -36,76 +60,101 @@ class KeyboardViewController: KeyboardInputViewController {
             feedbackConfiguration: state.feedbackConfiguration,
             spaceDragGestureHandler: services.spaceDragGestureHandler)
         
-        /// 💡 Setup a fake autocomplete provider.
-        ///
-        /// This fake provider will provide fake suggestions.
-        /// Try the Pro demo for real suggestions.
-        services.autocompleteProvider = FakeAutocompleteProvider(
-            context: state.autocompleteContext
+        /// 💡 Setup a real Crimean Tatar autocomplete provider.
+        let autocompleteProvider = CrimeanTatarAutocompleteProvider(
+            context: state.autocompleteContext,
+            keyboardContext: state.keyboardContext
         )
+        autocompleteProvider.locale = Locale(identifier: "crh")
+        services.autocompleteProvider = autocompleteProvider
         
         /// 💡 Setup a demo-specific callout action provider.
-        ///
-        /// The demo provider adds "keyboard" callout action
-        /// buttons to the "k" key.
         services.calloutActionProvider = StandardCalloutActionProvider(
             keyboardContext: state.keyboardContext,
             baseProvider: DemoCalloutActionProvider())
         
-        /// 💡 Setup a demo-specific layout provider.
-        ///
-        /// The demo provider adds a "next locale" button if
-        /// needed, as well as a rocket emoji button.
+        /// 💡 Setup Crimean Tatar layout provider.
         services.layoutProvider = DemoLayoutProvider()
         
-        /// 💡 Setup a demo-specific style provider.
-        ///
-        /// The demo provider styles the rocket emoji button
-        /// and has some commented out code that you can try.
+        /// 💡 Setup Crimean Tatar style provider.
         services.styleProvider = DemoStyleProvider(
             keyboardContext: state.keyboardContext)
         
 
         /// 💡 Setup a custom keyboard locale.
-        ///
-        /// Without KeyboardKit Pro, changing locale will by
-        /// default only affects localized texts.
-        state.keyboardContext.setLocale(.tatar) //english
+        state.keyboardContext.setLocale(.tatar)
+        state.keyboardContext.keyboardType = state.keyboardContext.preferredKeyboardType
+        state.autocompleteContext.isAutocompleteEnabled = true
+        state.autocompleteContext.isAutocorrectEnabled = true
 
-        /// 💡 Add more locales to the keyboard.
-        ///
-        /// The demo layout provider will add a "next locale"
-        /// button if you have more than one locale.
+        /// 💡 Add locales to the keyboard.
         state.keyboardContext.localePresentationLocale = .current
-        state.keyboardContext.locales = [] // KeyboardLocale.all.locales
+        state.keyboardContext.locales = []
         
-        /// 💡 Setup a custom dictation key replacement.
-        ///
-        /// Since dictation is not available by default, the
-        /// dictation button is removed if we don't set this.
-        state.keyboardContext.keyboardDictationReplacement = .character("-")// .character("😀")
+        /// Avoid duplicate dictation key in keyboard view.
+        state.keyboardContext.keyboardDictationReplacement = nil
         
-        /// 💡 Configure the space long press behavior.
-        ///
-        /// The locale context menu will only open up if the
-        /// keyboard has multiple locales.
+        /// 💡 Configure space long press behavior.
         state.keyboardContext.spaceLongPressBehavior = .moveInputCursor
-        // state.keyboardContext.spaceLongPressBehavior = .openLocaleContextMenu
+        
+        /// 💡 Enable key preview balloon popup on key tap
+        state.calloutContext.inputContext.isEnabled = true
         
         /// 💡 Setup audio and haptic feedback.
-        ///
-        /// The code below enabled haptic feedback and plays
-        /// a rocket sound when a rocket button is tapped.
+        #if targetEnvironment(simulator)
+        state.feedbackConfiguration.isHapticFeedbackEnabled = false
+        state.feedbackConfiguration.isAudioFeedbackEnabled = false
+        #else
         state.feedbackConfiguration.isHapticFeedbackEnabled = true
-//        state.feedbackConfiguration.audio.actions = [
-//            .init(action: .character("🚀"), feedback: .custom(id: 1303))
-//        ]
+        #endif
         
-        // state.feedbackConfiguration.disableAudioFeedback()
-        // state.feedbackConfiguration.disableHapticFeedback()
+        /// Observe shift / keyboard case changes to immediately synchronize autocomplete word casing.
+        state.keyboardContext.$keyboardType
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.performAutocomplete()
+                }
+            }
+            .store(in: &cancellables)
         
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
+        setupKeyboardEarlyIfNeeded()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.hasDictationKey = true
+        view.backgroundColor = .clear
+    }
+    
+    private func setupKeyboardEarlyIfNeeded() {
+        guard !didSetupKeyboard else { return }
+        viewWillSetupKeyboard()
+    }
+    
+    override var autocompleteText: String? {
+        AutocompleteQueryResolver.queryText(for: textDocumentProxy)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
+        if hasText {
+            performAutocomplete()
+        } else {
+            state.autocompleteContext.suggestions = []
+        }
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            self?.view.setNeedsLayout()
+            self?.view.layoutIfNeeded()
+        })
     }
 
     /// This function is called whenever the keyboard should
@@ -115,19 +164,29 @@ class KeyboardViewController: KeyboardInputViewController {
     /// the library does it, just to show how it's done. You
     /// can customize anything you want.
     override func viewWillSetupKeyboard() {
-        super.viewWillSetupKeyboard()
+        guard !didSetupKeyboard else { return }
+        didSetupKeyboard = true
 
         /// 💡 Make the demo use a standard ``SystemKeyboard``.
         setup { controller in
             SystemKeyboard(
                 state: controller.state,
                 services: controller.services,
-                buttonContent: { $0.view },
+                renderBackground: true,
+                buttonContent: { params in
+                    if params.item.action == .space {
+                        SpaceBarLabel(languageCode: "QT")
+                    } else {
+                        params.view
+                    }
+                },
                 buttonView: { $0.view },
                 emojiKeyboard: { $0.view },
-                toolbar: { $0.view }
+                toolbar: { params in
+                    params.view
+                        .autocompleteToolbarStyle(.native(for: controller.state.keyboardContext))
+                }
             )
-            // .autocorrectionDisabled()
         }
     }
 }

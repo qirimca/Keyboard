@@ -8,6 +8,9 @@
 
 #if os(iOS) || os(tvOS) || os(visionOS)
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 extension KeyboardInputViewController {
     
@@ -37,6 +40,12 @@ extension KeyboardInputViewController {
         #endif
     }
 
+    /// Sync the input view chrome with the standard keyboard appearance.
+    func syncKeyboardChromeAppearance() {
+        view.backgroundColor = .clear
+        inputView?.backgroundColor = .clear
+    }
+    
     /// Setup locale observation to handle locale changes.
     func setupLocaleObservation() {
         state.keyboardContext.$locale.sink { [weak self] in

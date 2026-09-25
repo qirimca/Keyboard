@@ -50,7 +50,7 @@ open class iPhoneKeyboardLayoutProvider: BaseKeyboardLayoutProvider {
         case .backspace: lowerSystemButtonWidth(for: context)
         case .keyboardType: bottomSystemButtonWidth(for: context)
         case .nextKeyboard: bottomSystemButtonWidth(for: context)
-        case .primary: .percentage(isPortrait(context) ? 0.25 : 0.195)
+        case .primary: .percentage(isPortrait(context) ? 0.235 : 0.195)
         case .shift: lowerSystemButtonWidth(for: context)
         default: .available
         }
@@ -126,8 +126,7 @@ open class iPhoneKeyboardLayoutProvider: BaseKeyboardLayoutProvider {
     open func lowerSystemButtonWidth(
         for context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
-        if context.isAlphabetic(.tatar) { return .input }
-        return .input // percentage(0.13)
+        .inputPercentage(1.45)
     }
 
     /// The actions to add to the bottom system row.
@@ -161,7 +160,7 @@ open class iPhoneKeyboardLayoutProvider: BaseKeyboardLayoutProvider {
     open func bottomSystemButtonWidth(
         for context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
-        .percentage(isPortrait(context) ? 0.123 : 0.095)
+        .percentage(isPortrait(context) ? 0.118 : 0.095)
     }
 
     /// Whether to add margins to the middle row.
