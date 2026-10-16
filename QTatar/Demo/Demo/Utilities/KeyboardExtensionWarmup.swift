@@ -7,38 +7,16 @@
 
 import SwiftUI
 
-/// Triggers a one-time keyboard extension launch to pay the cold-start cost early.
+/// Keeps the keyboard extension process warm without prematurely resigning first responder.
 enum KeyboardExtensionWarmup {
     
-    private static let storageKey = "crh.key.didWarmKeyboardExtension"
-    
-    static var didWarm: Bool {
-        UserDefaults.standard.bool(forKey: storageKey)
-    }
-    
-    static func markWarm() {
-        UserDefaults.standard.set(true, forKey: storageKey)
-    }
-    
-    /// Briefly focuses the writing field once so iOS loads the keyboard extension.
     static func scheduleIfNeeded(
         isKeyboardEnabled: Bool,
         focus: @escaping (Bool) -> Void
     ) {
-        guard !didWarm, isKeyboardEnabled else { return }
-        markWarm()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            focus(true)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                focus(false)
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder),
-                    to: nil,
-                    from: nil,
-                    for: nil
-                )
-            }
-        }
+        // HomeView focuses the SandboxTextView directly on appear;
+        // we must NEVER call resignFirstResponder() after 0.2s because doing so interrupts
+        // iOS while the KeyboardExtension XPC connection is launching, causing iOS to fall back
+        // to the English system keyboard on the first try.
     }
 }

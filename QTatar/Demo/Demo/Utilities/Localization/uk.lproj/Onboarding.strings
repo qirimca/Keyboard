@@ -1,0 +1,34 @@
+/* (No Comment) */
+"onb_back_key" = "Назад";
+
+/* (No Comment) */
+"onb_check_key" = "Спробуйте клавіатуру";
+
+/* (No Comment) */
+"onb_finish_key" = "Завершити";
+
+/* (No Comment) */
+"onb_next_key" = "Далі";
+
+/* Onboarding.strings
+  QTatar
+
+  Created by Mustafa Bekirov on 01.02.2025.
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"onb_onb1_key" = "Дозвольте повний доступ: Параметри > Програми > QırımKey > Клавіатури > Дозволити повний доступ";
+
+/* (No Comment) */
+"onb_onb2_key" = "Додайте клавіатуру: Параметри > Загальні > Клавіатури > Додати нову клавіатуру > Оберіть кримськотатарську клавіатуру";
+
+/* (No Comment) */
+"onb_onb3_key" = "Оберіть клавіатуру під час введення: Торкніться 🌐 або натисніть і утримуйте, а потім оберіть кримськотатарську зі списку";
+
+/* (No Comment) */
+"onb_onb4_key" = "Почніть вводити текст: Користуйтеся тактильним відгуком, T9 та іншими можливостями QırımKey";
+
+/* (No Comment) */
+"onb_open_key" = "Відкрити параметри";
+
+/* (No Comment) */
+"onb_settings_key" = "Параметри клавіатури";
+

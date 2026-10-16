@@ -23,7 +23,7 @@ enum Home: String {
     case home_start_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "Home", comment: "")
+        NSLocalizedString(self.rawValue, tableName: "Home", bundle: KeyboardPreferences.interfaceBundle, comment: "")
     }
 }
 
@@ -45,7 +45,7 @@ enum About: String {
     case about_rights_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "About", comment: "")
+        NSLocalizedString(self.rawValue, tableName: "About", bundle: KeyboardPreferences.interfaceBundle, comment: "")
     }
 }
 
@@ -62,6 +62,6 @@ enum Onboarding: String {
     case onb_settings_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "Onboarding", comment: "")
+        NSLocalizedString(self.rawValue, tableName: "Onboarding", bundle: KeyboardPreferences.interfaceBundle, comment: "")
     }
 }

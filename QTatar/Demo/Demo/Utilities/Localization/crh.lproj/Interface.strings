@@ -1,0 +1,16 @@
+/* Interface labels and keyboard preferences. */
+"field.standard" = "Yazı";
+"field.search" = "Qıdırıw";
+"field.email" = "E-poçta";
+"field.url" = "Veb";
+"field.numbers" = "Raqamlar";
+"theme.modernLight" = "iOS 26 · Aydınlıq";
+"theme.classicLight" = "Klassik · Aydınlıq";
+"theme.modernDark" = "iOS 26 · Qaranlıq";
+"theme.classicDark" = "Klassik · Qaranlıq";
+"settings.title" = "Sazlamalar";
+"settings.language" = "İnterfeys tili";
+"settings.cyrillic" = "Kiril klaviaturası";
+"settings.suggestions" = "Söz teklifleri";
+"settings.done" = "Azır";
+"settings.keyboardHelp" = "Kiril klaviaturası metinni latin ariflerinen kirsete. Globus tuşunen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçenekni söndürmek kirilnen kirsetüvni söndüre; onı iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortak sazlamalar içün tam erişim kerek.";

@@ -8,8 +8,13 @@
 
 import SwiftUI
 
+#if compiler(>=6.0)
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension SubmitLabel: @retroactive CaseIterable {}
+#else
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 extension SubmitLabel: CaseIterable {}
+#endif
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 public extension SubmitLabel {

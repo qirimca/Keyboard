@@ -1,23 +1,49 @@
-/* 
-  About.strings
+/* (No Comment) */
+"about_description_key" = "QırımKey is the first Crimean Tatar keyboard for iOS. Created by volunteers, this project makes writing in Crimean Tatar easy and accessible to everyone.";
+
+/* (No Comment) */
+"about_feedback_key" = "Feedback";
+
+/* (No Comment) */
+"about_first_key" = "QırımKey\nThe First Crimean Tatar Keyboard";
+
+/* (No Comment) */
+"about_init_key" = "Initiatives";
+
+/* (No Comment) */
+"about_join_key" = "Join the community on social media!";
+
+/* (No Comment) */
+"about_language_description_key" = "Try powerful writing assistance for Crimean Tatar and more than 30 other languages. Correct mistakes, improve your style, and communicate clearly with this smart writing assistant.";
+
+/* (No Comment) */
+"about_language_title_key" = "LanguageTool for iOS";
+
+/* (No Comment) */
+"about_more_key" = "Learn More";
+
+/* (No Comment) */
+"about_rate_key" = "Rate the App";
+
+/* (No Comment) */
+"about_rights_key" = "Copyright © 2025 QIRI’M Young\nAll rights reserved";
+
+/* (No Comment) */
+"about_send_key" = "Support the Project";
+
+/* (No Comment) */
+"about_share_key" = "Share";
+
+/* (No Comment) */
+"about_spell_description_key" = "Take your Crimean Tatar writing to the next level! This tool helps find and correct spelling and grammar mistakes in Crimean Tatar, making it easier to write confidently in your native language.";
+
+/* (No Comment) */
+"about_spell_title_key" = "Crimean Tatar Spell Checker";
+
+/* About.strings
   QTatar
 
   Created by Mustafa Bekirov on 01.02.2025.
-  Copyright © 2025 Daniel Saidi. All rights reserved.
-*/
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"about_title_key" = "About";
 
-"about_title_key" = "Aqqında";
-"about_first_key" = "QırımKey\nİlk Qırımtatar Klaviaturası";
-"about_description_key" = "QırımKey - bu iOS içün ilk qırımtatar tili klaviaturasıdır. Gönülliler tarafından becerilgen bu proyekt qırımtatarca yazmaqnı episine qolay ve irişimli yapmaq içün yasaldı";
-"about_init_key" = "Teşebbüslerimiz";
-"about_spell_title_key" = "Qırımtatar imlâ teşkergici";
-"about_spell_description_key" = "Qırımtatarca yazuvuñıznı yañı seviyege köteriñiz! Bu alet qırımtatar tili içün imlâ ve grammatika meselelerni tapıp tüzetmege yardım ete, ana tiliñizde işançlı yazmaqnı qolaylaştıra.";
-"about_language_title_key" = "iOS içün Til Aleti";
-"about_language_description_key" = "Qırımtatar tili ve diger 30-dan ziyade til içün küçlü yazuv yardımını siñap baqıñız. Bu aqıllı yazuv yardımcısınen hatalarnı tüzetiñiz, üslübiñizni yahşılaştırıñız ve açıq-aydın iletişimni quruñız.";
-"about_join_key" = "Sosyal ağlarımızğa qoşulıñız!";
-"about_feedback_key" = "Fikirler";
-"about_rate_key" = "Qıymet kesiñiz";
-"about_share_key" = "Paylaşıñız";
-"about_send_key" = "Qoltutuñız";
-"about_more_key" = "Daa kösteriñiz";
-"about_rights_key" = "Müelliflik aqqı © 2025 QIRI’M Young\nAqqları saqlanğandır";

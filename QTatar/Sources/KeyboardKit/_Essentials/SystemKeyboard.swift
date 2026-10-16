@@ -203,8 +203,7 @@ public struct SystemKeyboard<
             .opacity(shouldShowEmojiKeyboard ? 0 : 1)
             .overlay(emojiKeyboard(), alignment: .bottom)
             .foregroundColor(styleProvider.foregroundColor)
-            .background(keyboardChromeBackground)
-            .clipShape(RoundedRectangle(cornerRadius: keyboardContext.isKeyboardFloating ? 14 : 0, style: .continuous))
+            .background(renderBackground ? styleProvider.backgroundStyle : nil)
             .keyboardCalloutContainer(
                 calloutContext: calloutContext,
                 keyboardContext: keyboardContext
@@ -219,12 +218,7 @@ private extension SystemKeyboard {
     @ViewBuilder
     var keyboardChromeBackground: some View {
         if renderBackground {
-            if keyboardContext.isKeyboardFloating {
-                Color.clear
-            } else {
-                Keyboard.ChromeBackground(isDark: keyboardContext.hasDarkColorScheme)
-                    .ignoresSafeArea()
-            }
+            Color.clear
         }
     }
     
@@ -239,12 +233,13 @@ private extension SystemKeyboard {
 private extension SystemKeyboard {
     
     var geoContent: some View {
-        bodyContent(
-            for: .init(width: 100, height: 0)
-        )
-        .disabled(true)
-        .opacity(0)
-        .overlay(GeometryReader(content: bodyContent))
+        let insets = styleProvider.keyboardEdgeInsets
+        let height = layout.itemRows.indices.reduce(CGFloat.zero) { $0 + rowHeight(forRowAt: $1) }
+            + insets.top + insets.bottom + toolbarHeight()
+        return GeometryReader { geometry in
+            bodyContent(for: geometry.size)
+        }
+        .frame(height: height)
     }
     
     func bodyContent(for geo: GeometryProxy) -> some View {
@@ -254,9 +249,10 @@ private extension SystemKeyboard {
     func bodyContent(for size: CGSize) -> some View {
         VStack(spacing: 0) {
             toolbar()
+                .frame(width: size.width)
             systemKeyboard(for: size)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         .clipShape(RoundedRectangle(cornerRadius: keyboardContext.isKeyboardFloating ? 13 : 0, style: .continuous))
     }
     
@@ -267,18 +263,23 @@ private extension SystemKeyboard {
     func systemKeyboard(
         for size: CGSize
     ) -> some View {
-        VStack(spacing: 0) {
+        let insets = styleProvider.keyboardEdgeInsets
+        let adjustedSize = CGSize(
+            width: max(0, size.width - insets.leading - insets.trailing),
+            height: max(0, size.height - insets.top - insets.bottom)
+        )
+        return VStack(spacing: 0) {
             ForEach(Array(layout.itemRows.enumerated()), id: \.offset) { row in
                 let rowHeight = rowHeight(forRowAt: row.offset)
                 items(
-                    for: size,
+                    for: adjustedSize,
                     layout: layout,
                     itemRow: row.element,
                     rowHeight: rowHeight
                 )
             }
         }
-        .padding(styleProvider.keyboardEdgeInsets)
+        .padding(insets)
         .environment(\.layoutDirection, .leftToRight)
     }
     
@@ -354,17 +355,19 @@ private extension SystemKeyboard {
         ))
     }
     
+    @ViewBuilder
     func emojiKeyboard() -> some View {
-        emojiKeyboardBuilder((
-            style: EmojiKeyboardStyle.standard(for: keyboardContext),
-            view: Emoji.KeyboardWrapper(
-                actionHandler: actionHandler,
-                keyboardContext: keyboardContext,
-                calloutContext: calloutContext,
-                styleProvider: styleProvider
-            )
-        ))
-        .opacity(shouldShowEmojiKeyboard ? 1 : 0)
+        if shouldShowEmojiKeyboard {
+            emojiKeyboardBuilder((
+                style: EmojiKeyboardStyle.standard(for: keyboardContext),
+                view: Emoji.KeyboardWrapper(
+                    actionHandler: actionHandler,
+                    keyboardContext: keyboardContext,
+                    calloutContext: calloutContext,
+                    styleProvider: styleProvider
+                )
+            ))
+        }
     }
     
     func toolbar() -> some View {
@@ -381,89 +384,3 @@ private extension SystemKeyboard {
         .frame(height: toolbarHeight())
     }
 }
-
-
-#if os(iOS) || os(tvOS) || os(visionOS)
-/**
- `IMPORTANT` In previews, you must provide a custom width to
- get buttons to show up, since there is no shared controller.
- */
-#Preview {
-
-    struct Preview: View {
-
-        var controller: KeyboardInputViewController = {
-            let controller = KeyboardInputViewController.preview
-            controller.state.autocompleteContext.suggestions = [
-                .init(text: "Foo"),
-                .init(text: "Bar", isAutocorrect: true),
-                .init(text: "Baz")
-            ]
-            // controller.services.styleProvider = .crazy
-            // controller.keyboardContext.keyboardType = .emojis
-            return controller
-        }()
-        
-        var emojiKeyboard: some View {
-            Button {
-                controller.state.keyboardContext.keyboardType = .alphabetic(.lowercased)
-            } label: {
-                Color.red
-                    .overlay(Text("Not implemented"))
-            }
-        }
-        
-        var keyboard: some View {
-            SystemKeyboard(
-                state: controller.state,
-                services: controller.services,
-                buttonContent: { $0.view },
-                buttonView: { $0.view },
-                emojiKeyboard: { $0.view },
-                toolbar: { $0.view }
-            )
-        }
-
-        var body: some View {
-            VStack(spacing: 10) {
-                Group {
-                    ZStack {
-                        keyboard.offset(x: -200)
-                        keyboard.offset(x: 200)
-                    }
-                    
-                    keyboard.frame(width: 250)
-                    
-                    SystemKeyboard(
-                        state: controller.state,
-                        services: controller.services,
-                        buttonContent: { param in
-                            switch param.item.action {
-                            case .backspace:
-                                Image(systemName: "trash").foregroundColor(Color.red)
-                            default: param.view
-                            }
-                        },
-                        buttonView: { param in
-                            switch param.item.action {
-                            case .space:
-                                Text("This is a space bar replacement")
-                                    .frame(maxWidth: .infinity)
-                                    .multilineTextAlignment(.center)
-                            default: param.view
-                            }
-                        },
-                        emojiKeyboard: { _ in
-                            emojiKeyboard
-                        },
-                        toolbar: { $0.view }
-                    ).offset(CGSize(width: -6.0, height: 00.0))
-                }
-                .background(Color.keyboardBackground)
-            }
-        }
-    }
-
-    return Preview()
-}
-#endif

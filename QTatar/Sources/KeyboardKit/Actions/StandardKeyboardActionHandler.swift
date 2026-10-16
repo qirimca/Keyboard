@@ -275,7 +275,9 @@ open class StandardKeyboardActionHandler: NSObject, KeyboardActionHandler {
         if isSpaceCursorDrag(action) { return }
         if keyboardContext.isCursorAtNewWord { return }
         guard gesture == .release else { return }
+        #if os(iOS) || os(tvOS) || os(visionOS)
         guard keyboardContext.textDocumentProxy.isCursorAtTheEndOfTheCurrentWord else { return } // autocomplete should works only in the end of current text
+        #endif
         guard action.shouldApplyAutocorrectSuggestion else { return }
         let suggestions = autocompleteContext.suggestions
         let autocorrect = suggestions.first { $0.isAutocorrect }

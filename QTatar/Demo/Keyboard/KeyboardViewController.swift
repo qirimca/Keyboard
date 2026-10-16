@@ -39,6 +39,26 @@ class KeyboardViewController: KeyboardInputViewController {
 
     private var didSetupKeyboard = false
     private var cancellables = Set<AnyCancellable>()
+    
+    /// Tracks system menu appearance (long-press on globe) vs quick in-place cycling
+    private var isCyrillicExtension: Bool { Bundle.main.bundleIdentifier == AppConfiguration.cyrillicKeyboardBundleId }
+
+    func toggleScript() {
+        guard KeyboardPreferences.cyrillicEnabled else { return }
+        let isCyrillic = state.keyboardContext.locale.identifier.contains("Cyrl")
+        state.keyboardContext.locale = Locale(identifier: isCyrillic ? "crh-Latn" : "crh-Cyrl")
+        SpaceBarState.shared.triggerSwitchAnimation()
+    }
+
+    private func applyPreferences() {
+        state.autocompleteContext.isAutocompleteEnabled = KeyboardPreferences.suggestionsEnabled
+        state.autocompleteContext.isAutocorrectEnabled = KeyboardPreferences.suggestionsEnabled
+        if !KeyboardPreferences.suggestionsEnabled { state.autocompleteContext.suggestions = [] }
+        if !KeyboardPreferences.cyrillicEnabled {
+            state.keyboardContext.locale = Locale(identifier: "crh-Latn")
+        }
+        state.keyboardContext.objectWillChange.send()
+    }
 
     /// This function is called when the controller loads.
     ///
@@ -82,7 +102,8 @@ class KeyboardViewController: KeyboardInputViewController {
         
 
         /// 💡 Setup a custom keyboard locale.
-        state.keyboardContext.setLocale(.tatar)
+        state.keyboardContext.locale = Locale(identifier: isCyrillicExtension && KeyboardPreferences.cyrillicEnabled ? "crh-Cyrl" : "crh-Latn")
+        state.keyboardContext.syncTextDocumentProxy(with: self)
         state.keyboardContext.keyboardType = state.keyboardContext.preferredKeyboardType
         state.autocompleteContext.isAutocompleteEnabled = true
         state.autocompleteContext.isAutocorrectEnabled = true
@@ -96,6 +117,7 @@ class KeyboardViewController: KeyboardInputViewController {
         
         /// 💡 Configure space long press behavior.
         state.keyboardContext.spaceLongPressBehavior = .moveInputCursor
+        services.spaceDragGestureHandler.verticalThreshold = 1000
         
         /// 💡 Enable key preview balloon popup on key tap
         state.calloutContext.inputContext.isEnabled = true
@@ -119,20 +141,63 @@ class KeyboardViewController: KeyboardInputViewController {
             }
             .store(in: &cancellables)
         
+        /// Observe text changes to update primary action (Search/Go) enabled state and autocomplete suggestions
+        NotificationCenter.default.publisher(for: UITextField.textDidChangeNotification)
+            .sink { [weak self] _ in
+                self?.view.setNeedsLayout()
+            }
+            .store(in: &cancellables)
+        
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
-        setupKeyboardEarlyIfNeeded()
+        applyPreferences()
+        viewWillSetupKeyboard()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         self.hasDictationKey = true
         view.backgroundColor = .clear
+        state.keyboardContext.syncTextDocumentProxy(with: self)
+        state.keyboardContext.hasChosenLettersInNumericField = false // new input session
+        syncPreferredKeyboardTypeWithProxy()
+        
+        applyPreferences()
+        (services.actionHandler as? DemoActionHandler)?.resetComposition()
+        TextHistoryManager.shared.reset()
+        // UIKit does not expose the incoming globe gesture; opening a field must not flash a name.
+        SpaceBarState.shared.resetToResting()
     }
     
-    private func setupKeyboardEarlyIfNeeded() {
-        guard !didSetupKeyboard else { return }
-        viewWillSetupKeyboard()
+    override func textWillChange(_ textInput: UITextInput?) {
+        super.textWillChange(textInput)
+        state.keyboardContext.syncTextDocumentProxy(with: self)
+    }
+    
+    override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput)
+        state.keyboardContext.syncTextDocumentProxy(with: self)
+        syncPreferredKeyboardTypeWithProxy()
+        // Force SwiftUI to re-evaluate layout & styles when textDocumentProxy traits or text change
+        state.keyboardContext.objectWillChange.send()
+    }
+    
+    /// Ensures that if the text field requests a numeric keyboard, the keyboard opens on `.numeric`.
+    /// `.numbersAndPunctuation` fields have a real ABC key: once the user taps it
+    /// (`hasChosenLettersInNumericField`), the letters page must stay until the next input session.
+    /// Pure number pads have no letter page, so they always stay numeric.
+    private func syncPreferredKeyboardTypeWithProxy() {
+        let context = state.keyboardContext
+        switch textDocumentProxy.keyboardType ?? .default {
+        case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad:
+            if context.keyboardType.isAlphabetic { setKeyboardType(.numeric) }
+        case .numbersAndPunctuation:
+            if context.keyboardType.isAlphabetic && !context.hasChosenLettersInNumericField {
+                setKeyboardType(.numeric)
+            }
+        default:
+            context.keyboardType = context.preferredKeyboardType
+        }
     }
     
     override var autocompleteText: String? {
@@ -141,6 +206,8 @@ class KeyboardViewController: KeyboardInputViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        state.keyboardContext.syncTextDocumentProxy(with: self)
+        syncPreferredKeyboardTypeWithProxy()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
         if hasText {
             performAutocomplete()
@@ -172,10 +239,13 @@ class KeyboardViewController: KeyboardInputViewController {
             SystemKeyboard(
                 state: controller.state,
                 services: controller.services,
-                renderBackground: true,
+                renderBackground: false,
                 buttonContent: { params in
                     if params.item.action == .space {
-                        SpaceBarLabel(languageCode: "QT")
+                        SpaceBarLabel(
+                            fullName: "Qırımtatarca",
+                            languageCode: "QT"
+                        )
                     } else {
                         params.view
                     }
@@ -183,8 +253,13 @@ class KeyboardViewController: KeyboardInputViewController {
                 buttonView: { $0.view },
                 emojiKeyboard: { $0.view },
                 toolbar: { params in
-                    params.view
-                        .autocompleteToolbarStyle(.native(for: controller.state.keyboardContext))
+                    if controller.state.autocompleteContext.isAutocompleteEnabled {
+                        NativeAutocompleteToolbar(
+                        autocompleteContext: controller.state.autocompleteContext,
+                        keyboardContext: controller.state.keyboardContext,
+                        autocompleteAction: params.autocompleteAction
+                        )
+                    }
                 }
             )
         }

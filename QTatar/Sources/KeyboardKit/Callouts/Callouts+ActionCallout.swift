@@ -219,6 +219,7 @@ private extension KeyboardAction {
         tapAction: { _ in }
     )
 
+    @MainActor
     func previewGroup<ButtonView: View>(
         view: ButtonView,
         actionContext: CalloutContext.ActionContext,

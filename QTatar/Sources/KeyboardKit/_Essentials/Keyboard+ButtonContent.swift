@@ -109,6 +109,7 @@ private extension Keyboard.ButtonContent {
         return context
     }()
     
+    @MainActor
     func preview(
         for action: KeyboardAction,
         multiLocale: Bool = false
