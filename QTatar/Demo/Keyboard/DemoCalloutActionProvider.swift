@@ -9,6 +9,9 @@
 import KeyboardKit
 
 /// Long-press pairs for the official Crimean Tatar Latin alphabet.
+/// Returns only the specific additional letter (no redundant original letter).
+/// Letters that have dedicated physical keys on the keyboard (â, ñ, ç, ş, ğ, ö, ü, ı, i)
+/// have no long-press callout.
 class DemoCalloutActionProvider: BaseCalloutActionProvider {
     
     override func calloutActions(
@@ -21,41 +24,36 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
 
 private extension DemoCalloutActionProvider {
     
-    /// Only official Crimean Tatar letter pairs — no extra diacritics.
+    /// Proposes only the single additional letter.
     static func alternatives(for char: String) -> [String]? {
         switch char {
-        case "a": return ["a", "â"]
-        case "A": return ["A", "Â"]
-        case "â": return ["â", "a"]
-        case "Â": return ["Â", "A"]
-        case "c": return ["c", "ç"]
-        case "C": return ["C", "Ç"]
-        case "ç": return ["ç", "c"]
-        case "Ç": return ["Ç", "C"]
-        case "g": return ["g", "ğ"]
-        case "G": return ["G", "Ğ"]
-        case "ğ": return ["ğ", "g"]
-        case "Ğ": return ["Ğ", "G"]
-        case "ı": return ["ı", "I"]
-        case "I": return ["I", "ı"]
-        case "i": return ["i", "İ"]
-        case "İ": return ["İ", "i"]
-        case "n": return ["n", "ñ"]
-        case "N": return ["N", "Ñ"]
-        case "ñ": return ["ñ", "n"]
-        case "Ñ": return ["Ñ", "N"]
-        case "o": return ["o", "ö"]
-        case "O": return ["O", "Ö"]
-        case "ö": return ["ö", "o"]
-        case "Ö": return ["Ö", "O"]
-        case "s": return ["s", "ş"]
-        case "S": return ["S", "Ş"]
-        case "ş": return ["ş", "s"]
-        case "Ş": return ["Ş", "S"]
-        case "u": return ["u", "ü"]
-        case "U": return ["U", "Ü"]
-        case "ü": return ["ü", "u"]
-        case "Ü": return ["Ü", "U"]
+        case "г": return ["гъ"]
+        case "Г": return ["Гъ"]
+        case "к": return ["къ"]
+        case "К": return ["Къ"]
+        case "н": return ["нъ"]
+        case "Н": return ["Нъ"]
+        case "д": return ["дж"]
+        case "Д": return ["Дж"]
+        case "е": return ["ё"]
+        case "Е": return ["Ё"]
+        case "a": return ["â"]
+        case "A": return ["Â"]
+        case "c": return ["ç"]
+        case "C": return ["Ç"]
+        case "g": return ["ğ"]
+        case "G": return ["Ğ"]
+        case "n": return ["ñ"]
+        case "N": return ["Ñ"]
+        case "o": return ["ö"]
+        case "O": return ["Ö"]
+        case "s": return ["ş"]
+        case "S": return ["Ş"]
+        case "u": return ["ü"]
+        case "U": return ["Ü"]
+        case ",": return ["."]
+        case ".": return [","]
+        // All letters with dedicated keys (â, ñ, ç, ş, ğ, ö, ü, ı, i) have no long press
         default: return nil
         }
     }

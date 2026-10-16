@@ -1,0 +1,40 @@
+/* Home.strings
+  QTatar
+
+  Created by Mustafa Bekirov on 01.02.2025.
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"home_crimea_key" = "Кримськотатарська клавіатура — для вас, разом із вами";
+
+/* (No Comment) */
+"home_full_off_key" = "Повний доступ вимкнено";
+
+/* (No Comment) */
+"home_full_on_key" = "Повний доступ увімкнено";
+
+/* (No Comment) */
+"home_getkeyboard_key" = "Під час введення торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку.";
+
+/* (No Comment) */
+"home_keyboard_hidden_key" = "Клавіатуру приховано";
+
+/* (No Comment) */
+"home_keyboard_off_key" = "Клавіатуру не підключено";
+
+/* (No Comment) */
+"home_keyboard_on_key" = "Клавіатуру підключено";
+
+/* (No Comment) */
+"home_keyboard_visible_key" = "Клавіатуру показано";
+
+/* (No Comment) */
+"home_ok_key" = "OK";
+
+/* (No Comment) */
+"home_start_key" = "Почати";
+
+/* (No Comment) */
+"home_typing_key" = "Напишіть щось…";
+
+/* (No Comment) */
+"home_writearea_key" = "Поле введення";
+

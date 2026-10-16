@@ -18,6 +18,7 @@ import SwiftUI
 @main
 struct DemoApp: App {
     
+    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var interfaceLanguage = "crh"
     @State private var navigationPath = NavigationPath()
     
     var body: some Scene {
@@ -33,6 +34,8 @@ struct DemoApp: App {
                         }
                     }
             }
+            .environment(\.locale, Locale(identifier: interfaceLanguage))
+            .id(interfaceLanguage)
         }
     }
 }

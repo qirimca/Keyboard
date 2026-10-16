@@ -1,18 +1,34 @@
-/* 
-  Onboarding.strings
+/* (No Comment) */
+"onb_back_key" = "Back";
+
+/* (No Comment) */
+"onb_check_key" = "Try the Keyboard";
+
+/* (No Comment) */
+"onb_finish_key" = "Finish";
+
+/* (No Comment) */
+"onb_next_key" = "Next";
+
+/* Onboarding.strings
   QTatar
 
   Created by Mustafa Bekirov on 01.02.2025.
-  Copyright © 2025 Daniel Saidi. All rights reserved.
-*/
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"onb_onb1_key" = "Allow Full Access: Settings > Apps > QırımKey > Keyboards > Allow Full Access";
 
-"onb_onb1_key" = "Tam irişimni bermek: Sazlamalar > İlaveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz";
-"onb_onb2_key" = "Klaviaturanı qoşmaq: Sazlamalar > Umumiy > Klaviaturalar > Yañı Klaviatura qoşmaq > Qırımtatar Klaviaturasını saylañız";
-"onb_onb3_key" = "Yazğanda klaviaturanı saylamaq: 🌐 işaretke basıñız (ya da devamlı basıñız) ve cedvelden Qırımtatarcanı saylañız";
-"onb_onb4_key" = "Qullanmağa başlañız: QırımKey'niñ titreme bildirüvi ve t9 kibi imkânlarından faydalanıñız";
-"onb_open_key" = "Sazlamalarnı açıñız";
-"onb_check_key" = "Klaviaturanı teşkeriñiz";
-"onb_back_key" = "Keri qaytıñız";
-"onb_next_key" = "İleri ketiñiz";
-"onb_finish_key" = "Bitiriñiz";
-"onb_settings_key" = "Klaviatura sazlamaları";
+/* (No Comment) */
+"onb_onb2_key" = "Add the Keyboard: Settings > General > Keyboards > Add New Keyboard > Select the Crimean Tatar keyboard";
+
+/* (No Comment) */
+"onb_onb3_key" = "Choose the Keyboard While Typing: Tap or touch and hold 🌐, then choose Crimean Tatar from the list";
+
+/* (No Comment) */
+"onb_onb4_key" = "Start Typing: Enjoy QırımKey features such as haptic feedback and T9";
+
+/* (No Comment) */
+"onb_open_key" = "Open Settings";
+
+/* (No Comment) */
+"onb_settings_key" = "Keyboard Settings";
+

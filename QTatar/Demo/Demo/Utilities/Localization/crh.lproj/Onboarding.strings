@@ -1,0 +1,34 @@
+/* (No Comment) */
+"onb_back_key" = "Keri qaytıñız";
+
+/* (No Comment) */
+"onb_check_key" = "Klaviaturanı teşkeriñiz";
+
+/* (No Comment) */
+"onb_finish_key" = "Bitiriñiz";
+
+/* (No Comment) */
+"onb_next_key" = "İleri ketiñiz";
+
+/* Onboarding.strings
+  QTatar
+
+  Created by Mustafa Bekirov on 01.02.2025.
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"onb_onb1_key" = "Tam irişimni bermek: Sazlamalar > İlaveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz";
+
+/* (No Comment) */
+"onb_onb2_key" = "Klaviaturanı qoşmaq: Sazlamalar > Umumiy > Klaviaturalar > Yañı Klaviatura qoşmaq > Qırımtatar Klaviaturasını saylañız";
+
+/* (No Comment) */
+"onb_onb3_key" = "Yazğanda klaviaturanı saylamaq: 🌐 işaretke basıñız (ya da devamlı basıñız) ve cedvelden Qırımtatarcanı saylañız";
+
+/* (No Comment) */
+"onb_onb4_key" = "Qullanmağa başlañız: QırımKey'niñ titreme bildirüvi ve t9 kibi imkânlarından faydalanıñız";
+
+/* (No Comment) */
+"onb_open_key" = "Sazlamalarnı açıñız";
+
+/* (No Comment) */
+"onb_settings_key" = "Klaviatura sazlamaları";
+

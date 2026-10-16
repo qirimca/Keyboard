@@ -60,3 +60,16 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Archive & Local logs
+Archive/
+*.log
+
+# Local AI assistant chat exports (private, ~150 MB)
+QTatar/Demo/ШІ/

@@ -126,6 +126,10 @@ public class KeyboardContext: ObservableObject {
     /// The space long press behavior to use.
     @Published
     public var spaceLongPressBehavior = Gestures.SpaceLongPressBehavior.moveInputCursor
+
+    /// Set when the user taps the ABC key inside a `.numbersAndPunctuation` field. Until the next input session
+    /// the preferred keyboard type no longer forces the numeric page back.
+    public var hasChosenLettersInNumericField = false
     
     
     #if os(iOS) || os(tvOS) || os(visionOS)
@@ -286,9 +290,7 @@ public extension KeyboardContext {
     /// Sync the ``originalTextDocumentProxy``.
     func syncTextDocumentProxy(with controller: KeyboardInputViewController) {
         if originalTextDocumentProxy === controller.originalTextDocumentProxy { return }
-        DispatchQueue.main.async {
-            self.originalTextDocumentProxy = controller.originalTextDocumentProxy
-        }
+        originalTextDocumentProxy = controller.originalTextDocumentProxy
     }
     
     /// Sync the ``textInputProxy``.
@@ -353,6 +355,9 @@ extension KeyboardContext {
 
     func syncAfterLayout(with controller: KeyboardInputViewController) {
         syncIsFloating(with: controller)
+        if needsInputModeSwitchKey != controller.needsInputModeSwitchKey {
+            needsInputModeSwitchKey = controller.needsInputModeSwitchKey
+        }
         if controller.orientation == interfaceOrientation { return }
         sync(with: controller)
     }

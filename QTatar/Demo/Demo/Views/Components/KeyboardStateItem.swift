@@ -36,7 +36,11 @@ enum KeyboardState {
     }
     
     var stateSymbol: String {
-        state ? "checkmark.circle.fill" : "xmark.circle.fill"
+        switch self {
+        case .active: return state ? "keyboard.fill" : "keyboard"
+        case .enable: return state ? "checkmark.circle.fill" : "xmark.circle.fill"
+        case .fullAccess: return state ? "lock.open.fill" : "lock.fill"
+        }
     }
 }
 

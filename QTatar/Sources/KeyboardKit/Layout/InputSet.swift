@@ -42,12 +42,12 @@ public extension InputSet {
     static var crimeanTatar: InputSet {
         .init(rows: [
             .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
-            .init(lowercased: "asdfghjklşiñ", uppercased: "ASDFGHJKLŞİÑ"),
+            .init(lowercased: "âasdfghjklşi", uppercased: "ÂASDFGHJKLŞİ"),
             .init(
-                phoneLowercased: "zxcvbnmöçâ",
-                phoneUppercased: "ZXCVBNMÖÇÂ",
-                padLowercased: "zxcvbnmöçâ",
-                padUppercased: "ZXCVBNMÖÇÂ"
+                phoneLowercased: "zxcvbnmöçñ",
+                phoneUppercased: "ZXCVBNMÖÇÑ",
+                padLowercased: "zxcvbnmöçñ,",
+                padUppercased: "ZXCVBNMÖÇÑ,"
             )
         ])
     }

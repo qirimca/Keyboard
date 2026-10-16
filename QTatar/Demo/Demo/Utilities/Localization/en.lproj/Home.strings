@@ -1,20 +1,40 @@
-/* 
-  Home.strings
+/* Home.strings
   QTatar
 
   Created by Mustafa Bekirov on 01.02.2025.
-  Copyright © 2025 Daniel Saidi. All rights reserved.
-*/
+  Copyright © 2025 Daniel Saidi. All rights reserved. */
+"home_crimea_key" = "Crimean Tatar Keyboard — for you, with you";
 
-"home_crimea_key" = "Qırımtatar Klaviaturası — siziñ içün, siznen beraber";
-"home_getkeyboard_key" = "Yazğanda 🌐 işaretini basıñız (ya da devamlı basıñız) ve cedvelden Qırımtatarcanı saylañız";
-"home_keyboard_visible_key" = "Klaviatura peyda oldı";
-"home_keyboard_hidden_key" = "Klaviatura körünmey";
-"home_keyboard_on_key" = "Klaviatura bağlanğan";
-"home_keyboard_off_key" = "Klaviatura bağlanmağan";
-"home_full_on_key" = "Tam erişim faalleştirildi";
-"home_full_off_key" = "Tam irişim berilmedi";
-"home_writearea_key" = "Yazı meydanı";
-"home_typing_key" = "Bir şey yazıñız...";
-"home_ok_key" = "Yahşı";
-"home_start_key" = "Başlañız";
+/* (No Comment) */
+"home_full_off_key" = "Full Access Disabled";
+
+/* (No Comment) */
+"home_full_on_key" = "Full Access Enabled";
+
+/* (No Comment) */
+"home_getkeyboard_key" = "While typing, tap or touch and hold 🌐, then choose Qırımtatarca from the list.";
+
+/* (No Comment) */
+"home_keyboard_hidden_key" = "Keyboard Hidden";
+
+/* (No Comment) */
+"home_keyboard_off_key" = "Keyboard Not Enabled";
+
+/* (No Comment) */
+"home_keyboard_on_key" = "Keyboard Enabled";
+
+/* (No Comment) */
+"home_keyboard_visible_key" = "Keyboard Visible";
+
+/* (No Comment) */
+"home_ok_key" = "OK";
+
+/* (No Comment) */
+"home_start_key" = "Get Started";
+
+/* (No Comment) */
+"home_typing_key" = "Type something…";
+
+/* (No Comment) */
+"home_writearea_key" = "Writing Area";
+

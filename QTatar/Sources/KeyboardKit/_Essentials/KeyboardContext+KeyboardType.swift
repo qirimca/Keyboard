@@ -15,6 +15,22 @@ public extension KeyboardContext {
     /// This value is based on the current keyboard type and
     /// the ``textDocumentProxy`` autocapitalization.
     var preferredKeyboardType: Keyboard.KeyboardType {
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        if let proxyKeyboardType = textDocumentProxy.keyboardType {
+            switch proxyKeyboardType {
+            case .numbersAndPunctuation:
+                if keyboardType.isAlphabetic && !hasChosenLettersInNumericField {
+                    return .numeric
+                }
+            case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad:
+                if keyboardType.isAlphabetic {
+                    return .numeric
+                }
+            default:
+                break
+            }
+        }
+        #endif
         if keyboardType.isAlphabetic(.capsLocked) { return keyboardType }
         if let type = preferredAutocapitalizedKeyboardType { return type }
         if let type = preferredKeyboardTypeAfterAlphaTyping { return type }

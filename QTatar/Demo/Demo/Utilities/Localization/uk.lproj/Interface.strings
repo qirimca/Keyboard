@@ -1,0 +1,16 @@
+/* Interface labels and keyboard preferences. */
+"field.standard" = "Текст";
+"field.search" = "Пошук";
+"field.email" = "Електронна пошта";
+"field.url" = "Веб";
+"field.numbers" = "Цифри";
+"theme.modernLight" = "iOS 26 · Світла";
+"theme.classicLight" = "Класична · Світла";
+"theme.modernDark" = "iOS 26 · Темна";
+"theme.classicDark" = "Класична · Темна";
+"settings.title" = "Параметри";
+"settings.language" = "Мова інтерфейсу";
+"settings.cyrillic" = "Кирилична клавіатура";
+"settings.suggestions" = "Підказки слів";
+"settings.done" = "Готово";
+"settings.keyboardHelp" = "Кирилична клавіатура вводить текст латиницею. Увімкніть обидві клавіатури в Параметрах iOS, щоб перемикатися між ними кнопкою глобуса. Вимкнення цієї опції вимикає кириличне введення; видаліть відповідний запис зі списку системних клавіатур у Параметрах iOS. Для спільних параметрів потрібен повний доступ.";

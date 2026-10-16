@@ -8,58 +8,105 @@
 import KeyboardKit
 import SwiftUI
 
-extension Autocomplete.ToolbarStyle {
+/// A native-style autocomplete toolbar that always renders 3 equal-width slots separated
+/// by 2 vertical dividers (matching native iOS/iPadOS predictive bars) and makes each entire
+/// slot a solid hit-target.
+struct NativeAutocompleteToolbar: View {
     
-    static func native(for context: KeyboardContext) -> Self {
-        let isFloating = context.isKeyboardFloating
-        let height: CGFloat = isFloating ? 34 : (context.deviceType == .pad ? 44 : 42)
-        return Self(
-            height: height,
-            item: .init(
-                titleFont: isFloating ? .subheadline : .system(size: 16, weight: .regular),
-                titleColor: .primary,
-                horizontalPadding: isFloating ? 4 : 10,
-                verticalPadding: isFloating ? 2 : 6,
-                backgroundColor: .clear
-            ),
-            autocorrectItem: .init(
-                titleFont: isFloating ? .subheadline : .system(size: 16, weight: .regular),
-                titleColor: .primary,
-                horizontalPadding: isFloating ? 4 : 12,
-                verticalPadding: isFloating ? 2 : 6,
-                backgroundColor: Color.primary.opacity(0.10),
-                backgroundCornerRadius: 6
-            ),
-            separator: .init(
-                color: Color.secondary.opacity(0.25),
-                width: 0.5,
-                height: isFloating ? 16 : 20
-            )
-        )
+    @ObservedObject var autocompleteContext: AutocompleteContext
+    let keyboardContext: KeyboardContext
+    let autocompleteAction: (Autocomplete.Suggestion) -> Void
+    
+    private var isFloating: Bool {
+        keyboardContext.isKeyboardFloating
     }
     
-    static var native: Self {
-        Self(
+    private var isDockedPad: Bool {
+        keyboardContext.deviceType == .pad && !isFloating
+    }
+    
+    private var height: CGFloat {
+        isFloating ? 34 : (isDockedPad ? 37 : 42)
+    }
+    
+    var body: some View {
+        let suggestions = Array(autocompleteContext.suggestions.prefix(3))
+        let slotCount = 3
+        
+        GeometryReader { geo in
+            let totalWidth = max(geo.size.width, 1)
+            // This toolbar belongs to the extension; the host's assistant is a separate view.
+            let sideInset: CGFloat = 0
+            let centerWidth = max(totalWidth - (sideInset * 2), 1)
+            let slotWidth = max((centerWidth - 1.0) / CGFloat(slotCount), 1)
+            
+            HStack(spacing: 0) {
+                if sideInset > 0 {
+                    Color.clear
+                        .frame(width: sideInset, height: height)
+                }
+                
+                ForEach(0..<slotCount, id: \.self) { index in
+                    let suggestion: Autocomplete.Suggestion? = index < suggestions.count ? suggestions[index] : nil
+                    
+                    ZStack {
+                        // Non-zero alpha fill ensures the entire slot rectangle is a solid hit-target
+                        Color.black.opacity(0.0001)
+                        
+                        if let suggestion {
+                            Text(suggestion.title)
+                                .font(isFloating ? .subheadline : .system(size: 16, weight: suggestion.isAutocorrect ? .semibold : .regular))
+                                .foregroundStyle(Color.primary)
+                                .lineLimit(1)
+                                .padding(.horizontal, isFloating ? 6 : 12)
+                                .padding(.vertical, isFloating ? 3 : 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(suggestion.isAutocorrect ? Color.primary.opacity(0.12) : Color.clear)
+                                )
+                        }
+                    }
+                    .frame(width: slotWidth, height: height)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if let suggestion {
+                            autocompleteAction(suggestion)
+                        }
+                    }
+                    
+                    if index < slotCount - 1 {
+                        Color.secondary.opacity(0.28)
+                            .frame(width: 0.5, height: isFloating ? 16 : 24)
+                    }
+                }
+                
+                if sideInset > 0 {
+                    Color.clear
+                        .frame(width: sideInset, height: height)
+                }
+            }
+            .frame(width: totalWidth, height: height)
+        }
+        .frame(height: height)
+        .frame(maxWidth: .infinity)
+    }
+}
+
+extension Autocomplete.ToolbarStyle {
+    
+    static var nativeClean: Autocomplete.ToolbarStyle {
+        .init(
             height: 42,
             item: .init(
-                titleFont: .system(size: 16, weight: .regular),
+                titleFont: .system(size: 16),
                 titleColor: .primary,
-                horizontalPadding: 10,
-                verticalPadding: 6,
-                backgroundColor: .clear
-            ),
-            autocorrectItem: .init(
-                titleFont: .system(size: 16, weight: .regular),
-                titleColor: .primary,
-                horizontalPadding: 12,
-                verticalPadding: 6,
-                backgroundColor: Color.primary.opacity(0.10),
-                backgroundCornerRadius: 6
+                subtitleFont: .footnote,
+                subtitleColor: .secondary
             ),
             separator: .init(
                 color: Color.secondary.opacity(0.25),
                 width: 0.5,
-                height: 20
+                height: 22
             )
         )
     }
