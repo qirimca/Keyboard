@@ -160,6 +160,7 @@ class KeyboardViewController: KeyboardInputViewController {
         view.backgroundColor = .clear
         state.keyboardContext.syncTextDocumentProxy(with: self)
         state.keyboardContext.hasChosenLettersInNumericField = false // new input session
+        lastDocumentIdentifier = textDocumentProxy.documentIdentifier
         syncPreferredKeyboardTypeWithProxy()
         
         applyPreferences()
@@ -174,9 +175,17 @@ class KeyboardViewController: KeyboardInputViewController {
         state.keyboardContext.syncTextDocumentProxy(with: self)
     }
     
+    /// Identifier of the text field the user last typed in (to detect a field switch without `viewWillAppear`).
+    private var lastDocumentIdentifier: UUID?
+    
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         state.keyboardContext.syncTextDocumentProxy(with: self)
+        let documentID = textDocumentProxy.documentIdentifier
+        if let last = lastDocumentIdentifier, last != documentID {
+            state.keyboardContext.hasChosenLettersInNumericField = false // another field: start from its own default page
+        }
+        lastDocumentIdentifier = documentID
         syncPreferredKeyboardTypeWithProxy()
         // Force SwiftUI to re-evaluate layout & styles when textDocumentProxy traits or text change
         state.keyboardContext.objectWillChange.send()
