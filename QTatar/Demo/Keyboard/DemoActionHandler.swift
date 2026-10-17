@@ -139,8 +139,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if keyboardContext.locale.identifier.contains("Cyrl") {
             let proxy = keyboardContext.textDocumentProxy
             if case .character(let character) = action,
-               !character.isEmpty,
-               character.unicodeScalars.allSatisfy({ (0x0400...0x04ff).contains($0.value) }) {
+               !character.isEmpty {
                 if gesture == .release {
                     let context = proxy.selectedText == nil ? proxy.documentContextBeforeInput : nil
                     triggerFeedback(for: gesture, on: action)
@@ -156,6 +155,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     return
                 }
             } else if gesture == .release && action != .backspace && !action.isShiftAction {
+                // Changing pages does not change the document. Keep the original source
+                // across 123/#+=/ABC so reference rules can see digits and hyphens.
+                if case .keyboardType = action {
+                    super.handle(gesture, on: action, replaced: replaced)
+                    return
+                }
                 resetComposition()
             }
         }

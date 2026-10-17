@@ -1,0 +1,8 @@
+{
+  "generatedUTC": "2026-10-17T02:09:02.378586+00:00",
+  "endpoint": "https://ctcorpus.org/index.php?option=com_ajax&module=translit&method=transliterate&format=json",
+  "source": "Keyboard/qırım_tatar.db",
+  "sourceSHA256": "ddd1abd205752812e9d20c1eaf934e1c9da32907ed04b84c2465054aec7ce856",
+  "method": "Top 2500 alphabetic dictionary entries by frequency; server crh-cyrl then server crh-latn; unique Cyrillic inputs. Expected output is server output, not assumed round-trip identity.",
+  "count": 2499
+}

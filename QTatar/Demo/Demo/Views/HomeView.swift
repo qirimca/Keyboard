@@ -75,6 +75,13 @@ enum KeyboardTestThemeMode: String, CaseIterable, Identifiable {
     case classicDark = "theme.classicDark"
     
     var id: String { rawValue }
+
+    var isDark: Bool { self == .dark || self == .classicDark }
+    var isClassic: Bool { self == .googleGray || self == .classicDark }
+
+    static func mode(isDark: Bool, isClassic: Bool) -> Self {
+        isDark ? (isClassic ? .classicDark : .dark) : (isClassic ? .googleGray : .ios26White)
+    }
     
     var icon: String {
         switch self {
@@ -126,6 +133,7 @@ struct HomeView: View {
     
     @State private var showIndicatorSheet = false
     @State private var showSettings = false
+    @State private var viewportSize = CGSize.zero
     @State private var isWritingFieldFocused = false
     @Environment(\.scenePhase) private var scenePhase
     
@@ -141,7 +149,7 @@ struct HomeView: View {
             GeometryReader { geometry in
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
-                        let twoColumns = Self.usesTwoColumns(geometry.size)
+                        let twoColumns = Self.usesTwoColumns(viewportSize) && geometry.size.width >= 700
                         let layout = twoColumns
                             ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
                             : AnyLayout(VStackLayout(spacing: geometry.size.height < 360 ? 8 : 12))
@@ -183,6 +191,16 @@ struct HomeView: View {
                     }
             }
         }
+        .background {
+            // Measure the window before keyboard avoidance; a docked keyboard must not
+            // make a portrait window appear to be landscape.
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { viewportSize = geometry.size }
+                    .onChange(of: geometry.size) { _, size in viewportSize = size }
+            }
+            .ignoresSafeArea(.keyboard)
+        }
         .overlay(alignment: .bottom, content: {
             if !areAllIndicatorsEnabled && !isWritingFieldFocused {
                 PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
@@ -200,6 +218,7 @@ struct HomeView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                    .accessibilityIdentifier("settings.open")
                     .accessibilityLabel(Text("settings.title", tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle))
             }
             ToolbarItem(placement: .principal) {
@@ -264,10 +283,9 @@ struct HomeView: View {
         defaults?.synchronize()
     }
     
-    /// Two columns are used on iPad whenever the area is wide (landscape, or any wide window with an open keyboard),
-    /// so the input field is never covered by the keyboard and the screen is used well.
+    /// Use the full window's orientation, independently of the keyboard's height.
     static func usesTwoColumns(_ size: CGSize) -> Bool {
-        Device.iPad && size.width >= 700 && (size.width > size.height || size.height < 520)
+        Device.iPad && size.width >= 700 && size.width > size.height
     }
 }
 
@@ -375,48 +393,26 @@ private extension HomeView {
                             )
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier(mode.rawValue)
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                     }
                 }
                 .padding(.vertical, 2)
             }
             
-            // Row 2: Color Scheme / System Key Style (Visual color swatches + Crimean Tatar labels)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    Image(systemName: "paintpalette")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.black.opacity(0.75))
-                        .padding(.trailing, 2)
-                    
-                    ForEach(KeyboardTestThemeMode.allCases) { theme in
-                        let isSelected = selectedThemeMode == theme
-                        Button {
-                            selectedThemeMode = theme
-                        } label: {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(theme.swatchColor)
-                                    .frame(width: 12, height: 12)
-                                    .overlay(Circle().stroke(Color.black, lineWidth: 1))
-                                Image(systemName: theme.icon)
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text(LocalizedStringKey(theme.rawValue), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
-                                    .font(.custom("GeneralSans-Medium", size: 12))
-                            }
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
-                            .background(isSelected ? Color.crayola : Color.white)
-                            .foregroundColor(.black)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule().stroke(Color.black, lineWidth: 1.5)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
+            // Appearance and key style are independent choices.
+            HStack(spacing: 8) {
+                themeButton(key: "theme.light", icon: "sun.max.fill", selected: !selectedThemeMode.isDark) {
+                    selectedThemeMode = .mode(isDark: false, isClassic: selectedThemeMode.isClassic)
                 }
-                .padding(.vertical, 2)
+                themeButton(key: "theme.dark", icon: "moon.fill", selected: selectedThemeMode.isDark) {
+                    selectedThemeMode = .mode(isDark: true, isClassic: selectedThemeMode.isClassic)
+                }
             }
+            themeButton(key: "theme.classic", icon: "square.grid.2x2.fill", selected: selectedThemeMode.isClassic) {
+                selectedThemeMode = .mode(isDark: selectedThemeMode.isDark, isClassic: !selectedThemeMode.isClassic)
+            }
+
         }
         .padding(12)
         .background(Color.backgroundLight)
@@ -426,6 +422,25 @@ private extension HomeView {
         .padding(1)
     }
     
+    func themeButton(key: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(LocalizedStringKey(key), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
+                if selected { Image(systemName: "checkmark") }
+            }
+            .font(.subheadline)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .foregroundStyle(.black)
+            .background(selected ? Color.crayola : Color.white, in: Capsule())
+            .overlay(Capsule().stroke(Color.black, lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(key)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
     var writingAreaSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
@@ -440,6 +455,7 @@ private extension HomeView {
                         Image(systemName: "multiply.circle.fill")
                             .foregroundStyle(.black)
                     }
+                    .accessibilityIdentifier("sandbox.clear")
                     .padding(.trailing, 4)
                 }
             }
@@ -503,6 +519,7 @@ private struct SandboxTextView: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.delegate = context.coordinator
+        textView.accessibilityIdentifier = "sandbox.input"
         textView.backgroundColor = .clear
         textView.font = UIFont(name: "GeneralSans-Regular", size: fontSize) ?? .systemFont(ofSize: fontSize)
         textView.textColor = .black

@@ -14,3 +14,7 @@
 "settings.suggestions" = "Söz teklifleri";
 "settings.done" = "Azır";
 "settings.keyboardHelp" = "Kiril klaviaturası metinni latin ariflerinen kirsete. Globus tuşunen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçenekni söndürmek kirilnen kirsetüvni söndüre; onı iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortak sazlamalar içün tam erişim kerek.";
+"theme.light" = "Aydınlıq";
+"theme.dark" = "Qaranlıq";
+"theme.classic" = "Klassik";
+"settings.enableBothKeyboards" = "Globus tuşunen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca — ABC ve Qırımtatarca — АБВ. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";

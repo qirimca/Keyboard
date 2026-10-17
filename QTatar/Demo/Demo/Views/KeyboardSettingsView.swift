@@ -22,6 +22,15 @@ struct KeyboardSettingsView: View {
                 }
                 Section {
                     Toggle(isOn: $cyrillicEnabled) { label("settings.cyrillic") }
+                    if cyrillicEnabled {
+                        Label {
+                            label("settings.enableBothKeyboards")
+                        } icon: {
+                            Image(systemName: "globe")
+                        }
+                        .font(.footnote)
+                        .accessibilityIdentifier("settings.enableBothKeyboards")
+                    }
                     Toggle(isOn: $suggestionsEnabled) { label("settings.suggestions") }
                 } footer: {
                     label("settings.keyboardHelp")
