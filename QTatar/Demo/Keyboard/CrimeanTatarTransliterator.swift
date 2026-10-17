@@ -14,8 +14,9 @@ import Foundation
 /// The source word is retained while typing: Latin output alone cannot disambiguate е/э or ь/ъ, and the
 /// website also re-translates the full Cyrillic text on every input event.
 ///
-/// Known deviation from upstream: four rules (`Ё|Ю|Ц|Щ` before a capital letter) use `$2` with a single
-/// capture group, which makes upstream drop the next capital letter (`ЁЛКА → YOKA`). They are exported with `$1`.
+/// Four upstream rules (`Ё|Ю|Ц|Щ` before a capital letter) are corrected in the data:
+/// `$1` preserves the following letter instead of the invalid `$2` dropping it.
+/// The reference fixture records these intentional corrections (e.g. `ЁЛКА → YOLKA`).
 struct CrimeanTatarTransliterator {
     private struct Dataset: Decodable {
         let lettersCyrl: String

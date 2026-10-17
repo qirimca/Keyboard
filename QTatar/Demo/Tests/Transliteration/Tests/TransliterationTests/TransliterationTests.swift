@@ -3,7 +3,8 @@ import Testing
 @testable import Transliteration
 
 /// Expected values are produced by the reference engine (qirimca/ctcorpus_translit `mod_translit.js` with
-/// `ModTranslitData`) — never by hand. Regenerate with `scratch/gen.js` (see handoff).
+/// `ModTranslitData`), with four documented missing-capture corrections.
+/// See Tools/correct_reference_captures.py and Resources/capture_corrections.json.
 private let parityCases: [(String, String)] = {
     guard let url = Bundle.module.url(forResource: "parity", withExtension: "json"),
           let data = try? Data(contentsOf: url),
@@ -19,7 +20,7 @@ private let parityCases: [(String, String)] = {
 
 @Test func typingCharacterByCharacterEqualsWholeWord() {
     var failures: [String] = []
-    for (word, expected) in parityCases.prefix(2500) where !word.contains(" ") {
+    for (word, expected) in parityCases {
         var engine = CrimeanTatarTransliterator()
         let id = UUID()
         var document = "x "
@@ -92,4 +93,80 @@ private let parityCases: [(String, String)] = {
         document = String(document.dropLast(edit.deleteCount)) + edit.insertion
     }
     #expect(document == "prefix aleyküm")
+}
+
+@Test func referenceExceptionsAcrossDigitsAndHyphens() {
+    for word in ["бус-бутюн", "БУС-БУТЮН", "3-юнджи"] {
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = "prefix "
+        var states = [document]
+        for character in word {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            states.append(document)
+        }
+        #expect(document == "prefix " + CrimeanTatarTransliterator.transliterate(word))
+        for expected in states.dropLast().reversed() {
+            guard let edit = engine.backspace(context: document, documentID: id) else {
+                Issue.record("Composition lost for \(word)")
+                break
+            }
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            #expect(document == expected)
+        }
+    }
+}
+
+/// Confirmed against the ctcorpus.org mod_translit endpoint on 2026-10-17.
+@Test func postConsonantIotatedVowelsMatchLiveReference() {
+    let cases = [("любов", "lübov"), ("любовь", "lübov"), ("люди", "lüdi"),
+                 ("люк", "lük"), ("бюро", "büro"), ("полюшко", "polüşko"),
+                 ("ля", "lâ"), ("юз", "yüz")]
+    for (source, expected) in cases {
+        #expect(CrimeanTatarTransliterator.transliterate(source) == expected)
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = ""
+        for character in source {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+        }
+        #expect(document == expected)
+    }
+}
+
+@Test func thousandsOfRealWordsMatchReference() throws {
+    let url = try #require(Bundle.module.url(forResource: "real_words", withExtension: "json"))
+    let cases = try JSONDecoder().decode([[String]].self, from: Data(contentsOf: url))
+    #expect(cases.count >= 2000)
+    var failures: [String] = []
+    for pair in cases {
+        let source = pair[0], expected = pair[1]
+        let whole = CrimeanTatarTransliterator.transliterate(source)
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = ""
+        for character in source {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+        }
+        if source == "селямет" {
+            withKnownIssue("Live server gives selâmyet; bundled mod_translit data gives selâmet. Investigate reference version; do not add a word exception.") {
+                #expect(whole == expected && document == expected)
+            }
+            continue
+        }
+        if whole != expected || document != expected {
+            failures.append("\(source): whole=\(whole), typing=\(document), reference=\(expected)")
+        }
+    }
+    #expect(failures.isEmpty, "\(failures.count) mismatches: \(failures.prefix(20))")
+}
+
+@Test func capitalIotatedLettersPreserveFollowingConsonant() {
+    for (source, expected) in [("ЁЛКА", "YOLKA"), ("ЦИРК", "TSİRK"),
+                               ("ЮЛ", "YUL"), ("ЩК", "ŞÇK")] {
+        #expect(CrimeanTatarTransliterator.transliterate(source) == expected)
+    }
 }

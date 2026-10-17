@@ -239,6 +239,23 @@ class KeyboardViewController: KeyboardInputViewController {
     /// Here, we just create a standard system keyboard like
     /// the library does it, just to show how it's done. You
     /// can customize anything you want.
+    private static func keyIdentifier(for action: KeyboardAction) -> String {
+        switch action {
+        case .character(let text): return "key.character." + text
+        case .keyboardType(.numeric): return "key.numeric"
+        case .keyboardType(.symbolic): return "key.symbolic"
+        case .keyboardType(.alphabetic): return "key.alphabetic"
+        case .custom(let name): return "key." + name
+        case .backspace: return "key.backspace"
+        case .space: return "key.space"
+        case .shift: return "key.shift"
+        case .nextKeyboard: return "key.globe"
+        case .primary: return "key.return"
+        case .dismissKeyboard: return "key.dismiss"
+        default: return "key." + String(describing: action)
+        }
+    }
+
     override func viewWillSetupKeyboard() {
         guard !didSetupKeyboard else { return }
         didSetupKeyboard = true
@@ -259,7 +276,9 @@ class KeyboardViewController: KeyboardInputViewController {
                         params.view
                     }
                 },
-                buttonView: { $0.view },
+                buttonView: { params in
+                    params.view.accessibilityIdentifier(Self.keyIdentifier(for: params.item.action))
+                },
                 emojiKeyboard: { $0.view },
                 toolbar: { params in
                     if controller.state.autocompleteContext.isAutocompleteEnabled {

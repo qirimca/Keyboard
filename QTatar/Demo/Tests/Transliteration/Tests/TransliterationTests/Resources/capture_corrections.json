@@ -1,0 +1,1292 @@
+[
+  {
+    "fixture": "parity.json",
+    "source": "ЁА",
+    "upstream": "YO",
+    "corrected": "YOA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁБ",
+    "upstream": "YO",
+    "corrected": "YOB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁВ",
+    "upstream": "YO",
+    "corrected": "YOV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁГ",
+    "upstream": "YO",
+    "corrected": "YOG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁД",
+    "upstream": "YO",
+    "corrected": "YOD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЁ",
+    "upstream": "YO",
+    "corrected": "YOYo"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЖ",
+    "upstream": "YO",
+    "corrected": "YOJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЗ",
+    "upstream": "YO",
+    "corrected": "YOZ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁИ",
+    "upstream": "YO",
+    "corrected": "YOİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЙ",
+    "upstream": "YO",
+    "corrected": "YOY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁК",
+    "upstream": "YO",
+    "corrected": "YOK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЛ",
+    "upstream": "YO",
+    "corrected": "YOL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁМ",
+    "upstream": "YO",
+    "corrected": "YOM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁН",
+    "upstream": "YO",
+    "corrected": "YON"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁО",
+    "upstream": "YO",
+    "corrected": "YOO"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁП",
+    "upstream": "YO",
+    "corrected": "YOP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁР",
+    "upstream": "YO",
+    "corrected": "YOR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁС",
+    "upstream": "YO",
+    "corrected": "YOS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁТ",
+    "upstream": "YO",
+    "corrected": "YOT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁУ",
+    "upstream": "YO",
+    "corrected": "YOU"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁФ",
+    "upstream": "YO",
+    "corrected": "YOF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁХ",
+    "upstream": "YO",
+    "corrected": "YOH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЦ",
+    "upstream": "YO",
+    "corrected": "YOTs"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЧ",
+    "upstream": "YO",
+    "corrected": "YOÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁШ",
+    "upstream": "YO",
+    "corrected": "YOŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЩ",
+    "upstream": "YO",
+    "corrected": "YOŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЫ",
+    "upstream": "YO",
+    "corrected": "YOI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЭ",
+    "upstream": "YO",
+    "corrected": "YOE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЮ",
+    "upstream": "YO",
+    "corrected": "YOYu"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦА",
+    "upstream": "TS",
+    "corrected": "TSA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦБ",
+    "upstream": "TS",
+    "corrected": "TSB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦВ",
+    "upstream": "TS",
+    "corrected": "TSV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦГ",
+    "upstream": "TS",
+    "corrected": "TSG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦД",
+    "upstream": "TS",
+    "corrected": "TSD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЁ",
+    "upstream": "TS",
+    "corrected": "TSÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЖ",
+    "upstream": "TS",
+    "corrected": "TSJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЗ",
+    "upstream": "TS",
+    "corrected": "TSZ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦИ",
+    "upstream": "TS",
+    "corrected": "TSİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЙ",
+    "upstream": "TS",
+    "corrected": "TSY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦК",
+    "upstream": "TS",
+    "corrected": "TSK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЛ",
+    "upstream": "TS",
+    "corrected": "TSL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦМ",
+    "upstream": "TS",
+    "corrected": "TSM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦН",
+    "upstream": "TS",
+    "corrected": "TSN"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦП",
+    "upstream": "TS",
+    "corrected": "TSP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦР",
+    "upstream": "TS",
+    "corrected": "TSR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦС",
+    "upstream": "TS",
+    "corrected": "TSS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦТ",
+    "upstream": "TS",
+    "corrected": "TST"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦФ",
+    "upstream": "TS",
+    "corrected": "TSF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦХ",
+    "upstream": "TS",
+    "corrected": "TSH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЦ",
+    "upstream": "TS",
+    "corrected": "TSTs"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЧ",
+    "upstream": "TS",
+    "corrected": "TSÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦШ",
+    "upstream": "TS",
+    "corrected": "TSŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЩ",
+    "upstream": "TS",
+    "corrected": "TSŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЫ",
+    "upstream": "TS",
+    "corrected": "TSI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЭ",
+    "upstream": "TS",
+    "corrected": "TSE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЮ",
+    "upstream": "TS",
+    "corrected": "TSÜ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩА",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩБ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩВ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩГ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩД",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЁ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЖ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЗ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇZ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩИ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЙ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩК",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЛ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩМ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩН",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇN"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩП",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩР",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩС",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩТ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩФ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩХ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЧ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩШ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЩ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЫ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЭ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЮ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇÜ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮА",
+    "upstream": "YU",
+    "corrected": "YUA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮБ",
+    "upstream": "YU",
+    "corrected": "YUB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮВ",
+    "upstream": "YU",
+    "corrected": "YUV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮГ",
+    "upstream": "YU",
+    "corrected": "YUG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮД",
+    "upstream": "YU",
+    "corrected": "YUD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЖ",
+    "upstream": "YU",
+    "corrected": "YUJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮИ",
+    "upstream": "YU",
+    "corrected": "YUİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЙ",
+    "upstream": "YU",
+    "corrected": "YUY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЛ",
+    "upstream": "YU",
+    "corrected": "YUL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮМ",
+    "upstream": "YU",
+    "corrected": "YUM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮН",
+    "upstream": "YU",
+    "corrected": "YUN"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮО",
+    "upstream": "YU",
+    "corrected": "YUO"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮП",
+    "upstream": "YU",
+    "corrected": "YUP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮР",
+    "upstream": "YU",
+    "corrected": "YUR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮС",
+    "upstream": "YU",
+    "corrected": "YUS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮТ",
+    "upstream": "YU",
+    "corrected": "YUT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮУ",
+    "upstream": "YU",
+    "corrected": "YUU"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮФ",
+    "upstream": "YU",
+    "corrected": "YUF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮХ",
+    "upstream": "YU",
+    "corrected": "YUH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЦ",
+    "upstream": "YU",
+    "corrected": "YUTs"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЧ",
+    "upstream": "YU",
+    "corrected": "YUÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЩ",
+    "upstream": "YU",
+    "corrected": "YUŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЫ",
+    "upstream": "YU",
+    "corrected": "YUI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЭ",
+    "upstream": "YU",
+    "corrected": "YUE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЮ",
+    "upstream": "YU",
+    "corrected": "YUYu"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЗЛЫЩЛ",
+    "upstream": "ZLIŞÇ",
+    "corrected": "ZLIŞÇL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁТАГ",
+    "upstream": "YOAG",
+    "corrected": "YOTAG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЦЧ",
+    "upstream": "YOÇ",
+    "corrected": "YOTSÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮИИ",
+    "upstream": "YUİ",
+    "corrected": "YUİİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ФГЖРЩЮ",
+    "upstream": "FGJRŞÇ",
+    "corrected": "FGJRŞÇÜ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦДИТ",
+    "upstream": "TSİT",
+    "corrected": "TSDİT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦНЫУЧ",
+    "upstream": "TSIUÇ",
+    "corrected": "TSNIUÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ОЯСКЦФ",
+    "upstream": "OYASKTS",
+    "corrected": "OYASKTSF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ХЪЦЫЩ",
+    "upstream": "HTSŞç",
+    "corrected": "HTSIŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЗЙИЪ",
+    "upstream": "ŞÇYİ",
+    "corrected": "ŞÇZYİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "РЦИИ",
+    "upstream": "RTSİ",
+    "corrected": "RTSİİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁКЖНЮ",
+    "upstream": "YOJNÜ",
+    "corrected": "YOKJNÜ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁОСДЩ",
+    "upstream": "YOSDŞç",
+    "corrected": "YOOSDŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЗМЖ",
+    "upstream": "YOMJ",
+    "corrected": "YOZMJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮГР",
+    "upstream": "YUR",
+    "corrected": "YUGR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮНЙ",
+    "upstream": "YUY",
+    "corrected": "YUNY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬЩТСЬ",
+    "upstream": "ŞÇS",
+    "corrected": "ŞÇTS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЫАЗЙЩМ",
+    "upstream": "IAZYŞÇ",
+    "corrected": "IAZYŞÇM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "МЧЧЩЗЭ",
+    "upstream": "MÇÇŞÇE",
+    "corrected": "MÇÇŞÇZE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ВРДЩТА",
+    "upstream": "VRDŞÇA",
+    "corrected": "VRDŞÇTA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮХЖ",
+    "upstream": "YUJ",
+    "corrected": "YUHJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЧЖСБЙ",
+    "upstream": "YUJSBY",
+    "corrected": "YUÇJSBY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "БЦБЩУ",
+    "upstream": "BTSŞçU",
+    "corrected": "BTSBŞçU"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "БЧЩПВ",
+    "upstream": "BÇŞÇV",
+    "corrected": "BÇŞÇPV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЭЫЖЩАП",
+    "upstream": "EIJŞÇP",
+    "corrected": "EIJŞÇAP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ФЩЁШЖУ",
+    "upstream": "FŞÇŞJU",
+    "corrected": "FŞÇÖŞJU"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЖЩЮК",
+    "upstream": "JŞÇK",
+    "corrected": "JŞÇÜK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬЛАСЩЁ",
+    "upstream": "LASŞÇ",
+    "corrected": "LASŞÇÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ФНТЗЩН",
+    "upstream": "FNTZŞÇ",
+    "corrected": "FNTZŞÇN"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁУЛТЗ",
+    "upstream": "YOLTZ",
+    "corrected": "YOULTZ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ДЦТЕ",
+    "upstream": "DTSE",
+    "corrected": "DTSTE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬРЩЗАЩ",
+    "upstream": "RŞÇAŞç",
+    "corrected": "RŞÇZAŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ПУЩТТ",
+    "upstream": "PUŞÇT",
+    "corrected": "PUŞÇTT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЖКДНК",
+    "upstream": "YUKDNK",
+    "corrected": "YUJKDNK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЖТ",
+    "upstream": "TST",
+    "corrected": "TSJT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЙЛЩКИ",
+    "upstream": "YLŞÇİ",
+    "corrected": "YLŞÇKİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЙЯХЧЭ",
+    "upstream": "YOYAHÇE",
+    "corrected": "YOYYAHÇE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЧЛЦЩЖ",
+    "upstream": "ÇLTSJ",
+    "corrected": "ÇLTSŞÇJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЙКЫЗЫ",
+    "upstream": "YOKIZI",
+    "corrected": "YOYKIZI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЖТЦЬК",
+    "upstream": "YUTTS",
+    "corrected": "YUJTTSK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ШЩЩГ",
+    "upstream": "ŞŞÇG",
+    "corrected": "ŞŞÇŞçG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ДНЖЦИ",
+    "upstream": "DNJTS",
+    "corrected": "DNJTSİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ТЩЮУИ",
+    "upstream": "TŞÇUİ",
+    "corrected": "TŞÇÜUİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "НЦЗСО",
+    "upstream": "NTSSO",
+    "corrected": "NTSZSO"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ПАОЮЗТ",
+    "upstream": "PAOYUT",
+    "corrected": "PAOYUZT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩВКЬ",
+    "upstream": "ŞÇK",
+    "corrected": "ŞÇVK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЗЖС",
+    "upstream": "ŞÇJS",
+    "corrected": "ŞÇZJS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ПЩЧ",
+    "upstream": "PŞÇ",
+    "corrected": "PŞÇÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮДПГ",
+    "upstream": "YUPG",
+    "corrected": "YUDPG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬЩФ",
+    "upstream": "ŞÇ",
+    "corrected": "ŞÇF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮМЁД",
+    "upstream": "YUÖD",
+    "corrected": "YUMÖD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЙХБ",
+    "upstream": "YUHB",
+    "corrected": "YUYHB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ШЗЧМЦЁ",
+    "upstream": "ŞZÇMTS",
+    "corrected": "ŞZÇMTSÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁНШ",
+    "upstream": "YOŞ",
+    "corrected": "YONŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ГДЪЩЭА",
+    "upstream": "GDŞÇA",
+    "corrected": "GDŞÇEA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЫМЧ",
+    "upstream": "YUMÇ",
+    "corrected": "YUIMÇ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩЫЛБВ",
+    "upstream": "ŞÇLBV",
+    "corrected": "ŞÇILBV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁДЪЙ",
+    "upstream": "YOY",
+    "corrected": "YODY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "КЦЗИГ",
+    "upstream": "KTSİG",
+    "corrected": "KTSZİG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩНМЙШ",
+    "upstream": "ŞÇMYŞ",
+    "corrected": "ŞÇNMYŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩАМ",
+    "upstream": "ŞÇM",
+    "corrected": "ŞÇAM"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ГЮПГЩЛ",
+    "upstream": "GÜPGŞÇ",
+    "corrected": "GÜPGŞÇL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ДНЦЫЗТ",
+    "upstream": "DNTSZT",
+    "corrected": "DNTSIZT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "БРШЦВЫ",
+    "upstream": "BRŞTSI",
+    "corrected": "BRŞTSVI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦДР",
+    "upstream": "TSR",
+    "corrected": "TSDR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁГСФВ",
+    "upstream": "YOSFV",
+    "corrected": "YOGSFV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "АЦДИ",
+    "upstream": "ATSİ",
+    "corrected": "ATSDİ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁАБЙЬ",
+    "upstream": "YOBY",
+    "corrected": "YOABY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "КАФЕЩВ",
+    "upstream": "KAFEŞÇ",
+    "corrected": "KAFEŞÇV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮМТЁЩ",
+    "upstream": "YUTÖŞç",
+    "corrected": "YUMTÖŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЕЭГОЦЁ",
+    "upstream": "YEEGOTS",
+    "corrected": "YEEGOTSÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЯЦФЕ",
+    "upstream": "YATSE",
+    "corrected": "YATSFE"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "АЭЮЫ",
+    "upstream": "AEYU",
+    "corrected": "AEYUI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "РЩА",
+    "upstream": "RŞÇ",
+    "corrected": "RŞÇA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬЪРЦЁ",
+    "upstream": "RTS",
+    "corrected": "RTSÖ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ИДЮЮПТ",
+    "upstream": "İDÜYUT",
+    "corrected": "İDÜYUPT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЛЕЙЪ",
+    "upstream": "TSEY",
+    "corrected": "TSLEY"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ГЦС",
+    "upstream": "GTS",
+    "corrected": "GTSS"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЦУЗТБ",
+    "upstream": "TSUZTB",
+    "corrected": "TSTsUZTB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЫЮЬЛ",
+    "upstream": "YUYUL",
+    "corrected": "YUIYUL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦМВ",
+    "upstream": "TSV",
+    "corrected": "TSMV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ПАЦПЛ",
+    "upstream": "PATSL",
+    "corrected": "PATSPL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "РЦПВ",
+    "upstream": "RTSV",
+    "corrected": "RTSPV"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЕЦБТ",
+    "upstream": "YETST",
+    "corrected": "YETSBT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "АФЪЩШ",
+    "upstream": "AFŞÇ",
+    "corrected": "AFŞÇŞ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "УЫЦБ",
+    "upstream": "UITS",
+    "corrected": "UITSB"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЭЩЮНБФ",
+    "upstream": "EŞÇNBF",
+    "corrected": "EŞÇÜNBF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЬЦКЯЖУ",
+    "upstream": "TSÂJU",
+    "corrected": "TSKÂJU"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "УЩР",
+    "upstream": "UŞÇ",
+    "corrected": "UŞÇR"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮОДДГ",
+    "upstream": "YUDDG",
+    "corrected": "YUODDG"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ИИЁБЦ",
+    "upstream": "İİYOTs",
+    "corrected": "İİYOBTs"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЭЙЗЦХ",
+    "upstream": "EYZTS",
+    "corrected": "EYZTSH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ОДЦЩХ",
+    "upstream": "ODTSH",
+    "corrected": "ODTSŞÇH"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦИУЖА",
+    "upstream": "TSUJA",
+    "corrected": "TSİUJA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЩВЛ",
+    "upstream": "ŞÇL",
+    "corrected": "ŞÇVL"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ТСФГЩТ",
+    "upstream": "TSFGŞÇ",
+    "corrected": "TSFGŞÇT"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЖЕЁГЩ",
+    "upstream": "JEYOŞç",
+    "corrected": "JEYOGŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ПЕЮБЫ",
+    "upstream": "PEYUI",
+    "corrected": "PEYUBI"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ТЛЦИН",
+    "upstream": "TLTSN",
+    "corrected": "TLTSİN"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ОЦМЖ",
+    "upstream": "OTSJ",
+    "corrected": "OTSMJ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦЖЦИЧП",
+    "upstream": "TSTSÇP",
+    "corrected": "TSJTSİÇP"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁШЩ",
+    "upstream": "YOŞç",
+    "corrected": "YOŞŞç"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "БХЦК",
+    "upstream": "BHTS",
+    "corrected": "BHTSK"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЪЦФЯФ",
+    "upstream": "TSÂF",
+    "corrected": "TSFÂF"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦДЪ",
+    "upstream": "TS",
+    "corrected": "TSD"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЁЛКА",
+    "upstream": "YOKA",
+    "corrected": "YOLKA"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЮЛИЯ",
+    "upstream": "YUİÂ",
+    "corrected": "YULİÂ"
+  },
+  {
+    "fixture": "parity.json",
+    "source": "ЦИРК",
+    "upstream": "TSRK",
+    "corrected": "TSİRK"
+  }
+]

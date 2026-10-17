@@ -403,12 +403,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return .system(size: isFloating ? 19 : (isDockedPad ? 21 : 22), weight: .regular)
         case .custom(let name) where name == "url_domain":
             return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 16), weight: .regular)
+        case .custom(let name) where name == "toggle_script":
+            return .system(size: isDockedPad ? 17 : 14, weight: .regular)
         case .keyboardType:
-            return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 16), weight: .regular)
+            return .system(size: isFloating ? 14 : (isDockedPad ? 18 : 16), weight: .regular)
         default:
             if buttonImage(for: action) != nil {
                 if isDockedPad {
-                    return .system(size: 16.5, weight: .regular)
+                    return .system(size: keyboardContext.interfaceOrientation.isPortrait ? 22 : 24, weight: .regular)
                 }
                 return .system(size: isFloating ? 17 : 20, weight: .regular)
             }
