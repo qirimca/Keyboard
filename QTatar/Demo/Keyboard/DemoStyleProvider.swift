@@ -23,8 +23,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Checks whether the keyboard should render with classic gray system keys on iPad
     /// (e.g. Google/Gmail apps or when "google_gray" is selected in the Testing Sandbox),
     /// vs modern iPadOS 26 all-white keys (Safari, Notes, standard apps).
-    private var usesClassicGraySystemKeysOnPad: Bool {
-        guard isPad else { return true }
+    private var usesClassicGraySystemKeys: Bool {
         let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
         if let overrideMode = defaults?.string(forKey: "crh.key.test.systemKeyStyle") {
             if overrideMode == "google_gray" { return true }
@@ -279,9 +278,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         
         let darkInputKey = Color(white: 0.28)
         let darkInputKeyPressed = Color(white: 0.18)
-        let modernPad = isPad && !usesClassicGraySystemKeysOnPad
-        let darkSystemKey = modernPad ? darkInputKey : Color(white: 0.18)
-        let darkSystemKeyPressed = modernPad ? darkInputKeyPressed : Color(white: 0.32)
+        let modern = !usesClassicGraySystemKeys
+        let darkSystemKey = modern ? darkInputKey : Color(white: 0.18)
+        let darkSystemKeyPressed = modern ? darkInputKeyPressed : Color(white: 0.32)
         
         let lightInputKey = Color.white
         let lightInputKeyPressed = Color(white: 0.85)
@@ -289,8 +288,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let lightSystemKeyGrayPressed = Color.white
         
         // On iPad in standard iOS 26 mode (Safari, Notes, etc.), system keys are pure white like letter keys.
-        // On iPhone, or on iPad in classic Google/Gmail mode, system keys are classic gray (#ACB1B9).
-        let useWhiteSystemKeysInLight = isPad && !usesClassicGraySystemKeysOnPad
+        // Classic mode uses gray system keys on both iPhone and iPad.
+        let useWhiteSystemKeysInLight = !usesClassicGraySystemKeys
         let lightSystemKey = useWhiteSystemKeysInLight ? lightInputKey : lightSystemKeyGray
         let lightSystemKeyPressed = useWhiteSystemKeysInLight ? lightInputKeyPressed : lightSystemKeyGrayPressed
         

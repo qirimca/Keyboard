@@ -551,11 +551,9 @@ private struct SandboxTextView: UIViewRepresentable {
         if traitsChanged {
             applyTraits(to: uiView, coordinator: context.coordinator)
             if uiView.isFirstResponder {
+                // Reload once while preserving the responder. Resign/re-enter races
+                // keyboard snapshots and can leave the previous layout underneath.
                 uiView.reloadInputViews()
-                uiView.resignFirstResponder()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    uiView.becomeFirstResponder()
-                }
             } else {
                 uiView.becomeFirstResponder()
             }

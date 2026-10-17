@@ -589,7 +589,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca — АБВ";
+				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарча";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -616,7 +616,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca — АБВ";
+				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарча";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -637,7 +637,6 @@
 		9C211369308293930031FE0A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				TEST_TARGET_NAME = QTatar;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
@@ -657,13 +656,13 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = QTatar;
 			};
 			name = Debug;
 		};
 		9C21136A308293930031FE0A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				TEST_TARGET_NAME = QTatar;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
@@ -682,6 +681,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = QTatar;
 			};
 			name = Release;
 		};
@@ -884,7 +884,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = Keyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca — ABC";
+				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -911,7 +911,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = Keyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca — ABC";
+				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (

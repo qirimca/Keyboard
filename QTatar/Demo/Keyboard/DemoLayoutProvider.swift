@@ -22,34 +22,32 @@ import UIKit
 /// All letter buttons across rows 0, 1, and 2 have identical width, and the rows align perfectly.
 final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvider {
     
-    /// Checks whether the floating keyboard should display the internal Globe button
-    /// (e.g. in Google/Gmail where the external floating bar lacks a Globe, or when Google/Gmail mode is selected in the sandbox).
-    private func shouldShowInternalGlobeInFloating(_ context: KeyboardContext) -> Bool {
-        // NOTE: the sandbox theme override (`crh.key.test.systemKeyStyle`) is deliberately NOT consulted here.
-        // In our own app the system floating bar always draws a globe, so an internal one would be a duplicate.
-        if let bundleId = context.hostApplicationBundleId?.lowercased() {
-            if bundleId.contains("google") || bundleId.contains("gmail") || bundleId.contains("youtube") || bundleId.contains("chrome") {
-                return true
-            }
-        }
-        // In standard iPadOS floating mode (Safari, Notes, Demo app, etc.), the system floating bar
-        // below the keyboard ALREADY renders the Globe & Dictation icons!
-        return false
-    }
-    
     override func actions(
         for inputs: InputSet.Rows,
         context: KeyboardContext
     ) -> KeyboardAction.Rows {
         var actions = super.actions(for: inputs, context: context)
-        // In iPhone and iPad floating mode, alphabetic row 2 must not have any punctuation (no comma, no period)
-        // so that Shift (1.0) + 10 letters (10.0) + Backspace (1.0) = 12.0 units, exactly matching row 0 (12) and row 1 (12).
         if context.keyboardType.isAlphabetic && actions.count >= 3 {
-            actions[2].removeAll { action in
-                if case .character(let char) = action {
-                    return char == "," || char == "."
+            let isCyrillic = context.locale.identifier.contains("Cyrl")
+            for row in 0...2 {
+                actions[row].removeAll { action in
+                    switch action {
+                    case .characterMargin, .none: return true
+                    case .character(let text):
+                        return row == 2 && !isCyrillic && (text == "," || text == ".")
+                    default: return false
+                    }
                 }
-                return false
+            }
+            if isCyrillic {
+                if !actions[1].contains(.character("ё")) && !actions[1].contains(.character("Ё")) {
+                    let upper = actions[1].contains(.character("Ф"))
+                    actions[1].append(.character(upper ? "Ё" : "ё"))
+                }
+                if !actions[2].contains(.character(",")),
+                   let backspace = actions[2].firstIndex(of: .backspace) {
+                    actions[2].insert(.character(","), at: backspace)
+                }
             }
         }
         return actions
@@ -99,19 +97,11 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // In iPad floating mode:
-        // - Standard iOS apps (Safari, Notes, etc.) already display the external Globe & Mic in the system floating bar below,
-        //   so we do NOT duplicate the Globe inside row 3.
-        // - Classic apps like Gmail suppress the external Globe in the floating bar, so we include `.nextKeyboard` inside row 3.
-        // On iPhone, `.nextKeyboard` is always included in row 3.
-        if context.isKeyboardFloating {
-            if shouldShowInternalGlobeInFloating(context) {
-                result.append(.nextKeyboard)
-            }
-        } else {
+        // UIKit owns the external globe on Face ID phones and floating keyboards.
+        if context.needsInputModeSwitchKey {
             result.append(.nextKeyboard)
         }
-        
+
         #if os(iOS) || os(tvOS) || os(visionOS)
         let proxy = context.textDocumentProxy
         let isEmail: Bool = {
@@ -217,8 +207,9 @@ extension InputSet {
     static var crimeanTatarCyrillic: InputSet {
         .init(rows: [
             .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
-            .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
-            .init(phoneLowercased: "ячсмитьбю", phoneUppercased: "ЯЧСМИТЬБЮ",
+            .init(phoneLowercased: "фывапролджэё", phoneUppercased: "ФЫВАПРОЛДЖЭЁ",
+                  padLowercased: "фывапролджэ", padUppercased: "ФЫВАПРОЛДЖЭ"),
+            .init(phoneLowercased: "ячсмитьбю,", phoneUppercased: "ЯЧСМИТЬБЮ,",
                   padLowercased: "ячсмитьбю,", padUppercased: "ЯЧСМИТЬБЮ,")
         ])
     }
