@@ -17,4 +17,6 @@
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
 "theme.classic" = "Klassik";
-"settings.enableBothKeyboards" = "Globus tuşunen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca — ABC ve Qırımtatarca — АБВ. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
+"settings.enableBothKeyboards" = "Globus tuşunen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарча. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
+"settings.missingCyrillic" = "Kiril klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарча klaviaturasını qoşuñız.";
+"settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sisteması aqqında malümat bermey, onıñ içün kiril klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";

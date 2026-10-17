@@ -17,4 +17,6 @@
 "theme.light" = "Light";
 "theme.dark" = "Dark";
 "theme.classic" = "Classic";
-"settings.enableBothKeyboards" = "To switch with the globe, add both Qırımtatarca — ABC and Qırımtatarca — АБВ in iOS Settings → General → Keyboard → Keyboards → Add New Keyboard → QırımKey.";
+"settings.enableBothKeyboards" = "To switch with the globe, add both Qırımtatarca and Къырымтатарча in iOS Settings → General → Keyboard → Keyboards → Add New Keyboard → QırımKey.";
+"settings.missingCyrillic" = "Cyrillic keyboard not detected. Add Къырымтатарча in iOS Settings.";
+"settings.cyrillicUnverified" = "iOS does not expose the keyboard script, so we cannot confirm that the Cyrillic keyboard is enabled. Check both keyboards in Settings.";
