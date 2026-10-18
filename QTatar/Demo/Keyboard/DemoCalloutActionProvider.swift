@@ -13,12 +13,21 @@ import KeyboardKit
 /// Letters that have dedicated physical keys on the keyboard (â, ñ, ç, ş, ğ, ö, ü, ı, i)
 /// have no long-press callout.
 class DemoCalloutActionProvider: BaseCalloutActionProvider {
+    private let keyboardContext: KeyboardContext
+
+    init(keyboardContext: KeyboardContext) {
+        self.keyboardContext = keyboardContext
+        super.init()
+    }
+
     
     override func calloutActions(
         for char: String
     ) -> [KeyboardAction] {
         guard let alternatives = Self.alternatives(for: char) else { return [] }
-        return alternatives.map { .character($0) }
+        return alternatives.map {
+            .character(keyboardContext.keyboardType.isAlphabeticCapsLocked ? $0.uppercased() : $0)
+        }
     }
 }
 

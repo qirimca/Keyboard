@@ -2,20 +2,70 @@
   "sourceLanguage" : "en",
   "strings" : {
     ": " : {
-
+      "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ": "
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ": "
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : ": "
+          }
+        }
+      }
     },
     "%@/%@" : {
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "%1$@/%2$@"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
+            "value" : "%1$@/%2$@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
             "value" : "%1$@/%2$@"
           }
         }
       }
     },
     "QırımKey" : {
-
+      "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "QırımKey"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "QırımKey"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "QırımKey"
+          }
+        }
+      }
     }
   },
   "version" : "1.3"

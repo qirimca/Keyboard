@@ -104,7 +104,7 @@ struct KeyboardStateItem: View {
                     .frame(width: Device.iPad ? 28 : 22)
                 
                 Text(state.title)
-                    .font(.custom("GeneralSans-Medium", size: titleFontSize))
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: titleFontSize, text: state.title))
                     .foregroundStyle(.black)
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)

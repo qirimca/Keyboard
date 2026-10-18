@@ -91,7 +91,7 @@ class KeyboardViewController: KeyboardInputViewController {
         /// 💡 Setup a demo-specific callout action provider.
         services.calloutActionProvider = StandardCalloutActionProvider(
             keyboardContext: state.keyboardContext,
-            baseProvider: DemoCalloutActionProvider())
+            baseProvider: DemoCalloutActionProvider(keyboardContext: state.keyboardContext))
         
         /// 💡 Setup Crimean Tatar layout provider.
         services.layoutProvider = DemoLayoutProvider()
@@ -120,7 +120,7 @@ class KeyboardViewController: KeyboardInputViewController {
         services.spaceDragGestureHandler.verticalThreshold = 1000
         
         /// 💡 Enable key preview balloon popup on key tap
-        state.calloutContext.inputContext.isEnabled = true
+        state.calloutContext.inputContext.isEnabled = state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating
         
         /// 💡 Setup audio and haptic feedback.
         #if targetEnvironment(simulator)
@@ -269,7 +269,7 @@ class KeyboardViewController: KeyboardInputViewController {
                 buttonContent: { params in
                     if params.item.action == .space {
                         SpaceBarLabel(
-                            fullName: "Qırımtatarca",
+                            fullName: controller.state.keyboardContext.locale.identifier.contains("Cyrl") ? "Къырымтатарджа" : "Qırımtatarca",
                             languageCode: "QT"
                         )
                     } else {

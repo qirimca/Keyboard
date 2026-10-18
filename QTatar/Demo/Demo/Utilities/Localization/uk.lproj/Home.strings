@@ -3,7 +3,7 @@
 
   Created by Mustafa Bekirov on 01.02.2025.
   Copyright © 2025 Daniel Saidi. All rights reserved. */
-"home_crimea_key" = "Кримськотатарська клавіатура — для вас, разом із вами";
+"home_crimea_key" = "Кримськотатарська клавіатура — для вас, разом із вами";
 
 /* (No Comment) */
 "home_full_off_key" = "Повний доступ вимкнено";
@@ -18,10 +18,10 @@
 "home_keyboard_hidden_key" = "Клавіатуру приховано";
 
 /* (No Comment) */
-"home_keyboard_off_key" = "Клавіатуру не підключено";
+"home_keyboard_off_key" = "Клавіатуру не ввімкнено";
 
 /* (No Comment) */
-"home_keyboard_on_key" = "Клавіатуру підключено";
+"home_keyboard_on_key" = "Клавіатуру ввімкнено";
 
 /* (No Comment) */
 "home_keyboard_visible_key" = "Клавіатуру показано";

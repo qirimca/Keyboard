@@ -1,6 +1,6 @@
 /* Interface labels and keyboard preferences. */
 "field.standard" = "Yazı";
-"field.search" = "Qıdırıw";
+"field.search" = "Qıdıruv";
 "field.email" = "E-poçta";
 "field.url" = "Veb";
 "field.numbers" = "Raqamlar";
@@ -10,13 +10,13 @@
 "theme.classicDark" = "Klassik · Qaranlıq";
 "settings.title" = "Sazlamalar";
 "settings.language" = "İnterfeys tili";
-"settings.cyrillic" = "Kiril klaviaturası";
+"settings.cyrillic" = "Kirill klaviaturası";
 "settings.suggestions" = "Söz teklifleri";
-"settings.done" = "Azır";
-"settings.keyboardHelp" = "Kiril klaviaturası metinni latin ariflerinen kirsete. Globus tuşunen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçenekni söndürmek kirilnen kirsetüvni söndüre; onı iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortak sazlamalar içün tam erişim kerek.";
+"settings.done" = "Hazır";
+"settings.keyboardHelp" = "Kirill klaviaturası metinni latin harflerinen kirsete. Globus dögmesinen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçimni söndürmek kirillnen kirsetüvni söndüre; onu iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortaq sazlamalar içün tam irişim kerek.";
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
 "theme.classic" = "Klassik";
-"settings.enableBothKeyboards" = "Globus tuşunen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарча. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
-"settings.missingCyrillic" = "Kiril klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарча klaviaturasını qoşuñız.";
-"settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sisteması aqqında malümat bermey, onıñ içün kiril klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";
+"settings.enableBothKeyboards" = "Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
+"settings.missingCyrillic" = "Kirill klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарджа klaviaturasını qoşuñız.";
+"settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sistemi haqqında malümat bermey, onuñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";

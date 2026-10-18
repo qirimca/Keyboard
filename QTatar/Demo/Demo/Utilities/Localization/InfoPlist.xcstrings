@@ -3,11 +3,22 @@
   "strings" : {
     "CFBundleDisplayName" : {
       "comment" : "Bundle display name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Qırımtatarca"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
+            "value" : "Qırımtatarca"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
             "value" : "Qırımtatarca"
           }
         }
@@ -15,24 +26,46 @@
     },
     "CFBundleName" : {
       "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Klaviatura"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
             "value" : "Keyboard"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Клавіатура"
           }
         }
       }
     },
     "NSHumanReadableCopyright" : {
       "comment" : "Copyright (human-readable)",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Müelliflik haqqı © 2024 Qırımtatar. Bütün haqları saqlanğandır."
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
             "value" : "Copyright © 2024 Qırımtatar. All rights reserved."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "© 2024 Qırımtatar. Усі права захищено."
           }
         }
       }

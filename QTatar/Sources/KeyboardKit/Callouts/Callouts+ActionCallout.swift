@@ -186,7 +186,7 @@ private extension Callouts.ActionCallout {
 
 private extension Callouts.ActionCallout {
     
-    var isPad: Bool { keyboardContext.deviceType == .pad }
+    var isPad: Bool { keyboardContext.deviceType == .pad && !keyboardContext.isKeyboardFloating }
 
     var isEmojiCallout: Bool {
         calloutActions.first?.isEmojiAction ?? false

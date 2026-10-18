@@ -5,12 +5,12 @@
 
 "locale" = "crh";
 
-"capsLock" = "büyük arif";
+"capsLock" = "büyük harf";
 "continue" = "devam";
-"done" = "azır";
+"done" = "hazır";
 "emergencyCall" = "acele yardım";
 "go" = "başla";
-"join" = "qoşulmaq";
+"join" = "qoşul";
 "next" = "nevbetteki";
 "ok" = "yahşı";
 "return" = "↵";

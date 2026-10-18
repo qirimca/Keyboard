@@ -1,0 +1,5 @@
+/* iOS Settings labels. */
+"Group" = "Група";
+"Name" = "Ім’я";
+"Enabled" = "Увімкнено";
+"none given" = "Не вказано";

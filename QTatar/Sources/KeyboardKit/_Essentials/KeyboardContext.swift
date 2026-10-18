@@ -364,7 +364,10 @@ extension KeyboardContext {
 
     /// Perform a sync to check if the keyboard is floating.
     func syncIsFloating(with controller: KeyboardInputViewController) {
-        let isFloating = controller.view.frame.width < screenSize.width/2
+        let width = controller.view.bounds.width
+        let screenWidth = controller.screenSize.width
+        let isFloating = controller.traitCollection.userInterfaceIdiom == .pad
+            && width > 0 && screenWidth > 0 && width < screenWidth / 2
         if isKeyboardFloating == isFloating { return }
         isKeyboardFloating = isFloating
     }

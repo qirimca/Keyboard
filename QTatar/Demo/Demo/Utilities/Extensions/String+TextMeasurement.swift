@@ -13,8 +13,7 @@ extension String {
         fontName: String,
         size: CGFloat
     ) -> CGFloat {
-        let font = UIFont(name: fontName, size: size)
-            ?? UIFont.systemFont(ofSize: size, weight: .medium)
+        let font = InterfaceFont.uiFont(fontName, size: size, text: self)
         return ceil((self as NSString).size(withAttributes: [.font: font]).width)
     }
     
@@ -24,8 +23,7 @@ extension String {
         maxWidth: CGFloat,
         maxLines: Int
     ) -> CGFloat {
-        let font = UIFont(name: fontName, size: size)
-            ?? UIFont.systemFont(ofSize: size, weight: .medium)
+        let font = InterfaceFont.uiFont(fontName, size: size, text: self)
         let rect = (self as NSString).boundingRect(
             with: CGSize(width: maxWidth, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],

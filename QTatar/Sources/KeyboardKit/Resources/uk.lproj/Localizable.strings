@@ -8,19 +8,19 @@
 
 "locale" = "uk";
 
-"capsLock" = "";
-"continue" = "continue";
+"capsLock" = "великі літери";
+"continue" = "продовжити";
 "done" = "Готово";
-"emergencyCall" = "Emergency Call";
+"emergencyCall" = "екстрений виклик";
 "go" = "Перейти";
-"join" = "join";
-"next" = "next";
-"ok" = "в порядку";
+"join" = "приєднатися";
+"next" = "далі";
+"ok" = "OK";
 "return" = "↵";
-"route" = "route";
+"route" = "маршрут";
 "search" = "Пошук";
-"send" = "send";
-"space" = "Пробiл";
+"send" = "надіслати";
+"space" = "пробіл";
 "switcherAlphabetic" = "АБВ";
 "switcherNumeric" = "123";
 "switcherSymbolic" = "#+=";

@@ -381,7 +381,7 @@ private extension HomeView {
                                 Image(systemName: mode.icon)
                                     .font(.system(size: 13, weight: .bold))
                                 Text(LocalizedStringKey(mode.rawValue), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
-                                    .font(.custom("GeneralSans-Medium", size: 13))
+                                    .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
                             }
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
@@ -521,7 +521,7 @@ private struct SandboxTextView: UIViewRepresentable {
         textView.delegate = context.coordinator
         textView.accessibilityIdentifier = "sandbox.input"
         textView.backgroundColor = .clear
-        textView.font = UIFont(name: "GeneralSans-Regular", size: fontSize) ?? .systemFont(ofSize: fontSize)
+        textView.font = InterfaceFont.uiFont("GeneralSans-Regular", size: fontSize, text: text)
         textView.textColor = .black
         textView.text = text
         textView.autocorrectionType = .yes

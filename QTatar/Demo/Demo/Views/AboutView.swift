@@ -119,7 +119,7 @@ private extension AboutView {
             }
             
             ShareLink(
-                item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)?action=write-review")!
+                item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)")!
             ) {
                 cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
             }

@@ -139,10 +139,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if keyboardContext.locale.identifier.contains("Cyrl") {
             let proxy = keyboardContext.textDocumentProxy
             if case .character(let character) = action,
-               !character.isEmpty {
+               !character.isEmpty,
+               character.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) })
+                || character.allSatisfy({ $0.isNumber || $0 == "-" }) {
+                if gesture == .press {
+                    triggerFeedback(for: gesture, on: action)
+                    return
+                }
                 if gesture == .release {
                     let context = proxy.selectedText == nil ? proxy.documentContextBeforeInput : nil
-                    triggerFeedback(for: gesture, on: action)
                     apply(transliterator.append(character, context: context, documentID: proxy.documentIdentifier))
                     tryChangeKeyboardType(after: gesture, on: action)
                 }

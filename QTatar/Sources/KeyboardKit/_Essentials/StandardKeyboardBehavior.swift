@@ -57,7 +57,7 @@ open class StandardKeyboardBehavior: KeyboardBehavior {
 
 
     /// An internal state to keep track of shift checks.
-    public internal(set) var lastShiftCheck = Date()
+    public internal(set) var lastShiftCheck = Date.distantPast
     
     /// An internal state to keep track of the last space tap.
     public internal(set) var lastSpaceTap = Date()
@@ -110,10 +110,14 @@ open class StandardKeyboardBehavior: KeyboardBehavior {
         after gesture: Gesture,
         on action: KeyboardAction
     ) -> Bool {
-        switch action {
-        case .shift: isDoubleShiftTap
-        default: false
+        guard gesture == .release, case .shift(let casing) = action else { return false }
+        if casing == .capsLocked {
+            lastShiftCheck = .distantPast
+            return false
         }
+        let isDoubleTap = isDoubleShiftTap
+        lastShiftCheck = isDoubleTap ? .distantPast : Date()
+        return isDoubleTap
     }
     
     /// Whether to switch to the preferred keyboard type after
@@ -153,7 +157,6 @@ public extension StandardKeyboardBehavior {
         let date = Date().timeIntervalSinceReferenceDate
         let lastDate = lastShiftCheck.timeIntervalSinceReferenceDate
         let isDoubleTap = (date - lastDate) < doubleTapThreshold
-        lastShiftCheck = isDoubleTap ? Date().addingTimeInterval(-1) : Date()
         return isDoubleTap
     }
 }

@@ -50,6 +50,9 @@ public extension CalloutContext {
         /// The frame of the currently pressed button.
         @Published
         public private(set) var buttonFrame: CGRect = .zero
+
+        /// Width of the named coordinate-space container, including floating keyboards.
+        public var containerWidth: CGFloat = 0
         
         /// The currently selected action index.
         @Published
@@ -165,8 +168,8 @@ private extension CalloutContext.ActionContext {
     
     func getAlignment(for geo: GeometryProxy) -> HorizontalAlignment {
         #if os(iOS)
-        let center = UIScreen.main.bounds.size.width / 2
-        let isTrailing = buttonFrame.origin.x > center
+        let width = containerWidth > 0 ? containerWidth : UIScreen.main.bounds.size.width
+        let isTrailing = buttonFrame.midX > width / 2
         return isTrailing ? .trailing : .leading
         #else
         return .leading

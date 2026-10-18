@@ -140,7 +140,8 @@ final class SuggestionsDataBaseManager {
                     result.append(.init(text: bestFormatted))
                 }
             } else if bestLower.hasPrefix(queryLower) {
-                result.append(.init(text: bestFormatted, isAutocorrect: true))
+                // Completion is a user choice, never an automatic replacement on Space.
+                result.append(.init(text: bestFormatted))
                 if text != bestFormatted {
                     result.insert(.init(text: text, isUnknown: true), at: 0)
                 }
@@ -451,8 +452,8 @@ final class SuggestionsDataBaseManager {
         var results: [String] = []
         
         var stmt: OpaquePointer?
-        let query = "SELECT word FROM words WHERE LOWER(word) LIKE ? ORDER BY freq DESC LIMIT ?;"
-        let lowercasePrefix = prefix.lowercased(with: Self.casingLocale) + "%"
+        let query = "SELECT word FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY (word = ?1) DESC, freq DESC LIMIT ?3;"
+        let lowercasePrefix = prefix.lowercased(with: Self.casingLocale)
         
         defer { sqlite3_finalize(stmt) }
         
@@ -466,7 +467,8 @@ final class SuggestionsDataBaseManager {
             return []
         }
         
-        guard sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else {
+        guard bindText(stmt, index: 2, value: lowercasePrefix + "\u{FFFF}"),
+              sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
             return []
         }
         

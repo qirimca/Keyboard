@@ -10,10 +10,10 @@ import UIKit
 
 enum Device {
     static var iPhone: Bool {
-        return UIDevice().userInterfaceIdiom == .phone
+        return UIDevice.current.userInterfaceIdiom == .phone
     }
     
     static var iPad: Bool {
-        return UIDevice().userInterfaceIdiom == .pad
+        return UIDevice.current.userInterfaceIdiom == .pad
     }
 }

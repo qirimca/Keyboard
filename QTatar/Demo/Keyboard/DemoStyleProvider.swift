@@ -24,8 +24,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// (e.g. Google/Gmail apps or when "google_gray" is selected in the Testing Sandbox),
     /// vs modern iPadOS 26 all-white keys (Safari, Notes, standard apps).
     private var usesClassicGraySystemKeys: Bool {
-        let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
-        if let overrideMode = defaults?.string(forKey: "crh.key.test.systemKeyStyle") {
+        let defaults = KeyboardPreferences.defaults
+        if let overrideMode = defaults.string(forKey: "crh.key.test.systemKeyStyle") {
             if overrideMode == "google_gray" { return true }
             if overrideMode == "ios26_white" { return false }
         }
@@ -266,6 +266,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
+        if action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked) { return .white }
         switch action {
         case .none, .characterMargin:
             return .clear
@@ -348,6 +349,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
+        if action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked) { return .black }
         switch action {
         case .none, .characterMargin:
             return .clear

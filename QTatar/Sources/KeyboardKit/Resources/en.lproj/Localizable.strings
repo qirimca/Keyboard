@@ -6,22 +6,22 @@
  Copyright © 2021 Daniel Saidi. All rights reserved.
  */
 
-"locale" = "crh";
+"locale" = "en";
 
-"capsLock" = "büyük arif";
-"continue" = "devam";
-"done" = "azır";
-"emergencyCall" = "acele yardım";
-"go" = "başla";
-"join" = "qoşulmaq";
-"next" = "nevbetteki";
-"ok" = "yahşı";
-"return" = "qayt";
-"route" = "yol";
-"search" = "qıdır";
-"send" = "yolla";
-"space" = "boşluq";
-"switcherAlphabetic" = "ÖÑÂ";
+"capsLock" = "caps lock";
+"continue" = "continue";
+"done" = "done";
+"emergencyCall" = "emergency call";
+"go" = "go";
+"join" = "join";
+"next" = "next";
+"ok" = "OK";
+"return" = "return";
+"route" = "route";
+"search" = "search";
+"send" = "send";
+"space" = "space";
+"switcherAlphabetic" = "ABC";
 "switcherNumeric" = "123";
 "switcherSymbolic" = "#+=";
 

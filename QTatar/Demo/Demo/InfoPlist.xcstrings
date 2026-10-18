@@ -3,11 +3,22 @@
   "strings" : {
     "CFBundleDisplayName" : {
       "comment" : "Bundle display name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "QırımKey"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
+            "value" : "QırımKey"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
             "value" : "QırımKey"
           }
         }
@@ -15,11 +26,22 @@
     },
     "CFBundleName" : {
       "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "QTatar"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "machine_translated",
+            "value" : "QTatar"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
             "value" : "QTatar"
           }
         }
@@ -27,12 +49,23 @@
     },
     "NSSpeechRecognitionUsageDescription" : {
       "comment" : "Privacy - Speech Recognition Usage Description",
-      "extractionState" : "extracted_with_value",
       "localizations" : {
+        "crh" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Sesni tanuv"
+          }
+        },
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Распознавание звука"
+            "state" : "machine_translated",
+            "value" : "Speech Recognition"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "machine_translated",
+            "value" : "Розпізнавання мовлення"
           }
         }
       }

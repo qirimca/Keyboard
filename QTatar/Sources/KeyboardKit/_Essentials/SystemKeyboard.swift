@@ -175,6 +175,7 @@ public struct SystemKeyboard<
     
     private var actionCalloutStyle: Callouts.ActionCalloutStyle {
         var style = styleProvider.actionCalloutStyle
+        if keyboardContext.isKeyboardFloating { style.verticalOffset = 0 }
         let insets = layoutConfig.buttonInsets
         style.callout.buttonInset = CGSize(width: insets.leading, height: insets.top)
         return style
