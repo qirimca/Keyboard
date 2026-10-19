@@ -12,11 +12,11 @@ import UIKit
 /// when the user switches to this keyboard, and animating smoothly into the corner abbreviation.
 final class SpaceBarState: ObservableObject {
     static let shared = SpaceBarState()
-    
+
     /// Opening a text field uses the resting abbreviation. Only an observed switch animates.
     @Published var isShowingFullName: Bool = false
     private var dismissTimer: Timer?
-    
+
     func triggerSwitchAnimation() {
         dismissTimer?.invalidate()
         isShowingFullName = true
@@ -28,7 +28,7 @@ final class SpaceBarState: ObservableObject {
             }
         }
     }
-    
+
     func resetToResting() {
         dismissTimer?.invalidate()
         isShowingFullName = false
@@ -40,53 +40,68 @@ final class SpaceBarState: ObservableObject {
 /// then smoothly fades into the 2-letter abbreviation ("QT") in the bottom-trailing corner,
 /// matching Apple's native keyboard animation.
 struct SpaceBarLabel: View {
-    
+
     let fullName: String
     let languageCode: String
-    
+    let spaceText: String
+    let isCompact: Bool
+    let isClassic: Bool
+
     @ObservedObject private var spaceBarState = SpaceBarState.shared
-    
+
     init(
         fullName: String = "Qırımtatarca",
-        languageCode: String = "QT"
+        languageCode: String = "QT",
+        spaceText: String = "Boşluq",
+        isCompact: Bool = UIDevice.current.userInterfaceIdiom != .pad,
+        isClassic: Bool = false
     ) {
         self.fullName = fullName
         self.languageCode = languageCode
+        self.spaceText = spaceText
+        self.isCompact = isCompact
+        self.isClassic = isClassic
     }
-    
-    private var isPad: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad
-    }
-    
+
     private var centerFontSize: CGFloat {
-        isPad ? 16 : 14
+        isCompact ? 14 : 16
     }
-    
+
     private var cornerFontSize: CGFloat {
-        isPad ? 12 : 11
+        isCompact ? 11 : 12
     }
-    
+
     var body: some View {
         ZStack {
-            // Centered full localized language name ("Qırımtatarca") matching letter key color
+            // Centered full localized language name ("Qırımtatarca" / "Къырымтатарджа") matching letter key color
             Text(fullName)
                 .font(.system(size: centerFontSize, weight: .regular, design: .default))
                 .foregroundStyle(Color.primary)
                 .lineLimit(1)
                 .opacity(spaceBarState.isShowingFullName ? 1 : 0)
                 .animation(.easeInOut(duration: 0.35), value: spaceBarState.isShowingFullName)
-            
-            // Pinned corner abbreviation ("QT")
-            Text(languageCode)
-                .font(.system(size: cornerFontSize, weight: .regular).width(.condensed))
-                .scaleEffect(x: 0.82, y: 1.05)
-                .foregroundStyle(Color.secondary.opacity(0.85))
-                .lineLimit(1)
-                .padding(.trailing, isPad ? 9 : 8)
-                .padding(.bottom, isPad ? 6 : 4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
-                .opacity(spaceBarState.isShowingFullName ? 0 : 1)
-                .animation(.easeInOut(duration: 0.35), value: spaceBarState.isShowingFullName)
+
+            if isClassic {
+                if isCompact {
+                    Text(spaceText)
+                        .font(.system(size: centerFontSize, weight: .regular, design: .default))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .opacity(spaceBarState.isShowingFullName ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.35), value: spaceBarState.isShowingFullName)
+                }
+            } else {
+                // Pinned corner abbreviation ("QT" / "КЪТ") in Liquid Glass mode
+                Text(languageCode)
+                    .font(.system(size: cornerFontSize, weight: .regular).width(.condensed))
+                    .foregroundStyle(Color.secondary.opacity(0.85))
+                    .lineLimit(1)
+                    .padding(.trailing, isCompact ? 4.5 : 5)
+                    .padding(.bottom, isCompact ? 4 : 5.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .opacity(spaceBarState.isShowingFullName ? 0 : 1)
+                    .animation(.easeInOut(duration: 0.35), value: spaceBarState.isShowingFullName)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

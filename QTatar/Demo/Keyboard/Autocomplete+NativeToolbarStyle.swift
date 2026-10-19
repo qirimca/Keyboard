@@ -26,7 +26,7 @@ struct NativeAutocompleteToolbar: View {
     }
     
     private var height: CGFloat {
-        isFloating ? 34 : (isDockedPad ? 37 : 42)
+        isFloating ? 42 : (isDockedPad ? 37 : 42)
     }
     
     var body: some View {
@@ -35,8 +35,7 @@ struct NativeAutocompleteToolbar: View {
         
         GeometryReader { geo in
             let totalWidth = max(geo.size.width, 1)
-            // This toolbar belongs to the extension; the host's assistant is a separate view.
-            let sideInset: CGFloat = 0
+            let sideInset: CGFloat = isDockedPad ? round(totalWidth * 0.17) : 0
             let centerWidth = max(totalWidth - (sideInset * 2), 1)
             let slotWidth = max((centerWidth - 1.0) / CGFloat(slotCount), 1)
             
@@ -54,7 +53,7 @@ struct NativeAutocompleteToolbar: View {
                         Color.black.opacity(0.0001)
                         
                         if let suggestion {
-                            Text(suggestion.title)
+                            Text(suggestion.isUnknown ? "“\(suggestion.title)”" : suggestion.title)
                                 .font(isFloating ? .subheadline : .system(size: 16, weight: suggestion.isAutocorrect ? .semibold : .regular))
                                 .foregroundStyle(Color.primary)
                                 .lineLimit(1)

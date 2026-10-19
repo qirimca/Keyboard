@@ -289,6 +289,9 @@ public extension KeyboardContext {
     
     /// Sync the ``originalTextDocumentProxy``.
     func syncTextDocumentProxy(with controller: KeyboardInputViewController) {
+        if let bundleId = controller.hostBundleId, hostApplicationBundleId != bundleId {
+            hostApplicationBundleId = bundleId
+        }
         if originalTextDocumentProxy === controller.originalTextDocumentProxy { return }
         originalTextDocumentProxy = controller.originalTextDocumentProxy
     }
@@ -358,15 +361,22 @@ extension KeyboardContext {
         if needsInputModeSwitchKey != controller.needsInputModeSwitchKey {
             needsInputModeSwitchKey = controller.needsInputModeSwitchKey
         }
+        if let bundleId = controller.hostBundleId, hostApplicationBundleId != bundleId {
+            hostApplicationBundleId = bundleId
+        }
         if controller.orientation == interfaceOrientation { return }
         sync(with: controller)
     }
 
     /// Perform a sync to check if the keyboard is floating.
     func syncIsFloating(with controller: KeyboardInputViewController) {
-        let width = controller.view.bounds.width
+        let width = controller.view.bounds.width > 0 ? controller.view.bounds.width : controller.view.frame.width
+        #if os(iOS)
+        let screenWidth = controller.screenSize.width > 0 ? controller.screenSize.width : UIScreen.main.bounds.width
+        #else
         let screenWidth = controller.screenSize.width
-        let isFloating = controller.traitCollection.userInterfaceIdiom == .pad
+        #endif
+        let isFloating = (controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad)
             && width > 0 && screenWidth > 0 && width < screenWidth / 2
         if isKeyboardFloating == isFloating { return }
         isKeyboardFloating = isFloating

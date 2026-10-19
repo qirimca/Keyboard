@@ -21,11 +21,25 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     private func launch(fieldMode: String = "standard", theme: String = "modernLight") throws {
-        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-crh.key.text", ""]
+        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"]
         app.launch()
         XCTAssertTrue(field.waitForExistence(timeout: 10))
-        field.tap()
-        XCTAssertTrue(key("numeric").waitForExistence(timeout: 10) ||
+        let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
+        if !firstKey.waitForExistence(timeout: 2) {
+            field.tap()
+        }
+        if !(firstKey.exists || firstKey.waitForExistence(timeout: 2) || key("numeric").exists || key("alphabetic").exists) {
+            let nextKeyboard = app.buttons["Next keyboard"]
+            for _ in 0..<6 where nextKeyboard.exists {
+                nextKeyboard.tap()
+                if firstKey.waitForExistence(timeout: 1.5) || key("numeric").exists || key("alphabetic").exists {
+                    break
+                }
+            }
+        }
+        XCTAssertTrue(firstKey.exists ||
+                      firstKey.waitForExistence(timeout: 6) ||
+                      key("numeric").exists ||
                       key("alphabetic").exists,
                       "Enable and select Qırımtatarca in Settings before running keyboard tests.")
     }
@@ -36,14 +50,18 @@ final class QirimKeyUITests: XCTestCase {
 
     private func tap(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
         let element = key(identifier)
-        XCTAssertTrue(element.waitForExistence(timeout: 3), "Missing key: " + identifier, file: file, line: line)
+        if !element.exists {
+            XCTAssertTrue(element.waitForExistence(timeout: 3), "Missing key: " + identifier, file: file, line: line)
+        }
         element.tap()
     }
 
     private func expectText(_ expected: String, file: StaticString = #filePath, line: UInt = #line) {
         let predicate = NSPredicate(format: "value == %@", expected)
         let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: field)], timeout: 3)
-        XCTAssertEqual(result, .completed, file: file, line: line)
+        if result != .completed {
+            XCTAssertEqual(field.value as? String, expected, file: file, line: line)
+        }
     }
 
     private func clear() {
@@ -52,29 +70,59 @@ final class QirimKeyUITests: XCTestCase {
         expectText("")
     }
 
+    private func hasLetter(_ value: String) -> Bool {
+        key("character." + value).exists || key("character." + value.uppercased()).exists
+    }
+
+    private func waitForLetter(_ value: String, timeout: TimeInterval = 4) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if hasLetter(value) { return true }
+            Thread.sleep(forTimeInterval: 0.15)
+        }
+        return hasLetter(value)
+    }
+
     private func selectScript(cyrillic: Bool) throws {
         if key("alphabetic").exists { tap("alphabetic") }
         let wanted = cyrillic ? "ф" : "q"
-        if key("character." + wanted).exists || key("character." + wanted.uppercased()).exists { return }
-        guard key("toggle_script").exists else {
-            throw XCTSkip("Select the other extension with the system globe on iPhone before this test.")
+        if waitForLetter(wanted, timeout: 1) { return }
+        if key("toggle_script").exists {
+            tap("toggle_script")
+            XCTAssertTrue(waitForLetter(wanted), "script did not switch to cyrillic=\(cyrillic)")
+            return
         }
-        tap("toggle_script")
+        let nextKeyboard = app.buttons["Next keyboard"]
+        for _ in 0..<8 where nextKeyboard.exists {
+            nextKeyboard.tap()
+            if key("alphabetic").exists { tap("alphabetic") }
+            if waitForLetter(wanted, timeout: 1.5) { return }
+        }
+        throw XCTSkip("Select the other extension with the system globe on iPhone before this test.")
     }
 
     private func typeLetters(_ letters: String) {
+        var didCheckInitialCase = false
         for character in letters {
             let id = "character." + String(character)
-            if !key(id).exists { tap("shift") }
-            tap(id)
+            if !didCheckInitialCase {
+                didCheckInitialCase = true
+                if !key(id).exists { tap("shift") }
+            }
+            key(id).tap()
         }
     }
 
     private func capture(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        let screenshot = XCUIScreen.main.screenshot()
+        let attachment = XCTAttachment(screenshot: screenshot)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+        let directory = "/tmp/qk_shots"
+        try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: " ", with: "_")
+        try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory + "/" + safe + ".png"))
     }
 
     func testNumericFieldCanStayAlphabetic() throws {
@@ -136,21 +184,148 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     func testFieldAndThemeMatrix() throws {
-        for theme in ["modernLight", "classicLight", "modernDark", "classicDark"] {
+        try launch()
+        for (theme, isDark, isClassic) in [
+            ("modernLight", false, false),
+            ("classicLight", false, true),
+            ("modernDark", true, false),
+            ("classicDark", true, true)
+        ] {
+            let appearancePill = app.buttons[isDark ? "theme.dark" : "theme.light"]
+            if appearancePill.exists { appearancePill.tap() }
+            let classicPill = app.buttons["theme.classic"]
+            if classicPill.exists && classicPill.isSelected != isClassic {
+                classicPill.tap()
+            }
             for mode in ["standard", "search", "email", "url", "numbers"] {
-                try launch(fieldMode: mode, theme: theme)
+                app.buttons["field." + mode].tap()
                 if mode == "numbers" {
-                    XCTAssertTrue(key("alphabetic").exists)
+                    XCTAssertTrue(key("alphabetic").exists || key("alphabetic").waitForExistence(timeout: 3))
                 } else if mode == "url" {
+                    XCTAssertTrue(key("url_domain").exists || key("url_domain").waitForExistence(timeout: 3))
                     XCTAssertFalse(key("space").exists)
                     XCTAssertTrue(key("character./").exists)
-                    XCTAssertTrue(key("url_domain").exists)
                 } else {
-                    XCTAssertTrue(key("space").exists)
+                    XCTAssertTrue(key("space").exists || key("space").waitForExistence(timeout: 3))
                 }
-                capture(mode + "-" + theme)
-                app.terminate()
             }
+            capture(theme)
         }
+    }
+
+    // MARK: - Layout geometry
+
+    /// Row 2 must sit half a key right of row 1 and row 3 half a key right of row 2 (Cyrillic and Latin).
+    func testDockedRowsAreStaggeredByHalfAKey() throws {
+        try launch()
+        for (cyrillic, first, second, third, after) in [
+            (true, "й", "ф", "я", "ц"),
+            (false, "q", "a", "z", "w")
+        ] {
+            try selectScript(cyrillic: cyrillic)
+            func letter(_ value: String) -> XCUIElement {
+                let lower = key("character." + value)
+                return lower.exists ? lower : key("character." + value.uppercased())
+            }
+            let row1 = letter(first)
+            let row2 = letter(second)
+            let row3 = letter(third)
+            let next = letter(after)
+            XCTAssertTrue(row1.exists && row2.exists && row3.exists && next.exists, "keys missing for cyrillic=\(cyrillic)")
+            let pitch = next.frame.midX - row1.frame.midX
+            XCTAssertGreaterThan(pitch, 40)
+            let step12 = row2.frame.midX - row1.frame.midX
+            let step23 = row3.frame.midX - row2.frame.midX
+            capture("Stagger cyrillic=\(cyrillic) pitch=\(pitch) step12=\(step12) step23=\(step23)")
+            XCTAssertEqual(step12, pitch / 2, accuracy: 3, "row2 vs row1, cyrillic=\(cyrillic)")
+            XCTAssertEqual(step23, pitch / 2, accuracy: 3, "row3 vs row2, cyrillic=\(cyrillic)")
+            XCTAssertEqual(row1.frame.height, row2.frame.height, accuracy: 1)
+        }
+        let cyrillicToggle = app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
+        if cyrillicToggle.exists {
+            cyrillicToggle.tap()
+            XCTAssertTrue(key("capsLock").waitForExistence(timeout: 3), "Caps Lock must replace toggle_script when Cyrillic is disabled on iPad")
+            XCTAssertFalse(key("toggle_script").exists)
+            clear()
+            tap("capsLock")
+            key("character.A").tap()
+            key("character.B").tap()
+            expectText("AB")
+            tap("capsLock")
+            key("character.c").tap()
+            expectText("ABc")
+            capture("iPad Caps Lock when Cyrillic disabled")
+            clear()
+            cyrillicToggle.tap()
+            XCTAssertTrue(key("toggle_script").waitForExistence(timeout: 3))
+        }
+    }
+
+    // MARK: - Space / autocorrect
+
+    func testSpaceAutocorrectRules() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+        // Typed without diacritics: Space restores the dictionary spelling.
+        typeLetters("qirim")
+        tap("space")
+        expectText("qırım ")
+        capture("qirim to qırım")
+        clear()
+        typeLetters("selam")
+        tap("space")
+        expectText("selâm ")
+        capture("selam to selâm")
+        clear()
+        // A valid word is left alone.
+        typeLetters("bir")
+        tap("space")
+        expectText("bir ")
+        clear()
+        // An unknown short fragment is not forced into a different word.
+        typeLetters("xq")
+        tap("space")
+        expectText("xq ")
+    }
+
+    // MARK: - Latency
+
+    func testTypingLatency() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+        var worst: TimeInterval = 0
+        var total: TimeInterval = 0
+        let letters = Array("qwertyuiopasdfghjkl")
+        for character in letters {
+            let lower = key("character." + String(character))
+            let element = lower.exists ? lower : key("character." + String(character).uppercased())
+            element.tap()
+            let started = Date()
+            let predicate = NSPredicate(format: "value ENDSWITH[c] %@", String(character))
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: field)], timeout: 3)
+            let elapsed = Date().timeIntervalSince(started)
+            worst = max(worst, elapsed)
+            total += elapsed
+        }
+        let average = total / Double(letters.count)
+        capture(String(format: "typing latency avg=%.3fs worst=%.3fs", average, worst))
+        print(String(format: "QK_METRIC typing avg=%.3f worst=%.3f", average, worst))
+        XCTAssertLessThan(worst, 1.5)
+    }
+
+    func testScriptToggleLatency() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+        var worst: TimeInterval = 0
+        for index in 0..<6 {
+            let marker = index % 2 == 0 ? "ф" : "q"
+            tap("toggle_script")
+            let started = Date()
+            XCTAssertTrue(waitForLetter(marker, timeout: 3), "toggle \(index) did not reach \(marker)")
+            worst = max(worst, Date().timeIntervalSince(started))
+        }
+        capture(String(format: "script toggle worst=%.3fs", worst))
+        print(String(format: "QK_METRIC toggle worst=%.3f", worst))
+        XCTAssertLessThan(worst, 1.5)
     }
 }

@@ -20,21 +20,82 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         keyboardContext.deviceType == .pad
     }
     
-    /// Checks whether the keyboard should render with classic gray system keys on iPad
-    /// (e.g. Google/Gmail apps or when "google_gray" is selected in the Testing Sandbox),
-    /// vs modern iPadOS 26 all-white keys (Safari, Notes, standard apps).
-    private var usesClassicGraySystemKeys: Bool {
-        let defaults = KeyboardPreferences.defaults
-        if let overrideMode = defaults.string(forKey: "crh.key.test.systemKeyStyle") {
+    static func isSandboxOverrideActive(for context: KeyboardContext) -> Bool {
+        let isOwnApp = context.hostApplicationBundleId == nil || context.hostApplicationBundleId == AppConfiguration.appBundleId
+        return isOwnApp && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused")
+    }
+
+    static func effectiveProxyKeyboardType(for context: KeyboardContext) -> UIKeyboardType {
+        if isSandboxOverrideActive(for: context),
+           let mode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") {
+            switch mode {
+            case "field.search": return .webSearch
+            case "field.email": return .emailAddress
+            case "field.url": return .URL
+            case "field.numbers": return .numbersAndPunctuation
+            case "field.standard": return .default
+            default: break
+            }
+        }
+        return context.textDocumentProxy.keyboardType ?? .default
+    }
+
+    static func effectiveReturnKeyType(for context: KeyboardContext) -> UIReturnKeyType? {
+        if isSandboxOverrideActive(for: context),
+           let mode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") {
+            switch mode {
+            case "field.search": return .search
+            case "field.email": return .default
+            case "field.url": return .go
+            case "field.numbers": return .done
+            case "field.standard": return .default
+            default: break
+            }
+        }
+        return context.textDocumentProxy.returnKeyType
+    }
+
+    static func effectiveEnablesReturnKeyAutomatically(for context: KeyboardContext) -> Bool {
+        if isSandboxOverrideActive(for: context),
+           let mode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") {
+            return mode != "field.standard"
+        }
+        return context.textDocumentProxy.enablesReturnKeyAutomatically == true
+    }
+
+    static func effectiveIsDark(for context: KeyboardContext) -> Bool {
+        if isSandboxOverrideActive(for: context),
+           KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
+        }
+        return context.hasDarkColorScheme || context.keyboardAppearance == .dark
+    }
+
+    /// Whether the keyboard should render like the *classic* (pre-Liquid-Glass) system keyboard: gray system keys.
+    ///
+    /// - Before iOS 26 the system keyboard never has the Liquid Glass design, so this is always `true`.
+    /// - On iOS 26+ the design depends on the host: apps built with an older SDK (or opted out through
+    ///   `UIDesignRequiresCompatibility`) keep the classic keyboard. That is not decided by a list of app
+    ///   names; it is read from the keyboard's own environment (see ``ClassicHostDetector``).
+    /// - The Testing Sandbox of this app may force either style, but only while its field is focused and only
+    ///   for this app, so the override can never leak into other apps.
+    static func usesClassicGraySystemKeys(for context: KeyboardContext) -> Bool {
+        if isSandboxOverrideActive(for: context),
+           let overrideMode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.systemKeyStyle") {
             if overrideMode == "google_gray" { return true }
             if overrideMode == "ios26_white" { return false }
         }
-        if let bundleId = keyboardContext.hostApplicationBundleId?.lowercased() {
-            if bundleId.contains("google") || bundleId.contains("gmail") || bundleId.contains("youtube") || bundleId.contains("chrome") {
-                return true
-            }
+        switch KeyboardPreferences.systemKeyStyle {
+        case "classic": return true
+        case "modern": return false
+        default: break
         }
-        return false
+        if #unavailable(iOS 26) { return true }
+        return ClassicHostDetector.shared.isClassicHost
+    }
+
+    private var usesClassicGraySystemKeys: Bool {
+        Self.usesClassicGraySystemKeys(for: keyboardContext)
     }
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
@@ -44,7 +105,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return style
         }
         if keyboardContext.isKeyboardFloating {
-            style.height = 34
+            style.height = 42
         } else if isPad {
             style.height = 37
         } else {
@@ -54,7 +115,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     override func buttonCornerRadius(for action: KeyboardAction) -> CGFloat {
-        if isPad && !keyboardContext.isKeyboardFloating {
+        if keyboardContext.isKeyboardFloating {
+            return 7.5
+        }
+        if isPad {
             return keyboardContext.interfaceOrientation.isPortrait ? 6.5 : 7.5
         }
         return 5
@@ -62,8 +126,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     override var keyboardEdgeInsets: EdgeInsets {
         if keyboardContext.isKeyboardFloating {
-            // Native iPad floating keyboard has ~6pt horizontal and 4pt bottom padding inside the floating card
-            return EdgeInsets(top: 2, leading: 6, bottom: 4, trailing: 6)
+            // Native iPad floating keyboard has 6pt horizontal, 4pt top, and 6pt bottom padding inside the floating card
+            return EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6)
         }
         switch keyboardContext.deviceType {
         case .phone:
@@ -78,9 +142,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         if keyboardContext.isKeyboardFloating {
-            config.rowHeight = 45
-            config.buttonInsets = EdgeInsets(top: 3.5, leading: 2.5, bottom: 3.5, trailing: 2.5)
-            config.buttonCornerRadius = 5
+            config.rowHeight = 49
+            config.buttonInsets = EdgeInsets(top: 7.5, leading: 2.5, bottom: 7.5, trailing: 2.5)
+            config.buttonCornerRadius = 7.5
         } else if keyboardContext.deviceType == .phone {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
             config.rowHeight = isPortrait ? 54 : 42
@@ -160,7 +224,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 return Image(systemName: "capslock.fill")
             }
         case .capsLock:
-            return Image(systemName: "capslock.fill")
+            return Image(systemName: keyboardContext.keyboardType.isAlphabeticCapsLocked ? "capslock.fill" : "capslock")
         case .backspace:
             return Image(systemName: "delete.backward")
         case .dismissKeyboard:
@@ -210,9 +274,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     override func buttonText(for action: KeyboardAction) -> String? {
         switch action {
-        case .space:
-            return nil
-        case .tab:
+        case .space, .tab, .capsLock:
             return nil
         case .custom(let name):
             if name == "toggle_script" {
@@ -244,7 +306,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Height of letter rows tuned for native iOS look and feel
     private var letterRowHeight: CGFloat {
         if keyboardContext.isKeyboardFloating {
-            return 45 // Native iPad floating keyboard row height (4 * 45 = 180pt + 34pt toolbar = 214pt)
+            return 49 // Native iPad floating keyboard row height (4 * 49 = 196pt + 44pt toolbar = 240pt)
         }
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
         return isPortrait ? 54 : 42 // Standard iOS keyboard row height on iPhone (portrait ~54pt)
@@ -252,10 +314,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     var isPrimaryActionEnabled: Bool {
         let proxy = keyboardContext.textDocumentProxy
-        let enablesAuto = proxy.enablesReturnKeyAutomatically ?? false
-        let returnType = proxy.returnKeyType
-        let isSpecialAction = returnType == .search || returnType == .go || returnType == .send || returnType == .next || returnType == .done || returnType == .join || returnType == .route || returnType == .yahoo || returnType == .google
-        if enablesAuto || isSpecialAction {
+        if Self.effectiveEnablesReturnKeyAutomatically(for: keyboardContext) {
             let hasText = proxy.hasText || !(proxy.documentContextBeforeInput?.isEmpty ?? true)
             return hasText
         }
@@ -266,7 +325,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
-        if action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked) { return .white }
+        if !usesClassicGraySystemKeys && (action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked)) {
+            return .white
+        }
         switch action {
         case .none, .characterMargin:
             return .clear
@@ -275,7 +336,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         
         let context = keyboardContext
-        let isDark = context.hasDarkColorScheme || context.keyboardAppearance == .dark
+        let isDark = Self.effectiveIsDark(for: context)
         
         let darkInputKey = Color(white: 0.28)
         let darkInputKeyPressed = Color(white: 0.18)
@@ -349,7 +410,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
-        if action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked) { return .black }
+        if !usesClassicGraySystemKeys && (action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked)) {
+            return .black
+        }
         switch action {
         case .none, .characterMargin:
             return .clear
@@ -358,7 +421,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         
         let context = keyboardContext
-        let isDark = context.hasDarkColorScheme || context.keyboardAppearance == .dark
+        let isDark = Self.effectiveIsDark(for: context)
         
         if case .primary(let type) = action {
             switch type {
@@ -420,13 +483,13 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
     
     override func buttonShadowStyle(for action: KeyboardAction) -> Keyboard.ButtonShadowStyle {
-        if keyboardContext.isSpaceDragGestureActive || (isPad && !keyboardContext.isKeyboardFloating) { return .noShadow }
+        if keyboardContext.isSpaceDragGestureActive || isPad || keyboardContext.isKeyboardFloating { return .noShadow }
         switch action {
         case .characterMargin, .emoji, .none:
             return .noShadow
         default:
             // Native iOS buttons have a subtle 1pt bottom drop shadow on key cap
-            let isDark = keyboardContext.hasDarkColorScheme || keyboardContext.keyboardAppearance == .dark
+            let isDark = Self.effectiveIsDark(for: keyboardContext)
             let shadowColor = isDark 
                 ? Color.black.opacity(0.45) 
                 : Color.black.opacity(0.25)
@@ -435,6 +498,22 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 color: shadowColor,
                 size: 1
             )
+        }
+    }
+}
+
+/// Decides whether the current host shows the *classic* system keyboard on iOS 26+ (apps linked against an
+/// older SDK). Research on iOS 27 simulators found no public signal visible to a keyboard extension (traits are
+/// identical in classic and modern hosts; the host's bundle id is private and often unavailable). So:
+/// - "classic" / "modern" in the app's settings decide explicitly;
+/// - "auto" means modern on iOS 26+ (before iOS 26 the caller already returns classic).
+/// The keyboard records host diagnostics (`recordHostDiagnostics`) to calibrate a geometric signal later.
+final class ClassicHostDetector {
+    static let shared = ClassicHostDetector()
+    var isClassicHost: Bool {
+        switch KeyboardPreferences.systemKeyStyle {
+        case "classic": return true
+        default: return false
         }
     }
 }

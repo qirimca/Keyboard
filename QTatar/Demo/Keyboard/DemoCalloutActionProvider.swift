@@ -8,10 +8,9 @@
 
 import KeyboardKit
 
-/// Long-press pairs for the official Crimean Tatar Latin alphabet.
-/// Returns only the specific additional letter (no redundant original letter).
-/// Letters that have dedicated physical keys on the keyboard (â, ñ, ç, ş, ğ, ö, ü, ı, i)
-/// have no long-press callout.
+/// Long-press callout provider for QırımKey.
+/// Additional Crimean Tatar letters (â, ñ, ç, ş, ğ, ö, ü, ı, i, ё, ъ, ж) are present
+/// as dedicated keys on the main layout, so letter long-press callouts are disabled.
 class DemoCalloutActionProvider: BaseCalloutActionProvider {
     private let keyboardContext: KeyboardContext
 
@@ -20,7 +19,6 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
         super.init()
     }
 
-    
     override func calloutActions(
         for char: String
     ) -> [KeyboardAction] {
@@ -32,37 +30,11 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
 }
 
 private extension DemoCalloutActionProvider {
-    
-    /// Proposes only the single additional letter.
+
     static func alternatives(for char: String) -> [String]? {
         switch char {
-        case "г": return ["гъ"]
-        case "Г": return ["Гъ"]
-        case "к": return ["къ"]
-        case "К": return ["Къ"]
-        case "н": return ["нъ"]
-        case "Н": return ["Нъ"]
-        case "д": return ["дж"]
-        case "Д": return ["Дж"]
-        case "е": return ["ё"]
-        case "Е": return ["Ё"]
-        case "a": return ["â"]
-        case "A": return ["Â"]
-        case "c": return ["ç"]
-        case "C": return ["Ç"]
-        case "g": return ["ğ"]
-        case "G": return ["Ğ"]
-        case "n": return ["ñ"]
-        case "N": return ["Ñ"]
-        case "o": return ["ö"]
-        case "O": return ["Ö"]
-        case "s": return ["ş"]
-        case "S": return ["Ş"]
-        case "u": return ["ü"]
-        case "U": return ["Ü"]
         case ",": return ["."]
         case ".": return [","]
-        // All letters with dedicated keys (â, ñ, ç, ş, ğ, ö, ü, ı, i) have no long press
         default: return nil
         }
     }

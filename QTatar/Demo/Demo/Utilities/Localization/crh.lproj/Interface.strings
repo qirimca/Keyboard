@@ -13,7 +13,12 @@
 "settings.cyrillic" = "Kirill klaviaturası";
 "settings.suggestions" = "Söz teklifleri";
 "settings.done" = "Hazır";
-"settings.keyboardHelp" = "Kirill klaviaturası metinni latin harflerinen kirsete. Globus dögmesinen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçimni söndürmek kirillnen kirsetüvni söndüre; onu iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortaq sazlamalar içün tam irişim kerek.";
+"settings.keyboardHelp" = "Kirill klaviaturası metinni latin harflerinen kirsete. Globus dögmesinen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da qoşıñız. iPad'de bu seçim АБВ tuşunı köstere yaki gizley; iOS klaviaturanı cedvelden gizley bilmey, onı çıqarmaq içün iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar yolunı qullanıñız. Sistema tuşları: «Klassik» — eski ilâvelerdeki (meselâ, Gmail) kibi kül rengi, «iOS 26» — aq. Ortaq sazlamalar içün tam irişim kerek.";
+"settings.keyboardHelpPhone" = "Globus dögmesinen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da qoşıñız; iOS klaviaturanı cedvelden gizley bilmey, birisini çıqarmaq içün iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar yolunı qullanıñız. Sistema tuşları: «Klassik» — eski ilâvelerdeki (meselâ, Gmail) kibi kül rengi, «iOS 26» — aq. Ortaq sazlamalar içün tam irişim kerek.";
+"settings.systemKeys" = "Sistema tuşları";
+"settings.systemKeys.auto" = "Avtomatik";
+"settings.systemKeys.classic" = "Klassik";
+"settings.systemKeys.modern" = "iOS 26";
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
 "theme.classic" = "Klassik";

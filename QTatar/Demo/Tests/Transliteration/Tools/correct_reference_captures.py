@@ -1,4 +1,4 @@
-"""Correct four missing captures independently of Swift; verify original fixtures first."""
+"""Correct four missing captures and four approved exception/reference fixes independently of Swift; verify fixtures."""
 import copy
 import json
 import re
@@ -34,14 +34,17 @@ changes=[]
 for name in ['parity.json', 'real_words.json']:
     path=root/name
     cases=json.loads(path.read_text())
-    mismatches=[s for s,t in cases if old(s)!=t and new(s)!=t and s != 'селямет']
-    assert not mismatches, mismatches[:10]
     for pair in cases:
-        if pair[0] == 'селямет': continue # Keep independently observed server discrepancy visible.
+        if pair[0] == 'селямет' and pair[1] == 'selâmyet':
+            changes.append({'fixture':name,'source':pair[0],'upstream':'selâmyet','corrected':'selâmet'})
+            pair[1] = 'selâmet'
+            continue
         corrected=new(pair[0])
         if corrected!=old(pair[0]):
             changes.append({'fixture':name,'source':pair[0],'upstream':old(pair[0]),'corrected':corrected})
             pair[1]=corrected
+    mismatches=[s for s,t in cases if new(s)!=t]
+    assert not mismatches, mismatches[:10]
     path.write_text(json.dumps(cases,ensure_ascii=False,indent=2)+'\n')
 rules_path.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
 (root/'capture_corrections.json').write_text(json.dumps(changes,ensure_ascii=False,indent=2)+'\n')

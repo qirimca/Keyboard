@@ -16,24 +16,30 @@ TOKEN_SPLIT_PATTERN = re.compile(r"[^\wğüşıöçñĞÜŞİÖÇÑıİ]+", re.U
 
 # High-value continuations that are missing from the dictionary phrase list.
 SEED_TRIGRAMS: dict[tuple[str, str, str], int] = {
-    ("bir", "şey", "yok"): 620,
+    ("bir", "şey", "yoq"): 620,
     ("bir", "şey", "bar"): 540,
     ("bir", "şey", "de"): 480,
     ("bir", "şey", "içün"): 430,
     ("bir", "şey", "edi"): 390,
-    ("bir", "şey", "bolğan"): 260,
+    ("bir", "şey", "olğan"): 260,
     ("bir", "şey", "yasa"): 220,
     ("bir", "şey", "qıldı"): 200,
     ("men", "de", "öyle"): 180,
     ("o", "da", "öyle"): 170,
-    ("ve", "son", "ra"): 160,
+    ("ve", "soñra", "bu"): 160,
 }
 
-SEED_BIGRAMS: dict[tuple[str, str], int] = {}
+SEED_BIGRAMS: dict[tuple[str, str], int] = {
+    ("ve", "soñra"): 160,
+}
+
+
+def crh_lower(text: str) -> str:
+    return text.replace("İ", "i").replace("I", "ı").lower()
 
 
 def tokenize(text: str) -> list[str]:
-    parts = [part.strip() for part in TOKEN_SPLIT_PATTERN.split(text.lower())]
+    parts = [part.strip() for part in TOKEN_SPLIT_PATTERN.split(crh_lower(text))]
     return [part for part in parts if part]
 
 
@@ -47,7 +53,7 @@ def collect_ngrams_from_phrases(
     trigrams: collections.Counter[tuple[str, str, str]] = collections.Counter()
 
     for phrase, freq in phrases:
-        parts = [part.lower() for part in phrase.split()]
+        parts = [crh_lower(part) for part in phrase.split()]
         for index in range(len(parts) - 1):
             bigrams[(parts[index], parts[index + 1])] += freq
         for index in range(len(parts) - 2):
@@ -153,7 +159,7 @@ def build_ngrams(
 ) -> tuple[int, int]:
     cursor = conn.cursor()
     unigrams = {
-        word.lower(): freq
+        crh_lower(word): freq
         for word, freq in cursor.execute(
             'SELECT word, freq FROM words WHERE instr(word, " ") = 0'
         )

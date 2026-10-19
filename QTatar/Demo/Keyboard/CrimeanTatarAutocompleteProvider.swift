@@ -16,7 +16,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
     private let manager = SuggestionsDataBaseManager.shared
     private let keyboardContext: KeyboardContext
     private var latestQuery = ""
-    
+
     init(
         context: AutocompleteContext,
         keyboardContext: KeyboardContext
@@ -27,62 +27,90 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
     }
 
     private var context: AutocompleteContext
-    
+
     var locale: Locale = .current
-    
+
     var canIgnoreWords: Bool { false }
     var canLearnWords: Bool { false }
     var ignoredWords: [String] = []
     var learnedWords: [String] = []
-    
+
     func hasIgnoredWord(_ word: String) -> Bool { false }
     func hasLearnedWord(_ word: String) -> Bool { false }
     func ignoreWord(_ word: String) {}
     func learnWord(_ word: String) {}
     func removeIgnoredWord(_ word: String) {}
     func unlearnWord(_ word: String) {}
-    
+
     func autocompleteSuggestions(
         for text: String
     ) async throws -> [Autocomplete.Suggestion] {
-        let query = AutocompleteQueryResolver.queryText(
-            for: keyboardContext.textDocumentProxy
-        ) ?? text
+        let snapshot = await MainActor.run {
+            captureQuerySnapshot(fallbackText: text)
+        }
+        let results = computeSuggestions(for: snapshot)
+        let isCurrent = await MainActor.run {
+            snapshot.query == latestQuery
+        }
+        return isCurrent ? results : []
+    }
+
+    /// Synchronous suggestions for the current document state; used on the async path and directly on Space.
+    func suggestionsNow(for text: String) -> [Autocomplete.Suggestion] {
+        let snapshot = captureQuerySnapshot(fallbackText: text)
+        return computeSuggestions(for: snapshot)
+    }
+
+    private struct QuerySnapshot {
+        let query: String
+        let shouldCapitalize: Bool
+        let isDocumentEmpty: Bool
+        let completedContextWords: [String]
+        let isAutocorrectEnabled: Bool
+    }
+
+    private func captureQuerySnapshot(fallbackText: String) -> QuerySnapshot {
+        let proxy = keyboardContext.textDocumentProxy
+        let query = AutocompleteQueryResolver.queryText(for: proxy) ?? fallbackText
         latestQuery = query
-        
         let shouldCapitalize = Self.shouldCapitalize(
             typedText: query,
-            proxy: keyboardContext.textDocumentProxy,
+            proxy: proxy,
             keyboardContext: keyboardContext
         )
-        
-        let proxy = keyboardContext.textDocumentProxy
+        let isEmpty = query.isEmpty ? Self.isDocumentEmpty(proxy) : false
+        let contextWords = (query.isEmpty && !isEmpty) ? Self.completedContextWords(before: proxy) : []
+        return QuerySnapshot(
+            query: query,
+            shouldCapitalize: shouldCapitalize,
+            isDocumentEmpty: isEmpty,
+            completedContextWords: contextWords,
+            isAutocorrectEnabled: context.isAutocorrectEnabled
+        )
+    }
+
+    private func computeSuggestions(for snapshot: QuerySnapshot) -> [Autocomplete.Suggestion] {
         let suggestions: [Autocomplete.Suggestion]
-        
-        if query.isEmpty {
-            // When document is empty, do not show any suggestions (native iOS behavior)
-            if Self.isDocumentEmpty(proxy) {
+        if snapshot.query.isEmpty {
+            if snapshot.isDocumentEmpty {
                 suggestions = []
-            } else if !Self.completedContextWords(before: proxy).isEmpty {
+            } else if !snapshot.completedContextWords.isEmpty {
                 suggestions = manager.nextWordSuggestions(
-                    contextWords: Self.completedContextWords(before: proxy),
-                    shouldCapitalize: shouldCapitalize
+                    contextWords: snapshot.completedContextWords,
+                    shouldCapitalize: snapshot.shouldCapitalize
                 )
             } else {
                 suggestions = []
             }
         } else {
             suggestions = manager.suggestions(
-                for: query,
-                shouldCapitalize: shouldCapitalize
+                for: snapshot.query,
+                shouldCapitalize: snapshot.shouldCapitalize
             )
         }
-        
-        guard query == latestQuery else { return [] }
-        
         return suggestions.map { suggestion in
             var mapped = suggestion
-            mapped.isAutocorrect = suggestion.isAutocorrect && context.isAutocorrectEnabled
+            mapped.isAutocorrect = suggestion.isAutocorrect && snapshot.isAutocorrectEnabled
             return mapped
         }
     }
@@ -90,12 +118,12 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 
 /// Resolves the word that autocomplete should query in the dictionary.
 enum AutocompleteQueryResolver {
-    
+
     static func queryText(for proxy: UITextDocumentProxy) -> String? {
         if let word = proxy.currentWord, !word.isEmpty {
             return word
         }
-        
+
         if let before = proxy.documentContextBeforeInput {
             let fragment = before.wordFragmentAtEnd
             if !fragment.isEmpty {
@@ -105,18 +133,18 @@ enum AutocompleteQueryResolver {
                 return ""
             }
         }
-        
+
         if proxy.documentContextBeforeInput == nil,
            proxy.documentContextAfterInput == nil {
             return ""
         }
-        
+
         return ""
     }
 }
 
 private extension CrimeanTatarAutocompleteProvider {
-    
+
     static func completedContextWords(before proxy: UITextDocumentProxy) -> [String] {
         guard let before = proxy.documentContextBeforeInput else { return [] }
         let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
@@ -125,7 +153,7 @@ private extension CrimeanTatarAutocompleteProvider {
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
     }
-    
+
     static func isDocumentEmpty(_ proxy: UITextDocumentProxy) -> Bool {
         let before = proxy.documentContextBeforeInput?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -133,7 +161,7 @@ private extension CrimeanTatarAutocompleteProvider {
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return before.isEmpty && after.isEmpty
     }
-    
+
     static func shouldCapitalize(
         typedText: String,
         proxy: UITextDocumentProxy,
@@ -143,14 +171,14 @@ private extension CrimeanTatarAutocompleteProvider {
         if let first = typedText.first, first.isUppercase {
             return true
         }
-        
+
         // 2. If keyboard is alphabetic, shift state directly governs suggestion capitalization:
         // When Shift is on (uppercased/capsLocked), suggestions start with a capital letter.
         // When Shift is off (lowercased), suggestions start with a lowercase letter.
         if case .alphabetic(let casing) = keyboardContext.keyboardType {
             return casing.isUppercased
         }
-        
+
         // 3. Fallback for non-alphabetic or auto modes:
         if proxy.isCursorAtNewSentence {
             return true

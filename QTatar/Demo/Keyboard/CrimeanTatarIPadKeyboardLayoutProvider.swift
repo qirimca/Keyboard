@@ -16,11 +16,12 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     
     private func isEmailContext(_ context: KeyboardContext) -> Bool {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        let proxy = context.textDocumentProxy
-        if proxy.keyboardType == .emailAddress {
+        if DemoStyleProvider.effectiveProxyKeyboardType(for: context) == .emailAddress {
             return true
         }
-        if #available(iOS 10.0, *), proxy.textContentType == .emailAddress {
+        if !DemoStyleProvider.isSandboxOverrideActive(for: context),
+           #available(iOS 10.0, *),
+           context.textDocumentProxy.textContentType == .emailAddress {
             return true
         }
         #endif
@@ -29,11 +30,12 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     
     private func isURLContext(_ context: KeyboardContext) -> Bool {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        let proxy = context.textDocumentProxy
-        if proxy.keyboardType == .URL {
+        if DemoStyleProvider.effectiveProxyKeyboardType(for: context) == .URL {
             return true
         }
-        if #available(iOS 10.0, *), proxy.textContentType == .URL {
+        if !DemoStyleProvider.isSandboxOverrideActive(for: context),
+           #available(iOS 10.0, *),
+           context.textDocumentProxy.textContentType == .URL {
             return true
         }
         #endif
@@ -93,7 +95,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         case .symbolic:
             return [.custom(named: "redo")]
         case .alphabetic:
-            return KeyboardPreferences.cyrillicEnabled ? [.custom(named: "toggle_script")] : [.none]
+            return KeyboardPreferences.cyrillicEnabled ? [.custom(named: "toggle_script")] : [.capsLock]
         default:
             return [.characterMargin("â")]
         }
@@ -189,7 +191,10 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
                 default: return .available
                 }
             }
-            if index == 0 { return .percentage(Self.tabFraction + pitch) }
+            if index == 0 {
+                // Row 2 letters start at tab + pitch/2 (Cyrillic) so row 3 sits another half key to the right.
+                return .percentage(Self.tabFraction + pitch)
+            }
             if case .shift = action { return .available }
             return .percentage(pitch)
         }
@@ -203,8 +208,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         for context: KeyboardContext
     ) -> KeyboardAction {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        let proxy = context.textDocumentProxy
-        let returnType = proxy.returnKeyType?.keyboardReturnKeyType
+        let returnType = DemoStyleProvider.effectiveReturnKeyType(for: context)?.keyboardReturnKeyType
         if let returnType {
             return returnType == .return ? .primary(.newLine) : .primary(returnType)
         }

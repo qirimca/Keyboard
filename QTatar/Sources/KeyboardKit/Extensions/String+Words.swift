@@ -11,7 +11,7 @@ import Foundation
 public extension String {
     
     /// A list of mutable, western word delimiters.
-    static var wordDelimiters = "!.?,;:()[]{}<>".map(String.init) + [" ", .newline]
+    static var wordDelimiters = "!.?,;:()[]{}<>\"'’‘“”«»„-–—…/".map(String.init) + [" ", .newline]
     
     /// Whether or not this is a western word delimiter.
     var isWordDelimiter: Bool {

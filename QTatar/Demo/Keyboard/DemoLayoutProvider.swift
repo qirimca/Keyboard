@@ -30,23 +30,16 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if context.keyboardType.isAlphabetic && actions.count >= 3 {
             let isCyrillic = context.locale.identifier.contains("Cyrl")
             for row in 0...2 {
+                // Keep .characterMargin in row 1 for Cyrillic (11 keys) so 'ф' is centered between 'й' and 'ц'
+                let keepMargins = isCyrillic && row == 1
                 actions[row].removeAll { action in
                     switch action {
-                    case .characterMargin, .none: return true
+                    case .characterMargin: return !keepMargins
+                    case .none: return true
                     case .character(let text):
                         return row == 2 && !isCyrillic && (text == "," || text == ".")
                     default: return false
                     }
-                }
-            }
-            if isCyrillic {
-                if !actions[1].contains(.character("ё")) && !actions[1].contains(.character("Ё")) {
-                    let upper = actions[1].contains(.character("Ф"))
-                    actions[1].append(.character(upper ? "Ё" : "ё"))
-                }
-                if !actions[2].contains(.character(",")),
-                   let backspace = actions[2].firstIndex(of: .backspace) {
-                    actions[2].insert(.character(","), at: backspace)
                 }
             }
         }
@@ -64,8 +57,8 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
         default:
             if context.isKeyboardFloating {
-                // Native iPad floating keyboard button insets
-                return EdgeInsets(top: 3.5, leading: 2.5, bottom: 3.5, trailing: 2.5)
+                // Native iPad floating keyboard button insets (49pt row - 15pt vertical insets = 34pt key cap)
+                return EdgeInsets(top: 7.5, leading: 2.5, bottom: 7.5, trailing: 2.5)
             }
             return super.itemInsets(for: action, row: row, index: index, context: context)
         }
@@ -78,7 +71,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         context: KeyboardContext
     ) -> CGFloat {
         if context.isKeyboardFloating {
-            return 45
+            return 49
         }
         return super.itemSizeHeight(for: action, row: row, index: index, context: context)
     }
@@ -97,25 +90,31 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // UIKit owns the external globe on Face ID phones and floating keyboards.
-        if context.needsInputModeSwitchKey {
+        // In Liquid Glass floating mode, iPadOS provides an external globe button below the keyboard;
+        // in Classic mode (e.g. Gmail), the floating container has no external globe so include .nextKeyboard in Row 4.
+        let shouldIncludeGlobe = context.isKeyboardFloating
+            ? DemoStyleProvider.usesClassicGraySystemKeys(for: context)
+            : context.needsInputModeSwitchKey
+        if shouldIncludeGlobe {
             result.append(.nextKeyboard)
         }
 
         #if os(iOS) || os(tvOS) || os(visionOS)
         let proxy = context.textDocumentProxy
+        let effectiveType = DemoStyleProvider.effectiveProxyKeyboardType(for: context)
+        let isSandbox = DemoStyleProvider.isSandboxOverrideActive(for: context)
         let isEmail: Bool = {
-            if proxy.keyboardType == .emailAddress { return true }
-            if #available(iOS 10.0, *), proxy.textContentType == .emailAddress { return true }
+            if effectiveType == .emailAddress { return true }
+            if !isSandbox, #available(iOS 10.0, *), proxy.textContentType == .emailAddress { return true }
             return false
         }()
         let isURL: Bool = {
-            if proxy.keyboardType == .URL { return true }
-            if #available(iOS 10.0, *), proxy.textContentType == .URL { return true }
+            if effectiveType == .URL { return true }
+            if !isSandbox, #available(iOS 10.0, *), proxy.textContentType == .URL { return true }
             return false
         }()
         let isWebSearch: Bool = {
-            return proxy.keyboardType == .webSearch || proxy.returnKeyType == .search
+            return effectiveType == .webSearch
         }()
         
         if isURL {
@@ -140,10 +139,19 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         result.append(keyboardReturnAction(for: context))
         return result
     }
+
+    override func keyboardReturnAction(for context: KeyboardContext) -> KeyboardAction {
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        if let returnType = DemoStyleProvider.effectiveReturnKeyType(for: context)?.keyboardReturnKeyType {
+            return .primary(returnType)
+        }
+        #endif
+        return super.keyboardReturnAction(for: context)
+    }
     
     override func bottomSystemButtonWidth(for context: KeyboardContext) -> KeyboardLayout.ItemWidth {
         if context.isKeyboardFloating {
-            return .percentage(0.16)
+            return .percentage(0.21)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
         return .percentage(isPortrait ? 0.125 : 0.11)
@@ -168,7 +176,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 return lowerSystemButtonWidth(for: context)
             }
             if context.isKeyboardFloating {
-                return .percentage(0.16)
+                return .percentage(0.21)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {
@@ -189,7 +197,9 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             if row == 3 && (char == "@" || char == "." || char == "/") {
                 if char == "." || char == "/" {
                     let proxy = context.textDocumentProxy
-                    let isURL = proxy.keyboardType == .URL || proxy.textContentType == .URL
+                    let effectiveType = DemoStyleProvider.effectiveProxyKeyboardType(for: context)
+                    let isSandbox = DemoStyleProvider.isSandboxOverrideActive(for: context)
+                    let isURL = effectiveType == .URL || (!isSandbox && proxy.textContentType == .URL)
                     if isURL {
                         return .available
                     }
@@ -207,10 +217,8 @@ extension InputSet {
     static var crimeanTatarCyrillic: InputSet {
         .init(rows: [
             .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
-            .init(phoneLowercased: "фывапролджэё", phoneUppercased: "ФЫВАПРОЛДЖЭЁ",
-                  padLowercased: "фывапролджэ", padUppercased: "ФЫВАПРОЛДЖЭ"),
-            .init(phoneLowercased: "ячсмитьбю,", phoneUppercased: "ЯЧСМИТЬБЮ,",
-                  padLowercased: "ячсмитьбю,", padUppercased: "ЯЧСМИТЬБЮ,")
+            .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
+            .init(lowercased: "ячсмитьбюё", uppercased: "ЯЧСМИТЬБЮЁ")
         ])
     }
 
@@ -299,6 +307,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
 private extension KeyboardLayout {
     
     func applyNativeRowInsets(for context: KeyboardContext) {
+        guard !context.isKeyboardFloating else { return }
         let bottomIndex = bottomRowIndex
         guard bottomIndex >= 0 else { return }
         

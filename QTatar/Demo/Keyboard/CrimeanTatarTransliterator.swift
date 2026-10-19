@@ -160,30 +160,32 @@ struct CrimeanTatarTransliterator {
     }
 
     mutating func append(_ input: String, context: String?, documentID: UUID) -> Edit {
-        if self.documentID != documentID || context == nil || expectedContext != context {
+        let currentContext = context ?? ""
+        let suffixMatches = !output.isEmpty && currentContext.hasSuffix(output)
+        if self.documentID != documentID || context == nil || (expectedContext != currentContext && !suffixMatches) {
             reset()
         }
         self.documentID = documentID
         source += input
-        return replacement(context: context)
+        return replacement(context: currentContext)
     }
 
     mutating func backspace(context: String?, documentID: UUID) -> Edit? {
-        guard self.documentID == documentID, let context, expectedContext == context, !source.isEmpty else {
+        let currentContext = context ?? ""
+        let suffixMatches = !output.isEmpty && currentContext.hasSuffix(output)
+        guard self.documentID == documentID, context != nil, (expectedContext == currentContext || suffixMatches), !source.isEmpty else {
             reset()
             return nil
         }
         source.removeLast()
-        return replacement(context: context)
+        return replacement(context: currentContext)
     }
 
-    private mutating func replacement(context: String?) -> Edit {
+    private mutating func replacement(context: String) -> Edit {
         let newOutput = Self.transliterate(source)
         let common = zip(output, newOutput).prefix(while: { $0 == $1 }).count
         let edit = Edit(deleteCount: output.count - common, insertion: String(newOutput.dropFirst(common)))
-        if let context {
-            expectedContext = String(context.dropLast(edit.deleteCount)) + edit.insertion
-        }
+        expectedContext = String(context.dropLast(edit.deleteCount)) + edit.insertion
         output = newOutput
         return edit
     }

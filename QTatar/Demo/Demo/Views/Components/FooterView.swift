@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct FooterView: View {
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
             Image("logo")
@@ -19,8 +19,8 @@ struct FooterView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .saturation(0)
                 .layoutPriority(0)
-            
-            Text(About.about_rights_key.localized)
+
+            Text("\(About.about_rights_key.localized) • v\(BuildInfo.fullVersion)")
                 .regularText(color: .black.opacity(0.5))
                 .multilineTextAlignment(.center)
                 .layoutPriority(1)

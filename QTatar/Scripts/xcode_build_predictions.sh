@@ -2,6 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [[ -f "$SCRIPT_DIR/../update_build_timestamp.sh" ]]; then
+    bash "$SCRIPT_DIR/../update_build_timestamp.sh" || true
+fi
 DB_PATH="$SCRIPT_DIR/../Demo/Keyboard/qırım_tatar.db"
 CORPUS_DIR="$SCRIPT_DIR/corpus"
 COMBINED_CORPUS="$CORPUS_DIR/combined_corpus.txt"

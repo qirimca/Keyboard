@@ -89,6 +89,8 @@ class StandardKeyboardBehaviorTests: XCTestCase {
     }
 
     func testPreferredKeyboardTypeAfterGestureOnActionIsCapsLockedIfShiftIsDoubleTappedQuicklyEnough() {
+        keyboardContext.keyboardType = .alphabetic(.lowercased)
+        _ = preferredKeyboardTypeResult(after: .release, on: .shift(currentCasing: .lowercased))
         keyboardContext.keyboardType = .alphabetic(.uppercased)
         let result = preferredKeyboardTypeResult(after: .release, on: .shift(currentCasing: .uppercased))
         XCTAssertEqual(result, .alphabetic(.capsLocked))
@@ -133,10 +135,12 @@ class StandardKeyboardBehaviorTests: XCTestCase {
     }
 
     func testShouldSwitchToCapsLockIsFalseIfKeyboardTypeIsAlphabeticWhenActionIsDoubleTapOnShift() {
-        XCTAssertTrue(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .capsLocked)))
+        XCTAssertFalse(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .capsLocked)))
+        XCTAssertFalse(shouldSwitchToCapsLockResult(after: .press, on: .shift(currentCasing: .lowercased)))
         XCTAssertFalse(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .lowercased)))
-        XCTAssertTrue(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .lowercased)))
-        XCTAssertFalse(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .uppercased)))
+        XCTAssertTrue(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .uppercased)))
+        XCTAssertFalse(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .capsLocked)))
+        XCTAssertFalse(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .lowercased)))
         XCTAssertTrue(shouldSwitchToCapsLockResult(after: .release, on: .shift(currentCasing: .uppercased)))
     }
 

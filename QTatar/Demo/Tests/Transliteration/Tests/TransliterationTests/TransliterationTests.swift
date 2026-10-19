@@ -3,7 +3,7 @@ import Testing
 @testable import Transliteration
 
 /// Expected values are produced by the reference engine (qirimca/ctcorpus_translit `mod_translit.js` with
-/// `ModTranslitData`), with four documented missing-capture corrections.
+/// `ModTranslitData`), with four documented missing-capture corrections and approved exception fixes.
 /// See Tools/correct_reference_captures.py and Resources/capture_corrections.json.
 private let parityCases: [(String, String)] = {
     guard let url = Bundle.module.url(forResource: "parity", withExtension: "json"),
@@ -151,12 +151,6 @@ private let parityCases: [(String, String)] = {
             let edit = engine.append(String(character), context: document, documentID: id)
             document = String(document.dropLast(edit.deleteCount)) + edit.insertion
         }
-        if source == "селямет" {
-            withKnownIssue("Live server gives selâmyet; bundled mod_translit data gives selâmet. Investigate reference version; do not add a word exception.") {
-                #expect(whole == expected && document == expected)
-            }
-            continue
-        }
         if whole != expected || document != expected {
             failures.append("\(source): whole=\(whole), typing=\(document), reference=\(expected)")
         }
@@ -168,5 +162,66 @@ private let parityCases: [(String, String)] = {
     for (source, expected) in [("ЁЛКА", "YOLKA"), ("ЦИРК", "TSİRK"),
                                ("ЮЛ", "YUL"), ("ЩК", "ŞÇK")] {
         #expect(CrimeanTatarTransliterator.transliterate(source) == expected)
+    }
+}
+
+@Test func correctedExceptionsAndAllCapsDigraphsMatch() {
+    let cases = [
+        ("Коменда", "Komenda"),
+        ("Косме", "Kosme"),
+        ("муарриет", "muarririyet"),
+        ("Муарриет", "Muarririyet"),
+        ("МУАРРИЕТ", "MUARRİRİYET"),
+        ("селямет", "selâmet"),
+        ("КЪУРТУМЕР", "QURTÜMER")
+    ]
+    for (source, expected) in cases {
+        #expect(CrimeanTatarTransliterator.transliterate(source) == expected)
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = ""
+        for character in source {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+        }
+        #expect(document == expected)
+    }
+}
+
+@Test func emptyFieldAndRandomCombinationParity() {
+    let sequences = [
+        "къырымтатарджа",
+        "гъает",
+        "нъ",
+        "джан",
+        "лья",
+        "бью",
+        "сье",
+        "подъезд",
+        "объект",
+        "абвгъдеёжзийклмнопрстуфхцчшщъыьэюя",
+        "АБВГЪДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
+        "йцукенгшщзхъфывапролджэячсмитьбюё"
+    ]
+    for sequence in sequences {
+        let expected = CrimeanTatarTransliterator.transliterate(sequence)
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = ""
+        var states = [document]
+        for character in sequence {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            states.append(document)
+        }
+        #expect(document == expected, "\(sequence) -> \(document) (want \(expected))")
+        for prev in states.dropLast().reversed() {
+            guard let edit = engine.backspace(context: document, documentID: id) else {
+                Issue.record("Backspace failed on \(sequence)")
+                break
+            }
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            #expect(document == prev)
+        }
     }
 }
