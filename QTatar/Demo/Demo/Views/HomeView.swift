@@ -340,14 +340,20 @@ struct HomeView: View {
             }
             refreshCyrillicStatus()
             keyboardState.refresh()
-            refreshStatsFromAppGroup(syncSQLite: true)
+            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
-            refreshStatsFromAppGroup(syncSQLite: false)
+            refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
         }
         .onReceive(Self.statsPollTimer) { _ in
             if statsEnabled && scenePhase != .background {
-                refreshStatsFromAppGroup(syncSQLite: false)
+                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
             }
         }
         .onChange(of: colorScheme) { _, newScheme in
@@ -418,7 +424,7 @@ struct HomeView: View {
                 liveWPM = 0
                 liveCPM = 0
             } else {
-                refreshStatsFromAppGroup(syncSQLite: true)
+                refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -431,9 +437,9 @@ struct HomeView: View {
                 }
                 refreshCyrillicStatus()
                 keyboardState.refresh()
-                refreshStatsFromAppGroup(syncSQLite: true)
+                refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             } else if newPhase == .inactive {
-                refreshStatsFromAppGroup(syncSQLite: false)
+                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
             } else {
                 shouldAutoFocusSandbox = false
                 clearThemeOverride()
@@ -479,9 +485,11 @@ struct HomeView: View {
         )
     }
 
-    private func refreshStatsFromAppGroup(syncSQLite: Bool = false) {
+    private func refreshStatsFromAppGroup(syncSQLite: Bool = false, synchronizePreferences: Bool = false) {
         guard statsEnabled else { return }
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        if synchronizePreferences {
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        }
         if syncSQLite {
             KeyboardUsageStats.syncLearnedWordsCountFromSQLite()
         }
@@ -705,11 +713,12 @@ struct HomeView: View {
         }
     }
 
-    /// Use the full window's orientation, independently of the keyboard's height.
+    /// Use the window's actual dimensions independently of device orientation or keyboard height,
+    /// so narrow Slide Over / Split View windows on a landscape iPad always render in 1 column.
     static func usesTwoColumns(_ size: CGSize, containerSize: CGSize = .zero) -> Bool {
         guard Device.iPad else { return false }
         let effectiveWidth = containerSize.width > 0 ? containerSize.width : size.width
-        let isWindowedLandscape = (containerSize.height > 0 && containerSize.width > containerSize.height * 1.35) || UIDevice.current.orientation.isLandscape
+        let isWindowedLandscape = containerSize.height > 0 && containerSize.width > containerSize.height * 1.35
         let isLandscape = (size.width > size.height && size.width >= 560) || (containerSize.width >= 900) || isWindowedLandscape
         return isLandscape && effectiveWidth >= 560
     }
@@ -1590,7 +1599,8 @@ private extension HomeView {
             Text(subtitle)
                 .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                 .foregroundStyle(secondaryInk)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.numericText())
         }
         .padding(.horizontal, 10)
@@ -1616,7 +1626,8 @@ private extension HomeView {
             Text(subtitle)
                 .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                 .foregroundStyle(secondaryInk)
-                .lineLimit(1)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.numericText())
         }
         .padding(.horizontal, 10)

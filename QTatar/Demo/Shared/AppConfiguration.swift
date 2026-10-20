@@ -197,9 +197,9 @@ enum KeyboardUsageStats {
     /// including the trailing space (`6.4` letters + `1` space = `7.4` chars/word).
     static let crhCharsPerWord: Double = 7.4
 
-    /// Flushes App Group `UserDefaults` and posts a Darwin notification on a background utility queue
-    /// so `HomeView` (e.g. open in Slide Over / Split View / Stage Manager) updates in real time without
-    /// ever blocking the keyboard extension's main thread.
+    /// Debounces `CFPreferencesAppSynchronize` disk flushes and Darwin notifications on a background
+    /// utility queue (`0.25s` coalescing window during rapid typing) so typing never hammers `cfprefsd`
+    /// while `HomeView` still receives synchronized cross-process updates in real time.
     static func scheduleCrossProcessSync(immediate: Bool = false) {
         guard KeyboardPreferences.statsEnabled else { return }
         if immediate {
@@ -218,7 +218,7 @@ enum KeyboardUsageStats {
         syncQueue.async {
             guard !isCoalescedSyncPending else { return }
             isCoalescedSyncPending = true
-            syncQueue.asyncAfter(deadline: .now() + 0.12) {
+            syncQueue.asyncAfter(deadline: .now() + 0.25) {
                 isCoalescedSyncPending = false
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 CFNotificationCenterPostNotification(
@@ -233,8 +233,10 @@ enum KeyboardUsageStats {
     }
 
     /// Records a manual character keystroke and updates live WPM / CPM, peak speed, and active typing time.
+    /// `count` is the number of characters inserted (e.g. 2 for a Cyrillic digraph `къ`), while `keystrokes`
+    /// is the number of physical taps (default 1) so multi-character keys do not create zero-delta timestamp pairs.
     @discardableResult
-    static func recordCharacterTyped(count: Int = 1) -> (wpm: Int, cpm: Int) {
+    static func recordCharacterTyped(count: Int = 1, keystrokes: Int = 1) -> (wpm: Int, cpm: Int) {
         guard KeyboardPreferences.statsEnabled else { return (0, 0) }
         let now = CFAbsoluteTimeGetCurrent()
         let defaults = KeyboardPreferences.defaults
@@ -258,7 +260,7 @@ enum KeyboardUsageStats {
         }
         lastKeystrokeTime = now
 
-        for _ in 0..<max(count, 1) {
+        for _ in 0..<max(keystrokes, 1) {
             recentKeystrokeTimes.append(now)
         }
         recentKeystrokeTimes.removeAll { now - $0 > 12.0 }

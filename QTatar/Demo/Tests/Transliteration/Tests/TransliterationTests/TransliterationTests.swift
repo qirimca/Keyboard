@@ -479,6 +479,7 @@ private let parityCases: [(String, String)] = {
         ("Кунюнъиз хайырлы олсун!", "Künüñiz hayırlı olsun!"),
         ("Акъшам шерфинъиз хайыр олсун!", "Aqşam şerfiñiz hayır olsun!"),
         ("Геджелер хайыр! Хайыргъа къаршы!", "Geceler hayır! Hayırğa qarşı!"),
+        ("Геджелер хайыр!", "Geceler hayır!"),
         ("Шехр-у Рамазан, мерхаба!", "Şehr-u Ramazan, merhaba!"),
         ("Ораза байрамынъыз хайырлы олсун!", "Oraza bayramıñız hayırlı olsun!"),
         ("Къурбан байрамынъыз хайырлы олсун!", "Qurban bayramıñız hayırlı olsun!"),

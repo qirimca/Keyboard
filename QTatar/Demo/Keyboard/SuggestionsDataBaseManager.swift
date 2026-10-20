@@ -27,6 +27,21 @@ final class SuggestionsDataBaseManager {
 
     private var cachedPhrases: [(phrase: String, freq: Int)]?
 
+    init() {
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    SuggestionsDataBaseManager.shared.clearUserLexicon()
+                }
+            },
+            KeyboardUsageStats.statsResetNotification as CFString,
+            nil,
+            .deliverImmediately
+        )
+    }
+
     /// Opens the dictionary on a background queue before the first autocomplete query.
     func prepareAsync() {
         databaseQueue.async { [weak self] in
@@ -174,7 +189,8 @@ final class SuggestionsDataBaseManager {
     func learnWordIfPermitted(
         _ word: String,
         previousWord: String? = nil,
-        proxy: UITextDocumentProxy? = nil
+        proxy: UITextDocumentProxy? = nil,
+        explicitlyConfirmed: Bool = false
     ) {
         guard Self.shouldLearn(word: word, proxy: proxy) else { return }
         let normalizedWord = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
@@ -183,23 +199,36 @@ final class SuggestionsDataBaseManager {
                   Self.isValidLearnableWord(prev) else { return nil }
             return prev.lowercased(with: Self.casingLocale)
         }()
-        let isFirstTimeInSession = sessionLearnedWords.insert(normalizedWord).inserted
-        if isFirstTimeInSession {
-            KeyboardUsageStats.recordWordLearned()
-        }
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.async { [weak self] in
             guard let self else { return }
             self.ensureDB()
             self.ensureUserDB()
-            let isNewUserWord = (self.userFrequency(of: normalizedWord) == 0)
-            self.recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
-            if isNewUserWord && !isFirstTimeInSession {
-                KeyboardUsageStats.recordWordLearned()
+            let baseFreq = self.bundledFrequency(of: normalizedWord)
+            let effectiveWord: String
+            if !explicitlyConfirmed,
+               let canonical = self.diacriticCorrection(for: normalizedWord, over: baseFreq > 0 ? baseFreq : nil) {
+                effectiveWord = canonical.lowercased(with: Self.casingLocale)
+            } else if !explicitlyConfirmed, baseFreq == 0, self.typoCorrection(for: normalizedWord) != nil {
+                return
+            } else {
+                effectiveWord = normalizedWord
             }
+            let effectivePrev: String? = {
+                guard let normalizedPrev else { return nil }
+                let prevBaseFreq = self.bundledFrequency(of: normalizedPrev)
+                if let canonicalPrev = self.diacriticCorrection(for: normalizedPrev, over: prevBaseFreq > 0 ? prevBaseFreq : nil) {
+                    return canonicalPrev.lowercased(with: Self.casingLocale)
+                }
+                return normalizedPrev
+            }()
+            let isNewUserWord = (self.userFrequency(of: effectiveWord) == 0)
+            self.recordLearnedEntry(word: effectiveWord, previousWord: effectivePrev, timestamp: now)
             let totalLearned = self.countUserUnigrams()
             if totalLearned > 0 {
                 KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
+            } else if isNewUserWord {
+                KeyboardUsageStats.recordWordLearned()
             }
         }
     }
@@ -212,17 +241,17 @@ final class SuggestionsDataBaseManager {
                   Self.isValidLearnableWord(prev) else { return nil }
             return prev.lowercased(with: Self.casingLocale)
         }()
-        let isFirstTimeInSession = sessionLearnedWords.insert(normalizedWord).inserted
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.sync {
+            ensureDB()
+            ensureUserDB()
             let isNewUserWord = (userFrequency(of: normalizedWord) == 0)
             recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
-            if isNewUserWord || isFirstTimeInSession {
-                KeyboardUsageStats.recordWordLearned()
-            }
             let totalLearned = countUserUnigrams()
             if totalLearned > 0 {
                 KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
+            } else if isNewUserWord {
+                KeyboardUsageStats.recordWordLearned()
             }
         }
     }
@@ -437,9 +466,10 @@ final class SuggestionsDataBaseManager {
 
             if isKnownWord, let known = matches.first {
                 // A valid word is not replaced, except for a casing fix (shift state / sentence start)
-                // or when its diacritic form is overwhelmingly more common (qirim → qırım).
+                // or when its diacritic form in the bundled dictionary is overwhelmingly more common (qirim → qırım).
                 let knownFormatted = formatWord(known, capitalize: shouldCapitalize, isAllCaps: isAllCaps)
-                if let dominant = diacriticCorrection(for: queryLower, over: frequency(of: queryLower)) {
+                let baseFreq = bundledFrequency(of: queryLower)
+                if let dominant = diacriticCorrection(for: queryLower, over: baseFreq > 0 ? baseFreq : nil) {
                     result.append(.init(text: text, isUnknown: true))
                     result.append(.init(
                         text: formatWord(dominant, capitalize: shouldCapitalize, isAllCaps: isAllCaps),
@@ -521,15 +551,19 @@ final class SuggestionsDataBaseManager {
         return best.word
     }
 
-    private func frequency(of word: String) -> Int32 {
-        let userBoost = userFrequency(of: word) * 500
-        guard let db else { return userBoost }
+    private func bundledFrequency(of word: String) -> Int32 {
+        guard let db else { return 0 }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_prepare_v2(db, "SELECT MAX(freq) FROM words WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
               bindText(stmt, index: 1, value: word),
-              sqlite3_step(stmt) == SQLITE_ROW else { return userBoost }
-        return sqlite3_column_int(stmt, 0) + userBoost
+              sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    private func frequency(of word: String) -> Int32 {
+        let userBoost = userFrequency(of: word) * 500
+        return bundledFrequency(of: word) + userBoost
     }
 
     /// Most frequent dictionary word one edit away (delete / transpose / replace / insert).

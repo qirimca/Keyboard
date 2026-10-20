@@ -603,6 +603,11 @@ final class QirimKeyUITests: XCTestCase {
         try launch()
         try selectScript(cyrillic: false)
 
+        if key("dismiss").exists {
+            tap("dismiss")
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+
         // Open expanded statistics and reset to 0 before switching to an external system app.
         let statsToggle = app.buttons["stats.expandToggle"].exists
             ? app.buttons["stats.expandToggle"]
@@ -644,14 +649,33 @@ final class QirimKeyUITests: XCTestCase {
 
         func safariKey(_ name: String) -> XCUIElement {
             let lowerId = "key." + name.lowercased()
-            let upperId = "key." + name.uppercased()
-            let pred = NSPredicate(format: "identifier == %@ OR identifier == %@", lowerId, upperId)
+            let upperId = "key.character." + String(name.dropFirst("character.".count)).uppercased()
+            let pred = name.hasPrefix("character.")
+                ? NSPredicate(format: "identifier == %@ OR identifier == %@", lowerId, upperId)
+                : NSPredicate(format: "identifier == %@", lowerId)
             return safari.descendants(matching: .any).matching(pred).firstMatch
+        }
+
+        func tapSafariKey(_ element: XCUIElement) {
+            let f = element.frame
+            if f.width > 1 && f.height > 1 && f.midX > 0 && f.midY > 0 {
+                let root = safari.coordinate(withNormalizedOffset: .zero)
+                root.withOffset(CGVector(dx: f.midX, dy: f.midY)).tap()
+            } else {
+                element.tap()
+            }
         }
 
         if urlElement.waitForExistence(timeout: 4) {
             urlElement.tap()
             Thread.sleep(forTimeInterval: 0.8)
+
+            // Clear any leftover text in Safari's address bar from previous runs
+            let clearUrlBtn = safari.buttons["Clear text"].firstMatch
+            if clearUrlBtn.exists && clearUrlBtn.isHittable {
+                clearUrlBtn.tap()
+                Thread.sleep(forTimeInterval: 0.3)
+            }
 
             // Ensure QırımKey is active inside Safari
             var qKey = safariKey("character.q")
@@ -663,7 +687,7 @@ final class QirimKeyUITests: XCTestCase {
                     : safari.keyboards.buttons.element(boundBy: 0)
                 if globe.exists {
                     for _ in 0..<step where globe.exists {
-                        globe.tap()
+                        tapSafariKey(globe)
                     }
                     Thread.sleep(forTimeInterval: 0.8)
                 }
@@ -673,7 +697,7 @@ final class QirimKeyUITests: XCTestCase {
             if фKey.exists && !qKey.exists {
                 let toggleKey = safari.descendants(matching: .any).matching(identifier: "key.toggle_script").firstMatch
                 if toggleKey.exists {
-                    toggleKey.tap()
+                    tapSafariKey(toggleKey)
                     Thread.sleep(forTimeInterval: 0.5)
                 }
             }
@@ -685,13 +709,13 @@ final class QirimKeyUITests: XCTestCase {
                     let k = safariKey("character.\(ch)")
                     if k.waitForExistence(timeout: 1.5) {
                         let t0 = Date()
-                        k.tap()
+                        tapSafariKey(k)
                         qkTotal += Date().timeIntervalSince(t0)
                     }
                 }
                 let spaceKey = safariKey("space")
                 if spaceKey.waitForExistence(timeout: 1.5) {
-                    spaceKey.tap()
+                    tapSafariKey(spaceKey)
                 }
 
                 let externalWord2 = Array("dost")
@@ -699,12 +723,12 @@ final class QirimKeyUITests: XCTestCase {
                     let k = safariKey("character.\(ch)")
                     if k.waitForExistence(timeout: 1.5) {
                         let t0 = Date()
-                        k.tap()
+                        tapSafariKey(k)
                         qkTotal += Date().timeIntervalSince(t0)
                     }
                 }
                 if spaceKey.waitForExistence(timeout: 1.5) {
-                    spaceKey.tap()
+                    tapSafariKey(spaceKey)
                 }
                 let qkAvg = qkTotal / Double(externalWord1.count + externalWord2.count)
                 print(String(format: "QK_METRIC safari_qirimkey_tap_avg=%.3f", qkAvg))

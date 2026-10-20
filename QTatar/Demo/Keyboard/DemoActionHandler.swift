@@ -220,8 +220,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                !word.isEmpty,
                let provider = (keyboardController as? KeyboardViewController)?.services.autocompleteProvider as? CrimeanTatarAutocompleteProvider {
                 let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true) ?? lastCompletedTypedWord
-                let suggestions = provider.suggestionsNow(for: word)
-                autocompleteContext.suggestions = suggestions
+                let existing = autocompleteContext.suggestions
+                let suggestions: [Autocomplete.Suggestion]
+                if let first = existing.first,
+                   first.text.lowercased() == word.lowercased() {
+                    suggestions = existing
+                } else {
+                    suggestions = provider.suggestionsNow(for: word)
+                    autocompleteContext.suggestions = suggestions
+                }
                 if let suggestion = suggestions.first(where: { $0.isAutocorrect }),
                    suggestion.text != word {
                     for _ in 0..<word.count { proxy.deleteBackward() }
@@ -233,7 +240,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     SuggestionsDataBaseManager.shared.learnWordIfPermitted(
                         suggestion.text,
                         previousWord: prevWord,
-                        proxy: proxy
+                        proxy: proxy,
+                        explicitlyConfirmed: true
                     )
                     return
                 }
@@ -260,7 +268,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         SuggestionsDataBaseManager.shared.learnWordIfPermitted(
             replacement,
             previousWord: prevWord,
-            proxy: proxy
+            proxy: proxy,
+            explicitlyConfirmed: true
         )
         super.handle(suggestion)
     }
@@ -329,9 +338,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             let proxy = keyboardContext.textDocumentProxy
             switch action {
             case .character(let ch), .characterMargin(let ch):
+                guard !ch.isEmpty else { break }
                 GreetingBannerState.shared.dismissForTyping()
                 SpaceBarState.shared.recordKeystroke()
-                KeyboardUsageStats.recordCharacterTyped(count: max(ch.count, 1))
+                KeyboardUsageStats.recordCharacterTyped(count: ch.count, keystrokes: 1)
                 if Self.wordEndingPunctuation.contains(ch) {
                     let before = proxy.documentContextBeforeInput ?? ""
                     let hasWordBefore = !typedWordBuffer.isEmpty
