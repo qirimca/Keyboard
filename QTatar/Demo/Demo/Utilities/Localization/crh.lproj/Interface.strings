@@ -18,7 +18,7 @@
 "theme.dark" = "Qaranlıq";
 "settings.enableBothKeyboards" = "Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
 "settings.missingCyrillic" = "Kirill klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарджа klaviaturasını qoşuñız.";
-"settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sistemi aqqında malümat bermey, onuñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";
+"settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sistemi aqqında malümat bermey, onıñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";
 "sandbox.undo" = "Keri al";
 "sandbox.redo" = "Qaytar";
 "sandbox.paste" = "Qoy";

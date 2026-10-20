@@ -312,8 +312,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         // III. АВТЕНТИЧНА ПОДЯКА, БЛАГОСЛОВЕННЯ (ALĞIŞLAR) ТА ІДІОМИ (З КОРПУСУ)
         .init(
             id: 25,
-            text: "Tañrım dert körsetmesin qoluña!",
-            bannerCyrl: "Танърым дерт корьсетмесин къолунъа!",
+            text: "Tañrım dert körsetmesin qoluna!",
+            bannerCyrl: "Танърым дерт корьсетмесин къолуна!",
             attribution: "Halq alğışı",
             attributionCyrl: "Халкъ алгъышы",
             sourceOriginal: "Танърым дерт корьсетмесин къолуна",
@@ -373,7 +373,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 31,
             text: "Ardı gür olsun! Eşq olsun!",
-            bannerCyrl: "Арды гюр олсун! Эшкъ олсун!",
+            bannerCyrl: "Арды гурь олсун! Эшкъ олсун!",
             attribution: nil,
             attributionCyrl: nil,
             sourceOriginal: "Ardı gür olsun!; eşq olsun!",
@@ -528,13 +528,13 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 46,
-            text: "Yürekten doğa şiirler.",
-            bannerCyrl: "Юректен догъа шиирлер.",
+            text: "Yüregimden doğa şiirler!",
+            bannerCyrl: "Юрегимден догъа шиирлер!",
             attribution: "Qırımtatar şiiriyetinden",
             attributionCyrl: "Къырымтатар шиириетинден",
             sourceOriginal: "Юрегимден догъа шиирлер",
-            translationUA: "«Із серця народжуються вірші.» (З кримськотатарської поезії)",
-            translationEN: "\"Poems are born from the heart.\" (From Crimean Tatar poetry)"
+            translationUA: "«З мого серця народжуються вірші!» (З кримськотатарської поезії)",
+            translationEN: "\"Poems are born from my heart!\" (From Crimean Tatar poetry)"
         ),
         .init(
             id: 47,
@@ -589,7 +589,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 52,
             text: "Meraba, sentâbr, meraba, mektep!",
-            bannerCyrl: "Мераба, сентябр, мераба, мектеп!",
+            bannerCyrl: "Мераба, сентябрь, мераба, мектеп!",
             attribution: "Remzi Burnaş",
             attributionCyrl: "Ремзи Бурнаш",
             sourceOriginal: "Meraba sentâbr, meraba mektep",
@@ -692,8 +692,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         // D. ЩОТИЖНЕВІ ТА СЕЗОННІ ТРИГЕРИ (ПОБУТ І РОДИНА, ЗІ СЛОВНИКІВ КОРПУСУ)
         .init(
             id: 62,
-            text: "Alla işiñizni oñ ketirsin!",
-            bannerCyrl: "Алла ишинъизни онъ кетирсин!",
+            text: "Alla işiñni oñ ketirsin!",
+            bannerCyrl: "Алла ишинъни онъ кетирсин!",
             attribution: nil,
             attributionCyrl: nil,
             sourceOriginal: "Алла ишинъни онъ кетирсин",
@@ -974,8 +974,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 90,
-            text: "Öz tiliñni bilsin er kes!",
-            bannerCyrl: "Озь тилинъни бильсин эр кес!",
+            text: "Öz tilini bilsin er kes!",
+            bannerCyrl: "Озь тилини бильсин эр кес!",
             attribution: "Seyran Üseinov",
             attributionCyrl: "Сейран Усеинов",
             sourceOriginal: "Озь тилини бильсин эр кес!",
@@ -1054,8 +1054,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 98,
-            text: "Oqup-yazam bugün men!",
-            bannerCyrl: "Окъуп-язам бугунь мен!",
+            text: "Oqup-yazam men bugün!",
+            bannerCyrl: "Окъуп-язам мен бугунь!",
             attribution: "Seitümer Emin",
             attributionCyrl: "Сеитумер Эмин",
             sourceOriginal: "Окъуп-язам мен бугунь, Ана тилим бу меним.",
