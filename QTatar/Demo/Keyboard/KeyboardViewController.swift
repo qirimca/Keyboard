@@ -185,8 +185,27 @@ class KeyboardViewController: KeyboardInputViewController {
 
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
+        Self.installPinchPassthroughIfNeeded()
         applyPreferences()
         viewWillSetupKeyboard()
+    }
+
+    private static var didInstallPinchPassthrough = false
+
+    /// Ensures SwiftUI's zero-distance drag gesture recognizer on key buttons never blocks
+    /// the system's two-finger pinch-to-floating gesture recognizer on iPad.
+    private static func installPinchPassthroughIfNeeded() {
+        guard !didInstallPinchPassthrough else { return }
+        didInstallPinchPassthrough = true
+
+        if let origCanPrevent = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.canPrevent(_:))),
+           let swizCanPrevent = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.qirim_canPrevent(_:))) {
+            method_exchangeImplementations(origCanPrevent, swizCanPrevent)
+        }
+        if let origCanBePrevented = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.canBePrevented(by:))),
+           let swizCanBePrevented = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.qirim_canBePrevented(by:))) {
+            method_exchangeImplementations(origCanBePrevented, swizCanBePrevented)
+        }
     }
 
     deinit {
@@ -198,7 +217,6 @@ class KeyboardViewController: KeyboardInputViewController {
         super.viewWillAppear(animated)
         self.hasDictationKey = true
         view.backgroundColor = .clear
-        resetHostBundleIdCache()
         state.keyboardContext.syncTextDocumentProxy(with: self)
         state.keyboardContext.hasChosenLettersInNumericField = false // new input session
         lastDocumentIdentifier = textDocumentProxy.safeDocumentIdentifier
@@ -212,26 +230,7 @@ class KeyboardViewController: KeyboardInputViewController {
         applyPreferences()
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
-        // UIKit does not expose the incoming globe gesture; opening a field must not flash a name.
-        SpaceBarState.shared.resetToResting()
-    }
-
-    /// Writes what the keyboard can observe about its host (bundle id, bottom safe area, height) so that the
-    /// "classic keyboard" look can be calibrated per device. Shown in the app's testing section.
-    private func recordHostDiagnostics() {
-        let window = view.window
-        let text = String(
-            format: "iOS %@ · host %@ · safeBottom %.1f/%.1f · height %.0f · width %.0f",
-            UIDevice.current.systemVersion,
-            hostBundleId ?? "nil",
-            view.safeAreaInsets.bottom,
-            window?.safeAreaInsets.bottom ?? -1,
-            view.bounds.height,
-            view.bounds.width
-        )
-        if KeyboardPreferences.defaults.string(forKey: KeyboardPreferences.hostDiagnosticsKey) != text {
-            KeyboardPreferences.defaults.set(text, forKey: KeyboardPreferences.hostDiagnosticsKey)
-        }
+        SpaceBarState.shared.prepareForAppearance()
     }
 
     /// Many events in one key press ask for new suggestions (text change, shift change, our own edits).
@@ -275,7 +274,6 @@ class KeyboardViewController: KeyboardInputViewController {
         let isDark: Bool
         let cyrillicEnabled: Bool
         let suggestionsEnabled: Bool
-        let classicStyle: Bool
     }
     private var lastRenderSignature: RenderSignature?
 
@@ -290,8 +288,7 @@ class KeyboardViewController: KeyboardInputViewController {
             contentType: proxy.textContentType.map { $0.rawValue },
             isDark: DemoStyleProvider.effectiveIsDark(for: context),
             cyrillicEnabled: KeyboardPreferences.cyrillicEnabled,
-            suggestionsEnabled: KeyboardPreferences.suggestionsEnabled,
-            classicStyle: DemoStyleProvider.usesClassicGraySystemKeys(for: context)
+            suggestionsEnabled: KeyboardPreferences.suggestionsEnabled
         )
     }
 
@@ -308,7 +305,6 @@ class KeyboardViewController: KeyboardInputViewController {
         if let last = lastDocumentIdentifier, last != documentID {
             state.keyboardContext.hasChosenLettersInNumericField = false // another field: start from its own default page
             lastProxyKeyboardType = nil
-            resetHostBundleIdCache()
         }
         lastDocumentIdentifier = documentID
         syncPreferredKeyboardTypeWithProxy()
@@ -380,8 +376,8 @@ class KeyboardViewController: KeyboardInputViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        recordHostDiagnostics()
         refreshProxyState()
+        SpaceBarState.shared.triggerSwitchAnimation()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
         if hasText {
             performAutocomplete()
@@ -433,18 +429,34 @@ class KeyboardViewController: KeyboardInputViewController {
                 services: controller.services,
                 renderBackground: false,
                 buttonContent: { params in
+                    let context = controller.state.keyboardContext
                     if params.item.action == .space {
-                        let context = controller.state.keyboardContext
                         let isCyrillic = context.locale.identifier.contains("Cyrl")
                         let isCompact = context.deviceType == .phone || context.isKeyboardFloating
-                        let isClassic = DemoStyleProvider.usesClassicGraySystemKeys(for: context)
                         SpaceBarLabel(
                             fullName: isCyrillic ? "Къырымтатарджа" : "Qırımtatarca",
-                            languageCode: isCyrillic ? "КЪТ" : "QT",
-                            spaceText: isCyrillic ? "Бошлукъ" : "Boşluq",
-                            isCompact: isCompact,
-                            isClassic: isClassic
+                            languageCode: isCyrillic ? "КЪ" : "QT",
+                            isCompact: isCompact
                         )
+                    } else if let flick = CrimeanTatarIPadKeyboardLayoutProvider.flickSymbol(
+                        for: params.item.action,
+                        context: context
+                    ) {
+                        let isLandscape = context.interfaceOrientation.isLandscape
+                        let isDark = DemoStyleProvider.effectiveIsDark(for: context)
+                        ZStack {
+                            params.view
+                                .offset(y: isLandscape ? 6 : 5)
+                            VStack(spacing: 0) {
+                                Text(flick)
+                                    .font(.system(size: isLandscape ? 13 : 11, weight: .regular))
+                                    .foregroundColor(isDark ? Color.white.opacity(0.45) : Color.black.opacity(0.42))
+                                    .padding(.top, isLandscape ? 5 : 4)
+                                Spacer(minLength: 0)
+                            }
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                        }
                     } else {
                         params.view
                     }
@@ -464,5 +476,21 @@ class KeyboardViewController: KeyboardInputViewController {
                 }
             )
         }
+    }
+}
+
+private extension UIGestureRecognizer {
+    @objc func qirim_canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if preventedGestureRecognizer is UIPinchGestureRecognizer {
+            return false
+        }
+        return qirim_canPrevent(preventedGestureRecognizer)
+    }
+
+    @objc func qirim_canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
+        if self is UIPinchGestureRecognizer {
+            return false
+        }
+        return qirim_canBePrevented(by: preventingGestureRecognizer)
     }
 }

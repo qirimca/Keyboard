@@ -190,6 +190,13 @@ private extension Gestures.KeyboardButtonGestures {
     }
 
     func tryBeginActionCallout(in geo: GeometryProxy) {
+        if let drag = lastDragValue {
+            let dx = drag.location.x - drag.startLocation.x
+            let dy = drag.location.y - drag.startLocation.y
+            if dy >= 12 && dy > abs(dx) {
+                return
+            }
+        }
         guard let context = calloutContext?.actionContext else { return }
         context.updateInputs(for: action, in: geo)
         guard context.isActive else { return }
@@ -226,8 +233,9 @@ extension CGRect {
         tolerance: Double
     ) -> CGRect {
         let size = geo.size
-        let rect = CGRect(origin: .zero, size: geo.size)
+        var rect = CGRect(origin: .zero, size: geo.size)
             .insetBy(dx: -size.width * tolerance, dy: -size.height * tolerance)
+        rect.size.height += size.height * 0.75
         return rect
     }
 }

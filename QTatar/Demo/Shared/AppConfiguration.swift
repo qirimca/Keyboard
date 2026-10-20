@@ -10,21 +10,19 @@ import UIKit
 
 enum KeyboardPreferences {
     static let suggestionsKey = "crh.key.suggestionsEnabled"
+    static let wordLearningKey = "crh.key.wordLearningEnabled"
     static let cyrillicKey = "crh.key.cyrillicEnabled"
     static let languageKey = "crh.key.interfaceLanguage"
-    /// "auto" (default), "classic" or "modern": the look of system keys, overriding detection.
-    static let systemKeyStyleKey = "crh.key.systemKeyStyle"
-    static let hostDiagnosticsKey = "crh.key.diag.host"
     /// Created once: `UserDefaults(suiteName:)` is expensive and used by the style provider for every key.
     static let defaults: UserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard
     static var suggestionsEnabled: Bool { defaults.object(forKey: suggestionsKey) as? Bool ?? true }
-    /// Only iPad has a place where the toggle matters (the АБВ key); on iPhone the Cyrillic keyboard is always available,
+    static var wordLearningEnabled: Bool { defaults.object(forKey: wordLearningKey) as? Bool ?? true }
+    /// Only iPad has a place where the toggle matters (the абв/abc key); on iPhone the Cyrillic keyboard is always available,
     /// because iOS offers no way to hide it from the system list.
     static var cyrillicEnabled: Bool {
         if UIDevice.current.userInterfaceIdiom != .pad { return true }
         return defaults.object(forKey: cyrillicKey) as? Bool ?? true
     }
-    static var systemKeyStyle: String { defaults.string(forKey: systemKeyStyleKey) ?? "auto" }
     static var interfaceLanguage: String { defaults.string(forKey: languageKey) ?? "crh" }
     static var interfaceBundle: Bundle {
         guard let path = Bundle.main.path(forResource: interfaceLanguage, ofType: "lproj"),

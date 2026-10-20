@@ -185,18 +185,13 @@ final class QirimKeyUITests: XCTestCase {
 
     func testFieldAndThemeMatrix() throws {
         try launch()
-        for (theme, isDark, isClassic) in [
-            ("modernLight", false, false),
-            ("classicLight", false, true),
-            ("modernDark", true, false),
-            ("classicDark", true, true)
+        XCTAssertFalse(app.buttons["theme.classic"].exists, "Classic mode pill must be removed")
+        for (theme, isDark) in [
+            ("modernLight", false),
+            ("modernDark", true)
         ] {
             let appearancePill = app.buttons[isDark ? "theme.dark" : "theme.light"]
             if appearancePill.exists { appearancePill.tap() }
-            let classicPill = app.buttons["theme.classic"]
-            if classicPill.exists && classicPill.isSelected != isClassic {
-                classicPill.tap()
-            }
             for mode in ["standard", "search", "email", "url", "numbers"] {
                 app.buttons["field." + mode].tap()
                 if mode == "numbers" {
@@ -210,6 +205,14 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
             capture(theme)
+        }
+        // Switching interface language must keep the Try Keyboard section expanded.
+        for code in ["uk", "en", "crh"] {
+            let langButton = app.buttons["settings.lang." + code]
+            if langButton.exists {
+                langButton.tap()
+                XCTAssertTrue(field.exists, "Try Keyboard section must stay expanded after switching to \(code)")
+            }
         }
     }
 
@@ -240,10 +243,50 @@ final class QirimKeyUITests: XCTestCase {
             XCTAssertEqual(step12, pitch / 2, accuracy: 3, "row2 vs row1, cyrillic=\(cyrillic)")
             XCTAssertEqual(step23, pitch / 2, accuracy: 3, "row3 vs row2, cyrillic=\(cyrillic)")
             XCTAssertEqual(row1.frame.height, row2.frame.height, accuracy: 1)
+
+            // Verify side-key widths remain invariant across ABC, .?123, and #+= on iPad.
+            let alphaBackspaceWidth = key("backspace").frame.width
+            let alphaShiftWidth = key("shift").frame.width
+            tap("numeric")
+            XCTAssertTrue(key("symbolic").waitForExistence(timeout: 3))
+            XCTAssertEqual(key("backspace").frame.width, alphaBackspaceWidth, accuracy: 2.0, "backspace width in numeric mode, cyrillic=\(cyrillic)")
+            XCTAssertEqual(key("symbolic").frame.width, alphaShiftWidth, accuracy: 2.0, "symbolic key width in numeric mode, cyrillic=\(cyrillic)")
+            capture("Numeric mode cyrillic=\(cyrillic)")
+            tap("symbolic")
+            XCTAssertTrue(key("numeric").waitForExistence(timeout: 3))
+            XCTAssertEqual(key("backspace").frame.width, alphaBackspaceWidth, accuracy: 2.0, "backspace width in symbolic mode, cyrillic=\(cyrillic)")
+            XCTAssertEqual(key("numeric").frame.width, alphaShiftWidth, accuracy: 2.0, "numeric key width in symbolic mode, cyrillic=\(cyrillic)")
+            capture("Symbolic mode cyrillic=\(cyrillic)")
+            tap("alphabetic")
+            XCTAssertTrue(waitForLetter(first, timeout: 3))
         }
-        let cyrillicToggle = app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
+
+        // Verify downward flick gesture on iPad key 'q' -> '1' and 'w' -> '2'.
+        try selectScript(cyrillic: false)
+        clear()
+        for ch in ["q", "w"] {
+            let lower = key("character." + ch)
+            let element = lower.exists ? lower : key("character." + ch.uppercased())
+            let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
+            let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95))
+            start.press(forDuration: 0.02, thenDragTo: end)
+        }
+        expectText("12")
+        capture("iPad flick down q and w to 12")
+        clear()
+
+        let cyrillicToggle = app.switches["settings.cyrillic.toggle"].exists
+            ? app.switches["settings.cyrillic.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
         if cyrillicToggle.exists {
-            cyrillicToggle.tap()
+            let toggleCyrillicSwitch = {
+                let before = cyrillicToggle.value as? String
+                cyrillicToggle.tap()
+                if (cyrillicToggle.value as? String) == before {
+                    cyrillicToggle.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+                }
+            }
+            toggleCyrillicSwitch()
             XCTAssertTrue(key("capsLock").waitForExistence(timeout: 3), "Caps Lock must replace toggle_script when Cyrillic is disabled on iPad")
             XCTAssertFalse(key("toggle_script").exists)
             clear()
@@ -256,7 +299,7 @@ final class QirimKeyUITests: XCTestCase {
             expectText("ABc")
             capture("iPad Caps Lock when Cyrillic disabled")
             clear()
-            cyrillicToggle.tap()
+            toggleCyrillicSwitch()
             XCTAssertTrue(key("toggle_script").waitForExistence(timeout: 3))
         }
     }
@@ -265,6 +308,7 @@ final class QirimKeyUITests: XCTestCase {
 
     func testSpaceAutocorrectRules() throws {
         try launch()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.wordLearning.toggle").firstMatch.exists)
         try selectScript(cyrillic: false)
         // Typed without diacritics: Space restores the dictionary spelling.
         typeLetters("qirim")

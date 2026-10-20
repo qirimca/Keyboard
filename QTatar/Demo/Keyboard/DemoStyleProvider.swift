@@ -71,33 +71,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return context.hasDarkColorScheme || context.keyboardAppearance == .dark
     }
 
-    /// Whether the keyboard should render like the *classic* (pre-Liquid-Glass) system keyboard: gray system keys.
-    ///
-    /// - Before iOS 26 the system keyboard never has the Liquid Glass design, so this is always `true`.
-    /// - On iOS 26+ the design depends on the host: apps built with an older SDK (or opted out through
-    ///   `UIDesignRequiresCompatibility`) keep the classic keyboard. That is not decided by a list of app
-    ///   names; it is read from the keyboard's own environment (see ``ClassicHostDetector``).
-    /// - The Testing Sandbox of this app may force either style, but only while its field is focused and only
-    ///   for this app, so the override can never leak into other apps.
-    static func usesClassicGraySystemKeys(for context: KeyboardContext) -> Bool {
-        if isSandboxOverrideActive(for: context),
-           let overrideMode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.systemKeyStyle") {
-            if overrideMode == "google_gray" { return true }
-            if overrideMode == "ios26_white" { return false }
-        }
-        switch KeyboardPreferences.systemKeyStyle {
-        case "classic": return true
-        case "modern": return false
-        default: break
-        }
-        if #unavailable(iOS 26) { return true }
-        return ClassicHostDetector.shared.isClassicHost
-    }
-
-    private var usesClassicGraySystemKeys: Bool {
-        Self.usesClassicGraySystemKeys(for: keyboardContext)
-    }
-
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
         var style = super.autocompleteToolbarStyle
         guard KeyboardPreferences.suggestionsEnabled else {
@@ -107,7 +80,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if keyboardContext.isKeyboardFloating {
             style.height = 42
         } else if isPad {
-            style.height = 37
+            style.height = 38
         } else {
             style.height = 42
         }
@@ -119,9 +92,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return 7.5
         }
         if isPad {
-            return keyboardContext.interfaceOrientation.isPortrait ? 6.5 : 7.5
+            return keyboardContext.interfaceOrientation.isPortrait ? 7.0 : 8.0
         }
-        return 5
+        return 5.5
     }
     
     override var keyboardEdgeInsets: EdgeInsets {
@@ -133,7 +106,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         case .phone:
             return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
         case .pad:
-            return EdgeInsets(top: 0, leading: 1, bottom: 0, trailing: 1)
+            return EdgeInsets(top: 2, leading: 3, bottom: 2, trailing: 3)
         default:
             return super.keyboardEdgeInsets
         }
@@ -147,14 +120,18 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             config.buttonCornerRadius = 7.5
         } else if keyboardContext.deviceType == .phone {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            config.rowHeight = isPortrait ? 54 : 42
+            config.rowHeight = isPortrait ? 55 : 42
+            config.buttonInsets = isPortrait
+                ? EdgeInsets(top: 5.0, leading: 2.5, bottom: 5.0, trailing: 2.5)
+                : EdgeInsets(top: 3.5, leading: 2.5, bottom: 3.5, trailing: 2.5)
+            config.buttonCornerRadius = 5.5
         } else if isPad {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            config.rowHeight = isPortrait ? 55 : 72
+            config.rowHeight = isPortrait ? 58 : 75
             config.buttonInsets = isPortrait
-                ? EdgeInsets(top: 4.5, leading: 5.0, bottom: 4.5, trailing: 5.0)
-                : EdgeInsets(top: 5.5, leading: 6.5, bottom: 5.5, trailing: 6.5)
-            config.buttonCornerRadius = isPortrait ? 6.5 : 7.5
+                ? EdgeInsets(top: 4.0, leading: 3.5, bottom: 4.0, trailing: 3.5)
+                : EdgeInsets(top: 5.0, leading: 4.5, bottom: 5.0, trailing: 4.5)
+            config.buttonCornerRadius = isPortrait ? 7.0 : 8.0
         }
         return config
     }
@@ -168,7 +145,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return letterRowHeight
         }
         if isPad {
-            return keyboardContext.interfaceOrientation.isPortrait ? 55 : 72
+            return keyboardContext.interfaceOrientation.isPortrait ? 58 : 75
         }
         return super.rowHeight(forRowAt: rowIndex, in: layout)
     }
@@ -185,16 +162,17 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if keyboardContext.isKeyboardFloating || keyboardContext.deviceType == .phone {
             return .init(top: 2, leading: 2, bottom: 2, trailing: 2)
         }
-        // Centered system labels keep sufficient padding on docked iPad.
         if isPad {
-            return .init(top: 7, leading: 9, bottom: 7, trailing: 9)
+            if #available(iOS 27.0, *) {
+                return .init(top: 9, leading: 11, bottom: 9, trailing: 11)
+            } else {
+                return .init(top: 5, leading: 6, bottom: 5, trailing: 6)
+            }
         }
         return super.buttonContentInsets(for: action)
     }
     
     override func buttonImageScaleFactor(for action: KeyboardAction) -> CGFloat {
-        // In iPad floating mode, use compact phone icon scale instead of iPad's 1.2x scale
-        // so Shift and Backspace icons fit cleanly inside their compact keys.
         if keyboardContext.isKeyboardFloating {
             return 0.92
         }
@@ -221,6 +199,11 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             case .uppercased:
                 return Image(systemName: "shift.fill")
             case .capsLocked:
+                // When a dedicated Caps Lock key is visible on Docked iPad (Cyrillic disabled),
+                // Caps Lock shows capslock.fill while Shift stays shift outline.
+                if isPad && !keyboardContext.isKeyboardFloating && !KeyboardPreferences.cyrillicEnabled {
+                    return Image(systemName: "shift")
+                }
                 return Image(systemName: "capslock.fill")
             }
         case .capsLock:
@@ -236,7 +219,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 return Image(systemName: "arrow.uturn.backward")
             } else if name == "redo" {
                 return Image(systemName: "arrow.uturn.forward")
-            } else if name == "url_domain" {
+            } else if name == "url_domain" || name == "toggle_script" {
                 return nil
             }
             return super.buttonImage(for: action)
@@ -244,7 +227,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return Image(systemName: "globe")
         case .keyboardType(let type):
             if type == .emojis {
-                // Use Apple's exact native keyboard emoji vector icon
                 return super.buttonImage(for: action)
             }
             return super.buttonImage(for: action)
@@ -296,7 +278,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 return super.buttonText(for: action)
             }
         case .primary:
-            // Native iOS/iPadOS always uses SF Symbol icons for Return, Search, Go, etc.
             return nil
         default:
             return super.buttonText(for: action)
@@ -306,10 +287,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Height of letter rows tuned for native iOS look and feel
     private var letterRowHeight: CGFloat {
         if keyboardContext.isKeyboardFloating {
-            return 49 // Native iPad floating keyboard row height (4 * 49 = 196pt + 44pt toolbar = 240pt)
+            return 49
         }
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-        return isPortrait ? 54 : 42 // Standard iOS keyboard row height on iPhone (portrait ~54pt)
+        return isPortrait ? 55 : 42
     }
     
     var isPrimaryActionEnabled: Bool {
@@ -325,9 +306,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
-        if !usesClassicGraySystemKeys && (action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked)) {
-            return .white
-        }
         switch action {
         case .none, .characterMargin:
             return .clear
@@ -340,20 +318,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         
         let darkInputKey = Color(white: 0.28)
         let darkInputKeyPressed = Color(white: 0.18)
-        let modern = !usesClassicGraySystemKeys
-        let darkSystemKey = modern ? darkInputKey : Color(white: 0.18)
-        let darkSystemKeyPressed = modern ? darkInputKeyPressed : Color(white: 0.32)
+        let darkSystemKey = darkInputKey
+        let darkSystemKeyPressed = darkInputKeyPressed
         
         let lightInputKey = Color.white
         let lightInputKeyPressed = Color(white: 0.85)
         let lightSystemKeyGray = Color(red: 172/255, green: 177/255, blue: 185/255)
         let lightSystemKeyGrayPressed = Color.white
         
-        // On iPad in standard iOS 26 mode (Safari, Notes, etc.), system keys are pure white like letter keys.
-        // Classic mode uses gray system keys on both iPhone and iPad.
-        let useWhiteSystemKeysInLight = !usesClassicGraySystemKeys
-        let lightSystemKey = useWhiteSystemKeysInLight ? lightInputKey : lightSystemKeyGray
-        let lightSystemKeyPressed = useWhiteSystemKeysInLight ? lightInputKeyPressed : lightSystemKeyGrayPressed
+        let lightSystemKey = lightInputKey
+        let lightSystemKeyPressed = lightInputKeyPressed
         
         // Return / Primary actions
         if case .primary(let type) = action {
@@ -363,9 +337,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                     ? (isDark ? darkSystemKeyPressed : lightSystemKeyPressed)
                     : (isDark ? darkSystemKey : lightSystemKey)
             default:
-                // Primary action keys (Search, Go, Send, etc.):
-                // When field is empty, key remains an inactive gray button (even in Safari iOS 26!).
-                // Only illuminates blue when input contains text.
                 guard isPrimaryActionEnabled else {
                     return isPressed
                         ? (isDark ? darkSystemKeyPressed : lightSystemKeyGrayPressed)
@@ -375,7 +346,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             }
         }
         
-        // URL domain (.com) is styled as an input/white key on iOS
         if case .custom(let name) = action {
             if name == "url_domain" {
                 return isPressed
@@ -389,14 +359,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             }
         }
         
-        // System actions (Tab, Shift, Backspace, 123, Globe, Dismiss, etc.)
+        // System actions (Tab, Shift, CapsLock, Backspace, 123, Globe, Dismiss, etc.)
+        // Note: Active Shift and Caps Lock keep the standard system key background — only the arrow symbol fills.
         if action.isSystemAction {
             return isPressed
                 ? (isDark ? darkSystemKeyPressed : lightSystemKeyPressed)
                 : (isDark ? darkSystemKey : lightSystemKey)
         }
         
-        // Letter / Input keys (identical styling for letters, numbers, symbols, and space)
         if action.isInputAction {
             return isPressed
                 ? (isDark ? darkInputKeyPressed : lightInputKeyPressed)
@@ -410,9 +380,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         for action: KeyboardAction,
         isPressed: Bool
     ) -> Color {
-        if !usesClassicGraySystemKeys && (action.isUppercasedShiftAction || (action == .capsLock && keyboardContext.keyboardType.isAlphabeticCapsLocked)) {
-            return .black
-        }
         switch action {
         case .none, .characterMargin:
             return .clear
@@ -435,7 +402,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             }
         }
         
-        // Dim Undo / Redo icons when stack is empty
         if case .custom(let name) = action {
             if name == "undo" && !TextHistoryManager.shared.canUndo {
                 return isDark ? Color.white.opacity(0.35) : Color.black.opacity(0.35)
@@ -451,6 +417,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     override func buttonFont(for action: KeyboardAction) -> KeyboardFont {
         let isFloating = keyboardContext.isKeyboardFloating
         let isDockedPad = isPad && !isFloating
+        let isPortrait = keyboardContext.interfaceOrientation.isPortrait
         switch action {
         case .character(let char):
             let isLetter = char.first?.isLetter ?? false
@@ -459,24 +426,24 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 if isFloating {
                     return .system(size: isLower ? 22 : 19, weight: .regular)
                 } else if isDockedPad {
-                    return .system(size: isLower ? 23 : 21, weight: isLower ? .light : .regular)
+                    return .system(size: isPortrait ? 21 : 23, weight: .regular)
                 } else {
-                    return .system(size: isLower ? 25 : 22, weight: .regular)
+                    return .system(size: isLower ? 24.5 : 21.5, weight: .regular)
                 }
             }
-            return .system(size: isFloating ? 19 : (isDockedPad ? 21 : 22), weight: .regular)
+            return .system(size: isFloating ? 19 : (isDockedPad ? (isPortrait ? 20 : 22) : 21.5), weight: .regular)
         case .custom(let name) where name == "url_domain":
-            return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 16), weight: .regular)
+            return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":
-            return .system(size: isDockedPad ? 17 : 14, weight: .regular)
+            return .system(size: isDockedPad ? (isPortrait ? 16 : 18) : 14, weight: .regular)
         case .keyboardType:
-            return .system(size: isFloating ? 14 : (isDockedPad ? 18 : 16), weight: .regular)
+            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 16 : 18) : 15.5), weight: .regular)
         default:
             if buttonImage(for: action) != nil {
                 if isDockedPad {
-                    return .system(size: keyboardContext.interfaceOrientation.isPortrait ? 22 : 24, weight: .regular)
+                    return .system(size: isPortrait ? 19 : 21, weight: .regular)
                 }
-                return .system(size: isFloating ? 17 : 20, weight: .regular)
+                return .system(size: isFloating ? 17 : 19, weight: .regular)
             }
             return super.buttonFont(for: action)
         }
@@ -488,7 +455,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         case .characterMargin, .emoji, .none:
             return .noShadow
         default:
-            // Native iOS buttons have a subtle 1pt bottom drop shadow on key cap
             let isDark = Self.effectiveIsDark(for: keyboardContext)
             let shadowColor = isDark 
                 ? Color.black.opacity(0.45) 
@@ -498,22 +464,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 color: shadowColor,
                 size: 1
             )
-        }
-    }
-}
-
-/// Decides whether the current host shows the *classic* system keyboard on iOS 26+ (apps linked against an
-/// older SDK). Research on iOS 27 simulators found no public signal visible to a keyboard extension (traits are
-/// identical in classic and modern hosts; the host's bundle id is private and often unavailable). So:
-/// - "classic" / "modern" in the app's settings decide explicitly;
-/// - "auto" means modern on iOS 26+ (before iOS 26 the caller already returns classic).
-/// The keyboard records host diagnostics (`recordHostDiagnostics`) to calibrate a geometric signal later.
-final class ClassicHostDetector {
-    static let shared = ClassicHostDetector()
-    var isClassicHost: Bool {
-        switch KeyboardPreferences.systemKeyStyle {
-        case "classic": return true
-        default: return false
         }
     }
 }

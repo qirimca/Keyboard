@@ -96,6 +96,7 @@ final class TextHistoryManager {
 class DemoActionHandler: StandardKeyboardActionHandler {
     private lazy var transliterator = CrimeanTatarTransliterator()
     private var didInstantiateTransliterator = false
+    private var activeFlickSymbol: (action: KeyboardAction, symbol: String)?
 
     func resetComposition() {
         guard didInstantiateTransliterator else { return }
@@ -117,6 +118,27 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         return super.canHandle(gesture, on: action)
     }
 
+    override func handleDrag(
+        on action: KeyboardAction,
+        from startLocation: CGPoint,
+        to currentLocation: CGPoint
+    ) {
+        if let symbol = CrimeanTatarIPadKeyboardLayoutProvider.flickSymbol(
+            for: action,
+            context: keyboardContext
+        ) {
+            let dx = currentLocation.x - startLocation.x
+            let dy = currentLocation.y - startLocation.y
+            if dy >= 16, dy > abs(dx) * 1.15 {
+                activeFlickSymbol = (action, symbol)
+                return
+            } else if dy < 10 {
+                activeFlickSymbol = nil
+            }
+        }
+        super.handleDrag(on: action, from: startLocation, to: currentLocation)
+    }
+
     private func apply(_ edit: CrimeanTatarTransliterator.Edit) {
         let proxy = keyboardContext.textDocumentProxy
         let removed = String((proxy.documentContextBeforeInput ?? "").suffix(edit.deleteCount))
@@ -128,6 +150,20 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             TextHistoryManager.shared.recordReplace(oldText: removed, newText: edit.insertion)
         }
         keyboardController?.performAutocomplete()
+    }
+
+    private static func previousCompletedWord(in proxy: UITextDocumentProxy, excludingCurrentWord: Bool) -> String? {
+        guard let before = proxy.documentContextBeforeInput else { return nil }
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        let tokens = before
+            .components(separatedBy: delimiters)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if excludingCurrentWord {
+            return tokens.count >= 2 ? tokens[tokens.count - 2] : nil
+        } else {
+            return tokens.last
+        }
     }
 
     /// Space applies the autocorrection computed from the text as it is right now. The published suggestions
@@ -145,6 +181,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                let word = proxy.currentWord,
                !word.isEmpty,
                let provider = (keyboardController as? KeyboardViewController)?.services.autocompleteProvider as? CrimeanTatarAutocompleteProvider {
+                let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true)
                 let suggestions = provider.suggestionsNow(for: word)
                 autocompleteContext.suggestions = suggestions
                 if let suggestion = suggestions.first(where: { $0.isAutocorrect }),
@@ -152,7 +189,18 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     for _ in 0..<word.count { proxy.deleteBackward() }
                     proxy.insertText(suggestion.text)
                     TextHistoryManager.shared.recordReplace(oldText: word, newText: suggestion.text)
+                    SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                        suggestion.text,
+                        previousWord: prevWord,
+                        proxy: proxy
+                    )
                     return
+                } else {
+                    SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                        word,
+                        previousWord: prevWord,
+                        proxy: proxy
+                    )
                 }
             }
         }
@@ -162,9 +210,16 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     override func handle(_ suggestion: Autocomplete.Suggestion) {
         resetComposition()
-        let currentWord = keyboardContext.textDocumentProxy.currentWord ?? ""
+        let proxy = keyboardContext.textDocumentProxy
+        let currentWord = proxy.currentWord ?? ""
+        let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty)
         let replacement = suggestion.text
         TextHistoryManager.shared.recordReplace(oldText: currentWord, newText: replacement)
+        SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+            replacement,
+            previousWord: prevWord,
+            proxy: proxy
+        )
         super.handle(suggestion)
     }
 
@@ -194,6 +249,16 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         on action: KeyboardAction,
         replaced: Bool
     ) {
+        if gesture == .press, !replaced {
+            activeFlickSymbol = nil
+        }
+        if gesture == .release, !replaced,
+           let flick = activeFlickSymbol, flick.action == action {
+            activeFlickSymbol = nil
+            SpaceBarState.shared.fadeToResting()
+            handleUntimed(.release, on: .character(flick.symbol), replaced: true)
+            return
+        }
         if action == .custom(named: "toggle_script") {
             if gesture == .press {
                 triggerFeedback(for: gesture, on: action)
@@ -201,6 +266,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 (keyboardController as? KeyboardViewController)?.toggleScript()
             }
             return
+        }
+        if gesture == .release {
+            SpaceBarState.shared.fadeToResting()
         }
         if action == .capsLock {
             if gesture == .press {

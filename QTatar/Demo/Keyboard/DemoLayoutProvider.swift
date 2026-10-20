@@ -37,7 +37,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                     case .characterMargin: return !keepMargins
                     case .none: return true
                     case .character(let text):
-                        return row == 2 && !isCyrillic && (text == "," || text == ".")
+                        return row == 2 && (text == "," || text == ".")
                     default: return false
                     }
                 }
@@ -90,11 +90,8 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // In Liquid Glass floating mode, iPadOS provides an external globe button below the keyboard;
-        // in Classic mode (e.g. Gmail), the floating container has no external globe so include .nextKeyboard in Row 4.
-        let shouldIncludeGlobe = context.isKeyboardFloating
-            ? DemoStyleProvider.usesClassicGraySystemKeys(for: context)
-            : context.needsInputModeSwitchKey
+        // Always include .nextKeyboard in floating mode so users can switch keyboards in all host apps (e.g. Gmail, Home-button iPads).
+        let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
         if shouldIncludeGlobe {
             result.append(.nextKeyboard)
         }
@@ -218,11 +215,29 @@ extension InputSet {
         .init(rows: [
             .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
             .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
-            .init(lowercased: "ячсмитьбюё", uppercased: "ЯЧСМИТЬБЮЁ")
+            .init(lowercased: "ячсмитьбюё,", uppercased: "ЯЧСМИТЬБЮЁ,")
         ])
     }
 
-    /// Standardized phone numeric set (matching native iOS phone layout)
+    /// Standardized phone Latin numeric set (matching English iOS phone layout)
+    static var crimeanTatarPhoneLatinNumeric: InputSet {
+        .init(rows: [
+            .init(chars: "1234567890"),
+            .init(chars: "-/:;()$&@\""),
+            .init(chars: ".,?!'")
+        ])
+    }
+
+    /// Standardized phone Latin symbolic set (matching English iOS phone layout)
+    static var crimeanTatarPhoneLatinSymbolic: InputSet {
+        .init(rows: [
+            .init(chars: "[]{}#%^*+="),
+            .init(chars: "_\\|~<>€£¥•"),
+            .init(chars: ".,?!'")
+        ])
+    }
+
+    /// Standardized phone Cyrillic numeric set (matching Ukrainian iOS phone layout)
     static var crimeanTatarPhoneNumeric: InputSet {
         .init(rows: [
             .init(chars: "1234567890"),
@@ -231,7 +246,7 @@ extension InputSet {
         ])
     }
     
-    /// Standardized phone symbolic set (matching native iOS phone layout)
+    /// Standardized phone Cyrillic symbolic set (matching Ukrainian iOS phone layout)
     static var crimeanTatarPhoneSymbolic: InputSet {
         .init(rows: [
             .init(chars: "[]{}#%^*+="),
@@ -240,27 +255,39 @@ extension InputSet {
         ])
     }
     
-    /// Standardized pad numeric set (matching native iPad layout page 1)
-    /// Row 0: 11 characters (1234567890-)
-    /// Row 1: 10 characters (@#₴&*-()'")
-    /// Row 2: 9 characters (%_+=/;:!?)
+    /// Docked iPad Latin numeric set (12 / 12 / 11 matching Latin alphabetic key counts and English symbol order)
     static var crimeanTatarPadNumeric: InputSet {
         .init(rows: [
-            .init(chars: "1234567890-"),
-            .init(chars: "@#₴&*-()'\""),
-            .init(chars: "%_+=/;:!?")
+            .init(chars: "1234567890—°"),
+            .init(chars: "@#$₴&*_()'\"№"),
+            .init(chars: "%-+=/;:,.!?")
         ])
     }
     
-    /// Standardized pad symbolic set (matching native iPad layout page 2)
-    /// Row 0: 11 characters (1234567890—)
-    /// Row 1: 10 characters (€$£•^|[]{})
-    /// Row 2: 9 characters (§~…≠\<>!?)
+    /// Docked iPad Latin symbolic set (12 / 12 / 11 matching Latin alphabetic key counts and English symbol order)
     static var crimeanTatarPadSymbolic: InputSet {
         .init(rows: [
-            .init(chars: "1234567890—"),
-            .init(chars: "€$£•^|[]{}"),
-            .init(chars: "§~…≠\\<>!?")
+            .init(chars: "1234567890—°"),
+            .init(chars: "€£¥•`^|[]{}±"),
+            .init(chars: "§~…≠\\<>«»!?")
+        ])
+    }
+
+    /// Docked iPad Cyrillic numeric set (12 / 11 / 11 matching Cyrillic alphabetic key counts and Ukrainian symbol order with zero empty slots)
+    static var crimeanTatarPadCyrillicNumeric: InputSet {
+        .init(rows: [
+            .init(chars: "1234567890—°"),
+            .init(chars: "@#₴№&*_()'\""),
+            .init(chars: "%-+=/;:,.!?")
+        ])
+    }
+
+    /// Docked iPad Cyrillic symbolic set (12 / 11 / 11 matching Cyrillic alphabetic key counts and Ukrainian symbol order with zero empty slots)
+    static var crimeanTatarPadCyrillicSymbolic: InputSet {
+        .init(rows: [
+            .init(chars: "1234567890—°"),
+            .init(chars: "€$£•`^|[]{}"),
+            .init(chars: "§~…≠\\<>«»!?")
         ])
     }
 }
@@ -293,9 +320,18 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
         guard let base = baseProvider as? InputSetBasedKeyboardLayoutProvider else {
             return super.keyboardLayout(for: context)
         }
-        let inputSet: InputSet = context.locale.identifier.contains("Cyrl") ? .crimeanTatarCyrillic : .crimeanTatar
-        (base.iPhoneProvider as? BaseKeyboardLayoutProvider)?.alphabeticInputSet = inputSet
-        (base.iPadProvider as? BaseKeyboardLayoutProvider)?.alphabeticInputSet = inputSet
+        let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let inputSet: InputSet = isCyrillic ? .crimeanTatarCyrillic : .crimeanTatar
+        if let phone = base.iPhoneProvider as? BaseKeyboardLayoutProvider {
+            phone.alphabeticInputSet = inputSet
+            phone.numericInputSet = isCyrillic ? .crimeanTatarPhoneNumeric : .crimeanTatarPhoneLatinNumeric
+            phone.symbolicInputSet = isCyrillic ? .crimeanTatarPhoneSymbolic : .crimeanTatarPhoneLatinSymbolic
+        }
+        if let pad = base.iPadProvider as? BaseKeyboardLayoutProvider {
+            pad.alphabeticInputSet = inputSet
+            pad.numericInputSet = isCyrillic ? .crimeanTatarPadCyrillicNumeric : .crimeanTatarPadNumeric
+            pad.symbolicInputSet = isCyrillic ? .crimeanTatarPadCyrillicSymbolic : .crimeanTatarPadSymbolic
+        }
         let provider = context.isKeyboardFloating || context.deviceType == .phone ? base.iPhoneProvider : base.iPadProvider
         let layout = provider.keyboardLayout(for: context)
         layout.applyNativeRowInsets(for: context)

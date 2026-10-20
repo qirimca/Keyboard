@@ -46,29 +46,6 @@
           }
         }
       }
-    },
-    "NSSpeechRecognitionUsageDescription" : {
-      "comment" : "Privacy - Speech Recognition Usage Description",
-      "localizations" : {
-        "crh" : {
-          "stringUnit" : {
-            "state" : "machine_translated",
-            "value" : "Sesni tanuv"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "machine_translated",
-            "value" : "Speech Recognition"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "machine_translated",
-            "value" : "Розпізнавання мовлення"
-          }
-        }
-      }
     }
   },
   "version" : "1.3"

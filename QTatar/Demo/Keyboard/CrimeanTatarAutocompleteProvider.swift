@@ -31,16 +31,21 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
     var locale: Locale = .current
 
     var canIgnoreWords: Bool { false }
-    var canLearnWords: Bool { false }
+    var canLearnWords: Bool { KeyboardPreferences.wordLearningEnabled }
     var ignoredWords: [String] = []
     var learnedWords: [String] = []
 
     func hasIgnoredWord(_ word: String) -> Bool { false }
-    func hasLearnedWord(_ word: String) -> Bool { false }
+    func hasLearnedWord(_ word: String) -> Bool { manager.hasLearnedWord(word) }
     func ignoreWord(_ word: String) {}
-    func learnWord(_ word: String) {}
+    func learnWord(_ word: String) {
+        let proxy = keyboardContext.textDocumentProxy
+        let completed = Self.completedContextWords(before: proxy)
+        let prev = proxy.isCursorAtNewWord ? completed.last : completed.dropLast().last
+        manager.learnWordIfPermitted(word, previousWord: prev, proxy: proxy)
+    }
     func removeIgnoredWord(_ word: String) {}
-    func unlearnWord(_ word: String) {}
+    func unlearnWord(_ word: String) { manager.unlearnWord(word) }
 
     func autocompleteSuggestions(
         for text: String

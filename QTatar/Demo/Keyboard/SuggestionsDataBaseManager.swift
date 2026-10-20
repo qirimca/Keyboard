@@ -8,6 +8,7 @@
 import Foundation
 import KeyboardKit
 import SQLite3
+import UIKit
 import os
 
 final class SuggestionsDataBaseManager {
@@ -16,6 +17,7 @@ final class SuggestionsDataBaseManager {
     static let signposter = OSSignposter(subsystem: "crh.key.perf", category: "Autocomplete")
 
     private var db: OpaquePointer?
+    private var userDB: OpaquePointer?
     private let databaseQueue = DispatchQueue(label: "crh.keyboard.databaseQueue")
     private static let crimeanLocale = Locale(identifier: "crh")
     /// i/ı/İ/I casing for Crimean Tatar Latin (same rules as Turkish script).
@@ -29,6 +31,7 @@ final class SuggestionsDataBaseManager {
     func prepareAsync() {
         databaseQueue.async { [weak self] in
             self?.ensureDB()
+            self?.ensureUserDB()
             self?.ensurePhrasesLoaded()
         }
     }
@@ -39,13 +42,22 @@ final class SuggestionsDataBaseManager {
                 sqlite3_close(db)
                 self.db = nil
             }
+            if let userDB {
+                sqlite3_close(userDB)
+                self.userDB = nil
+            }
         }
     }
 
     private func openDB() {
         let state = Self.signposter.beginInterval("openDB")
         defer { Self.signposter.endInterval("openDB", state) }
-        guard let dbURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "db") else {
+        let siblingURL = Bundle.main.bundleURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("Keyboard.appex/qırım_tatar.db")
+        let resolvedURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "db")
+            ?? (FileManager.default.fileExists(atPath: siblingURL.path) ? siblingURL : nil)
+        guard let dbURL = resolvedURL else {
             debugPrint("Cant open DB")
             return
         }
@@ -65,9 +77,251 @@ final class SuggestionsDataBaseManager {
         debugPrint("Successfully opened SQLite database (readonly, optimized) at \(dbURL.path)")
     }
 
+    private func openUserDB() {
+        let containerDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID)
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        try? FileManager.default.createDirectory(at: containerDir, withIntermediateDirectories: true)
+        let userDBURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
+
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
+        guard sqlite3_open_v2(userDBURL.path, &userDB, flags, nil) == SQLITE_OK else {
+            userDB = nil
+            return
+        }
+        let schema = """
+        PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = NORMAL;
+        CREATE TABLE IF NOT EXISTS user_unigrams (
+            word TEXT PRIMARY KEY,
+            freq INTEGER NOT NULL DEFAULT 1,
+            last_used INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_unigrams_freq ON user_unigrams(freq DESC, last_used DESC);
+        CREATE TABLE IF NOT EXISTS user_bigrams (
+            word1 TEXT NOT NULL,
+            word2 TEXT NOT NULL,
+            freq INTEGER NOT NULL DEFAULT 1,
+            last_used INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (word1, word2)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_bigrams_word1 ON user_bigrams(word1, freq DESC, last_used DESC);
+        """
+        sqlite3_exec(userDB, schema, nil, nil, nil)
+    }
+
     private func ensureDB() {
         if db != nil { return }
         openDB()
+    }
+
+    private func ensureUserDB() {
+        if userDB != nil { return }
+        openUserDB()
+    }
+
+    // MARK: - Personalized Word & Bigram Learning
+
+    static func isValidLearnableWord(_ rawWord: String) -> Bool {
+        let trimmed = rawWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 2, trimmed.count <= 32 else { return false }
+        var letterCount = 0
+        for ch in trimmed {
+            if ch.isLetter {
+                letterCount += 1
+            } else if ch == "'" || ch == "’" || ch == "-" {
+                continue
+            } else {
+                return false
+            }
+        }
+        return letterCount >= 2
+    }
+
+    static func shouldLearn(word: String, proxy: UITextDocumentProxy?) -> Bool {
+        guard KeyboardPreferences.wordLearningEnabled,
+              KeyboardPreferences.suggestionsEnabled else { return false }
+        if let proxy {
+            if proxy.isSecureTextEntry == true { return false }
+            if proxy.keyboardAppearance == .alert { return false }
+            if let kbType = proxy.keyboardType {
+                switch kbType {
+                case .emailAddress, .URL, .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation, .twitter:
+                    return false
+                default:
+                    break
+                }
+            }
+            if let contentType = proxy.textContentType ?? nil {
+                let blocked: Set<UITextContentType> = [
+                    .password, .newPassword, .oneTimeCode, .creditCardNumber,
+                    .emailAddress, .URL, .telephoneNumber
+                ]
+                if blocked.contains(contentType) { return false }
+            }
+        }
+        return isValidLearnableWord(word)
+    }
+
+    func learnWordIfPermitted(
+        _ word: String,
+        previousWord: String? = nil,
+        proxy: UITextDocumentProxy? = nil
+    ) {
+        guard Self.shouldLearn(word: word, proxy: proxy) else { return }
+        let normalizedWord = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+        let normalizedPrev: String? = {
+            guard let prev = previousWord?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  Self.isValidLearnableWord(prev) else { return nil }
+            return prev.lowercased(with: Self.casingLocale)
+        }()
+        let now = Int64(Date().timeIntervalSince1970)
+        databaseQueue.async { [weak self] in
+            self?.recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
+        }
+    }
+
+    func learnWordSynchronously(_ word: String, previousWord: String? = nil) {
+        guard Self.isValidLearnableWord(word) else { return }
+        let normalizedWord = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+        let normalizedPrev: String? = {
+            guard let prev = previousWord?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  Self.isValidLearnableWord(prev) else { return nil }
+            return prev.lowercased(with: Self.casingLocale)
+        }()
+        let now = Int64(Date().timeIntervalSince1970)
+        databaseQueue.sync {
+            recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
+        }
+    }
+
+    func hasLearnedWord(_ word: String) -> Bool {
+        let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+        return databaseQueue.sync {
+            ensureUserDB()
+            return userFrequency(of: normalized) > 0
+        }
+    }
+
+    func unlearnWord(_ word: String) {
+        let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+        databaseQueue.sync {
+            ensureUserDB()
+            guard let userDB else { return }
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            if sqlite3_prepare_v2(userDB, "DELETE FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
+               bindText(stmt, index: 1, value: normalized) {
+                sqlite3_step(stmt)
+            }
+        }
+    }
+
+    func clearUserLexicon() {
+        databaseQueue.sync {
+            ensureUserDB()
+            guard let userDB else { return }
+            sqlite3_exec(userDB, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)
+        }
+    }
+
+    private func recordLearnedEntry(word: String, previousWord: String?, timestamp: Int64) {
+        ensureUserDB()
+        guard let userDB else { return }
+        do {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            let sql = """
+            INSERT INTO user_unigrams(word, freq, last_used)
+            VALUES (?1, 1, ?2)
+            ON CONFLICT(word) DO UPDATE SET
+                freq = MIN(freq + 1, 10000),
+                last_used = excluded.last_used;
+            """
+            if sqlite3_prepare_v2(userDB, sql, -1, &stmt, nil) == SQLITE_OK,
+               bindText(stmt, index: 1, value: word),
+               sqlite3_bind_int64(stmt, 2, timestamp) == SQLITE_OK {
+                sqlite3_step(stmt)
+            }
+        }
+        if let previousWord, previousWord != word {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            let sql = """
+            INSERT INTO user_bigrams(word1, word2, freq, last_used)
+            VALUES (?1, ?2, 1, ?3)
+            ON CONFLICT(word1, word2) DO UPDATE SET
+                freq = MIN(freq + 1, 10000),
+                last_used = excluded.last_used;
+            """
+            if sqlite3_prepare_v2(userDB, sql, -1, &stmt, nil) == SQLITE_OK,
+               bindText(stmt, index: 1, value: previousWord),
+               bindText(stmt, index: 2, value: word),
+               sqlite3_bind_int64(stmt, 3, timestamp) == SQLITE_OK {
+                sqlite3_step(stmt)
+            }
+        }
+    }
+
+    private func userFrequency(of word: String) -> Int32 {
+        guard KeyboardPreferences.wordLearningEnabled else { return 0 }
+        ensureUserDB()
+        guard let userDB else { return 0 }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(userDB, "SELECT freq FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
+              bindText(stmt, index: 1, value: word),
+              sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        return sqlite3_column_int(stmt, 0)
+    }
+
+    private func fetchUserWordsStartingWith(prefix: String, limit: Int) -> [(word: String, freq: Int)] {
+        guard KeyboardPreferences.wordLearningEnabled else { return [] }
+        ensureUserDB()
+        guard let userDB else { return [] }
+        var results: [(String, Int)] = []
+        var stmt: OpaquePointer?
+        let query = """
+        SELECT word, freq FROM user_unigrams
+        WHERE word >= ?1 AND word < ?2
+        ORDER BY (word = ?1) DESC, freq DESC, last_used DESC
+        LIMIT ?3;
+        """
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(userDB, query, -1, &stmt, nil) == SQLITE_OK,
+              bindText(stmt, index: 1, value: prefix),
+              bindText(stmt, index: 2, value: prefix + "\u{FFFF}"),
+              sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else { return [] }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let wordPtr = sqlite3_column_text(stmt, 0) {
+                results.append((String(cString: wordPtr), Int(sqlite3_column_int(stmt, 1))))
+            }
+        }
+        return results
+    }
+
+    private func fetchUserBigrams(after word1: String, limit: Int) -> [(word2: String, freq: Int)] {
+        guard KeyboardPreferences.wordLearningEnabled else { return [] }
+        ensureUserDB()
+        guard let userDB else { return [] }
+        var results: [(String, Int)] = []
+        var stmt: OpaquePointer?
+        let query = """
+        SELECT word2, freq FROM user_bigrams
+        WHERE word1 = ?1
+        ORDER BY freq DESC, last_used DESC
+        LIMIT ?2;
+        """
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(userDB, query, -1, &stmt, nil) == SQLITE_OK,
+              bindText(stmt, index: 1, value: word1),
+              sqlite3_bind_int(stmt, 2, Int32(limit)) == SQLITE_OK else { return [] }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let wordPtr = sqlite3_column_text(stmt, 0) {
+                results.append((String(cString: wordPtr), Int(sqlite3_column_int(stmt, 1))))
+            }
+        }
+        return results
     }
 
     private func ensurePhrasesLoaded() {
@@ -218,13 +472,14 @@ final class SuggestionsDataBaseManager {
     }
 
     private func frequency(of word: String) -> Int32 {
-        guard let db else { return 0 }
+        let userBoost = userFrequency(of: word) * 500
+        guard let db else { return userBoost }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_prepare_v2(db, "SELECT MAX(freq) FROM words WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
               bindText(stmt, index: 1, value: word),
-              sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-        return sqlite3_column_int(stmt, 0)
+              sqlite3_step(stmt) == SQLITE_ROW else { return userBoost }
+        return sqlite3_column_int(stmt, 0) + userBoost
     }
 
     /// Most frequent dictionary word one edit away (delete / transpose / replace / insert).
@@ -296,6 +551,14 @@ final class SuggestionsDataBaseManager {
         guard !normalized.isEmpty else { return [] }
 
         var scores: [String: Int] = [:]
+
+        // 0. Personalized user bigrams get top priority
+        if let lastWord = normalized.last {
+            for (nextWord, freq) in fetchUserBigrams(after: lastWord, limit: 6) {
+                let key = nextWord.lowercased(with: Self.casingLocale)
+                scores[key] = max(scores[key] ?? 0, freq * 2500)
+            }
+        }
 
         // 1. Trigrams for rich 2-word context
         if normalized.count >= 2 {
@@ -563,37 +826,56 @@ final class SuggestionsDataBaseManager {
     }
 
     private func fetchWordsStartingWith(prefix: String, limit: Int) -> [String] {
-        guard let db else { return [] }
-        var results: [String] = []
+        let lowercasePrefix = prefix.lowercased(with: Self.casingLocale)
+        let userMatches = fetchUserWordsStartingWith(prefix: lowercasePrefix, limit: limit)
+
+        guard let db else {
+            return userMatches.map(\.word)
+        }
+        var scored: [String: Int] = [:]
+        var ordered: [String] = []
+
+        for (word, freq) in userMatches {
+            scored[word] = freq * 500
+            ordered.append(word)
+        }
 
         var stmt: OpaquePointer?
-        let query = "SELECT word FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY (word = ?1) DESC, freq DESC LIMIT ?3;"
-        let lowercasePrefix = prefix.lowercased(with: Self.casingLocale)
+        let query = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY (word = ?1) DESC, freq DESC LIMIT ?3;"
 
         defer { sqlite3_finalize(stmt) }
 
-        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
-            debugPrint("Failed to prepare query")
-            return []
-        }
-
-        guard bindText(stmt, index: 1, value: lowercasePrefix) else {
-            debugPrint("Failed to bind query parameter")
-            return []
-        }
-
-        guard bindText(stmt, index: 2, value: lowercasePrefix + "\u{FFFF}"),
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK,
+              bindText(stmt, index: 1, value: lowercasePrefix),
+              bindText(stmt, index: 2, value: lowercasePrefix + "\u{FFFF}"),
               sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
-            return []
+            return ordered
         }
 
         while sqlite3_step(stmt) == SQLITE_ROW {
-            if let word = sqlite3_column_text(stmt, 0) {
-                results.append(String(cString: word))
+            if let wordPtr = sqlite3_column_text(stmt, 0) {
+                let word = String(cString: wordPtr)
+                let freq = Int(sqlite3_column_int(stmt, 1))
+                let key = word.lowercased(with: Self.casingLocale)
+                if scored[key] == nil {
+                    ordered.append(word)
+                }
+                scored[key, default: 0] += freq
             }
         }
 
-        return results
+        let sorted = ordered.sorted { lhs, rhs in
+            let lKey = lhs.lowercased(with: Self.casingLocale)
+            let rKey = rhs.lowercased(with: Self.casingLocale)
+            let lExact = (lKey == lowercasePrefix)
+            let rExact = (rKey == lowercasePrefix)
+            if lExact != rExact { return lExact }
+            let lScore = scored[lKey] ?? 0
+            let rScore = scored[rKey] ?? 0
+            if lScore != rScore { return lScore > rScore }
+            return lKey < rKey
+        }
+        return Array(sorted.prefix(limit))
     }
 
     private func bindText(

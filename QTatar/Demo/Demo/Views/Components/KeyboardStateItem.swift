@@ -23,6 +23,17 @@ enum KeyboardState {
             return value ? Home.home_full_on_key.localized : Home.home_full_off_key.localized
         }
     }
+
+    var allLocalizedTitles: [String] {
+        switch self {
+        case .active(let value):
+            return (value ? Home.home_keyboard_visible_key : Home.home_keyboard_hidden_key).allLocalizedVersions
+        case .enable(let value):
+            return (value ? Home.home_keyboard_on_key : Home.home_keyboard_off_key).allLocalizedVersions
+        case .fullAccess(let value):
+            return (value ? Home.home_full_on_key : Home.home_full_off_key).allLocalizedVersions
+        }
+    }
     
     var state: Bool {
         switch self {
@@ -50,7 +61,7 @@ struct KeyboardStateIndicatorsRow: View {
     
     private let rowHeight: CGFloat = Device.iPad ? 72 : 60
     private let spacing: CGFloat = Device.iPad ? 12 : 8
-    private let baseFontSize: CGFloat = Device.iPad ? 20 : 14
+    private let baseFontSize: CGFloat = Device.iPad ? 18 : 13.5
     private let iconWidth: CGFloat = Device.iPad ? 28 : 22
     private let horizontalPadding: CGFloat = Device.iPad ? 10 : 8
     private let verticalPadding: CGFloat = Device.iPad ? 10 : 8
@@ -58,7 +69,7 @@ struct KeyboardStateIndicatorsRow: View {
     
     var body: some View {
         GeometryReader { geometry in
-            let titles = states.map(\.title)
+            let titles = states.flatMap(\.allLocalizedTitles)
             let cellWidth = max((geometry.size.width - spacing * 2) / 3, 1)
             let textWidth = max(cellWidth - iconWidth - horizontalPadding * 2, 1)
             let textHeight = max(rowHeight - verticalPadding * 2, 1)
@@ -87,7 +98,7 @@ struct KeyboardStateIndicatorsRow: View {
 
 struct KeyboardStateItem: View {
     let state: KeyboardState
-    var titleFontSize: CGFloat = Device.iPad ? 20 : 13
+    var titleFontSize: CGFloat = Device.iPad ? 18 : 13
     var action: () -> Void
     
     var body: some View {
@@ -114,10 +125,10 @@ struct KeyboardStateItem: View {
             .padding(.horizontal, Device.iPad ? 10 : 8)
             .padding(.vertical, Device.iPad ? 10 : 8)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.backgroundLight)
+            .background(Color.backgroundLight, in: RoundedRectangle(cornerRadius: 18))
             .overlay {
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.black, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 18)
+                    .strokeBorder(Color.black, lineWidth: 2)
             }
         }
         .buttonStyle(.plain)

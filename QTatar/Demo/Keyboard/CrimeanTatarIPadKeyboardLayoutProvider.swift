@@ -77,8 +77,48 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     
     /// Row 0 side keys as fractions of the row width; the 12 letters share the rest, which defines the key pitch.
     static let tabFraction = 0.10
-    static let backspaceFraction = 0.075
+    static let backspaceFraction = 0.095
     static var letterPitch: Double { (1 - tabFraction - backspaceFraction) / 12 }
+
+    /// Returns the top secondary flick-down symbol for a Docked iPad key in `.alphabetic` or `.numeric` mode.
+    static func flickSymbol(for action: KeyboardAction, context: KeyboardContext) -> String? {
+        guard context.deviceType == .pad && !context.isKeyboardFloating else { return nil }
+        guard case .character(let char) = action, !char.isEmpty else { return nil }
+
+        let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let alphaRows = (isCyrillic ? InputSet.crimeanTatarCyrillic : InputSet.crimeanTatar).rows
+        let numRows = (isCyrillic ? InputSet.crimeanTatarPadCyrillicNumeric : InputSet.crimeanTatarPadNumeric).rows
+        let symRows = (isCyrillic ? InputSet.crimeanTatarPadCyrillicSymbolic : InputSet.crimeanTatarPadSymbolic).rows
+
+        if context.keyboardType.isAlphabetic {
+            let lower = char.lowercased()
+            for row in 0..<min(alphaRows.count, numRows.count) {
+                if let col = alphaRows[row].firstIndex(where: { $0.lowercased == lower }),
+                   col < numRows[row].count {
+                    return numRows[row][col].neutral
+                }
+            }
+            // In email/URL contexts, the trailing comma on Row 2 is replaced by '@' or '/'
+            if (char == "@" || char == "/"),
+               numRows.count > 2,
+               let last = numRows[2].last {
+                return last.neutral
+            }
+            return nil
+        }
+
+        if context.keyboardType == .numeric {
+            for row in 0..<min(numRows.count, symRows.count) {
+                if let col = numRows[row].firstIndex(where: { $0.neutral == char }),
+                   col < symRows[row].count {
+                    let sym = symRows[row][col].neutral
+                    return sym != char ? sym : nil
+                }
+            }
+        }
+
+        return nil
+    }
     
     override func topLeadingActions(for context: KeyboardContext) -> KeyboardAction.Row {
         [.tab]
@@ -150,7 +190,26 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> Alignment {
-        .center
+        // On iOS 27+, native iPad system keys align symbols/labels to the outer corners.
+        // On iOS 26 and earlier, native iPad system keys center their symbols/labels.
+        guard #available(iOS 27.0, *) else {
+            return .center
+        }
+        switch action {
+        case .tab, .capsLock, .nextKeyboard:
+            return .bottomLeading
+        case .custom(let name) where name == "toggle_script" || name == "undo" || name == "redo":
+            return .bottomLeading
+        case .backspace, .primary, .dismissKeyboard:
+            return .bottomTrailing
+        case .shift, .keyboardType:
+            if row == 2 {
+                return index == 0 ? .bottomLeading : .bottomTrailing
+            }
+            return index < 2 ? .bottomLeading : .bottomTrailing
+        default:
+            return .center
+        }
     }
     
     override func itemSizeWidth(
@@ -159,10 +218,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
-        // Fixed fractions keep side keys stable across scripts and symbol pages.
-        // On alphabetic pages every letter key has the same pitch, so row 1 / row 2 are offset by exact half keys
-        // (A between Q and W, Z between A and S) like the system QWERTY layout.
-        let isAlphabetic = context.keyboardType.isAlphabetic
+        // Fixed fractions keep side keys 100% invariant across Latin/Cyrillic and Alphabetic/Numeric/Symbolic pages.
+        // Every character key has the exact same pitch, so row 1 / row 2 are offset by exact half keys
+        // (A between Q and W, Z between A and S; Ф between Й and Ц, Я between Ф and Ы).
         let isCyrillic = context.locale.identifier.contains("Cyrl")
         let pitch = Self.letterPitch
         if row == 0 {
@@ -171,36 +229,28 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             return .available
         }
         if row == 1 {
-            if !isAlphabetic {
-                if index == 0 { return .percentage(0.145) }
-                if case .primary = action { return .percentage(0.14) }
-                return .available
-            }
             if index == 0 {
-                // Latin: АБВ key ends half a key before 'â'; Cyrillic: ABC key ends half a key before 'ф'.
+                // Latin (12 keys): left control key ends half a key before 'â'; Cyrillic (11 keys): ends half a key before 'ф'.
                 return .percentage(isCyrillic ? Self.tabFraction + pitch / 2 : Self.tabFraction - pitch / 2)
             }
             if case .primary = action { return .available }
             return .percentage(pitch)
         }
         if row == 2 {
-            if !isAlphabetic {
-                if index == 0 { return .percentage(0.115) }
-                switch action {
-                case .shift, .keyboardType: return .percentage(0.115)
-                default: return .available
-                }
-            }
             if index == 0 {
-                // Row 2 letters start at tab + pitch/2 (Cyrillic) so row 3 sits another half key to the right.
+                // Row 2 keys start at tab + pitch so row 3 sits another half key to the right.
                 return .percentage(Self.tabFraction + pitch)
             }
-            if case .shift = action { return .available }
-            return .percentage(pitch)
+            switch action {
+            case .shift, .keyboardType:
+                return .available
+            default:
+                return .percentage(pitch)
+            }
         }
         if action == .space || action == .custom(named: "url_domain") { return .available }
         if case .character = action { return isURLContext(context) ? .available : .percentage(0.07) }
-        if action == .nextKeyboard || action == .dismissKeyboard { return .percentage(0.08) }
+        if action == .nextKeyboard || action == .dismissKeyboard { return .percentage(0.085) }
         return .percentage(0.10)
     }
     

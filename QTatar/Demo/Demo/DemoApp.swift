@@ -35,7 +35,6 @@ struct DemoApp: App {
                     }
             }
             .environment(\.locale, Locale(identifier: interfaceLanguage))
-            .id(interfaceLanguage)
         }
     }
 }
