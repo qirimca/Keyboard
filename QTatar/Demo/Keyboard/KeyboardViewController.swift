@@ -54,6 +54,47 @@ class KeyboardViewController: KeyboardInputViewController {
         SpaceBarState.shared.triggerSwitchAnimation()
     }
 
+    func requestFloatingKeyboardMode() {
+        Self.invokeSystemSetFloating(true)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName("crh.key.requestFloatingKeyboard" as CFString),
+            nil,
+            nil,
+            true
+        )
+    }
+
+    static func invokeSystemSetFloating(_ floating: Bool) {
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            let isFloatingSel = NSSelectorFromString("isFloating")
+            if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
+                typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
+                let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
+                if checkFn(implClass, isFloatingSel) == floating {
+                    return
+                }
+            }
+        }
+        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            let hostSel = NSSelectorFromString("setFloating:onCompletion:")
+            if let method = class_getClassMethod(hostClass, hostSel) {
+                typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
+                fn(hostClass, hostSel, floating, nil)
+                return
+            }
+        }
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            let implSel = NSSelectorFromString("setFloating:")
+            if let method = class_getClassMethod(implClass, implSel) {
+                typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
+                fn(implClass, implSel, floating)
+            }
+        }
+    }
+
     private static var didWarmTransliterator = false
 
     /// The transliteration rules compile ~50 regular expressions on first use. Do that off the main thread,
@@ -69,14 +110,15 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     private func applyPreferences() {
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         state.autocompleteContext.isAutocompleteEnabled = KeyboardPreferences.suggestionsEnabled
         state.autocompleteContext.isAutocorrectEnabled = KeyboardPreferences.suggestionsEnabled
         if !KeyboardPreferences.suggestionsEnabled { state.autocompleteContext.suggestions = [] }
-        if !KeyboardPreferences.cyrillicEnabled && !isCyrillicExtension {
+        if !KeyboardPreferences.cyrillicEnabled && (!isCyrillicExtension || state.keyboardContext.deviceType == .pad) {
             state.keyboardContext.locale = Locale(identifier: "crh-Latn")
         }
         warmTransliteratorIfNeeded()
-        state.keyboardContext.objectWillChange.send()
+        state.keyboardContext.renderVersion &+= 1
     }
 
     /// This function is called when the controller loads.
@@ -293,6 +335,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     private func refreshProxyState() {
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         state.keyboardContext.syncTextDocumentProxy(with: self)
         let context = state.keyboardContext
         let targetInterfaceStyle: UIUserInterfaceStyle = DemoStyleProvider.isSandboxOverrideActive(for: context)
@@ -317,7 +360,7 @@ class KeyboardViewController: KeyboardInputViewController {
             if prefsChanged {
                 applyPreferences()
             } else {
-                state.keyboardContext.objectWillChange.send()
+                state.keyboardContext.renderVersion &+= 1
             }
         }
     }
@@ -444,18 +487,13 @@ class KeyboardViewController: KeyboardInputViewController {
                     ) {
                         let isLandscape = context.interfaceOrientation.isLandscape
                         let isDark = DemoStyleProvider.effectiveIsDark(for: context)
-                        ZStack {
+                        FlickKeyContentView(
+                            action: params.item.action,
+                            flickSymbol: flick,
+                            isLandscape: isLandscape,
+                            isDark: isDark
+                        ) {
                             params.view
-                                .offset(y: isLandscape ? 6 : 5)
-                            VStack(spacing: 0) {
-                                Text(flick)
-                                    .font(.system(size: isLandscape ? 13 : 11, weight: .regular))
-                                    .foregroundColor(isDark ? Color.white.opacity(0.45) : Color.black.opacity(0.42))
-                                    .padding(.top, isLandscape ? 5 : 4)
-                                Spacer(minLength: 0)
-                            }
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
                         }
                     } else {
                         params.view
@@ -479,16 +517,136 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 }
 
+final class KeyFlickState {
+    static let shared = KeyFlickState()
+
+    struct Event {
+        let action: KeyboardAction
+        let progress: CGFloat
+    }
+
+    let subject = PassthroughSubject<Event, Never>()
+    private var currentAction: KeyboardAction?
+    private var currentProgress: CGFloat = 0
+    private var endObserver: NSObjectProtocol?
+
+    private init() {
+        endObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("crh.key.gestureEnded"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.reset()
+        }
+    }
+
+    func update(action: KeyboardAction, progress: CGFloat) {
+        let clamped = min(max(progress, 0), 1)
+        if let prev = currentAction, prev != action {
+            subject.send(Event(action: prev, progress: 0))
+            currentProgress = 0
+        }
+        currentAction = action
+        if abs(clamped - currentProgress) > 0.005 || (clamped == 0 && currentProgress != 0) || (clamped == 1 && currentProgress != 1) {
+            currentProgress = clamped
+            subject.send(Event(action: action, progress: clamped))
+        }
+    }
+
+    func reset() {
+        guard let active = currentAction else { return }
+        currentAction = nil
+        currentProgress = 0
+        subject.send(Event(action: active, progress: 0))
+    }
+}
+
+/// Renders an iPad Docked key with a top secondary flick symbol that smoothly slides down
+/// into the center, scales up to primary font size, and transitions from gray to solid black/white
+/// while the primary character slides down and fades out during a downward key flick.
+struct FlickKeyContentView<PrimaryContent: View>: View {
+    let action: KeyboardAction
+    let flickSymbol: String
+    let isLandscape: Bool
+    let isDark: Bool
+    @ViewBuilder let primaryContent: () -> PrimaryContent
+
+    @State private var progress: CGFloat = 0
+
+    private var primaryFontSize: CGFloat { isLandscape ? 23 : 21 }
+    private var restingScale: CGFloat { isLandscape ? (13.0 / 23.0) : (11.0 / 21.0) }
+    private var restingOffsetY: CGFloat { isLandscape ? -19.0 : -14.0 }
+    private var restingOpacity: Double { isDark ? 0.45 : 0.42 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 6.0 : 5.0 }
+
+    var body: some View {
+        let currentFlickScale = restingScale + (1.0 - restingScale) * progress
+        let currentFlickOffsetY = restingOffsetY * (1.0 - progress)
+        let currentFlickOpacity = restingOpacity + (1.0 - restingOpacity) * Double(progress)
+
+        let currentPrimaryOffsetY = restingPrimaryOffsetY + progress * (isLandscape ? 12.0 : 9.5)
+        let currentPrimaryScale = 1.0 - progress * 0.25
+        let currentPrimaryOpacity = max(0.0, 1.0 - Double(progress) * 1.65)
+
+        ZStack {
+            primaryContent()
+                .scaleEffect(currentPrimaryScale)
+                .offset(y: currentPrimaryOffsetY)
+                .opacity(currentPrimaryOpacity)
+
+            Text(flickSymbol)
+                .font(.system(size: primaryFontSize, weight: .regular))
+                .foregroundColor((isDark ? Color.white : Color.black).opacity(currentFlickOpacity))
+                .scaleEffect(currentFlickScale)
+                .offset(y: currentFlickOffsetY)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .onReceive(KeyFlickState.shared.subject) { event in
+            guard event.action == action else { return }
+            if event.progress == 0 {
+                withAnimation(.spring(response: 0.2, dampingFraction: 0.85)) {
+                    progress = 0
+                }
+            } else {
+                withAnimation(.interactiveSpring(response: 0.07, dampingFraction: 0.92)) {
+                    progress = event.progress
+                }
+            }
+        }
+        .onChange(of: action) { _ in
+            progress = 0
+        }
+    }
+}
+
 private extension UIGestureRecognizer {
+    var qirim_isSystemFloatingGesture: Bool {
+        if self is UIPinchGestureRecognizer {
+            return true
+        }
+        if self is UIPanGestureRecognizer {
+            let className = NSStringFromClass(type(of: self))
+            let delegateName = delegate.map { NSStringFromClass(type(of: $0)) } ?? ""
+            if delegateName.contains("Floating")
+                || delegateName.contains("Peripheral")
+                || delegateName.contains("Dock")
+                || className.contains("Keyboard") {
+                return true
+            }
+        }
+        return false
+    }
+
     @objc func qirim_canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
-        if preventedGestureRecognizer is UIPinchGestureRecognizer {
+        if preventedGestureRecognizer.qirim_isSystemFloatingGesture {
             return false
         }
         return qirim_canPrevent(preventedGestureRecognizer)
     }
 
     @objc func qirim_canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
-        if self is UIPinchGestureRecognizer {
+        if qirim_isSystemFloatingGesture {
             return false
         }
         return qirim_canBePrevented(by: preventingGestureRecognizer)

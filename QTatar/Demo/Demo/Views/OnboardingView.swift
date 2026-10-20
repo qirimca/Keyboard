@@ -36,8 +36,7 @@ struct OnboardingView: View {
     
     var body: some View {
         ZStack {
-            Color("BackgroungColor").ignoresSafeArea()
-            BackgroundGrid()
+            Color(.systemGroupedBackground).ignoresSafeArea()
             TabView(selection: $selected) {
                 ForEach(Page.allCases, id: \.rawValue) { page in
                     onboardingPage(page)
@@ -81,16 +80,17 @@ private extension OnboardingView {
             
             if page == .onboard3 {
                 TextField(text: $text) {
-                    Text(Onboarding.onb_check_key.localized).regularText()
+                    Text(Onboarding.onb_check_key.localized).regularText(color: Color(.placeholderText))
                 }
                 .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+                .foregroundStyle(Color(.label))
                 .padding()
-                .cornerRadius(20)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .lineLimit(1)
                 .submitLabel(.done)
-                .background(Color.backgroundLight)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20).stroke(Color.black, lineWidth: 2)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.primary.opacity(0.25), lineWidth: 1.5)
                 }
             }
             
@@ -143,12 +143,12 @@ private extension OnboardingView {
                 .mediumText()
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
-                .background(Color.backgroundLight)
+                .background(Color(.secondarySystemGroupedBackground))
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(LinearGradient(
-                    colors: [gradient, Color.black],
+                    colors: [gradient, Color.primary.opacity(0.4)],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing), lineWidth: 2))
+                    endPoint: .bottomTrailing), lineWidth: 1.5))
         }
         .buttonStyle(.plain)
     }
@@ -171,7 +171,7 @@ private extension OnboardingView {
             result = result
                 + Text(": ")
                     .font(.custom("GeneralSans-Medium", size: Device.iPad ? size + 4 : size))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color(.label))
                 + Text.customFontText(
                     description,
                     fontName: "GeneralSans-Medium",

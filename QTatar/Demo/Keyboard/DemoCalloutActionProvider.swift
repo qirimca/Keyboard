@@ -20,6 +20,17 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
     }
 
     override func calloutActions(
+        for action: KeyboardAction
+    ) -> [KeyboardAction] {
+        if action == .dismissKeyboard,
+           keyboardContext.deviceType == .pad,
+           !keyboardContext.isKeyboardFloating {
+            return [.custom(named: "floating_keyboard")]
+        }
+        return super.calloutActions(for: action)
+    }
+
+    override func calloutActions(
         for char: String
     ) -> [KeyboardAction] {
         guard let alternatives = Self.alternatives(for: char) else { return [] }

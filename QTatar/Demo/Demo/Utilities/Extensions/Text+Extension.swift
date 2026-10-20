@@ -39,7 +39,7 @@ extension TextFonts {
         _ string: String,
         fontName: String,
         size: CGFloat,
-        color: Color = .black
+        color: Color = Color(.label)
     ) -> Text {
         let fontSize = Device.iPad ? size + 4 : size
         let segments = string.components(separatedBy: globeEmojiSymbol)
@@ -70,16 +70,16 @@ extension TextFonts {
     func titleText(size: CGFloat = 18) -> some View {
         return self
             .font(InterfaceFont.font("GeneralSans-Semibold", size: Device.iPad ? size + 4 : size))
-            .foregroundStyle(.black)
+            .foregroundStyle(Color(.label))
     }
     
-    func mediumText(size: CGFloat = 16, color: Color = .black) -> some View {
+    func mediumText(size: CGFloat = 16, color: Color = Color(.label)) -> some View {
         return self
             .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPad ? size + 4 : size))
             .foregroundStyle(color)
     }
     
-    func regularText(size: CGFloat = 12, color: Color = .black) -> some View {
+    func regularText(size: CGFloat = 12, color: Color = Color(.label)) -> some View {
         return self
             .font(InterfaceFont.font("GeneralSans-Regular", size: Device.iPad ? size + 4 : size))
             .foregroundStyle(color)

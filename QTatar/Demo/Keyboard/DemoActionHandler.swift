@@ -129,10 +129,17 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         ) {
             let dx = currentLocation.x - startLocation.x
             let dy = currentLocation.y - startLocation.y
+            let rawProgress: CGFloat
+            if dy > 1.5, dy > abs(dx) * 0.75 {
+                rawProgress = min(max((dy - 1.5) / 16.0, 0), 1.0)
+            } else {
+                rawProgress = 0
+            }
+            KeyFlickState.shared.update(action: action, progress: rawProgress)
             if dy >= 16, dy > abs(dx) * 1.15 {
                 activeFlickSymbol = (action, symbol)
                 return
-            } else if dy < 10 {
+            } else if dy < 12 {
                 activeFlickSymbol = nil
             }
         }
@@ -251,12 +258,23 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     ) {
         if gesture == .press, !replaced {
             activeFlickSymbol = nil
+            KeyFlickState.shared.reset()
+        }
+        if gesture == .release, !replaced {
+            KeyFlickState.shared.reset()
         }
         if gesture == .release, !replaced,
            let flick = activeFlickSymbol, flick.action == action {
             activeFlickSymbol = nil
             SpaceBarState.shared.fadeToResting()
             handleUntimed(.release, on: .character(flick.symbol), replaced: true)
+            return
+        }
+        if action == .custom(named: "floating_keyboard") {
+            if gesture == .release || gesture == .press {
+                triggerFeedback(for: .press, on: action)
+                (keyboardController as? KeyboardViewController)?.requestFloatingKeyboardMode()
+            }
             return
         }
         if action == .custom(named: "toggle_script") {

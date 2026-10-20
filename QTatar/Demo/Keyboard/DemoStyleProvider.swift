@@ -78,7 +78,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return style
         }
         if keyboardContext.isKeyboardFloating {
-            style.height = 42
+            style.height = 38
         } else if isPad {
             style.height = 38
         } else {
@@ -99,8 +99,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     override var keyboardEdgeInsets: EdgeInsets {
         if keyboardContext.isKeyboardFloating {
-            // Native iPad floating keyboard has 6pt horizontal, 4pt top, and 6pt bottom padding inside the floating card
-            return EdgeInsets(top: 4, leading: 6, bottom: 6, trailing: 6)
+            // Leave the bottom 30pt floatingChromeBuffer grabber bar uncovered inside the 346pt system floating card
+            return EdgeInsets(top: 2, leading: 6, bottom: 4, trailing: 6)
         }
         switch keyboardContext.deviceType {
         case .phone:
@@ -115,8 +115,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         if keyboardContext.isKeyboardFloating {
-            config.rowHeight = 49
-            config.buttonInsets = EdgeInsets(top: 7.5, leading: 2.5, bottom: 7.5, trailing: 2.5)
+            config.rowHeight = 43
+            config.buttonInsets = EdgeInsets(top: 5.0, leading: 2.5, bottom: 5.0, trailing: 2.5)
             config.buttonCornerRadius = 7.5
         } else if keyboardContext.deviceType == .phone {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
@@ -287,7 +287,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Height of letter rows tuned for native iOS look and feel
     private var letterRowHeight: CGFloat {
         if keyboardContext.isKeyboardFloating {
-            return 49
+            return 43
         }
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
         return isPortrait ? 55 : 42

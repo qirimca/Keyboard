@@ -12,7 +12,7 @@ struct NavButton: View {
     var symbol: String
     var action: () -> Void
     
-    private let size: CGFloat = 36
+    private let size: CGFloat = 34
     
     var body: some View {
         Button {
@@ -22,13 +22,15 @@ struct NavButton: View {
             }
         } label: {
             Image(systemName: symbol)
-                .imageScale(.medium)
-                .foregroundStyle(.black)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(.label))
                 .frame(width: size, height: size)
+                .background(Color(.secondarySystemGroupedBackground), in: Circle())
                 .overlay {
                     Circle()
-                        .stroke(Color.black, lineWidth: 2)
+                        .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
                 }
+                .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
         .buttonStyle(.plain)
     }

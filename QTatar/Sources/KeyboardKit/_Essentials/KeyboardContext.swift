@@ -130,6 +130,10 @@ public class KeyboardContext: ObservableObject {
     /// Set when the user taps the ABC key inside a `.numbersAndPunctuation` field. Until the next input session
     /// the preferred keyboard type no longer forces the numeric page back.
     public var hasChosenLettersInNumericField = false
+
+    /// Incremented whenever non-published traits or shared preferences change so SwiftUI rebuilds the keyboard layout immediately.
+    @Published
+    public var renderVersion: Int = 0
     
     
     #if os(iOS) || os(tvOS) || os(visionOS)
@@ -376,11 +380,56 @@ extension KeyboardContext {
         #else
         let screenWidth = controller.screenSize.width
         #endif
-        let isFloating = (controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad)
-            && width > 0 && screenWidth > 0 && width < screenWidth / 2
+        let isPadDevice = controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad
+        guard isPadDevice, width > 0, screenWidth > 0 else {
+            if isKeyboardFloating { isKeyboardFloating = false }
+            return
+        }
+        let isFloating = width < screenWidth / 2
         if isKeyboardFloating == isFloating { return }
+
+        #if os(iOS)
+        // During an active system drag-to-dock or pinch-to-float transition on iPad,
+        // UIKeyboardFloatingTransitionController temporarily previews the target frame
+        // while the user's finger is still down. Flipping `isKeyboardFloating` mid-gesture
+        // changes the SwiftUI keyboard height constraint and aborts the system dock transition.
+        let isIntermediateWidth = width > 360 && width < screenWidth - 16
+        if controller.view.window != nil && (isIntermediateWidth || Self.hasActiveSystemFloatingGesture(in: controller.view)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak controller] in
+                guard let self, let controller else { return }
+                self.syncIsFloating(with: controller)
+            }
+            return
+        }
+        #endif
         isKeyboardFloating = isFloating
     }
+
+    #if os(iOS)
+    private static func hasActiveSystemFloatingGesture(in view: UIView) -> Bool {
+        var current: UIView? = view
+        while let node = current {
+            if let recognizers = node.gestureRecognizers {
+                for gr in recognizers {
+                    guard gr.state == .began || gr.state == .changed else { continue }
+                    if gr is UIPinchGestureRecognizer || gr is UIPanGestureRecognizer {
+                        let typeName = NSStringFromClass(type(of: gr))
+                        let delegateName = gr.delegate.map { NSStringFromClass(type(of: $0)) } ?? ""
+                        if gr is UIPinchGestureRecognizer
+                            || delegateName.contains("Floating")
+                            || delegateName.contains("Peripheral")
+                            || delegateName.contains("Dock")
+                            || typeName.contains("Keyboard") {
+                            return true
+                        }
+                    }
+                }
+            }
+            current = node.superview
+        }
+        return false
+    }
+    #endif
 }
 
 private extension UIInputViewController {

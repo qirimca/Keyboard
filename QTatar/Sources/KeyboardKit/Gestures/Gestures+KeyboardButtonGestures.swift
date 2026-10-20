@@ -162,6 +162,7 @@ private extension Gestures.KeyboardButtonGestures {
         calloutContext?.inputContext.resetWithDelay()
         calloutContext?.actionContext.reset()
         resetGestureState()
+        NotificationCenter.default.post(name: Notification.Name("crh.key.gestureEnded"), object: nil)
     }
 
     func handleLongPress(in geo: GeometryProxy) {

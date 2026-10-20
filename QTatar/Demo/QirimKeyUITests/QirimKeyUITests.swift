@@ -269,7 +269,7 @@ final class QirimKeyUITests: XCTestCase {
             let element = lower.exists ? lower : key("character." + ch.uppercased())
             let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2))
             let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95))
-            start.press(forDuration: 0.02, thenDragTo: end)
+            start.press(forDuration: 0.04, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.25)
         }
         expectText("12")
         capture("iPad flick down q and w to 12")
@@ -301,6 +301,31 @@ final class QirimKeyUITests: XCTestCase {
             clear()
             toggleCyrillicSwitch()
             XCTAssertTrue(key("toggle_script").waitForExistence(timeout: 3))
+        }
+
+        // Verify long-pressing the bottom-right dismiss key triggers the Floating callout and switches to floating mode,
+        // and dragging the floating grabber to the bottom edge docks the keyboard back.
+        let dismissKey = key("dismiss")
+        if dismissKey.exists {
+            let start = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let calloutOption = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.1))
+            start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.15)
+            Thread.sleep(forTimeInterval: 0.8)
+            capture("iPad floating keyboard via dismiss long press")
+            let spaceKey = key("space")
+            XCTAssertTrue(spaceKey.exists)
+            XCTAssertLessThan(spaceKey.frame.width, 320, "Keyboard should be in compact floating width after selecting Floating from dismiss key callout")
+
+            // Drag the floating keyboard's bottom grabber bar down to the bottom edge of the screen to re-dock.
+            let grabberX = spaceKey.frame.midX
+            let grabberY = spaceKey.frame.maxY + 18
+            let root = app.coordinate(withNormalizedOffset: .zero)
+            let dragStart = root.withOffset(CGVector(dx: grabberX, dy: grabberY))
+            let screenHeight = app.frame.height
+            let dragEnd = root.withOffset(CGVector(dx: app.frame.midX, dy: screenHeight - 4))
+            dragStart.press(forDuration: 0.15, thenDragTo: dragEnd, withVelocity: .slow, thenHoldForDuration: 0.35)
+            XCTAssertTrue(dismissKey.waitForExistence(timeout: 3), "Dragging floating keyboard grabber to bottom edge must re-dock the keyboard")
+            capture("iPad docked keyboard after dragging floating grabber to bottom")
         }
     }
 

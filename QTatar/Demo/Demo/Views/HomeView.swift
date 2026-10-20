@@ -110,41 +110,56 @@ struct HomeView: View {
     @AppStorage(KeyboardPreferences.suggestionsKey, store: KeyboardPreferences.defaults) private var suggestionsEnabled = true
     @AppStorage(KeyboardPreferences.wordLearningKey, store: KeyboardPreferences.defaults) private var wordLearningEnabled = true
 
-    @State private var selectedFieldMode: KeyboardTestFieldMode = .standard
-    @State private var selectedThemeMode: KeyboardTestThemeMode = .ios26White
+    @State private var selectedFieldMode: KeyboardTestFieldMode = {
+        if let value = UserDefaults.standard.string(forKey: "qt_field"),
+           let mode = KeyboardTestFieldMode(rawValue: "field.\(value)") {
+            return mode
+        }
+        return .standard
+    }()
+    @State private var selectedThemeMode: KeyboardTestThemeMode = {
+        if let value = UserDefaults.standard.string(forKey: "qt_theme") {
+            return value.lowercased().contains("dark") ? .dark : .ios26White
+        }
+        return .ios26White
+    }()
 
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
 
     @State private var showIndicatorSheet = false
-    @State private var isTestingExpanded = false
+    @State private var isTestingExpanded = true
+    @State private var shouldAutoFocusSandbox: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme")
+    }()
     @State private var isKeyboardVisible = false
     @State private var cyrillicStatus = CyrillicStatus.unknown
     @State private var cachedIsFullAccessEnabled = false
     @State private var cachedIsRtl = false
     @State private var viewportSize = CGSize.zero
     @State private var isWritingFieldFocused = false
+    @State private var didInitializeThemeFromSystem = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
 
     private enum CyrillicStatus { case enabled, missing, unknown }
 
     private var shouldShowStartOverlay: Bool {
-        !areAllIndicatorsEnabled && !isWritingFieldFocused && !isKeyboardVisible && !isTestingExpanded
+        !areAllIndicatorsEnabled && !isWritingFieldFocused && !isKeyboardVisible
     }
 
     var body: some View {
         let _ = language // Observe interface language changes immediately
         ZStack {
-            Color("BackgroungColor")
+            Color(.systemGroupedBackground)
                 .ignoresSafeArea()
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-            BackgroundGrid()
-                .allowsHitTesting(false)
             GeometryReader { geometry in
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
-                        let twoColumns = Self.usesTwoColumns(viewportSize) && geometry.size.width >= 600
+                        let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: geometry.size)
                         let layout = twoColumns
                             ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
                             : AnyLayout(VStackLayout(spacing: geometry.size.height < 360 ? 10 : 14))
@@ -158,6 +173,7 @@ struct HomeView: View {
                             // Child 2: Try Keyboard + Writing Area (Right column in 2-col, bottom in 1-col)
                             testingAndWritingSection
                         }
+                        .frame(maxWidth: .infinity)
                         .padding(.bottom, shouldShowStartOverlay ? 76 : 12)
                     }
                     .onChange(of: isWritingFieldFocused) { _, focused in
@@ -170,12 +186,14 @@ struct HomeView: View {
                     }
                     .onChange(of: isTestingExpanded) { _, expanded in
                         if expanded {
+                            shouldAutoFocusSandbox = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     scroll.scrollTo("writingArea", anchor: .bottom)
                                 }
                             }
                         } else {
+                            shouldAutoFocusSandbox = false
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
                     }
@@ -223,13 +241,15 @@ struct HomeView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 28, height: 28)
-                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 7)
-                                .strokeBorder(Color.black, lineWidth: 1.5)
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.75)
                         )
+                        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
                     Text("QırımKey")
-                        .titleText(size: 24)
+                        .font(InterfaceFont.font("GeneralSans-Semibold", size: Device.iPad ? 22 : 19))
+                        .foregroundStyle(Color(.label))
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
                 }
@@ -242,6 +262,11 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
         }
         .onAppear {
+            Self.registerFloatingRequestObserverIfNeeded()
+            if !didInitializeThemeFromSystem {
+                didInitializeThemeFromSystem = true
+                selectedThemeMode = .mode(isDark: colorScheme == .dark)
+            }
             applyLaunchArguments()
             if isTestingExpanded || isWritingFieldFocused {
                 syncThemeToAppGroup(selectedThemeMode)
@@ -250,6 +275,12 @@ struct HomeView: View {
             }
             refreshCyrillicStatus()
             keyboardState.refresh()
+        }
+        .onChange(of: colorScheme) { _, newScheme in
+            let args = ProcessInfo.processInfo.arguments
+            if !args.contains("-qt_theme") {
+                selectedThemeMode = .mode(isDark: newScheme == .dark)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             withAnimation(.easeInOut(duration: 0.25)) {
@@ -273,16 +304,19 @@ struct HomeView: View {
         .onChange(of: cyrillicEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
             KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             notifySandboxTraitsChanged()
         }
         .onChange(of: suggestionsEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
             KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             notifySandboxTraitsChanged()
         }
         .onChange(of: wordLearningEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
             KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             notifySandboxTraitsChanged()
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -299,6 +333,55 @@ struct HomeView: View {
             }
         }
         .onDisappear { clearThemeOverride() }
+    }
+
+    private static var didRegisterFloatingObserver = false
+
+    private static func registerFloatingRequestObserverIfNeeded() {
+        guard !didRegisterFloatingObserver else { return }
+        didRegisterFloatingObserver = true
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    HomeView.invokeHostSetFloating(true)
+                }
+            },
+            "crh.key.requestFloatingKeyboard" as CFString,
+            nil,
+            .deliverImmediately
+        )
+    }
+
+    static func invokeHostSetFloating(_ floating: Bool) {
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            let isFloatingSel = NSSelectorFromString("isFloating")
+            if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
+                typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
+                let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
+                if checkFn(implClass, isFloatingSel) == floating {
+                    return
+                }
+            }
+        }
+        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            let hostSel = NSSelectorFromString("setFloating:onCompletion:")
+            if let method = class_getClassMethod(hostClass, hostSel) {
+                typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
+                fn(hostClass, hostSel, floating, nil)
+                return
+            }
+        }
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            let implSel = NSSelectorFromString("setFloating:")
+            if let method = class_getClassMethod(implClass, implSel) {
+                typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
+                fn(implClass, implSel, floating)
+            }
+        }
     }
 
     private func refreshCyrillicStatus() {
@@ -342,6 +425,7 @@ struct HomeView: View {
             defaults?.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
         }
         defaults?.synchronize()
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         notifySandboxTraitsChanged()
     }
 
@@ -350,6 +434,7 @@ struct HomeView: View {
         defaults?.set(theme.isDark, forKey: "crh.key.test.isDark")
         defaults?.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
         defaults?.synchronize()
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         notifySandboxTraitsChanged()
     }
 
@@ -364,6 +449,7 @@ struct HomeView: View {
                let mode = KeyboardTestFieldMode(rawValue: "field.\(value)") {
                 selectedFieldMode = mode
                 isTestingExpanded = true
+                shouldAutoFocusSandbox = true
             }
             if let value = defaults.string(forKey: "qt_theme") {
                 if value.lowercased().contains("dark") {
@@ -372,10 +458,12 @@ struct HomeView: View {
                     selectedThemeMode = .ios26White
                 }
                 isTestingExpanded = true
+                shouldAutoFocusSandbox = true
             }
             if args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") {
                 UIView.setAnimationsEnabled(false)
                 isTestingExpanded = true
+                shouldAutoFocusSandbox = true
             }
             if args.contains("-qt_reset_text") {
                 text = ""
@@ -392,6 +480,9 @@ struct HomeView: View {
                     try? FileManager.default.removeItem(at: containerDir.appendingPathComponent("user_lexicon.sqlite-shm"))
                 }
             }
+            if shouldAutoFocusSandbox {
+                syncThemeToAppGroup(selectedThemeMode)
+            }
         }
     }
 
@@ -402,12 +493,19 @@ struct HomeView: View {
         defaults?.removeObject(forKey: "crh.key.test.fieldMode")
         defaults?.set(false, forKey: "crh.key.test.sandboxFocused")
         defaults?.synchronize()
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         notifySandboxTraitsChanged()
     }
 
     /// Use the full window's orientation, independently of the keyboard's height.
-    static func usesTwoColumns(_ size: CGSize) -> Bool {
-        Device.iPad && size.width >= 600 && size.width > size.height
+    static func usesTwoColumns(_ size: CGSize, containerSize: CGSize = .zero) -> Bool {
+        guard Device.iPad else { return false }
+        let screenSize = UIScreen.main.bounds.size
+        let isLandscape = (size.width > size.height && size.width >= 600)
+            || (screenSize.width > screenSize.height)
+            || (containerSize.width >= 900)
+        let effectiveWidth = max(size.width, containerSize.width)
+        return isLandscape && effectiveWidth >= 600
     }
 }
 
@@ -460,19 +558,34 @@ private struct HomeTwoColumnLayout: Layout {
 
 private extension HomeView {
 
+    private var appleGreen: Color { Color(red: 0.20, green: 0.78, blue: 0.35) }
+    private var brandBlue: Color { Color(red: 0.0, green: 0.53, blue: 0.86) }
+    private var primaryInk: Color { Color(.label) }
+    private var secondaryInk: Color { Color(.secondaryLabel) }
+    private var segmentedTrackColor: Color { Color(.tertiarySystemFill) }
+
     func interfaceLabel(_ key: String) -> Text {
         Text(LocalizedStringKey(key), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
     }
 
-    var statusIndicatorsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            StableLocalizedText(
-                key: Home.home_crimea_key.rawValue,
-                table: "Home",
-                font: InterfaceFont.font("GeneralSans-Medium", size: Device.iPad ? 16 : 14),
-                color: .black
-            )
+    func localizedInterfaceString(_ key: String) -> String {
+        let _ = language
+        return KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: "Interface")
+    }
 
+    func settingsIconBadge(_ systemName: String, color: Color) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(color.gradient)
+                .frame(width: 28, height: 28)
+            Image(systemName: systemName)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.white)
+        }
+    }
+
+    var statusIndicatorsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
             KeyboardStateIndicatorsRow(
                 states: [
                     .active(keyboardState.isKeyboardActive),
@@ -488,383 +601,307 @@ private extension HomeView {
                     key: Home.home_getkeyboard_key.rawValue,
                     table: "Home",
                     font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                    color: .black
+                    color: secondaryInk
                 )
+                .padding(.horizontal, 4)
             }
         }
     }
 
-    /// Keyboard Settings displayed directly on the Home screen.
+    /// Keyboard Settings displayed directly on the Home screen in a clean Apple Settings card style.
     var keyboardSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.black)
-                interfaceLabel("settings.title")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPad ? 16 : 15))
-                    .foregroundStyle(.black)
-                Spacer()
-            }
-
-            Divider()
-
+        VStack(alignment: .leading, spacing: 0) {
             // Language selector row
-            HStack(spacing: 10) {
-                Image(systemName: "globe")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.75))
-                    .frame(width: 20, alignment: .center)
-                interfaceLabel("settings.language")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 14))
-                    .foregroundStyle(.black)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                Spacer(minLength: 6)
-                HStack(spacing: 6) {
-                    ForEach([
-                        ("crh", "Qırımtatarca"),
-                        ("uk", "Українська"),
-                        ("en", "English")
-                    ], id: \.0) { code, title in
-                        let isSelected = language == code
-                        Button {
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
-                                language = code
-                            }
-                        } label: {
-                            Text(verbatim: title)
-                                .font(InterfaceFont.font("GeneralSans-Medium", size: 12, text: title))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(isSelected ? Color.crayola : Color.white, in: Capsule())
-                                .foregroundStyle(.black)
-                                .overlay(Capsule().strokeBorder(Color.black, lineWidth: 1.5))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("settings.lang.\(code)")
-                        .accessibilityAddTraits(isSelected ? .isSelected : [])
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    settingsIconBadge("globe", color: brandBlue)
+                    interfaceLabel("settings.language")
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                        .foregroundStyle(primaryInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                    Spacer(minLength: 8)
+                    languageSegmentedControl
+                        .frame(maxWidth: 320)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        settingsIconBadge("globe", color: brandBlue)
+                        interfaceLabel("settings.language")
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                            .foregroundStyle(primaryInk)
+                            .lineLimit(1)
+                        Spacer()
                     }
+                    languageSegmentedControl
                 }
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
 
-            // Cyrillic toggle: only iPad has an in-place script key (абв/abc) it can hide; iOS cannot remove a keyboard from its list.
+            // Cyrillic toggle: only iPad has an in-place script key (абв/abc) it can hide.
             if Device.iPad {
-                HStack(spacing: 10) {
-                    Image(systemName: "character.textbox")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.75))
-                        .frame(width: 20, alignment: .center)
+                Divider().padding(.leading, 54)
+
+                HStack(spacing: 12) {
+                    settingsIconBadge("character.textbox", color: Color(red: 0.35, green: 0.34, blue: 0.84))
                     interfaceLabel("settings.cyrillic")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 14))
-                        .foregroundStyle(.black)
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                        .foregroundStyle(primaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer(minLength: 8)
                     Toggle("", isOn: $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .tint(Color.crayola)
                         .accessibilityIdentifier("settings.cyrillic.toggle")
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
 
-            if cyrillicEnabled || !Device.iPad {
-                VStack(alignment: .leading, spacing: 6) {
-                    if cyrillicStatus == .missing {
-                        HStack(alignment: .top, spacing: 6) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.orange)
-                            StableLocalizedText(
-                                key: "settings.missingCyrillic",
-                                font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                                color: .black.opacity(0.8)
-                            )
-                        }
-                        .accessibilityIdentifier("settings.cyrillicWarning")
-                    }
-                    HStack(alignment: .top, spacing: 6) {
-                        Image(systemName: "globe")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.black.opacity(0.65))
-                        StableLocalizedText(
-                            key: "settings.enableBothKeyboards",
-                            font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                            color: .black.opacity(0.75)
-                        )
-                    }
-                    .accessibilityIdentifier("settings.enableBothKeyboards")
+            if (cyrillicEnabled || !Device.iPad) && cyrillicStatus == .missing {
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.orange)
+                    StableLocalizedText(
+                        key: "settings.missingCyrillic",
+                        font: InterfaceFont.font("GeneralSans-Regular", size: 12),
+                        color: secondaryInk
+                    )
                 }
-                .padding(.leading, Device.iPad ? 30 : 0)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.leading, 54)
+                .padding(.trailing, 14)
+                .padding(.bottom, 8)
+                .accessibilityIdentifier("settings.cyrillicWarning")
             }
+
+            Divider().padding(.leading, 54)
 
             // Autocomplete suggestions toggle
-            HStack(spacing: 10) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.75))
-                    .frame(width: 20, alignment: .center)
+            HStack(spacing: 12) {
+                settingsIconBadge("text.bubble.fill", color: appleGreen)
                 interfaceLabel("settings.suggestions")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 14))
-                    .foregroundStyle(.black)
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                    .foregroundStyle(primaryInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
                 Toggle("", isOn: $suggestionsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
                     .labelsHidden()
                     .toggleStyle(.switch)
-                    .tint(Color.crayola)
                     .accessibilityIdentifier("settings.suggestions.toggle")
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+
+            Divider().padding(.leading, 54)
 
             // Personalized word & bigram learning toggle
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.75))
-                    .frame(width: 20, alignment: .center)
+            HStack(spacing: 12) {
+                settingsIconBadge("sparkles", color: Color(red: 0.96, green: 0.58, blue: 0.04))
                 interfaceLabel("settings.wordLearning")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 14))
-                    .foregroundStyle(.black)
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                    .foregroundStyle(primaryInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
                 Toggle("", isOn: $wordLearningEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
                     .labelsHidden()
                     .toggleStyle(.switch)
-                    .tint(Color.crayola)
                     .accessibilityIdentifier("settings.wordLearning.toggle")
             }
-
-            StableLocalizedText(
-                key: Device.iPad ? "settings.keyboardHelp" : "settings.keyboardHelpPhone",
-                font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                color: .black.opacity(0.65)
-            )
-            .padding(.top, 2)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
-        .padding(14)
-        .background(Color.backgroundLight, in: RoundedRectangle(cornerRadius: 18))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(Color.black, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
     }
 
-    /// Combines the expandable "Try Keyboard" controls and the writing area into a single right-column group in Landscape.
+    var languageSegmentedControl: some View {
+        NativeSegmentedControl(
+            items: [
+                .init(id: "crh", title: "Qırımtatarca", accessibilityIdentifier: "settings.lang.crh"),
+                .init(id: "uk", title: "Українська", accessibilityIdentifier: "settings.lang.uk"),
+                .init(id: "en", title: "English", accessibilityIdentifier: "settings.lang.en")
+            ],
+            selection: $language,
+            apportionsWidthsByContent: true
+        )
+        .frame(height: 32)
+    }
+
+    /// Combines the expandable "Try Keyboard" controls and the writing area into a single unified Apple card.
     var testingAndWritingSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            testingExpandableSection
-                .id("testingSection")
-
-            if isTestingExpanded {
-                writingAreaSection
-                    .id("writingArea")
-                    .transition(.opacity)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-    }
-
-    /// Expandable Testing section: collapsed behind an animated button by default,
-    /// revealing the keyboard variant preview pills and sandbox text area when tapped.
-    var testingExpandableSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
                     isTestingExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "keyboard.badge.eye")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.black)
+                HStack(spacing: 12) {
+                    settingsIconBadge("keyboard.badge.eye", color: brandBlue)
                     Text(Onboarding.onb_check_key.localized)
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPad ? 16 : 15))
-                        .foregroundStyle(.black)
+                        .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
+                        .foregroundStyle(primaryInk)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                     Spacer()
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.black)
-                        .rotationEffect(.degrees(isTestingExpanded ? 180 : 0))
+                    ZStack {
+                        Circle()
+                            .fill(segmentedTrackColor)
+                            .frame(width: 26, height: 26)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(secondaryInk)
+                            .rotationEffect(.degrees(isTestingExpanded ? 180 : 0))
+                    }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
-                .background(
-                    isTestingExpanded ? Color.crayola : Color.backgroundLight,
-                    in: RoundedRectangle(cornerRadius: 16)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.black, lineWidth: 2)
-                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("testing.toggle")
+            .id("testingSection")
 
             if isTestingExpanded {
-                testingSandboxSection
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .top)),
-                        removal: .opacity
-                    ))
+                Divider().padding(.horizontal, 14)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    testingSandboxSection
+                    writingAreaSection
+                        .id("writingArea")
+                }
+                .padding(14)
+                .transition(.opacity)
             }
         }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     var testingSandboxSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Row 1: Elastic Field Mode buttons
-            HStack(alignment: .center, spacing: 6) {
-                Image(systemName: "keyboard")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.black.opacity(0.75))
-                    .frame(width: 20, alignment: .center)
-
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: 6) {
-                        ForEach(KeyboardTestFieldMode.allCases) { mode in
-                            fieldModePill(mode, expandEqually: false)
+            // Row 1: Native iOS 27 Segmented Field Mode strip
+            NativeSegmentedControl(
+                items: KeyboardTestFieldMode.allCases.map { mode in
+                    .init(
+                        id: mode.rawValue,
+                        title: localizedInterfaceString(mode.rawValue),
+                        accessibilityIdentifier: mode.rawValue
+                    )
+                },
+                selection: Binding(
+                    get: { selectedFieldMode.rawValue },
+                    set: { newValue in
+                        if let mode = KeyboardTestFieldMode(rawValue: newValue) {
+                            shouldAutoFocusSandbox = true
+                            selectedFieldMode = mode
                         }
                     }
-                    HStack(spacing: 4) {
-                        ForEach(KeyboardTestFieldMode.allCases) { mode in
-                            fieldModePill(mode, expandEqually: true)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Row 2: Theme (Light / Dark) with leading icon matching Row 1
-            HStack(alignment: .center, spacing: 6) {
-                Image(systemName: "circle.lefthalf.filled")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.black.opacity(0.75))
-                    .frame(width: 20, alignment: .center)
-
-                HStack(spacing: 8) {
-                    themeButton(key: "theme.light", icon: "sun.max.fill", selected: !selectedThemeMode.isDark) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                            selectedThemeMode = .mode(isDark: false)
-                        }
-                    }
-                    themeButton(key: "theme.dark", icon: "moon.fill", selected: selectedThemeMode.isDark) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                            selectedThemeMode = .mode(isDark: true)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(12)
-        .background(Color.backgroundLight, in: RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.black, lineWidth: 2)
-        }
-    }
-
-    func fieldModePill(_ mode: KeyboardTestFieldMode, expandEqually: Bool) -> some View {
-        let isSelected = selectedFieldMode == mode
-        return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                selectedFieldMode = mode
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: mode.icon)
-                    .font(.system(size: 12, weight: .bold))
-                Text(LocalizedStringKey(mode.rawValue), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 12.5))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-            }
-            .padding(.horizontal, expandEqually ? 6 : 10)
-            .padding(.vertical, 7)
-            .frame(maxWidth: expandEqually ? .infinity : nil)
-            .background(isSelected ? Color.black : Color.white, in: Capsule())
-            .foregroundColor(isSelected ? Color.white : Color.black)
-            .overlay(
-                Capsule().strokeBorder(Color.black, lineWidth: 1.5)
+                ),
+                apportionsWidthsByContent: false
             )
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(mode.rawValue)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
+            .frame(height: 32)
 
-    func themeButton(key: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                Text(LocalizedStringKey(key), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                if selected { Image(systemName: "checkmark") }
-            }
-            .font(.subheadline)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .foregroundStyle(.black)
-            .background(selected ? Color.crayola : Color.white, in: Capsule())
-            .overlay(Capsule().strokeBorder(Color.black, lineWidth: 1.5))
+            // Row 2: Native iOS 27 Segmented Theme switcher (Light / Dark)
+            NativeSegmentedControl(
+                items: [
+                    .init(
+                        id: KeyboardTestThemeMode.ios26White.rawValue,
+                        title: localizedInterfaceString("theme.light"),
+                        accessibilityIdentifier: "theme.light"
+                    ),
+                    .init(
+                        id: KeyboardTestThemeMode.dark.rawValue,
+                        title: localizedInterfaceString("theme.dark"),
+                        accessibilityIdentifier: "theme.dark"
+                    )
+                ],
+                selection: Binding(
+                    get: { selectedThemeMode.rawValue },
+                    set: { newValue in
+                        if let mode = KeyboardTestThemeMode(rawValue: newValue) {
+                            shouldAutoFocusSandbox = true
+                            selectedThemeMode = mode
+                        }
+                    }
+                ),
+                apportionsWidthsByContent: false
+            )
+            .frame(height: 32)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(key)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     var writingAreaSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Text(Home.home_writearea_key.localized).mediumText()
                 Image(systemName: selectedFieldMode.icon)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(brandBlue)
+                Text(Home.home_writearea_key.localized)
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
+                    .foregroundStyle(secondaryInk)
                 Spacer()
                 Button {
                     text = ""
                     NotificationCenter.default.post(name: Notification.Name("crh.key.clearSandboxText"), object: nil)
                 } label: {
-                    Image(systemName: "multiply.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(.black)
-                        .frame(width: 28, height: 28)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 17))
+                        .foregroundStyle(secondaryInk.opacity(0.75))
+                        .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .opacity(text.isEmpty ? 0 : 1)
                 .accessibilityIdentifier("sandbox.clear")
-                .padding(.trailing, 2)
             }
-            .padding([.horizontal, .top], 14)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
 
-            Divider().padding(.horizontal, 14)
-
-            SandboxTextView(
-                text: $text,
-                currentText: text,
-                isFocused: $isWritingFieldFocused,
-                placeholder: Home.home_typing_key.localized,
-                fieldMode: selectedFieldMode,
-                themeMode: selectedThemeMode,
-                preferencesToken: "\(cyrillicEnabled)-\(suggestionsEnabled)-\(wordLearningEnabled)",
-                fontSize: Device.iPad ? 16 : 14
-            )
-            .frame(height: Device.iPad ? 116 : 88)
-            .padding([.horizontal, .bottom], 14)
-            .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
+            ZStack(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text(Home.home_typing_key.localized)
+                        .font(InterfaceFont.font("GeneralSans-Regular", size: Device.iPad ? 16 : 15))
+                        .foregroundStyle(Color(.placeholderText))
+                        .padding(.horizontal, 13)
+                        .padding(.top, 8)
+                        .allowsHitTesting(false)
+                }
+                SandboxTextView(
+                    text: $text,
+                    currentText: text,
+                    isFocused: $isWritingFieldFocused,
+                    autoFocusOnAppear: shouldAutoFocusSandbox,
+                    placeholder: Home.home_typing_key.localized,
+                    fieldMode: selectedFieldMode,
+                    themeMode: selectedThemeMode,
+                    preferencesToken: "\(cyrillicEnabled)-\(suggestionsEnabled)-\(wordLearningEnabled)",
+                    fontSize: Device.iPad ? 16 : 15
+                )
+                .frame(height: Device.iPad ? 96 : 82)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+                .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
+            }
         }
-        .background(Color.backgroundLight, in: RoundedRectangle(cornerRadius: 18))
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(Color.black, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         }
     }
 
@@ -876,6 +913,109 @@ private extension HomeView {
         keyboardState.isKeyboardActive &&
         keyboardState.isKeyboardEnabled &&
         cachedIsFullAccessEnabled
+    }
+}
+
+/// Native UIKit `UISegmentedControl` wrapper that preserves per-segment accessibility identifiers
+/// (`settings.lang.*`, `field.*`, `theme.*`) for UI automation while rendering the authentic iOS 27 segmented control.
+private struct NativeSegmentedControl: UIViewRepresentable {
+    struct Item: Equatable {
+        let id: String
+        let title: String
+        let accessibilityIdentifier: String
+    }
+
+    let items: [Item]
+    @Binding var selection: String
+    var apportionsWidthsByContent: Bool = false
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeUIView(context: Context) -> AccessibleUISegmentedControl {
+        let control = AccessibleUISegmentedControl(items: items.map(\.title))
+        control.apportionsSegmentWidthsByContent = apportionsWidthsByContent
+        control.segmentIdentifiers = items.map(\.accessibilityIdentifier)
+        if let idx = items.firstIndex(where: { $0.id == selection }) {
+            control.selectedSegmentIndex = idx
+        }
+        control.addTarget(context.coordinator, action: #selector(Coordinator.valueChanged(_:)), for: .valueChanged)
+        control.applySegmentAccessibilityIdentifiers()
+        return control
+    }
+
+    func updateUIView(_ uiView: AccessibleUISegmentedControl, context: Context) {
+        context.coordinator.parent = self
+        uiView.apportionsSegmentWidthsByContent = apportionsWidthsByContent
+        if uiView.numberOfSegments != items.count {
+            uiView.removeAllSegments()
+            for (idx, item) in items.enumerated() {
+                uiView.insertSegment(withTitle: item.title, at: idx, animated: false)
+            }
+        } else {
+            for (idx, item) in items.enumerated() {
+                if uiView.titleForSegment(at: idx) != item.title {
+                    uiView.setTitle(item.title, forSegmentAt: idx)
+                }
+            }
+        }
+        uiView.segmentIdentifiers = items.map(\.accessibilityIdentifier)
+        if let idx = items.firstIndex(where: { $0.id == selection }),
+           uiView.selectedSegmentIndex != idx {
+            uiView.selectedSegmentIndex = idx
+        }
+        uiView.applySegmentAccessibilityIdentifiers()
+    }
+
+    final class Coordinator: NSObject {
+        var parent: NativeSegmentedControl
+
+        init(_ parent: NativeSegmentedControl) {
+            self.parent = parent
+        }
+
+        @objc func valueChanged(_ sender: UISegmentedControl) {
+            let idx = sender.selectedSegmentIndex
+            guard idx >= 0 && idx < parent.items.count else { return }
+            let newID = parent.items[idx].id
+            if parent.selection != newID {
+                HapticFeedback.playSelection()
+                parent.selection = newID
+            }
+        }
+    }
+}
+
+private final class AccessibleUISegmentedControl: UISegmentedControl {
+    var segmentIdentifiers: [String] = [] {
+        didSet { applySegmentAccessibilityIdentifiers() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        applySegmentAccessibilityIdentifiers()
+    }
+
+    func applySegmentAccessibilityIdentifiers() {
+        let segments = Self.collectSegments(in: self)
+            .sorted { $0.convert($0.bounds, to: self).minX < $1.convert($1.bounds, to: self).minX }
+        guard segments.count == segmentIdentifiers.count else { return }
+        for (segment, id) in zip(segments, segmentIdentifiers) {
+            segment.accessibilityIdentifier = id
+        }
+    }
+
+    private static func collectSegments(in root: UIView) -> [UIView] {
+        var result: [UIView] = []
+        for subview in root.subviews {
+            if NSStringFromClass(type(of: subview)) == "UISegment" {
+                result.append(subview)
+            } else {
+                result.append(contentsOf: collectSegments(in: subview))
+            }
+        }
+        return result
     }
 }
 
@@ -921,12 +1061,13 @@ struct StableLocalizedText: View {
 }
 
 /// A UIKit-backed UITextView that dynamically updates its keyboardType, returnKeyType,
-/// textContentType, and keyboardAppearance, calling `reloadInputViews()` immediately
+/// textContentType, and keyboardAppearance, reloading the responder input traits immediately
 /// when the user switches sandbox modes.
 private struct SandboxTextView: UIViewRepresentable {
     @Binding var text: String
     let currentText: String
     @Binding var isFocused: Bool
+    let autoFocusOnAppear: Bool
     let placeholder: String
     let fieldMode: KeyboardTestFieldMode
     let themeMode: KeyboardTestThemeMode
@@ -944,7 +1085,7 @@ private struct SandboxTextView: UIViewRepresentable {
         textView.accessibilityIdentifier = "sandbox.input"
         textView.backgroundColor = .clear
         textView.font = InterfaceFont.uiFont("GeneralSans-Regular", size: fontSize, text: currentText)
-        textView.textColor = .black
+        textView.textColor = .label
         textView.text = currentText
         textView.autocorrectionType = .yes
         textView.spellCheckingType = .no
@@ -953,9 +1094,16 @@ private struct SandboxTextView: UIViewRepresentable {
 
         applyTraits(to: textView, coordinator: context.coordinator)
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            if textView.window != nil && !textView.isFirstResponder {
-                textView.becomeFirstResponder()
+        if autoFocusOnAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                if textView.window != nil && !textView.isFirstResponder {
+                    textView.becomeFirstResponder()
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                if textView.window != nil && !textView.isFirstResponder {
+                    textView.becomeFirstResponder()
+                }
             }
         }
         return textView
@@ -964,6 +1112,7 @@ private struct SandboxTextView: UIViewRepresentable {
     func updateUIView(_ uiView: UITextView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.textView = uiView
+        uiView.textColor = .label
         if currentText != context.coordinator.lastSyncedText || uiView.text != currentText {
             context.coordinator.lastSyncedText = currentText
             if uiView.text != currentText {
@@ -975,17 +1124,17 @@ private struct SandboxTextView: UIViewRepresentable {
             uiView.font = targetFont
         }
 
-        let traitsChanged = context.coordinator.lastFieldMode != fieldMode ||
-                            context.coordinator.lastThemeMode != themeMode ||
-                            context.coordinator.lastPreferencesToken != preferencesToken
+        let fieldOrThemeChanged = context.coordinator.lastFieldMode != fieldMode ||
+                                  context.coordinator.lastThemeMode != themeMode
+        let prefsChanged = context.coordinator.lastPreferencesToken != preferencesToken
 
-        if traitsChanged {
+        if fieldOrThemeChanged || prefsChanged {
             applyTraits(to: uiView, coordinator: context.coordinator)
             if uiView.isFirstResponder {
                 UIView.performWithoutAnimation {
                     uiView.reloadInputViews()
                 }
-            } else {
+            } else if fieldOrThemeChanged && autoFocusOnAppear && uiView.window != nil {
                 DispatchQueue.main.async {
                     uiView.becomeFirstResponder()
                 }
@@ -1008,7 +1157,9 @@ private struct SandboxTextView: UIViewRepresentable {
         let defaults = UserDefaults(suiteName: AppConfiguration.appGroupID)
         defaults?.set(themeMode.isDark, forKey: "crh.key.test.isDark")
         defaults?.set(fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
+        defaults?.set(true, forKey: "crh.key.test.sandboxFocused")
         defaults?.synchronize()
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
 
         textView.keyboardType = fieldMode.keyboardType
         textView.returnKeyType = fieldMode.returnKeyType
@@ -1024,6 +1175,7 @@ private struct SandboxTextView: UIViewRepresentable {
         var lastThemeMode: KeyboardTestThemeMode?
         var lastPreferencesToken: String?
         var lastSyncedText: String
+        var isReloadingTraits = false
         private var clearObserver: NSObjectProtocol?
 
         init(_ parent: SandboxTextView) {
@@ -1054,6 +1206,7 @@ private struct SandboxTextView: UIViewRepresentable {
             defaults?.set(parent.fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
             defaults?.set(true, forKey: "crh.key.test.sandboxFocused")
             defaults?.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             CFNotificationCenterPostNotification(
                 CFNotificationCenterGetDarwinNotifyCenter(),
                 CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
@@ -1061,16 +1214,20 @@ private struct SandboxTextView: UIViewRepresentable {
                 nil,
                 true
             )
-            parent.isFocused = true
+            if !isReloadingTraits {
+                parent.isFocused = true
+            }
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
+            guard !isReloadingTraits else { return }
             parent.isFocused = false
             let defaults = UserDefaults(suiteName: AppConfiguration.appGroupID)
             defaults?.removeObject(forKey: "crh.key.test.isDark")
             defaults?.removeObject(forKey: "crh.key.test.fieldMode")
             defaults?.set(false, forKey: "crh.key.test.sandboxFocused")
             defaults?.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             CFNotificationCenterPostNotification(
                 CFNotificationCenterGetDarwinNotifyCenter(),
                 CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),

@@ -43,10 +43,5 @@ class KeyboardHostingController<Content: View>: UIHostingController<Content> {
             view.removeFromSuperview()
         }
     }
-    
-    public override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        updateViewConstraints()
-    }
 }
 #endif

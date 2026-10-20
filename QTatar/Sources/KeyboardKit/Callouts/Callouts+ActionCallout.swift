@@ -48,7 +48,7 @@ public extension Callouts {
         private var envStyle
         
         public var body: some View {
-            Button(action: calloutContext.reset) {
+            Button(action: calloutContext.endDragGesture) {
                 VStack(alignment: calloutContext.alignment, spacing: 0) {
                     callout
                     buttonArea
@@ -96,8 +96,14 @@ private extension Callouts.ActionCallout {
     var buttonFrameForEmojis: CGRect { calloutContext.buttonFrame }
     var buttonInset: CGSize { calloutStyle.buttonInset }
     var calloutActions: [KeyboardAction] { calloutContext.actions }
+    var isFloatingMenuCallout: Bool {
+        calloutActions.first == .custom(named: "floating_keyboard")
+    }
     var calloutButtonSize: CGSize {
         let frameSize = buttonFrame.size
+        if isFloatingMenuCallout {
+            return CGSize(width: max(frameSize.width * 1.45, 124), height: max(frameSize.height, 44))
+        }
         let widthScale = (calloutActions.count == 1) ? 1.2 : 1
         let buttonSize = CGSize(width: frameSize.width * widthScale, height: frameSize.height)
         return buttonSize.limited(to: style.maxButtonSize)
@@ -146,8 +152,31 @@ private extension Callouts.ActionCallout {
         switch action {
         case .character(let char): calloutView(for: char)
         case .emoji(let emoji): calloutView(for: emoji)
+        case .custom(let name) where name == "floating_keyboard":
+            HStack(spacing: 6) {
+                Image(systemName: "rectangle.inset.bottomright.filled")
+                    .font(.system(size: 15, weight: .medium))
+                Text(floatingKeyboardTitle)
+                    .font(.system(size: 16, weight: .medium))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8)
+            .accessibilityIdentifier("callout.floating_keyboard")
         default: EmptyView()
         }
+    }
+
+    var floatingKeyboardTitle: String {
+        if keyboardContext.locale.identifier.contains("Cyrl") {
+            return "Юзюджи"
+        }
+        let preferred = Locale.preferredLanguages.first ?? "uk"
+        if preferred.hasPrefix("uk") {
+            return "Плаваюча"
+        } else if preferred.hasPrefix("en") {
+            return "Floating"
+        }
+        return "Yüzüci"
     }
 
     func calloutView(for character: String) -> some View {

@@ -59,19 +59,19 @@ struct KeyboardStateIndicatorsRow: View {
     let states: [KeyboardState]
     var action: () -> Void
     
-    private let rowHeight: CGFloat = Device.iPad ? 72 : 60
+    private let rowHeight: CGFloat = Device.iPad ? 60 : 52
     private let spacing: CGFloat = Device.iPad ? 12 : 8
-    private let baseFontSize: CGFloat = Device.iPad ? 18 : 13.5
-    private let iconWidth: CGFloat = Device.iPad ? 28 : 22
-    private let horizontalPadding: CGFloat = Device.iPad ? 10 : 8
-    private let verticalPadding: CGFloat = Device.iPad ? 10 : 8
+    private let baseFontSize: CGFloat = Device.iPad ? 15 : 12.5
+    private let iconWidth: CGFloat = Device.iPad ? 32 : 26
+    private let horizontalPadding: CGFloat = Device.iPad ? 12 : 8
+    private let verticalPadding: CGFloat = Device.iPad ? 8 : 6
     private let maxLines = 2
     
     var body: some View {
         GeometryReader { geometry in
             let titles = states.flatMap(\.allLocalizedTitles)
             let cellWidth = max((geometry.size.width - spacing * 2) / 3, 1)
-            let textWidth = max(cellWidth - iconWidth - horizontalPadding * 2, 1)
+            let textWidth = max(cellWidth - iconWidth - horizontalPadding * 2 - 8, 1)
             let textHeight = max(rowHeight - verticalPadding * 2, 1)
             let fontSize = String.uniformFontSize(
                 for: titles,
@@ -98,8 +98,14 @@ struct KeyboardStateIndicatorsRow: View {
 
 struct KeyboardStateItem: View {
     let state: KeyboardState
-    var titleFontSize: CGFloat = Device.iPad ? 18 : 13
+    var titleFontSize: CGFloat = Device.iPad ? 15 : 12.5
     var action: () -> Void
+    
+    private var tintColor: Color {
+        state.state
+            ? Color(red: 0.18, green: 0.72, blue: 0.34)
+            : Color(red: 0.95, green: 0.55, blue: 0.15)
+    }
     
     var body: some View {
         Button {
@@ -108,28 +114,33 @@ struct KeyboardStateItem: View {
                 action()
             }
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: state.stateSymbol)
-                    .font(.system(size: Device.iPad ? 22 : 18, weight: .semibold))
-                    .foregroundStyle(Color.black, state.state ? Color.crayola : Color.coral)
-                    .frame(width: Device.iPad ? 28 : 22)
+            HStack(spacing: Device.iPad ? 10 : 6) {
+                ZStack {
+                    Circle()
+                        .fill(tintColor.opacity(0.14))
+                        .frame(width: Device.iPad ? 32 : 26, height: Device.iPad ? 32 : 26)
+                    Image(systemName: state.stateSymbol)
+                        .font(.system(size: Device.iPad ? 15 : 13, weight: .semibold))
+                        .foregroundStyle(tintColor)
+                }
                 
                 Text(state.title)
                     .font(InterfaceFont.font("GeneralSans-Medium", size: titleFontSize, text: state.title))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Color(.label))
                     .multilineTextAlignment(.leading)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, Device.iPad ? 10 : 8)
-            .padding(.vertical, Device.iPad ? 10 : 8)
+            .padding(.horizontal, Device.iPad ? 12 : 8)
+            .padding(.vertical, Device.iPad ? 8 : 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.backgroundLight, in: RoundedRectangle(cornerRadius: 18))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 18)
-                    .strokeBorder(Color.black, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
             }
+            .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
         }
         .buttonStyle(.plain)
         .allowsHitTesting(!state.state)

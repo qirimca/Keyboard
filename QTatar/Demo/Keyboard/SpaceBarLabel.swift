@@ -28,11 +28,14 @@ final class SpaceBarState: ObservableObject {
 
     func triggerSwitchAnimation() {
         dismissTimer?.invalidate()
-        isShowingFullName = true
-        let timer = Timer(timeInterval: 1.3, repeats: false) { [weak self] _ in
+        if !isShowingFullName {
+            isShowingFullName = true
+        }
+        let timer = Timer(timeInterval: 1.8, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
-                withAnimation(.easeInOut(duration: 0.4)) {
-                    self?.isShowingFullName = false
+                guard let self, self.isShowingFullName else { return }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.isShowingFullName = false
                 }
             }
         }
@@ -49,37 +52,46 @@ final class SpaceBarState: ObservableObject {
     }
 }
 
-/// Traditional Crimean Tatar Taraq Tamğa outline shape matching the QırımKey app icon.
+/// Traditional Crimean Tatar Taraq Tamğa filled polygon matching the exact 9×5 grid geometry of `qirimlogo.png`.
 struct TaraqTamgaShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let w = rect.width
-        let h = rect.height
+        let scale = min(rect.width / 9.0, rect.height / 5.0)
+        let drawWidth = scale * 9.0
+        let drawHeight = scale * 5.0
+        let originX = rect.minX + (rect.width - drawWidth) * 0.5
+        let originY = rect.minY + (rect.height - drawHeight) * 0.5
+        let cornerRadius = scale * 0.045
+
+        func pt(_ gx: CGFloat, _ gy: CGFloat) -> CGPoint {
+            CGPoint(x: originX + gx * scale, y: originY + gy * scale)
+        }
+
+        let vertices: [CGPoint] = [
+            pt(1, 0), pt(8, 0),
+            pt(8, 3), pt(9, 3),
+            pt(9, 4), pt(7, 4),
+            pt(7, 1), pt(5, 1),
+            pt(5, 4), pt(6, 4),
+            pt(6, 5), pt(3, 5),
+            pt(3, 4), pt(4, 4),
+            pt(4, 1), pt(2, 1),
+            pt(2, 4), pt(0, 4),
+            pt(0, 3), pt(1, 3)
+        ]
+
         var path = Path()
-
-        // Top horizontal beam with left and right upward prongs
-        path.move(to: CGPoint(x: 0.08 * w, y: 0.06 * h))
-        path.addLine(to: CGPoint(x: 0.08 * w, y: 0.27 * h))
-        path.addLine(to: CGPoint(x: 0.92 * w, y: 0.27 * h))
-        path.addLine(to: CGPoint(x: 0.92 * w, y: 0.06 * h))
-
-        // Center vertical pillar from top prong to bottom base
-        path.move(to: CGPoint(x: 0.50 * w, y: 0.06 * h))
-        path.addLine(to: CGPoint(x: 0.50 * w, y: 0.93 * h))
-
-        // Bottom horizontal base of center pillar
-        path.move(to: CGPoint(x: 0.35 * w, y: 0.93 * h))
-        path.addLine(to: CGPoint(x: 0.65 * w, y: 0.93 * h))
-
-        // Left downward leg with outward bottom hook
-        path.move(to: CGPoint(x: 0.22 * w, y: 0.27 * h))
-        path.addLine(to: CGPoint(x: 0.22 * w, y: 0.72 * h))
-        path.addLine(to: CGPoint(x: 0.05 * w, y: 0.72 * h))
-
-        // Right downward leg with outward bottom hook
-        path.move(to: CGPoint(x: 0.78 * w, y: 0.27 * h))
-        path.addLine(to: CGPoint(x: 0.78 * w, y: 0.72 * h))
-        path.addLine(to: CGPoint(x: 0.95 * w, y: 0.72 * h))
-
+        let count = vertices.count
+        let startMid = CGPoint(
+            x: (vertices[count - 1].x + vertices[0].x) * 0.5,
+            y: (vertices[count - 1].y + vertices[0].y) * 0.5
+        )
+        path.move(to: startMid)
+        for i in 0..<count {
+            let current = vertices[i]
+            let next = vertices[(i + 1) % count]
+            path.addArc(tangent1End: current, tangent2End: next, radius: cornerRadius)
+        }
+        path.closeSubpath()
         return path
     }
 }
@@ -123,17 +135,10 @@ struct SpaceBarLabel: View {
                 .lineLimit(1)
                 .opacity(spaceBarState.isShowingFullName ? 1 : 0)
 
-            // Centered subtle Taraq Tamğa outline in resting state
+            // Centered Taraq Tamğa emblem in resting state (exact 9:5 aspect ratio from app icon)
             TaraqTamgaShape()
-                .stroke(
-                    Color.primary.opacity(0.28),
-                    style: StrokeStyle(
-                        lineWidth: isCompact ? 1.25 : 1.35,
-                        lineCap: .round,
-                        lineJoin: .round
-                    )
-                )
-                .frame(width: isCompact ? 15 : 17, height: isCompact ? 12.5 : 14)
+                .fill(Color.primary.opacity(0.30))
+                .frame(width: isCompact ? 19.8 : 23.4, height: isCompact ? 11.0 : 13.0)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
 
             // Pinned bottom-trailing 2-letter code ("QT" / "КЪ") in resting state

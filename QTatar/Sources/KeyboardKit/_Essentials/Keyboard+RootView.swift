@@ -30,6 +30,7 @@ extension Keyboard {
         private var keyboardContext: KeyboardContext
         
         var body: some View {
+            let _ = (keyboardContext.renderVersion, keyboardContext.locale.identifier, keyboardContext.keyboardType)
             view()
         }
     }
