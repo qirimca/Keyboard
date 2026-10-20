@@ -153,7 +153,8 @@ class KeyboardViewController: KeyboardInputViewController {
         /// 💡 Setup a real Crimean Tatar autocomplete provider.
         let autocompleteProvider = CrimeanTatarAutocompleteProvider(
             context: state.autocompleteContext,
-            keyboardContext: state.keyboardContext
+            keyboardContext: state.keyboardContext,
+            controller: self
         )
         autocompleteProvider.locale = Locale(identifier: "crh")
         services.autocompleteProvider = autocompleteProvider
@@ -226,7 +227,8 @@ class KeyboardViewController: KeyboardInputViewController {
                 guard let observer else { return }
                 let controller = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
                 DispatchQueue.main.async { [weak controller] in
-                    controller?.refreshProxyState(forceRender: true)
+                    guard let controller, controller.isViewLoaded, controller.view.window != nil else { return }
+                    controller.refreshProxyState(forceRender: true)
                 }
             },
             "crh.key.sandboxTraitsChanged" as CFString,
@@ -319,6 +321,7 @@ class KeyboardViewController: KeyboardInputViewController {
     private var autocompletePending = false
 
     override func performAutocomplete() {
+        guard isViewLoaded, view.window != nil else { return }
         guard !autocompletePending else { return }
         autocompletePending = true
         DispatchQueue.main.async { [weak self] in
@@ -434,6 +437,7 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     override func textDidChangeAsync(_ textInput: UITextInput?) {
+        guard isViewLoaded, view.window != nil else { return }
         super.textDidChangeAsync(textInput)
     }
 

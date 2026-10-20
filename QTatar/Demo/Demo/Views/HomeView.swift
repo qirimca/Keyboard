@@ -344,8 +344,20 @@ struct HomeView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
             let now = CFAbsoluteTimeGetCurrent()
-            let shouldSync = (now - Self.lastPreferencesSyncTime) >= 1.0
-            refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: shouldSync)
+            let elapsed = now - Self.lastPreferencesSyncTime
+            if elapsed >= 0.4 {
+                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+            } else {
+                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
+                if !Self.isTrailingPreferencesSyncPending {
+                    Self.isTrailingPreferencesSyncPending = true
+                    let delay = max(0.05, 0.4 - elapsed)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        Self.isTrailingPreferencesSyncPending = false
+                        NotificationCenter.default.post(name: Self.localStatsRefreshNotification, object: nil)
+                    }
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
@@ -457,6 +469,7 @@ struct HomeView: View {
     private static var didRegisterFloatingObserver = false
     private static var didRegisterStatsObserver = false
     private static var lastPreferencesSyncTime: CFAbsoluteTime = 0
+    private static var isTrailingPreferencesSyncPending = false
 
     private static func registerStatsSyncObserverIfNeeded() {
         guard !didRegisterStatsObserver else { return }

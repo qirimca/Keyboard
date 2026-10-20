@@ -15,14 +15,17 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 
     private let manager = SuggestionsDataBaseManager.shared
     private let keyboardContext: KeyboardContext
+    private weak var controller: UIInputViewController?
     private var latestQuery = ""
 
     init(
         context: AutocompleteContext,
-        keyboardContext: KeyboardContext
+        keyboardContext: KeyboardContext,
+        controller: UIInputViewController? = nil
     ) {
         self.context = context
         self.keyboardContext = keyboardContext
+        self.controller = controller
         manager.prepareAsync()
     }
 
@@ -50,12 +53,19 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
     func autocompleteSuggestions(
         for text: String
     ) async throws -> [Autocomplete.Suggestion] {
-        let snapshot = await MainActor.run {
-            captureQuerySnapshot(fallbackText: text)
+        let snapshot: QuerySnapshot? = await MainActor.run {
+            if let controller = self.controller {
+                guard controller.isViewLoaded, controller.view.window != nil else { return nil }
+            }
+            return captureQuerySnapshot(fallbackText: text)
         }
+        guard let snapshot else { return [] }
         let results = computeSuggestions(for: snapshot)
         let isCurrent = await MainActor.run {
-            snapshot.query == latestQuery
+            if let controller = self.controller {
+                guard controller.isViewLoaded, controller.view.window != nil else { return false }
+            }
+            return snapshot.query == latestQuery
         }
         return isCurrent ? results : []
     }
