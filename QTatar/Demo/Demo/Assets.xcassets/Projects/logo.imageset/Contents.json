@@ -3,16 +3,6 @@
     {
       "filename" : "qirim_logo.png",
       "idiom" : "universal"
-    },
-    {
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "dark"
-        }
-      ],
-      "filename" : "qirim_logo_dark.png",
-      "idiom" : "universal"
     }
   ],
   "info" : {

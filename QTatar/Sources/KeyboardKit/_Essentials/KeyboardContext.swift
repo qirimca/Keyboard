@@ -152,6 +152,9 @@ public class KeyboardContext: ObservableObject {
     /// A custom text proxy to which text can be routed.
     @Published
     public var textInputProxy: TextInputProxy?
+
+    /// Set this to override the ``textDocumentProxy`` keyboard type (e.g. for live in-app sandbox testing).
+    public var proxyKeyboardTypeOverride: UIKeyboardType?
     
     
     // MARK: - iOS/tvOS properties
@@ -336,7 +339,8 @@ extension KeyboardContext {
             needsInputModeSwitchKey = controller.needsInputModeSwitchKey
         }
         
-        let keyboardPrefersAutocomplete = textDocumentProxy.keyboardType?.prefersAutocomplete ?? true
+        let effectiveKeyboardType = proxyKeyboardTypeOverride ?? textDocumentProxy.keyboardType
+        let keyboardPrefersAutocomplete = effectiveKeyboardType?.prefersAutocomplete ?? true
         let returnKeyPrefersAutocomplete = textDocumentProxy.returnKeyType?.prefersAutocomplete ?? true
         let newPrefersAutocomplete = keyboardType.prefersAutocomplete && keyboardPrefersAutocomplete && returnKeyPrefersAutocomplete
         if prefersAutocomplete != newPrefersAutocomplete {

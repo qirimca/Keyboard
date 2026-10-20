@@ -5,17 +5,26 @@
 //  Created by Mustafa Bekirov on 06.06.2026.
 //
 
+import Combine
 import SwiftUI
 import UIKit
 
 /// Observable space bar controller that coordinates displaying the full localized language name
 /// when the keyboard appears or switches script, then smoothly fading into the center Taraq Tamğa
 /// and bottom-trailing 2-letter language code ("QT" / "КЪ").
+/// Also drives the "soul" of QırımKey: a continuous resting breath on the Tamğa that smoothly
+/// accelerates as the user types characters and gently decelerates back to rest when typing stops.
 final class SpaceBarState: ObservableObject {
     static let shared = SpaceBarState()
 
     @Published var isShowingFullName: Bool = true
+    let keystrokeSubject = PassthroughSubject<Void, Never>()
+
     private var dismissTimer: Timer?
+
+    private var isUITesting: Bool {
+        KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+    }
 
     func prepareForAppearance() {
         dismissTimer?.invalidate()
@@ -31,6 +40,7 @@ final class SpaceBarState: ObservableObject {
         if !isShowingFullName {
             isShowingFullName = true
         }
+        guard !isUITesting else { return }
         let timer = Timer(timeInterval: 1.8, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.isShowingFullName else { return }
@@ -46,9 +56,19 @@ final class SpaceBarState: ObservableObject {
     func fadeToResting() {
         guard isShowingFullName else { return }
         dismissTimer?.invalidate()
-        withAnimation(.easeInOut(duration: 0.35)) {
+        if isUITesting {
             isShowingFullName = false
+        } else {
+            withAnimation(.easeInOut(duration: 0.35)) {
+                isShowingFullName = false
+            }
         }
+    }
+
+    /// Records a character keystroke so the spacebar Tamğa smoothly quickens its breathing rate.
+    func recordKeystroke() {
+        guard !isUITesting else { return }
+        keystrokeSubject.send(())
     }
 }
 
@@ -96,15 +116,166 @@ struct TaraqTamgaShape: Shape {
     }
 }
 
+/// CoreAnimation-driven Taraq Tamğa view that breathes continuously at rest and smoothly accelerates/decelerates
+/// its breathing rate in response to character typing without phase jumps or blocking XCUITest idling.
+private struct BreathingTamgaView: UIViewRepresentable {
+    let isDark: Bool
+
+    func makeUIView(context: Context) -> BreathingTamgaUIView {
+        let view = BreathingTamgaUIView()
+        view.updateAppearance(isDark: isDark)
+        return view
+    }
+
+    func updateUIView(_ uiView: BreathingTamgaUIView, context: Context) {
+        uiView.updateAppearance(isDark: isDark)
+    }
+}
+
+private final class BreathingTamgaUIView: UIView {
+    private let shapeLayer = CAShapeLayer()
+    private var cancellable: AnyCancellable?
+    private var exertionTimer: Timer?
+    private var currentExertion: CGFloat = 0
+    private var targetExertion: CGFloat = 0
+    private var isDark: Bool = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+        layer.addSublayer(shapeLayer)
+        startContinuousBreathIfNeeded()
+
+        cancellable = SpaceBarState.shared.keystrokeSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                self?.registerCharacterExertion()
+            }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        exertionTimer?.invalidate()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil {
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            startContinuousBreathIfNeeded()
+        } else {
+            exertionTimer?.invalidate()
+            exertionTimer = nil
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        shapeLayer.frame = bounds
+        shapeLayer.path = TaraqTamgaShape().path(in: bounds).cgPath
+        CATransaction.commit()
+        startContinuousBreathIfNeeded()
+    }
+
+    func updateAppearance(isDark: Bool) {
+        self.isDark = isDark
+        let baseColor = isDark ? UIColor.white : UIColor.label
+        shapeLayer.fillColor = baseColor.cgColor
+        startContinuousBreathIfNeeded()
+    }
+
+    private func startContinuousBreathIfNeeded() {
+        shapeLayer.opacity = 0.36
+        guard !KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") else {
+            exertionTimer?.invalidate()
+            exertionTimer = nil
+            shapeLayer.removeAnimation(forKey: "continuousBreath")
+            return
+        }
+        guard window != nil, shapeLayer.animation(forKey: "continuousBreath") == nil else { return }
+
+        let opacityAnim = CABasicAnimation(keyPath: "opacity")
+        opacityAnim.fromValue = 0.25
+        opacityAnim.toValue = 0.52
+        opacityAnim.duration = 2.2
+        opacityAnim.autoreverses = true
+        opacityAnim.repeatCount = .infinity
+        opacityAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        let scaleAnim = CABasicAnimation(keyPath: "transform.scale")
+        scaleAnim.fromValue = 0.975
+        scaleAnim.toValue = 1.045
+        scaleAnim.duration = 2.2
+        scaleAnim.autoreverses = true
+        scaleAnim.repeatCount = .infinity
+        scaleAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+        let group = CAAnimationGroup()
+        group.animations = [opacityAnim, scaleAnim]
+        group.duration = 4.4
+        group.repeatCount = .infinity
+        group.isRemovedOnCompletion = false
+
+        shapeLayer.speed = 1.0
+        shapeLayer.timeOffset = 0.0
+        shapeLayer.beginTime = 0.0
+        shapeLayer.add(group, forKey: "continuousBreath")
+    }
+
+    private func updateBreathingSpeed(_ newSpeed: Float) {
+        guard abs(shapeLayer.speed - newSpeed) > 0.01 else { return }
+        let now = CACurrentMediaTime()
+        let pausedTime = shapeLayer.convertTime(now, from: nil)
+        shapeLayer.speed = newSpeed
+        shapeLayer.timeOffset = pausedTime
+        shapeLayer.beginTime = now
+    }
+
+    private func registerCharacterExertion() {
+        guard !KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") else { return }
+        startContinuousBreathIfNeeded()
+        targetExertion = min(1.0, targetExertion + 0.14)
+        guard exertionTimer == nil else { return }
+        let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
+            self?.stepExertion()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        exertionTimer = timer
+        stepExertion()
+    }
+
+    private func stepExertion() {
+        currentExertion += (targetExertion - currentExertion) * 0.28
+        targetExertion *= 0.90
+        if currentExertion < 0.005 && targetExertion < 0.005 {
+            currentExertion = 0
+            targetExertion = 0
+            updateBreathingSpeed(1.0)
+            exertionTimer?.invalidate()
+            exertionTimer = nil
+            return
+        }
+        let speed = 1.0 + Float(currentExertion) * 1.9
+        updateBreathingSpeed(speed)
+    }
+}
+
 /// Native-style space bar label:
 /// Displays the full language name ("Qırımtatarca" / "Къырымтатарджа") centered when the keyboard appears
-/// or switches script, then smoothly fades into the centered Taraq Tamğa emblem and the 2-letter
+/// or switches script, then smoothly fades into the centered breathing Taraq Tamğa emblem and the 2-letter
 /// abbreviation ("QT" / "КЪ") in the bottom-trailing corner.
 struct SpaceBarLabel: View {
 
     let fullName: String
     let languageCode: String
     let isCompact: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject private var spaceBarState = SpaceBarState.shared
 
@@ -135,10 +306,9 @@ struct SpaceBarLabel: View {
                 .lineLimit(1)
                 .opacity(spaceBarState.isShowingFullName ? 1 : 0)
 
-            // Centered Taraq Tamğa emblem in resting state (exact 9:5 aspect ratio from app icon)
-            TaraqTamgaShape()
-                .fill(Color.primary.opacity(0.30))
-                .frame(width: isCompact ? 19.8 : 23.4, height: isCompact ? 11.0 : 13.0)
+            // Centered breathing & typing-responsive Taraq Tamğa emblem in resting state (exact 9:5 aspect ratio)
+            BreathingTamgaView(isDark: colorScheme == .dark)
+                .frame(width: isCompact ? 18.0 : 22.5, height: isCompact ? 10.0 : 12.5)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
 
             // Pinned bottom-trailing 2-letter code ("QT" / "КЪ") in resting state

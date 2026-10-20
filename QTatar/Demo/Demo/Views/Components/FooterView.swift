@@ -16,11 +16,8 @@ struct FooterView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.75)
-                }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .saturation(0)
                 .layoutPriority(0)
 
             Text("\(About.about_rights_key.localized) • v\(BuildInfo.fullVersion)")

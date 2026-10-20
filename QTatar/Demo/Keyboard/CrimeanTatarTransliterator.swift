@@ -77,9 +77,11 @@ struct CrimeanTatarTransliterator {
         )
     }()
 
+    private static let groupRefRegex: NSRegularExpression? = try? NSRegularExpression(pattern: "\\$(\\d+)|\\$\\{(\\d+)\\}")
+
     /// PCRE drops `$N` for groups the pattern does not define; ICU would not, so strip them up front.
     private static func normalize(_ replacement: String, groups: Int) -> String {
-        guard let regex = try? NSRegularExpression(pattern: "\\$(\\d+)|\\$\\{(\\d+)\\}") else { return replacement }
+        guard let regex = groupRefRegex else { return replacement }
         let ns = replacement as NSString
         var result = ""
         var last = 0

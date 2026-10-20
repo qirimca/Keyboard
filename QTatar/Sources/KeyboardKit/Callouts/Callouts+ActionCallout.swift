@@ -170,7 +170,8 @@ private extension Callouts.ActionCallout {
         if keyboardContext.locale.identifier.contains("Cyrl") {
             return "Юзюджи"
         }
-        let preferred = Locale.preferredLanguages.first ?? "uk"
+        let appGroupLang = UserDefaults(suiteName: "group.crh.key.keyboardplus")?.string(forKey: "crh.key.language")
+        let preferred = appGroupLang ?? Locale.preferredLanguages.first ?? "crh"
         if preferred.hasPrefix("uk") {
             return "Плаваюча"
         } else if preferred.hasPrefix("en") {

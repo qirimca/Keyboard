@@ -21,8 +21,21 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
     
     static func isSandboxOverrideActive(for context: KeyboardContext) -> Bool {
-        let isOwnApp = context.hostApplicationBundleId == nil || context.hostApplicationBundleId == AppConfiguration.appBundleId
-        return isOwnApp && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused")
+        if let bundleId = context.hostApplicationBundleId, bundleId != AppConfiguration.appBundleId {
+            return false
+        }
+        guard KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused") else {
+            return false
+        }
+        let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
+        let recentlyToggled = ts > 0 && (Date().timeIntervalSince1970 - ts) < 2.5
+        if context.hostApplicationBundleId == nil && !recentlyToggled {
+            let appearance = context.textDocumentProxy.keyboardAppearance ?? .default
+            if appearance == .default {
+                return false
+            }
+        }
+        return true
     }
 
     static func effectiveProxyKeyboardType(for context: KeyboardContext) -> UIKeyboardType {
@@ -426,7 +439,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 if isFloating {
                     return .system(size: isLower ? 22 : 19, weight: .regular)
                 } else if isDockedPad {
-                    return .system(size: isPortrait ? 21 : 23, weight: .regular)
+                    return .system(size: isPortrait ? (isLower ? 21 : 19.5) : (isLower ? 23 : 21.5), weight: .regular)
                 } else {
                     return .system(size: isLower ? 24.5 : 21.5, weight: .regular)
                 }

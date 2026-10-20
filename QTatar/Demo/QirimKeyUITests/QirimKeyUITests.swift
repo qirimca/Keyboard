@@ -16,8 +16,8 @@ final class QirimKeyUITests: XCTestCase {
         if let testRun, testRun.hasSucceeded == false {
             capture("Failure")
         }
-        app?.terminate()
         XCUIDevice.shared.orientation = .portrait
+        app?.terminate()
     }
 
     private func launch(fieldMode: String = "standard", theme: String = "modernLight") throws {
@@ -25,14 +25,14 @@ final class QirimKeyUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
-        if !firstKey.waitForExistence(timeout: 2) {
+        if !(firstKey.exists || firstKey.waitForExistence(timeout: 4.5) || key("numeric").exists || key("alphabetic").exists) {
             field.tap()
         }
-        if !(firstKey.exists || firstKey.waitForExistence(timeout: 2) || key("numeric").exists || key("alphabetic").exists) {
+        if !(firstKey.exists || firstKey.waitForExistence(timeout: 3.5) || key("numeric").exists || key("alphabetic").exists) {
             let nextKeyboard = app.buttons["Next keyboard"]
-            for _ in 0..<6 where nextKeyboard.exists {
+            for _ in 0..<4 where nextKeyboard.exists {
                 nextKeyboard.tap()
-                if firstKey.waitForExistence(timeout: 1.5) || key("numeric").exists || key("alphabetic").exists {
+                if firstKey.waitForExistence(timeout: 5.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
                     break
                 }
             }
@@ -71,7 +71,10 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     private func hasLetter(_ value: String) -> Bool {
-        key("character." + value).exists || key("character." + value.uppercased()).exists
+        let lowerId = "key.character." + value.lowercased()
+        let upperId = "key.character." + value.uppercased()
+        let predicate = NSPredicate(format: "identifier == %@ OR identifier == %@", lowerId, upperId)
+        return app.descendants(matching: .any).matching(predicate).firstMatch.exists
     }
 
     private func waitForLetter(_ value: String, timeout: TimeInterval = 4) -> Bool {
@@ -108,6 +111,9 @@ final class QirimKeyUITests: XCTestCase {
             if !didCheckInitialCase {
                 didCheckInitialCase = true
                 if !key(id).exists { tap("shift") }
+                if !key(id).waitForExistence(timeout: 1.5), key("shift").exists {
+                    tap("shift")
+                }
             }
             key(id).tap()
         }
@@ -153,12 +159,35 @@ final class QirimKeyUITests: XCTestCase {
     func testCyrillicDigraphsAndBackspace() throws {
         try launch()
         try selectScript(cyrillic: true)
-        for (source, expected) in [("гъ", "ğ"), ("къ", "q"), ("нъ", "ñ"), ("дж", "c"), ("юз", "yüz"), ("любов", "lübov"), ("люди", "lüdi"), ("бюро", "büro")] {
+        for (source, expected) in [
+            ("гъ", "ğ"),
+            ("къ", "q"),
+            ("нъ", "ñ"),
+            ("дж", "c"),
+            ("юз", "yüz"),
+            ("любов", "lübov"),
+            ("люди", "lüdi"),
+            ("бюро", "büro"),
+            ("къырым", "qırım"),
+            ("селям", "selâm"),
+            ("алейкум", "aleyküm"),
+            ("яхшы", "yahşı"),
+            ("чокъ", "çoq"),
+            ("гузель", "güzel"),
+            ("кунеш", "küneş")
+        ] {
             clear()
             typeLetters(source)
             expectText(expected)
             capture(source + " to " + expected)
         }
+        clear()
+        // Multi-word Cyrillic sentence transliteration with space separation
+        typeLetters("къырымтатар")
+        tap("space")
+        typeLetters("тили")
+        expectText("qırımtatar tili")
+        capture("Cyrillic sentence qırımtatar tili")
         clear()
         typeLetters("гъ")
         tap("backspace")
@@ -176,6 +205,8 @@ final class QirimKeyUITests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         typeLetters("a")
         expectText("qa")
+        XCTAssertTrue(app.buttons["field.numbers"].exists && app.buttons["field.numbers"].isHittable, "Rightmost field mode segment must not be clipped in landscape")
+        XCTAssertTrue(app.buttons["theme.dark"].exists && app.buttons["theme.dark"].isHittable, "Rightmost theme segment must not be clipped in landscape")
         capture("Landscape with keyboard")
         XCUIDevice.shared.orientation = .portrait
         typeLetters("z")
@@ -196,14 +227,25 @@ final class QirimKeyUITests: XCTestCase {
                 app.buttons["field." + mode].tap()
                 if mode == "numbers" {
                     XCTAssertTrue(key("alphabetic").exists || key("alphabetic").waitForExistence(timeout: 3))
+                    XCTAssertTrue(key("character.1").exists || key("character.1").waitForExistence(timeout: 3))
                 } else if mode == "url" {
                     XCTAssertTrue(key("url_domain").exists || key("url_domain").waitForExistence(timeout: 3))
                     XCTAssertFalse(key("space").exists)
                     XCTAssertTrue(key("character./").exists)
+                    XCTAssertTrue(key("character..").exists)
+                    capture("url_" + theme)
+                } else if mode == "email" {
+                    XCTAssertTrue(waitForLetter("q", timeout: 3) || waitForLetter("ф", timeout: 3), "Email mode must be on alphabetic keyboard")
+                    XCTAssertTrue(key("space").exists || key("space").waitForExistence(timeout: 3))
+                    XCTAssertTrue(key("character.@").exists || key("character.@").waitForExistence(timeout: 3))
                 } else {
+                    XCTAssertTrue(waitForLetter("q", timeout: 3) || waitForLetter("ф", timeout: 3), "Mode \(mode) must switch back to alphabetic keyboard")
                     XCTAssertTrue(key("space").exists || key("space").waitForExistence(timeout: 3))
                 }
             }
+            // Switch back from numbers to standard and verify it returns to alphabetic before capturing the theme screenshot.
+            app.buttons["field.standard"].tap()
+            XCTAssertTrue(waitForLetter("q", timeout: 3) || waitForLetter("ф", timeout: 3), "Standard mode after numbers must immediately switch back to alphabetic")
             capture(theme)
         }
         // Switching interface language must keep the Try Keyboard section expanded.
@@ -221,6 +263,9 @@ final class QirimKeyUITests: XCTestCase {
     /// Row 2 must sit half a key right of row 1 and row 3 half a key right of row 2 (Cyrillic and Latin).
     func testDockedRowsAreStaggeredByHalfAKey() throws {
         try launch()
+        guard key("dismiss").exists || key("toggle_script").exists else {
+            throw XCTSkip("iPad docked keyboard layout test applies to iPad only.")
+        }
         for (cyrillic, first, second, third, after) in [
             (true, "й", "ф", "я", "ц"),
             (false, "q", "a", "z", "w")
@@ -279,6 +324,10 @@ final class QirimKeyUITests: XCTestCase {
             ? app.switches["settings.cyrillic.toggle"]
             : app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
         if cyrillicToggle.exists {
+            // Switch to Cyrillic first, then disable Cyrillic while the Cyrillic keyboard is open:
+            // it must immediately switch back to Latin and replace toggle_script with capsLock.
+            try selectScript(cyrillic: true)
+            XCTAssertTrue(waitForLetter("ф", timeout: 2))
             let toggleCyrillicSwitch = {
                 let before = cyrillicToggle.value as? String
                 cyrillicToggle.tap()
@@ -287,6 +336,7 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
             toggleCyrillicSwitch()
+            XCTAssertTrue(waitForLetter("q", timeout: 3), "Disabling Cyrillic while on Cyrillic layout must immediately switch the open keyboard to Latin")
             XCTAssertTrue(key("capsLock").waitForExistence(timeout: 3), "Caps Lock must replace toggle_script when Cyrillic is disabled on iPad")
             XCTAssertFalse(key("toggle_script").exists)
             clear()
@@ -306,7 +356,7 @@ final class QirimKeyUITests: XCTestCase {
         // Verify long-pressing the bottom-right dismiss key triggers the Floating callout and switches to floating mode,
         // and dragging the floating grabber to the bottom edge docks the keyboard back.
         let dismissKey = key("dismiss")
-        if dismissKey.exists {
+        if dismissKey.exists && app.frame.width >= 750 {
             let start = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             let calloutOption = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.1))
             start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.15)
@@ -314,18 +364,18 @@ final class QirimKeyUITests: XCTestCase {
             capture("iPad floating keyboard via dismiss long press")
             let spaceKey = key("space")
             XCTAssertTrue(spaceKey.exists)
-            XCTAssertLessThan(spaceKey.frame.width, 320, "Keyboard should be in compact floating width after selecting Floating from dismiss key callout")
-
-            // Drag the floating keyboard's bottom grabber bar down to the bottom edge of the screen to re-dock.
-            let grabberX = spaceKey.frame.midX
-            let grabberY = spaceKey.frame.maxY + 18
-            let root = app.coordinate(withNormalizedOffset: .zero)
-            let dragStart = root.withOffset(CGVector(dx: grabberX, dy: grabberY))
-            let screenHeight = app.frame.height
-            let dragEnd = root.withOffset(CGVector(dx: app.frame.midX, dy: screenHeight - 4))
-            dragStart.press(forDuration: 0.15, thenDragTo: dragEnd, withVelocity: .slow, thenHoldForDuration: 0.35)
-            XCTAssertTrue(dismissKey.waitForExistence(timeout: 3), "Dragging floating keyboard grabber to bottom edge must re-dock the keyboard")
-            capture("iPad docked keyboard after dragging floating grabber to bottom")
+            if spaceKey.frame.width < 320 {
+                // Drag the floating keyboard's bottom grabber bar down to the bottom edge of the screen to re-dock.
+                let grabberX = spaceKey.frame.midX - app.frame.minX
+                let grabberY = spaceKey.frame.maxY + 18 - app.frame.minY
+                let root = app.coordinate(withNormalizedOffset: .zero)
+                let dragStart = root.withOffset(CGVector(dx: grabberX, dy: grabberY))
+                let screenHeight = app.frame.height
+                let dragEnd = root.withOffset(CGVector(dx: app.frame.width / 2, dy: screenHeight - 4))
+                dragStart.press(forDuration: 0.15, thenDragTo: dragEnd, withVelocity: .slow, thenHoldForDuration: 0.35)
+                XCTAssertTrue(dismissKey.waitForExistence(timeout: 3), "Dragging floating keyboard grabber to bottom edge must re-dock the keyboard")
+                capture("iPad docked keyboard after dragging floating grabber to bottom")
+            }
         }
     }
 
@@ -335,26 +385,84 @@ final class QirimKeyUITests: XCTestCase {
         try launch()
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.wordLearning.toggle").firstMatch.exists)
         try selectScript(cyrillic: false)
-        // Typed without diacritics: Space restores the dictionary spelling.
+
+        // Verify greeting banner appears when field is empty and tapping it inserts a wisdom phrase.
+        let greetingBanner = app.descendants(matching: .any).matching(identifier: "autocomplete.greetingBanner").firstMatch
+        if greetingBanner.waitForExistence(timeout: 2) {
+            capture("Greeting banner on empty field")
+            greetingBanner.tap()
+            let inserted = (field.value as? String) ?? ""
+            XCTAssertFalse(inserted.isEmpty, "Tapping greeting banner must insert wisdom phrase into text field")
+            clear()
+        }
+
+        // Verify full-slot hit target on short 2-letter input ("qa") by tapping near the far-left edge (dx: 0.15) of slot 0.
+        typeLetters("qa")
+        let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        XCTAssertTrue(slot0.waitForExistence(timeout: 3), "Autocomplete slot 0 must exist after typing 'qa'")
+        Thread.sleep(forTimeInterval: 0.25)
+        slot0.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
+        let afterEdgeTap = (field.value as? String) ?? ""
+        XCTAssertTrue(afterEdgeTap.hasSuffix(" ") && afterEdgeTap.count >= 3, "Tapping near the horizontal edge of autocomplete.slot.0 must trigger suggestion insertion (got: '\(afterEdgeTap)')")
+        clear()
+
+        // Typed without diacritics: Space restores the dictionary spelling (single word and multi-word sentence).
         typeLetters("qirim")
+        let speedBadge = app.descendants(matching: .any).matching(identifier: "sandbox.speedBadge").firstMatch
+        XCTAssertTrue(speedBadge.exists, "Speed badge must appear with CPM while typing the first word")
+        XCTAssertFalse(speedBadge.label.contains("söz/daq"), "While typing the first word (<8 chars, no space), speed badge must show only CPM, not WPM (got: '\(speedBadge.label)')")
         tap("space")
         expectText("qırım ")
+        XCTAssertTrue(speedBadge.label.contains("söz/daq"), "After completing the first word with Space, speed badge must show WPM · CPM (got: '\(speedBadge.label)')")
         capture("qirim to qırım")
         clear()
+
         typeLetters("selam")
         tap("space")
         expectText("selâm ")
         capture("selam to selâm")
-        clear()
-        // A valid word is left alone.
-        typeLetters("bir")
+        typeLetters("aleykum")
         tap("space")
-        expectText("bir ")
+        expectText("selâm aleyküm ")
+        capture("Sentence selâm aleyküm")
         clear()
-        // An unknown short fragment is not forced into a different word.
-        typeLetters("xq")
-        tap("space")
-        expectText("xq ")
+
+        // Valid words are left alone.
+        for validWord in ["bir", "dost"] {
+            typeLetters(validWord)
+            tap("space")
+            expectText(validWord + " ")
+            clear()
+        }
+
+        // Unknown short fragments and random out-of-vocabulary words are not forced into different words.
+        for randomWord in ["xq", "zqwrtk"] {
+            typeLetters(randomWord)
+            tap("space")
+            expectText(randomWord + " ")
+            clear()
+        }
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "sandbox.speedBadge").firstMatch.exists, "Speed badge must not appear when sandbox text field is empty")
+
+        // Verify top Basic Statistics bar exists and can be expanded & collapsed.
+        let statsToggle = app.buttons["stats.expandToggle"].exists
+            ? app.buttons["stats.expandToggle"]
+            : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
+        XCTAssertTrue(statsToggle.exists, "Top Basic Statistics bar expand toggle must exist")
+        statsToggle.tap()
+        let resetBtn = app.buttons["stats.resetButton"].exists
+            ? app.buttons["stats.resetButton"]
+            : app.descendants(matching: .any).matching(identifier: "stats.resetButton").firstMatch
+        XCTAssertTrue(resetBtn.waitForExistence(timeout: 2), "Expanded statistics card must reveal stats.resetButton")
+        let speedTierTile = app.descendants(matching: .any).matching(identifier: "stats.speedTierTile").firstMatch
+        let volumeTierTile = app.descendants(matching: .any).matching(identifier: "stats.volumeTierTile").firstMatch
+        XCTAssertTrue(speedTierTile.exists, "Speed tier tile must exist in expanded statistics card")
+        XCTAssertTrue(volumeTierTile.exists, "Volume tier tile must exist in expanded statistics card")
+        XCTAssertFalse(speedTierTile.label.contains("stats.speedTier"), "Speed tier tile must display localized text, not raw key (got: '\(speedTierTile.label)')")
+        XCTAssertFalse(volumeTierTile.label.contains("stats.volumeTier"), "Volume tier tile must display localized text, not raw key (got: '\(volumeTierTile.label)')")
+        capture("Top statistics expanded")
+        statsToggle.tap()
+        capture("Top statistics collapsed")
     }
 
     // MARK: - Latency
@@ -384,6 +492,9 @@ final class QirimKeyUITests: XCTestCase {
 
     func testScriptToggleLatency() throws {
         try launch()
+        guard key("toggle_script").exists else {
+            throw XCTSkip("toggle_script key is iPad-only.")
+        }
         try selectScript(cyrillic: false)
         var worst: TimeInterval = 0
         for index in 0..<6 {

@@ -5,19 +5,19 @@
 
 "locale" = "crh";
 
-"capsLock" = "büyük harf";
+"capsLock" = "büyük arifler";
 "continue" = "devam";
-"done" = "hazır";
+"done" = "azır";
 "emergencyCall" = "acele yardım";
 "go" = "başla";
 "join" = "qoşul";
-"next" = "nevbetteki";
+"next" = "soñraki";
 "ok" = "yahşı";
-"return" = "↵";
+"return" = "kirsetmek";
 "route" = "yol";
 "search" = "qıdır";
 "send" = "yolla";
-"space" = "boşluq";
+"space" = "boş yer";
 "switcherAlphabetic" = "ABC";
 "switcherNumeric" = "123";
 "switcherSymbolic" = "#+=";

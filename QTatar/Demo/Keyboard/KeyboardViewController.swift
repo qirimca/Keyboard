@@ -110,12 +110,20 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     private func applyPreferences() {
+        KeyboardPreferences.defaults.synchronize()
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         state.autocompleteContext.isAutocompleteEnabled = KeyboardPreferences.suggestionsEnabled
         state.autocompleteContext.isAutocorrectEnabled = KeyboardPreferences.suggestionsEnabled
         if !KeyboardPreferences.suggestionsEnabled { state.autocompleteContext.suggestions = [] }
-        if !KeyboardPreferences.cyrillicEnabled && (!isCyrillicExtension || state.keyboardContext.deviceType == .pad) {
-            state.keyboardContext.locale = Locale(identifier: "crh-Latn")
+        if !KeyboardPreferences.cyrillicEnabled {
+            if state.keyboardContext.locale.identifier.contains("Cyrl") {
+                (services.actionHandler as? DemoActionHandler)?.resetComposition()
+                state.keyboardContext.locale = Locale(identifier: "crh-Latn")
+                SpaceBarState.shared.triggerSwitchAnimation()
+            }
+        } else if isCyrillicExtension && !state.keyboardContext.locale.identifier.contains("Cyrl") {
+            state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+            SpaceBarState.shared.triggerSwitchAnimation()
         }
         warmTransliteratorIfNeeded()
         state.keyboardContext.renderVersion &+= 1
@@ -217,7 +225,7 @@ class KeyboardViewController: KeyboardInputViewController {
                 guard let observer else { return }
                 let controller = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
                 DispatchQueue.main.async { [weak controller] in
-                    controller?.refreshProxyState()
+                    controller?.refreshProxyState(forceRender: true)
                 }
             },
             "crh.key.sandboxTraitsChanged" as CFString,
@@ -259,7 +267,16 @@ class KeyboardViewController: KeyboardInputViewController {
         super.viewWillAppear(animated)
         self.hasDictationKey = true
         view.backgroundColor = .clear
+        KeyboardPreferences.defaults.synchronize()
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        resetHostBundleIdCache()
         state.keyboardContext.syncTextDocumentProxy(with: self)
+        if state.keyboardContext.traitCollection != traitCollection {
+            state.keyboardContext.traitCollection = traitCollection
+        }
+        state.keyboardContext.proxyKeyboardTypeOverride = DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
+            ? DemoStyleProvider.effectiveProxyKeyboardType(for: state.keyboardContext)
+            : nil
         state.keyboardContext.hasChosenLettersInNumericField = false // new input session
         lastDocumentIdentifier = textDocumentProxy.safeDocumentIdentifier
         lastProxyKeyboardType = nil
@@ -273,6 +290,17 @@ class KeyboardViewController: KeyboardInputViewController {
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
         SpaceBarState.shared.prepareForAppearance()
+        GreetingBannerState.shared.prepareForAppearance()
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if state.keyboardContext.traitCollection != traitCollection {
+            state.keyboardContext.traitCollection = traitCollection
+        }
+        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
+            refreshProxyState(forceRender: true)
+        }
     }
 
     /// Many events in one key press ask for new suggestions (text change, shift change, our own edits).
@@ -316,6 +344,7 @@ class KeyboardViewController: KeyboardInputViewController {
         let isDark: Bool
         let cyrillicEnabled: Bool
         let suggestionsEnabled: Bool
+        let localeIdentifier: String
     }
     private var lastRenderSignature: RenderSignature?
 
@@ -330,49 +359,70 @@ class KeyboardViewController: KeyboardInputViewController {
             contentType: proxy.textContentType.map { $0.rawValue },
             isDark: DemoStyleProvider.effectiveIsDark(for: context),
             cyrillicEnabled: KeyboardPreferences.cyrillicEnabled,
-            suggestionsEnabled: KeyboardPreferences.suggestionsEnabled
+            suggestionsEnabled: KeyboardPreferences.suggestionsEnabled,
+            localeIdentifier: context.locale.identifier
         )
     }
 
-    private func refreshProxyState() {
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+    private func refreshProxyState(forceRender: Bool = false) {
+        if forceRender {
+            KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        }
+        let documentID = textDocumentProxy.safeDocumentIdentifier
+        if let last = lastDocumentIdentifier, last != documentID {
+            resetHostBundleIdCache()
+            state.keyboardContext.hasChosenLettersInNumericField = false // another field: start from its own default page
+            lastProxyKeyboardType = nil
+        }
+        lastDocumentIdentifier = documentID
         state.keyboardContext.syncTextDocumentProxy(with: self)
         let context = state.keyboardContext
-        let targetInterfaceStyle: UIUserInterfaceStyle = DemoStyleProvider.isSandboxOverrideActive(for: context)
+        let isSandboxActive = DemoStyleProvider.isSandboxOverrideActive(for: context)
+        context.proxyKeyboardTypeOverride = isSandboxActive
+            ? DemoStyleProvider.effectiveProxyKeyboardType(for: context)
+            : nil
+        let targetInterfaceStyle: UIUserInterfaceStyle = isSandboxActive
             ? (DemoStyleProvider.effectiveIsDark(for: context) ? .dark : .light)
             : .unspecified
         if overrideUserInterfaceStyle != targetInterfaceStyle {
             overrideUserInterfaceStyle = targetInterfaceStyle
         }
-        let documentID = textDocumentProxy.safeDocumentIdentifier
-        if let last = lastDocumentIdentifier, last != documentID {
-            state.keyboardContext.hasChosenLettersInNumericField = false // another field: start from its own default page
-            lastProxyKeyboardType = nil
+        if context.traitCollection != traitCollection {
+            context.traitCollection = traitCollection
         }
-        lastDocumentIdentifier = documentID
         syncPreferredKeyboardTypeWithProxy()
         // Re-render only when a trait the UI depends on changed (field traits, empty <-> non-empty for the Return key).
         let signature = currentRenderSignature
-        if signature != lastRenderSignature {
-            let prefsChanged = lastRenderSignature?.cyrillicEnabled != signature.cyrillicEnabled
+        if !signature.hasText && (textDocumentProxy.documentContextBeforeInput ?? "").isEmpty && (textDocumentProxy.documentContextAfterInput ?? "").isEmpty {
+            if lastRenderSignature?.hasText == true {
+                GreetingBannerState.shared.prepareForAppearance()
+            }
+        }
+        if signature != lastRenderSignature || forceRender {
+            let prefsChanged = forceRender
+                || lastRenderSignature?.cyrillicEnabled != signature.cyrillicEnabled
                 || lastRenderSignature?.suggestionsEnabled != signature.suggestionsEnabled
-            lastRenderSignature = signature
             if prefsChanged {
                 applyPreferences()
             } else {
                 state.keyboardContext.renderVersion &+= 1
             }
+            lastRenderSignature = currentRenderSignature
+            view.setNeedsLayout()
         }
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
+        state.keyboardContext.proxyKeyboardTypeOverride = DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
+            ? DemoStyleProvider.effectiveProxyKeyboardType(for: state.keyboardContext)
+            : nil
         super.textDidChange(textInput)
         refreshProxyState()
     }
 
     override func textDidChangeAsync(_ textInput: UITextInput?) {
         super.textDidChangeAsync(textInput)
-        refreshProxyState()
     }
 
     /// Ensures that if the text field requests a numeric keyboard, the keyboard opens on `.numeric`.
@@ -382,6 +432,7 @@ class KeyboardViewController: KeyboardInputViewController {
     private func syncPreferredKeyboardTypeWithProxy() {
         let context = state.keyboardContext
         let proxyType = DemoStyleProvider.effectiveProxyKeyboardType(for: context)
+        context.proxyKeyboardTypeOverride = DemoStyleProvider.isSandboxOverrideActive(for: context) ? proxyType : nil
         let isNewOrChangedField = lastProxyKeyboardType != proxyType
         lastProxyKeyboardType = proxyType
         if isNewOrChangedField {
@@ -473,6 +524,7 @@ class KeyboardViewController: KeyboardInputViewController {
                 renderBackground: false,
                 buttonContent: { params in
                     let context = controller.state.keyboardContext
+                    let itemRow = params.item.edgeInsets.bottom == 2 ? 3 : 0
                     if params.item.action == .space {
                         let isCyrillic = context.locale.identifier.contains("Cyrl")
                         let isCompact = context.deviceType == .phone || context.isKeyboardFloating
@@ -483,6 +535,7 @@ class KeyboardViewController: KeyboardInputViewController {
                         )
                     } else if let flick = CrimeanTatarIPadKeyboardLayoutProvider.flickSymbol(
                         for: params.item.action,
+                        row: itemRow,
                         context: context
                     ) {
                         let isLandscape = context.interfaceOrientation.isLandscape
@@ -574,10 +627,18 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
     @State private var progress: CGFloat = 0
 
     private var primaryFontSize: CGFloat { isLandscape ? 23 : 21 }
-    private var restingScale: CGFloat { isLandscape ? (13.0 / 23.0) : (11.0 / 21.0) }
-    private var restingOffsetY: CGFloat { isLandscape ? -19.0 : -14.0 }
+    private var restingScale: CGFloat { isLandscape ? (12.0 / 23.0) : (10.5 / 21.0) }
+    private var flickGlyphBaselineCompensation: CGFloat {
+        switch flickSymbol {
+        case ",", ".", "_":
+            return isLandscape ? -3.0 : -2.5
+        default:
+            return 0
+        }
+    }
+    private var restingOffsetY: CGFloat { (isLandscape ? -21.5 : -16.5) + flickGlyphBaselineCompensation }
     private var restingOpacity: Double { isDark ? 0.45 : 0.42 }
-    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 6.0 : 5.0 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 8.5 : 7.5 }
 
     var body: some View {
         let currentFlickScale = restingScale + (1.0 - restingScale) * progress

@@ -225,3 +225,318 @@ private let parityCases: [(String, String)] = {
         }
     }
 }
+
+@Test func multiWordSentencesAndProverbsMatchReference() {
+    let sentences: [(String, String)] = [
+        ("Селям алейкум, азиз достлар!", "Selâm aleyküm, aziz dostlar!"),
+        ("Къырымтатар тили — бизим миллий байлыгъымыздыр.", "Qırımtatar tili — bizim milliy baylığımızdır."),
+        ("Тилимиз яшаса, миллетимиз яшар.", "Tilimiz yaşasa, milletimiz yaşar."),
+        ("Ана тили — миллетнинъ юреги ве рухудыр.", "Ana tili — milletniñ yüregi ve ruhudır."),
+        ("Бугунь ава чокъ гузель, кунеш парылдай.", "Bugün ava çoq güzel, küneş parılday."),
+        ("Яхшы сёз джан азыгъы, яман сёз баш къазыгъы.", "Yahşı söz can azığı, yaman söz baş qazığı."),
+        ("Бирлик олгъан ерде берекет олур.", "Birlik olğan yerde bereket olur.")
+    ]
+
+    for (source, expected) in sentences {
+        #expect(CrimeanTatarTransliterator.transliterate(source) == expected)
+
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = ""
+        for character in source {
+            let s = String(character)
+            let isLetterOrDigit = character.isLetter || character.isNumber || character == "-"
+            if isLetterOrDigit {
+                let edit = engine.append(s, context: document, documentID: id)
+                document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            } else {
+                engine.reset()
+                document += s
+            }
+        }
+        #expect(document == expected, "Sentence typing mismatch for '\(source)': got '\(document)', expected '\(expected)'")
+    }
+}
+
+@Test func randomizedWordsMaintainLiveBackspaceParity() {
+    let syllables = [
+        "къа", "къы", "гъа", "гъы", "нъ", "дж", "лю", "ля", "юз", "ель",
+        "та", "тар", "тил", "мил", "лет", "дост", "гу", "зель", "чокъ", "ях",
+        "шы", "сёз", "къу", "неш", "ба", "гъча", "са", "рай", "де", "нъиз"
+    ]
+    var rngState: UInt64 = 0x5152_4D54_4154_4152 // Deterministic seed ("QRMTATAR")
+    func nextInt(_ upperBound: Int) -> Int {
+        rngState = rngState &* 6364136223846793005 &+ 1442695040888963407
+        return Int((rngState >> 33) % UInt64(upperBound))
+    }
+
+    for _ in 0..<150 {
+        let count = 2 + nextInt(5)
+        var word = ""
+        for idx in 0..<count {
+            var syl = syllables[nextInt(syllables.count)]
+            if idx == 0 && nextInt(3) == 0 {
+                syl = syl.prefix(1).uppercased() + syl.dropFirst()
+            }
+            word += syl
+        }
+
+        let expected = CrimeanTatarTransliterator.transliterate(word)
+        var engine = CrimeanTatarTransliterator()
+        let id = UUID()
+        var document = "시작 "
+        var states = [document]
+        for character in word {
+            let edit = engine.append(String(character), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            states.append(document)
+        }
+        #expect(document == "시작 " + expected, "Random word '\(word)' -> '\(document)' (want '시작 \(expected)')")
+
+        for prev in states.dropLast().reversed() {
+            guard let edit = engine.backspace(context: document, documentID: id) else {
+                Issue.record("Backspace failed on random word \(word)")
+                break
+            }
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            #expect(document == prev)
+        }
+    }
+}
+
+@Test func ios3CorpusPhrasesMatchTransliterator() {
+    let cases: [(String, String)] = [
+        // Section 2: UI Strings
+        ("Бош ер", "Boş yer"),
+        ("Кирсетмек", "Kirsetmek"),
+        ("Кечюв", "Keçüv"),
+        ("Сильмек", "Silmek"),
+        ("Сильгич", "Silgiç"),
+        ("Къыдырмакъ", "Qıdırmaq"),
+        ("Къыдыр", "Qıdır"),
+        ("Азыр", "Azır"),
+        ("Сонъраки", "Soñraki"),
+        ("Сазламалар", "Sazlamalar"),
+        ("Меню", "Menü"),
+        ("Пайлашмакъ", "Paylaşmaq"),
+        ("Денъиштирмек", "Deñiştirmek"),
+        ("Сакъламакъ", "Saqlamaq"),
+        ("Сакълангъан", "Saqlanğan"),
+        ("Режим", "Rejim"),
+        ("Автоматик", "Avtomatik"),
+        ("Ачыкъ", "Açıq"),
+        ("Къою", "Qoyu"),
+        ("Сес", "Ses"),
+        ("Хата", "Hata"),
+        ("Яхшы", "Yahşı"),
+        ("Эбет", "Ebet"),
+        ("Ёкъ", "Yoq"),
+        ("Лугъат", "Luğat"),
+        ("Къырымтатарджа", "Qırımtatarca"),
+        // Section 3 & 4: All 65 Corpus Phrases from ios (3).md
+        ("Тиль — акъыл теразесидир.", "Til — aqıl terazesidir."),
+        ("Илим — акъыл чокърагъыдыр.", "İlim — aqıl çoqrağıdır."),
+        ("Чокъ динъле, аз сёйле.", "Çoq diñle, az söyle."),
+        ("Гузеллик козьде дегиль, сёздедир.", "Güzellik közde degil, sözdedir."),
+        ("Тилини унуткъан, илини унутыр.", "Tilini unutqan, ilini unutır."),
+        ("Яхшы ниет — яры мал.", "Yahşı niyet — yarı mal."),
+        ("Эйилик яп да, дерьягъа ташла.", "Eyilik yap da, deryağa taşla."),
+        ("Башлагъан ишинъни ташлама.", "Başlağan işiñni taşlama."),
+        ("Урьмет этсенъ — урьмет корерсинъ.", "Ürmet etseñ — ürmet körersiñ."),
+        ("Эм татлы, эм аджджы — тильдир.", "Em tatlı, em accı — tildir."),
+        ("Бирлик эв — берекетли эв.", "Birlik ev — bereketli ev."),
+        ("Ярынки ишке бугуньден давран.", "Yarınki işke bugünden davran."),
+        ("Тилимиз пек зенгин экен!", "Tilimiz pek zengin eken!"),
+        ("Сев тилинъни, севген киби ананъны!", "Sev tiliñni, sevgen kibi anañnı!"),
+        ("Ана тилимиз — байлыгъымыздыр.", "Ana tilimiz — baylığımızdır."),
+        ("Севинъиз ана тилимизни!", "Seviñiz ana tilimizni!"),
+        ("Ана тили бешигимнинъ йыры олды.", "Ana tili beşigimniñ yırı oldı."),
+        ("Гъурурымсынъ, ана тилим!", "Ğururımsıñ, ana tilim!"),
+        ("Биз бу тильде лаф этейик!", "Biz bu tilde laf eteyik!"),
+        ("Тапарсынъ тек ана тильде бирдемлик.", "Taparsıñ tek ana tilde birdemlik."),
+        ("Не япсанъ яп, озь тилинъни унутма!", "Ne yapsañ yap, öz tiliñni unutma!"),
+        ("Ана тильге мейиль беринъ!", "Ana tilge meyil beriñ!"),
+        ("Баламызнен Ана тильде сёйлешейик!", "Balamıznen Ana tilde söyleşeyik!"),
+        ("Эвимизде тек ана тильде лаф этемиз.", "Evimizde tek ana tilde laf etemiz."),
+        ("Танърым дерт корьсетмесин къолунъа!", "Tañrım dert körsetmesin qoluña!"),
+        ("Тилинъе мельэм олайым!", "Tiliñe melem olayım!"),
+        ("Бал тамлай дудагъынъдан!", "Bal tamlay dudağıñdan!"),
+        ("Тили де балдан татлы!", "Tili de baldan tatlı!"),
+        ("Чокъ сагъ олунъыз! Алла разы олсун!", "Çoq sağ oluñız! Alla razı olsun!"),
+        ("Сиз пек яхшы лаф этесинъиз!", "Siz pek yahşı laf etesiñiz!"),
+        ("Арды гюр олсун! Эшкъ олсун!", "Ardı gür olsun! Eşq olsun!"),
+        ("Саба шерифинъиз хайыр олсун!", "Saba şerifiñiz hayır olsun!"),
+        ("Кунь шерифинъиз хайыр олсун!", "Kün şerifiñiz hayır olsun!"),
+        ("Акъшам шерифинъиз хайыр олсун!", "Aqşam şerifiñiz hayır olsun!"),
+        ("Гедженъиз хайыр! Хайыргъа къаршы!", "Geceñiz hayır! Hayırğa qarşı!"),
+        ("Селям! Насылсынъ? Не бар, не ёкъ?", "Selâm! Nasılsıñ? Ne bar, ne yoq?"),
+        ("Корюшкенимиз не де яхшы олды!", "Körüşkenimiz ne de yahşı oldı!"),
+        ("Сиз къырымтатарджа язасынъызмы?", "Siz qırımtatarca yazasıñızmı?"),
+        ("Мен къырымтатар тилини огренем.", "Men qırımtatar tilini ögrenem."),
+        ("Сырынъны, йырынъны шу тильде айтынъыз.", "Sırıñnı, yırıñnı şu tilde aytıñız."),
+        ("Рамазан айынъыз мубарек олсун!", "Ramazan ayıñız mubarek olsun!"),
+        ("Ораза байрамынъыз мубарек олсун!", "Oraza bayramıñız mubarek olsun!"),
+        ("Къурбан байрамынъыз мубарек олсун!", "Qurban bayramıñız mubarek olsun!"),
+        ("Джума шерифинъиз мубарек олсун!", "Cuma şerifiñiz mubarek olsun!"),
+        ("Бу тиль манъа — толгъун Ай!", "Bu til maña — tolğun Ay!"),
+        ("Юректен догъа шиирлер.", "Yürekten doğa şiirler."),
+        ("Дильде, фикирде, иште — бирлик!", "Dilde, fikirde, işte — birlik!"),
+        ("Китап — бильги анахтары.", "Kitap — bilgi anahtarı."),
+        ("Аналар къадрине етейик!", "Analar qadrine yeteyik!"),
+        ("Мени дуадан унутманъыз.", "Meni duadan unutmañız."),
+        ("Балалар — козюмизнинъ нурудыр!", "Balalar — közümizniñ nurudır!"),
+        ("Мераба, сентябр, мераба, мектеп!", "Meraba, sentâbr, meraba, mektep!"),
+        ("Эдебият — бильги ве эдеп чокърагъы.", "Edebiyat — bilgi ve edep çoqrağı."),
+        ("Илим барда — къарув бар!", "İlim barda — qaruv bar!"),
+        ("Озь тувгъан тилимде айт, манъа!", "Öz tuvğan tilimde ayt, maña!"),
+        ("«Ана» дедим мен бу тильде биринджи.", "«Ana» dedim men bu tilde birinci."),
+        ("Терек тамырларына таяныр.", "Terek tamırlarına tayanır."),
+        ("Мелеклерге ляйыкъ тилим, Ана тилим.", "Meleklerge lâyıq tilim, Ana tilim."),
+        ("Илим — инсаннынъ кемалыдыр!", "İlim — insannıñ kemalıdır!"),
+        ("Амет-Хан, коклерде Султансынъ!", "Amet-Han, köklerde Sultansıñ!"),
+        ("Догъру язмагъа да огренирсинъиз!", "Doğru yazmağa da ögrenirsiñiz!"),
+        ("Алла ишинъизни онъ кетирсин!", "Alla işiñizni oñ ketirsin!"),
+        ("Сизге сагълыкъ-аманлыкъ тилеймиз!", "Sizge sağlıq-amanlıq tileymiz!"),
+        ("Авада баарь къокъусы бар!", "Avada baar qoqusı bar!"),
+        ("Къапымыз ачыкъ, тёрюмиз бош!", "Qapımız açıq, törümiz boş!"),
+        // Attributions
+        ("Къырымтатар аталар сёзю", "Qırımtatar atalar sözü"),
+        ("Эшреф Шемьи-заде", "Eşref Şemi-zade"),
+        ("Къырымтатар эдебияты дерслигинден", "Qırımtatar edebiyatı dersliginden"),
+        ("Лёман Сулейман", "Löman Suleyman"),
+        ("Къырымтатар шиириетинден", "Qırımtatar şiiriyetinden"),
+        ("Рефат Чайлакъ", "Refat Çaylaq"),
+        ("Къырымтатар дерслигинден", "Qırımtatar dersliginden"),
+        ("Халкъ алгъышы", "Halq alğışı"),
+        ("Къырымтатар айтымы", "Qırımtatar aytımı"),
+        ("Эрвин Бекиров", "Ervin Bekirov"),
+        ("Гунер Акъмолла", "Güner Aqmolla"),
+        ("Ремзи Бурнаш", "Remzi Burnaş"),
+        ("Исмаиль Гаспринский", "İsmail Gasprinskiy"),
+        ("Къырымтатар эдебиятындан", "Qırımtatar edebiyatından"),
+        ("Умер Ипчи", "Ümer İpçi"),
+        ("Черкез-Али", "Çerkez-Ali"),
+        ("Бекир Чобан-заде", "Bekir Çoban-zade"),
+        ("Юнус Къандым", "Yunus Qandım"),
+        ("Усеин Шамиль Тохтаргъазы", "Üsein Şamil Tohtarğazı"),
+        ("Риза Фазыл", "Riza Fazıl"),
+        // Section 5 of ios_verified.md: 15 UI elements
+        ("буюк арифлер", "büyük arifler"),
+        ("ракъамлар ве темсиллер", "raqamlar ve temsiller"),
+        ("къапатмакъ", "qapatmaq"),
+        ("сечип алмакъ", "seçip almaq"),
+        ("дёгмени басмакъ", "dögmeni basmaq"),
+        ("ёлламакъ", "yollamaq"),
+        ("девам этмек", "devam etmek"),
+        ("Къырымтатар клавиатурасы", "Qırımtatar klaviaturası"),
+        ("метин кирсетюв ери", "metin kirsetüv yeri"),
+        ("тиклемек", "tiklemek"),
+        // Additional Corpus Phrases & Attributions from ios_verified.md (1..85)
+        ("Аталар сёзюнде алтын бар.", "Atalar sözünde altın bar."),
+        ("Аталар сёзю — акъылнынъ козю.", "Atalar sözü — aqılnıñ közü."),
+        ("Яхшы сёз — джан азыгъы.", "Yahşı söz — can azığı."),
+        ("Тиль — юрекнинъ анахтары.", "Til — yürekniñ anahtarı."),
+        ("Аз айт, наз айт!", "Az ayt, naz ayt!"),
+        ("Тильге урьмет — ильге урьметтир.", "Tilge ürmet — ilge ürmettir."),
+        ("Сёзюнънен ишинъ бир олсун!", "Sözüñnen işiñ bir olsun!"),
+        ("Кишининъ сёзюнен иши бир олмалы.", "Kişiniñ sözünen işi bir olmalı."),
+        ("Акъикъий сёз акъкъан сувны токътатыр.", "Aqiqiy söz aqqan suvnı toqtatır."),
+        ("Татлы сёз балдан татлы.", "Tatlı söz baldan tatlı."),
+        ("Ана тилинъ — балдан татлы.", "Ana tiliñ — baldan tatlı."),
+        ("Тилинънен гонълюнъ бир олмалы.", "Tiliñnen göñlüñ bir olmalı."),
+        ("Гонълюнъдеки — тилинъде.", "Göñlüñdeki — tiliñde."),
+        ("Эмек — омюрнинъ зинетидир.", "Emek — ömürniñ zinetidir."),
+        ("Бирлик эвде берекет бар.", "Birlik evde bereket bar."),
+        ("Мухаббетлик — бахт анахтары.", "Muhabbetlik — baht anahtarı."),
+        ("Тилини джойгъан, Ватаныны джояр.", "Tilini coyğan, Vatanını coyar."),
+        ("Ашнынъ дады — тузнен, адамнынъ дады — сёзнен.", "Aşnıñ dadı — tuznen, adamnıñ dadı — söznen."),
+        ("Къулакъ — эки, тиль — бир: эки динъле, бир сёйле.", "Qulaq — eki, til — bir: eki diñle, bir söyle."),
+        ("Тильни бильмек — достлукъны къавийлештирмектир.", "Tilni bilmek — dostluqnı qaviyleştirmektir."),
+        ("Бир фильджан къавенинъ къыркъ йыл хатри бардыр.", "Bir filcan qaveniñ qırq yıl hatri bardır."),
+        ("Ана тилим — джаным-джигерим.", "Ana tilim — canım-cigerim."),
+        ("Ана тилим — халкънынъ темели.", "Ana tilim — halqnıñ temeli."),
+        ("Тиль — бизим темелимиз!", "Til — bizim temelimiz!"),
+        ("Озь тилинъни бильсин эр кес!", "Öz tiliñni bilsin er kes!"),
+        ("Дюньяда энъ татлы — къырымтатар тилимиз!", "Dünyada eñ tatlı — qırımtatar tilimiz!"),
+        ("Севдигим ана тиль — рухумнынъ гъыдасы.", "Sevdigim ana til — ruhumnıñ ğıdası."),
+        ("Ана тилим — бу муаббетлик, севги сыры.", "Ana tilim — bu muabbetlik, sevgi sırı."),
+        ("Ана тили аэнклидир, йымшакътыр.", "Ana tili aenklidir, yımşaqtır."),
+        ("Сен бар экеч, мен де барым!", "Sen bar ekeç, men de barım!"),
+        ("Тилинъни биль, окъу, яз!", "Tiliñni bil, oqu, yaz!"),
+        ("Сырынъны, йырынъны шу тильде айтынъыз!", "Sırıñnı, yırıñnı şu tilde aytıñız!"),
+        ("Чатыртав кибидир — бу Ана тилим!", "Çatırtav kibidir — bu Ana tilim!"),
+        ("Окъуп-язам бугунь мен!", "Oqup-yazam bugün men!"),
+        ("Юрекни охшар татлы сёзлеринъ!", "Yürekni ohşar tatlı sözleriñ!"),
+        ("Тувгъан тилим! Гузель тилим!", "Tuvğan tilim! Güzel tilim!"),
+        ("Эллеринъиз дерт корьмесин!", "Elleriñiz dert körmesin!"),
+        ("Элинъе сагълыкъ!", "Eliñe sağlıq!"),
+        ("Берген эль дерт корьмез.", "Bergen el dert körmez."),
+        ("Унерли къолда берекет бар.", "Ünerli qolda bereket bar."),
+        ("Агъзынъыздан бал тамлай!", "Ağzıñızdan bal tamlay!"),
+        ("Хош сефа кельдинъиз!", "Hoş sefa keldiñiz!"),
+        ("Саба шерфинъиз хайыр олсун!", "Saba şerfiñiz hayır olsun!"),
+        ("Хайырлы сабалар олсун!", "Hayırlı sabalar olsun!"),
+        ("Кунюнъиз хайырлы олсун!", "Künüñiz hayırlı olsun!"),
+        ("Акъшам шерфинъиз хайыр олсун!", "Aqşam şerfiñiz hayır olsun!"),
+        ("Геджелер хайыр! Хайыргъа къаршы!", "Geceler hayır! Hayırğa qarşı!"),
+        ("Шехр-у Рамазан, мерхаба!", "Şehr-u Ramazan, merhaba!"),
+        ("Ораза байрамынъыз хайырлы олсун!", "Oraza bayramıñız hayırlı olsun!"),
+        ("Къурбан байрамынъыз хайырлы олсун!", "Qurban bayramıñız hayırlı olsun!"),
+        ("Джума кунюнъиз мубарек олсун!", "Cuma künüñiz mubarek olsun!"),
+        ("Амет-Хан — тиллерде дестансынъ!", "Amet-Han — tillerde destansıñ!"),
+        ("Ант эткенмен яраны сармагъа!", "Ant etkenmen yaranı sarmağa!"),
+        ("Наврез кельди — яз кельди!", "Navrez keldi — yaz keldi!"),
+        ("Тильде, фикирде, иште — бирлик!", "Tilde, fikirde, işte — birlik!"),
+        ("Козю ёкъ — корьсете, сёзю ёкъ — огрете: Китап.", "Közü yoq — körsete, sözü yoq — ögrete: Kitap."),
+        ("Бирлик олгъан ерде тирлик бар.", "Birlik olğan yerde tirlik bar."),
+        ("Ана-бабанъа урьмет этсенъ, озюнъ урьмет корерсинъ.", "Ana-babaña ürmet etseñ, özüñ ürmet körersiñ."),
+        ("Къырым — меним Ватанымдыр!", "Qırım — menim Vatanımdır!"),
+        ("Аллах кечмишлеримизни рахмет эйлесин!", "Allah keçmişlerimizni rahmet eylesin!"),
+        ("Джанымыз-джигеримиз — балалар!", "Canımız-cigerimiz — balalar!"),
+        ("Миллетнинъ шаны — байрагъында!", "Milletniñ şanı — bayrağında!"),
+        ("Окъувны севген окъур, сонъундан гульдай къокъур.", "Oquvnı sevgen oqur, soñundan gülday qoqur."),
+        ("Баарьдеки арекет — кузьдеки берекет.", "Baardeki areket — küzdeki bereket."),
+        ("Шегирт олмай, уста олмазсынъ.", "Şegirt olmay, usta olmazsıñ."),
+        ("Илим барда — къарув бар.", "İlim barda — qaruv bar."),
+        ("Озь тувгъан тилимде айт магъа!", "Öz tuvğan tilimde ayt mağa!"),
+        ("Тюркий тиллер гульзарынынъ фиданы!", "Türkiy tiller gülzarınıñ fidanı!"),
+        ("Терек тамырларына таяныр, инсан — тувгъанларына.", "Terek tamırlarına tayanır, insan — tuvğanlarına."),
+        ("Ёл косьтерген Чолпан йылдызым!", "Yol köstergen Çolpan yıldızım!"),
+        ("Аджайипсинъ, Ана тили!", "Acayipsiñ, Ana tili!"),
+        ("Ишинъиз онъ кельсин!", "İşiñiz oñ kelsin!"),
+        ("Ватан — экинджи ананъ.", "Vatan — ekinci anañ."),
+        ("Бирликте — къувет!", "Birlikte — quvet!"),
+        // Additional Attributions from ios_verified.md
+        ("Дилявер Осман", "Dilâver Osman"),
+        ("Сейран Усеинов", "Seyran Üseinov"),
+        ("Мамбет Аблялимов", "Mambet Ablâlimov"),
+        ("Риза Халид", "Riza Halid"),
+        ("Шерьян Али", "Şeryan Ali"),
+        ("Васфие Къыпчакъ", "Vasfiye Qıpçaq"),
+        ("Керим Джаманакълы", "Kerim Camanaqlı"),
+        ("Сеитумер Эмин", "Seitümer Emin"),
+        ("Шакир Селим", "Şakir Selim"),
+        ("Селямлашув", "Selâmlaşuv"),
+        ("Сагълыкълашув", "Sağlıqlaşuv"),
+        ("Рамазан иляхиси", "Ramazan ilâhisi"),
+        ("Байрам къутлавы", "Bayram qutlavı"),
+        ("Джума къутлавы", "Cuma qutlavı"),
+        ("Номан Челебиджихан", "Noman Çelebicihan"),
+        ("Къырымтатар халкъ йыры", "Qırımtatar halq yırı"),
+        ("Къырымтатар тапмаджасы", "Qırımtatar tapmacası"),
+        ("Хатыра дуасы", "Hatıra duası"),
+        ("Ремзие Тарсинова", "Remziye Tarsinova"),
+        ("Идрис Асанин", "İdris Asanin")
+    ]
+
+    var mismatches: [String] = []
+    for (cyrl, expectedLat) in cases {
+        let actualLat = CrimeanTatarTransliterator.transliterate(cyrl)
+        if actualLat != expectedLat {
+            mismatches.append("'\(cyrl)' -> '\(actualLat)' (expected '\(expectedLat)')")
+        }
+    }
+    #expect(mismatches.isEmpty, "Mismatches: \(mismatches)")
+}
+
+

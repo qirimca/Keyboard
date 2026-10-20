@@ -11,6 +11,7 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) var openURL
+    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
     @State private var selected = Page.onboard1.rawValue
     @State private var text = ""
     
@@ -35,6 +36,7 @@ struct OnboardingView: View {
     }
     
     var body: some View {
+        let _ = language
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             TabView(selection: $selected) {

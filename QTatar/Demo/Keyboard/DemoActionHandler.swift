@@ -217,10 +217,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     override func handle(_ suggestion: Autocomplete.Suggestion) {
         resetComposition()
+        GreetingBannerState.shared.dismissForTyping()
+        SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
         let currentWord = proxy.currentWord ?? ""
         let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty)
         let replacement = suggestion.text
+        let savedChars = max(replacement.count - currentWord.count + 1, 2)
+        KeyboardUsageStats.markInjectedText(replacement)
+        KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: savedChars)
         TextHistoryManager.shared.recordReplace(oldText: currentWord, newText: replacement)
         SuggestionsDataBaseManager.shared.learnWordIfPermitted(
             replacement,
@@ -267,6 +272,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
            let flick = activeFlickSymbol, flick.action == action {
             activeFlickSymbol = nil
             SpaceBarState.shared.fadeToResting()
+            GreetingBannerState.shared.dismissForTyping()
             handleUntimed(.release, on: .character(flick.symbol), replaced: true)
             return
         }
@@ -287,6 +293,29 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
         if gesture == .release {
             SpaceBarState.shared.fadeToResting()
+            switch action {
+            case .character(let ch), .characterMargin(let ch):
+                GreetingBannerState.shared.dismissForTyping()
+                SpaceBarState.shared.recordKeystroke()
+                KeyboardUsageStats.recordCharacterTyped(count: max(ch.count, 1))
+            case .space:
+                GreetingBannerState.shared.dismissForTyping()
+                KeyboardUsageStats.recordCharacterTyped(count: 1)
+                let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
+                if let last = before.last, !last.isWhitespace {
+                    KeyboardUsageStats.recordManualWordCompleted()
+                }
+            case .primary:
+                GreetingBannerState.shared.dismissForTyping()
+                let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
+                if let last = before.last, !last.isWhitespace {
+                    KeyboardUsageStats.recordManualWordCompleted()
+                }
+            case .backspace:
+                GreetingBannerState.shared.dismissForTyping()
+            default:
+                break
+            }
         }
         if action == .capsLock {
             if gesture == .press {
@@ -346,7 +375,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         // Prevent tapping inactive primary actions only when enablesReturnKeyAutomatically is enabled
         if case .primary = action, gesture == .release {
             let proxy = keyboardContext.textDocumentProxy
-            if proxy.enablesReturnKeyAutomatically == true {
+            if DemoStyleProvider.effectiveEnablesReturnKeyAutomatically(for: keyboardContext) {
                 let hasText = proxy.hasText || !(proxy.documentContextBeforeInput?.isEmpty ?? true)
                 if !hasText {
                     return
@@ -365,6 +394,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 keyboardController?.performAutocomplete()
                 return
             } else if name == "url_domain" {
+                GreetingBannerState.shared.dismissForTyping()
+                KeyboardUsageStats.recordCharacterTyped(count: 4)
                 TextHistoryManager.shared.recordInsert(".com")
                 keyboardContext.textDocumentProxy.insertText(".com")
                 keyboardController?.performAutocomplete()

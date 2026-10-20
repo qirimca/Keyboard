@@ -16,7 +16,7 @@ public extension KeyboardContext {
     /// the ``textDocumentProxy`` autocapitalization.
     var preferredKeyboardType: Keyboard.KeyboardType {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        if let proxyKeyboardType = textDocumentProxy.keyboardType {
+        if let proxyKeyboardType = proxyKeyboardTypeOverride ?? textDocumentProxy.keyboardType {
             switch proxyKeyboardType {
             case .numbersAndPunctuation:
                 if keyboardType.isAlphabetic && !hasChosenLettersInNumericField {

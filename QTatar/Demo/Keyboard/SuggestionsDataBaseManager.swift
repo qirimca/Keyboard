@@ -177,7 +177,14 @@ final class SuggestionsDataBaseManager {
         }()
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.async { [weak self] in
-            self?.recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
+            guard let self else { return }
+            self.ensureDB()
+            self.ensureUserDB()
+            let isBrandNewWord = (self.frequency(of: normalizedWord) == 0 && self.userFrequency(of: normalizedWord) == 0)
+            self.recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
+            if isBrandNewWord {
+                KeyboardUsageStats.recordWordLearned()
+            }
         }
     }
 

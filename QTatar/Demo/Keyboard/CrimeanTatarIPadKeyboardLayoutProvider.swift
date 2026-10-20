@@ -54,7 +54,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         guard actions.count == 3 else { return actions }
         
         // In email fields on iPad, replace the trailing comma in row 2 with '@'
-        // In URL fields on iPad, replace the trailing comma in row 2 with '/'
+        // In URL fields on iPad, replace the trailing comma in row 2 with '.' (matching native iPadOS Web layout)
         if context.keyboardType.isAlphabetic {
             if isEmailContext(context) {
                 if let lastCharIndex = actions[2].lastIndex(where: { $0 == .character(",") }) {
@@ -62,7 +62,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
                 }
             } else if isURLContext(context) {
                 if let lastCharIndex = actions[2].lastIndex(where: { $0 == .character(",") }) {
-                    actions[2][lastCharIndex] = .character("/")
+                    actions[2][lastCharIndex] = .character(".")
                 }
             }
         }
@@ -81,8 +81,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     static var letterPitch: Double { (1 - tabFraction - backspaceFraction) / 12 }
 
     /// Returns the top secondary flick-down symbol for a Docked iPad key in `.alphabetic` or `.numeric` mode.
-    static func flickSymbol(for action: KeyboardAction, context: KeyboardContext) -> String? {
+    static func flickSymbol(for action: KeyboardAction, row: Int? = nil, context: KeyboardContext) -> String? {
         guard context.deviceType == .pad && !context.isKeyboardFloating else { return nil }
+        if let row, row >= 3 { return nil }
         guard case .character(let char) = action, !char.isEmpty else { return nil }
 
         let isCyrillic = context.locale.identifier.contains("Cyrl")
@@ -92,14 +93,18 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
 
         if context.keyboardType.isAlphabetic {
             let lower = char.lowercased()
-            for row in 0..<min(alphaRows.count, numRows.count) {
-                if let col = alphaRows[row].firstIndex(where: { $0.lowercased == lower }),
-                   col < numRows[row].count {
-                    return numRows[row][col].neutral
+            for r in 0..<min(alphaRows.count, numRows.count) {
+                if let col = alphaRows[r].firstIndex(where: { $0.lowercased == lower }),
+                   col < numRows[r].count {
+                    return numRows[r][col].neutral
                 }
             }
-            // In email/URL contexts, the trailing comma on Row 2 is replaced by '@' or '/'
-            if (char == "@" || char == "/"),
+            // In email context, the trailing comma on Row 2 is replaced by '@'; in URL context, by '.'
+            let isEmail = DemoStyleProvider.effectiveProxyKeyboardType(for: context) == .emailAddress
+                || (!DemoStyleProvider.isSandboxOverrideActive(for: context) && context.textDocumentProxy.textContentType == .emailAddress)
+            let isURL = DemoStyleProvider.effectiveProxyKeyboardType(for: context) == .URL
+                || (!DemoStyleProvider.isSandboxOverrideActive(for: context) && context.textDocumentProxy.textContentType == .URL)
+            if (isEmail && char == "@") || (isURL && char == "."),
                numRows.count > 2,
                let last = numRows[2].last {
                 return last.neutral
@@ -108,10 +113,10 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
 
         if context.keyboardType == .numeric {
-            for row in 0..<min(numRows.count, symRows.count) {
-                if let col = numRows[row].firstIndex(where: { $0.neutral == char }),
-                   col < symRows[row].count {
-                    let sym = symRows[row][col].neutral
+            for r in 0..<min(numRows.count, symRows.count) {
+                if let col = numRows[r].firstIndex(where: { $0.neutral == char }),
+                   col < symRows[r].count {
+                    let sym = symRows[r][col].neutral
                     return sym != char ? sym : nil
                 }
             }
@@ -161,8 +166,8 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        if isURLContext(context) {
-            result += [.character("."), .character("/"), .custom(named: "url_domain")]
+        if isURLContext(context) && context.keyboardType.isAlphabetic {
+            result += [.character(":"), .character("/"), .character("_"), .character("-"), .custom(named: "url_domain")]
         } else {
             result.append(.space)
         }
@@ -170,7 +175,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             result.append(.character("."))
             result.append(.character("_"))
             result.append(.character("-"))
-        } else if isURLContext(context) {
+        } else if isURLContext(context) && context.keyboardType.isAlphabetic {
             if let action = keyboardSwitchActionForBottomRow(for: context) {
                 result.append(action)
             }
@@ -249,7 +254,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             }
         }
         if action == .space || action == .custom(named: "url_domain") { return .available }
-        if case .character = action { return isURLContext(context) ? .available : .percentage(0.07) }
+        if case .character = action { return isURLContext(context) ? .percentage(0.115) : .percentage(0.07) }
         if action == .nextKeyboard || action == .dismissKeyboard { return .percentage(0.085) }
         return .percentage(0.10)
     }

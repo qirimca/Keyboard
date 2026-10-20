@@ -28,10 +28,7 @@ enum Home: String {
 
     var allLocalizedVersions: [String] {
         ["crh", "uk", "en"].map { lang in
-            guard let path = Bundle.main.path(forResource: lang, ofType: "lproj"),
-                  let bundle = Bundle(path: path) else {
-                return NSLocalizedString(self.rawValue, tableName: "Home", bundle: .main, comment: "")
-            }
+            let bundle = KeyboardPreferences.localizationBundle(for: lang)
             return NSLocalizedString(self.rawValue, tableName: "Home", bundle: bundle, comment: "")
         }
     }

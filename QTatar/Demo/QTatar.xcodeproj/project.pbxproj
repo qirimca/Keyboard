@@ -28,8 +28,6 @@
 		8FFAC93AFB474D7DA31913AB /* DemoStyleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C672642A7BCE37004A5721 /* DemoStyleProvider.swift */; };
 		98C898F7BF2C45A2A2B8C2B2 /* TransliterationRules.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C302550732D493EA99DF6ED /* TransliterationRules.json */; };
 		9B5976BB48744E91AFB8CFC1 /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
-		9C2112AC30824B320031FE0A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9C2112AB30824B320031FE0A /* Localizable.xcstrings */; };
-		9C2112AD30824B320031FE0A /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 9C2112AA30824B320031FE0A /* InfoPlist.xcstrings */; };
 		9C2112BC30824B700031FE0A /* KeyboardCyrillic.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9C2112C530824BBB0031FE0A /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
 		A443539D51694B189C28CB8B /* Autocomplete+NativeToolbarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973C12D3B1001007D41BC /* Autocomplete+NativeToolbarStyle.swift */; };
@@ -347,6 +345,7 @@
 				A921151E25D58A94003510D9 /* Sources */,
 				A921151F25D58A94003510D9 /* Frameworks */,
 				A921152025D58A94003510D9 /* Resources */,
+				6AE973D12D3B2001007D41BC /* Package AppLocalizations Bundle */,
 				A921154425D58AC7003510D9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -413,14 +412,13 @@
 				};
 			};
 			buildConfigurationList = A921151D25D58A94003510D9 /* Build configuration list for PBXProject "QTatar" */;
-			developmentRegion = en;
+			developmentRegion = crh;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
+				crh,
 				Base,
+				en,
 				uk,
-				crh,
-				crh,
 			);
 			mainGroup = A921151925D58A94003510D9;
 			packageReferences = (
@@ -458,8 +456,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9C2112AC30824B320031FE0A /* Localizable.xcstrings in Resources */,
-				9C2112AD30824B320031FE0A /* InfoPlist.xcstrings in Resources */,
 				A921152A25D58A96003510D9 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -497,6 +493,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
 			shellScript = "\"${SRCROOT}/../Scripts/xcode_build_predictions.sh\"\n";
+		};
+		6AE973D12D3B2001007D41BC /* Package AppLocalizations Bundle */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package AppLocalizations Bundle";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "APP_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nLOC_BUNDLE=\"${APP_DIR}/AppLocalizations.bundle\"\nrm -rf \"${LOC_BUNDLE}\" \"${APP_DIR}/Settings.bundle\" \"${APP_DIR}/Localizable.loctable\" \"${APP_DIR}/InfoPlist.loctable\"\nmkdir -p \"${LOC_BUNDLE}\"\nfor lang in crh uk en; do\n  if [ -d \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj\" ]; then\n    mkdir -p \"${LOC_BUNDLE}/${lang}.lproj\"\n    cp -f \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj/\"*.strings \"${LOC_BUNDLE}/${lang}.lproj/\"\n  fi\n  rm -rf \"${APP_DIR}/${lang}.lproj\"\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -633,6 +648,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -659,6 +675,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -971,26 +988,10 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		A97599952B266CB9000EDCC1 /* XCRemoteSwiftPackageReference "KeyboardKitPro" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/KeyboardKit/KeyboardKitPro.git";
-			requirement = {
-				kind = exactVersion;
-				version = 8.3.5;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		41C4AA8D2BBA597E0094EF1C /* KeyboardKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = KeyboardKit;
-		};
-		41E468B82BBA601000C4926F /* KeyboardKitPro */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A97599952B266CB9000EDCC1 /* XCRemoteSwiftPackageReference "KeyboardKitPro" */;
-			productName = KeyboardKitPro;
 		};
 		A9EAA6C827B1526500BC9376 /* KeyboardKit */ = {
 			isa = XCSwiftPackageProductDependency;

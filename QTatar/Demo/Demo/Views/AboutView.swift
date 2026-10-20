@@ -67,12 +67,7 @@ private extension AboutView {
             Image("logo")
                 .resizable()
                 .scaledToFit()
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                }
-                .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 20))
                 .frame(height: 84)
             Text(About.about_first_key.localized)
                 .titleText()
