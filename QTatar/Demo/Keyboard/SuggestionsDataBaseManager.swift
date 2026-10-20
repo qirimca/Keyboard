@@ -622,7 +622,7 @@ final class SuggestionsDataBaseManager {
         guard let db, !candidates.isEmpty else { return nil }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, "SELECT freq FROM words WHERE word = ?1 ORDER BY freq DESC LIMIT 1;", -1, &stmt, nil) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(db, "SELECT freq FROM words WHERE word = ?1 LIMIT 1;", -1, &stmt, nil) == SQLITE_OK else {
             return nil
         }
         var best: (word: String, freq: Int32)?

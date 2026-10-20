@@ -322,13 +322,14 @@ class KeyboardViewController: KeyboardInputViewController {
         guard !autocompletePending else { return }
         autocompletePending = true
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
+            guard let self, self.autocompletePending else { return }
             self.autocompletePending = false
             self.performAutocompleteNow()
         }
     }
 
     private func performAutocompleteNow() {
+        guard isViewLoaded, view.window != nil else { return }
         super.performAutocomplete()
     }
 
@@ -493,6 +494,7 @@ class KeyboardViewController: KeyboardInputViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        autocompletePending = false
         KeyboardUsageStats.scheduleCrossProcessSync(immediate: true)
     }
 

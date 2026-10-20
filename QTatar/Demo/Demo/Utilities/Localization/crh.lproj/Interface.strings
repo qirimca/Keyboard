@@ -67,12 +67,12 @@
 "settings.stats" = "Statistika ve yazuv seviyeleri";
 "stats.charsSubtitle" = "Arifler: %d";
 "stats.speedSubtitle" = "Soñki tezlik: %d %@ · %d %@";
-"stats.speedPeakSubtitle" = "En yüksek yazuv tezligi";
+"stats.speedPeakSubtitle" = "Eñ yüksek yazuv tezligi";
 "stats.manualWordsSubtitle" = "Qolnen arif-arif yazılğan";
 "stats.suggestedWordsSubtitle" = "Qazanılğan arifler: %d";
 "stats.speedNextFormat" = "Soñraki: «%@» — %d %@ (+%d)";
-"stats.speedMaxReached" = "En yüksek tezlik seviyesi!";
+"stats.speedMaxReached" = "Eñ yüksek tezlik seviyesi!";
 "stats.volumeNextFormat" = "Soñraki: «%@» — %d söz (+%d)";
-"stats.volumeMaxReached" = "En yüksek faallik seviyesi!";
+"stats.volumeMaxReached" = "Eñ yüksek faallik seviyesi!";
 "stats.activeTimeSubtitle" = "Faal yazuv vaqtı";
 "stats.learnedWordsSubtitle" = "Şahsiy luğat";
