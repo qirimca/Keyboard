@@ -144,7 +144,7 @@ final class SuggestionsDataBaseManager {
     // MARK: - Personalized Word & Bigram Learning
 
     private static let excludedURLTokens: Set<String> = ["http", "https", "www"]
-    private var sessionLearnedWords = Set<String>()
+    private var sessionUnconfirmedOOVCounts: [String: Int] = [:]
 
     static func isValidLearnableWord(_ rawWord: String) -> Bool {
         let trimmed = rawWord.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -205,25 +205,45 @@ final class SuggestionsDataBaseManager {
             self.ensureDB()
             self.ensureUserDB()
             let baseFreq = self.bundledFrequency(of: normalizedWord)
-            let effectiveWord: String
-            if !explicitlyConfirmed,
-               let canonical = self.diacriticCorrection(for: normalizedWord, over: baseFreq > 0 ? baseFreq : nil) {
-                effectiveWord = canonical.lowercased(with: Self.casingLocale)
-            } else if !explicitlyConfirmed, baseFreq == 0, self.typoCorrection(for: normalizedWord) != nil {
-                return
-            } else {
-                effectiveWord = normalizedWord
+            let existingUserFreq = self.userFrequency(of: normalizedWord)
+
+            if !explicitlyConfirmed {
+                // Never learn an unconfirmed word that has a dominant diacritic autocorrection (e.g. "qirim" -> "qırım").
+                if self.diacriticCorrection(for: normalizedWord, over: baseFreq > 0 ? baseFreq : nil) != nil {
+                    return
+                }
+                if baseFreq == 0 {
+                    // Never learn an unconfirmed prefix fragment or 1-edit typo that has an isAutocorrect suggestion.
+                    let prefixMatches = self.fetchWordsStartingWith(prefix: normalizedWord, limit: 8)
+                    if self.shortCompletion(for: normalizedWord, in: prefixMatches) != nil {
+                        return
+                    }
+                    if prefixMatches.isEmpty, self.typoCorrection(for: normalizedWord) != nil {
+                        return
+                    }
+                    // Out-of-vocabulary words (!isKnownInBundledDB) require either explicit confirmation
+                    // or repeated input (newCount >= 2) before entering user_unigrams.
+                    if existingUserFreq == 0 {
+                        let newCount = (self.sessionUnconfirmedOOVCounts[normalizedWord] ?? 0) + 1
+                        self.sessionUnconfirmedOOVCounts[normalizedWord] = newCount
+                        guard newCount >= 2 else { return }
+                    }
+                }
             }
+
             let effectivePrev: String? = {
                 guard let normalizedPrev else { return nil }
                 let prevBaseFreq = self.bundledFrequency(of: normalizedPrev)
-                if let canonicalPrev = self.diacriticCorrection(for: normalizedPrev, over: prevBaseFreq > 0 ? prevBaseFreq : nil) {
+                if prevBaseFreq > 0 || self.userFrequency(of: normalizedPrev) > 0 {
+                    return normalizedPrev
+                }
+                if let canonicalPrev = self.diacriticCorrection(for: normalizedPrev, over: nil) {
                     return canonicalPrev.lowercased(with: Self.casingLocale)
                 }
-                return normalizedPrev
+                return nil
             }()
-            let isNewUserWord = (self.userFrequency(of: effectiveWord) == 0)
-            self.recordLearnedEntry(word: effectiveWord, previousWord: effectivePrev, timestamp: now)
+            let isNewUserWord = (existingUserFreq == 0)
+            self.recordLearnedEntry(word: normalizedWord, previousWord: effectivePrev, timestamp: now)
             let totalLearned = self.countUserUnigrams()
             if totalLearned > 0 {
                 KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
@@ -278,8 +298,8 @@ final class SuggestionsDataBaseManager {
 
     func unlearnWord(_ word: String) {
         let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
-        sessionLearnedWords.remove(normalized)
         databaseQueue.sync {
+            sessionUnconfirmedOOVCounts.removeValue(forKey: normalized)
             ensureUserDB()
             guard let userDB else { return }
             var stmt: OpaquePointer?
@@ -292,9 +312,9 @@ final class SuggestionsDataBaseManager {
     }
 
     func clearUserLexicon() {
-        sessionLearnedWords.removeAll()
         databaseQueue.async { [weak self] in
             guard let self else { return }
+            self.sessionUnconfirmedOOVCounts.removeAll()
             self.ensureUserDB()
             if let userDB = self.userDB {
                 sqlite3_exec(userDB, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)

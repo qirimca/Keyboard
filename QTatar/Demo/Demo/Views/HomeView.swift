@@ -343,7 +343,9 @@ struct HomeView: View {
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
-            refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+            let now = CFAbsoluteTimeGetCurrent()
+            let shouldSync = (now - Self.lastPreferencesSyncTime) >= 1.0
+            refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: shouldSync)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
@@ -454,6 +456,7 @@ struct HomeView: View {
     private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
     private static var didRegisterFloatingObserver = false
     private static var didRegisterStatsObserver = false
+    private static var lastPreferencesSyncTime: CFAbsoluteTime = 0
 
     private static func registerStatsSyncObserverIfNeeded() {
         guard !didRegisterStatsObserver else { return }
@@ -488,6 +491,7 @@ struct HomeView: View {
     private func refreshStatsFromAppGroup(syncSQLite: Bool = false, synchronizePreferences: Bool = false) {
         guard statsEnabled else { return }
         if synchronizePreferences {
+            Self.lastPreferencesSyncTime = CFAbsoluteTimeGetCurrent()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         }
         if syncSQLite {
@@ -717,10 +721,8 @@ struct HomeView: View {
     /// so narrow Slide Over / Split View windows on a landscape iPad always render in 1 column.
     static func usesTwoColumns(_ size: CGSize, containerSize: CGSize = .zero) -> Bool {
         guard Device.iPad else { return false }
-        let effectiveWidth = containerSize.width > 0 ? containerSize.width : size.width
-        let isWindowedLandscape = containerSize.height > 0 && containerSize.width > containerSize.height * 1.35
-        let isLandscape = (size.width > size.height && size.width >= 560) || (containerSize.width >= 900) || isWindowedLandscape
-        return isLandscape && effectiveWidth >= 560
+        let windowSize = (size.width > 0 && size.height > 0) ? size : containerSize
+        return windowSize.width > windowSize.height && windowSize.width >= 560
     }
 }
 
@@ -2184,10 +2186,8 @@ private struct SandboxTextView: UIViewRepresentable {
         func recordTypedCharacters(_ count: Int) {
             guard KeyboardPreferences.statsEnabled, count > 0 else { return }
             let now = CACurrentMediaTime()
-            let boundedCount = min(count, 2)
-            for _ in 0..<boundedCount {
-                keystrokeTimestamps.append(now)
-            }
+            // Record 1 physical keystroke timestamp per tap (even for 2-character Cyrillic digraphs like къ/гъ/нъ/дж)
+            keystrokeTimestamps.append(now)
             keystrokeTimestamps.removeAll { now - $0 > 12.0 }
             guard keystrokeTimestamps.count >= 2, let first = keystrokeTimestamps.first else { return }
             let span = max(now - first, 1.2)

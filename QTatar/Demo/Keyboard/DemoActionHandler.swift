@@ -204,6 +204,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         return (word, prevWord)
     }
 
+    private static let casingLocale = Locale(identifier: "tr")
+
     /// Space applies the autocorrection computed from the text as it is right now. The published suggestions
     /// arrive asynchronously and are cleared on every edit, so a quick Space would otherwise find none.
     override func tryApplyAutocorrectSuggestion(
@@ -223,7 +225,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 let existing = autocompleteContext.suggestions
                 let suggestions: [Autocomplete.Suggestion]
                 if let first = existing.first,
-                   first.text.lowercased() == word.lowercased() {
+                   first.text.lowercased(with: Self.casingLocale) == word.lowercased(with: Self.casingLocale) {
                     suggestions = existing
                 } else {
                     suggestions = provider.suggestionsNow(for: word)
@@ -349,7 +351,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     if hasWordBefore {
                         KeyboardUsageStats.recordManualWordCompleted()
                         let resolved = resolveCompletedWord(in: proxy)
-                        if let word = resolved.word, !word.isEmpty {
+                        let hasPendingAutocorrect = autocompleteContext.suggestions.contains(where: { $0.isAutocorrect })
+                        if let word = resolved.word, !word.isEmpty, !hasPendingAutocorrect {
                             lastCompletedTypedWord = word
                             SuggestionsDataBaseManager.shared.learnWordIfPermitted(
                                 word,
@@ -390,7 +393,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 if hasWordBefore {
                     KeyboardUsageStats.recordManualWordCompleted()
                     let resolved = resolveCompletedWord(in: proxy)
-                    if let word = resolved.word, !word.isEmpty {
+                    let hasPendingAutocorrect = autocompleteContext.suggestions.contains(where: { $0.isAutocorrect })
+                    if let word = resolved.word, !word.isEmpty, !hasPendingAutocorrect {
                         lastCompletedTypedWord = word
                         SuggestionsDataBaseManager.shared.learnWordIfPermitted(
                             word,

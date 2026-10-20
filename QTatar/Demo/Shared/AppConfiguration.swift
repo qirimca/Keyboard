@@ -197,9 +197,9 @@ enum KeyboardUsageStats {
     /// including the trailing space (`6.4` letters + `1` space = `7.4` chars/word).
     static let crhCharsPerWord: Double = 7.4
 
-    /// Debounces `CFPreferencesAppSynchronize` disk flushes and Darwin notifications on a background
-    /// utility queue (`0.25s` coalescing window during rapid typing) so typing never hammers `cfprefsd`
-    /// while `HomeView` still receives synchronized cross-process updates in real time.
+    /// Posts a Darwin notification immediately for an open `HomeView` while debouncing
+    /// `CFPreferencesAppSynchronize` disk flushes to `1.2s` during rapid typing (or flushing
+    /// immediately on word completion, word learning, phrase insertion, or keyboard hide).
     static func scheduleCrossProcessSync(immediate: Bool = false) {
         guard KeyboardPreferences.statsEnabled else { return }
         if immediate {
@@ -216,9 +216,16 @@ enum KeyboardUsageStats {
             return
         }
         syncQueue.async {
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(statsUpdatedNotification as CFString),
+                nil,
+                nil,
+                true
+            )
             guard !isCoalescedSyncPending else { return }
             isCoalescedSyncPending = true
-            syncQueue.asyncAfter(deadline: .now() + 0.25) {
+            syncQueue.asyncAfter(deadline: .now() + 1.2) {
                 isCoalescedSyncPending = false
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 CFNotificationCenterPostNotification(
