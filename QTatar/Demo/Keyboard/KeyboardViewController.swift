@@ -112,6 +112,7 @@ class KeyboardViewController: KeyboardInputViewController {
     private func applyPreferences() {
         KeyboardPreferences.defaults.synchronize()
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        KeyboardPreferences.refreshCachedPreferences()
         state.autocompleteContext.isAutocompleteEnabled = KeyboardPreferences.suggestionsEnabled
         state.autocompleteContext.isAutocorrectEnabled = KeyboardPreferences.suggestionsEnabled
         if !KeyboardPreferences.suggestionsEnabled { state.autocompleteContext.suggestions = [] }
@@ -229,6 +230,16 @@ class KeyboardViewController: KeyboardInputViewController {
                 }
             },
             "crh.key.sandboxTraitsChanged" as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            observer,
+            { _, _, _, _, _ in
+                SuggestionsDataBaseManager.shared.clearUserLexicon()
+            },
+            KeyboardUsageStats.statsResetNotification as CFString,
             nil,
             .deliverImmediately
         )

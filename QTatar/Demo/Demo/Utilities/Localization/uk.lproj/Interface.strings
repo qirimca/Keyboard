@@ -64,3 +64,15 @@
 "stats.volumeTier3" = "Майстер слова";
 "stats.volumeTier4" = "Носій живої мови";
 "stats.volumeTier5" = "Світоч кримськотатарської";
+"settings.stats" = "Статистика та рівні набору";
+"stats.charsSubtitle" = "Символів: %d";
+"stats.speedSubtitle" = "Поточний темп: %d %@ · %d %@";
+"stats.speedPeakSubtitle" = "Рекордний темп друку";
+"stats.manualWordsSubtitle" = "Вручну по літерах";
+"stats.suggestedWordsSubtitle" = "Зекономлено символів: %d";
+"stats.speedNextFormat" = "Далі: «%@» — %d %@ (ще +%d)";
+"stats.speedMaxReached" = "Досягнуто найвищого рівня!";
+"stats.volumeNextFormat" = "Далі: «%@» — %d сл. (ще +%d)";
+"stats.volumeMaxReached" = "Досягнуто найвищого рівня!";
+"stats.activeTimeSubtitle" = "Чистий час набору";
+"stats.learnedWordsSubtitle" = "Особистий словник";

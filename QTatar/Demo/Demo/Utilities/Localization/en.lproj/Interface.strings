@@ -64,3 +64,16 @@
 "stats.volumeTier3" = "Wordsmith";
 "stats.volumeTier4" = "Language Keeper";
 "stats.volumeTier5" = "Crimean Tatar Luminary";
+"settings.stats" = "Typing statistics & levels";
+"settings.stats.desc" = "Track typing speed, words & achievements";
+"stats.charsSubtitle" = "Characters: %d";
+"stats.speedSubtitle" = "Recent pace: %d %@ · %d %@";
+"stats.speedPeakSubtitle" = "Peak typing pace";
+"stats.manualWordsSubtitle" = "Typed manually";
+"stats.suggestedWordsSubtitle" = "Characters saved: %d";
+"stats.speedNextFormat" = "Next: “%@” — %d %@ (+%d more)";
+"stats.speedMaxReached" = "Top speed tier reached!";
+"stats.volumeNextFormat" = "Next: “%@” — %d words (+%d more)";
+"stats.volumeMaxReached" = "Top activity tier reached!";
+"stats.activeTimeSubtitle" = "Active typing sessions";
+"stats.learnedWordsSubtitle" = "Personal dictionary";

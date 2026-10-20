@@ -109,6 +109,7 @@ struct HomeView: View {
     @AppStorage(KeyboardPreferences.cyrillicKey, store: KeyboardPreferences.defaults) private var cyrillicEnabled = true
     @AppStorage(KeyboardPreferences.suggestionsKey, store: KeyboardPreferences.defaults) private var suggestionsEnabled = true
     @AppStorage(KeyboardPreferences.wordLearningKey, store: KeyboardPreferences.defaults) private var wordLearningEnabled = true
+    @AppStorage(KeyboardPreferences.statsEnabledKey, store: KeyboardPreferences.defaults) private var statsEnabled = true
 
     @AppStorage(KeyboardUsageStats.totalWordsKey, store: KeyboardPreferences.defaults) private var totalWords = 0
     @AppStorage(KeyboardUsageStats.manualWordsKey, store: KeyboardPreferences.defaults) private var manualWords = 0
@@ -129,6 +130,8 @@ struct HomeView: View {
     @State private var canSandboxRedo = false
     @State private var isStatsExpanded = false
     @State private var showResetStatsConfirmation = false
+
+    private static let statsPollTimer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
 
     @State private var selectedFieldMode: KeyboardTestFieldMode = {
         if let value = UserDefaults.standard.string(forKey: "qt_field"),
@@ -190,8 +193,10 @@ struct HomeView: View {
 
                             // Child 1: Top Basic Statistics (expandable) + Keyboard settings (left column in 2-col, below status indicators in 1-col)
                             VStack(alignment: .leading, spacing: geometry.size.height < 360 ? 10 : 14) {
-                                statisticsAndAchievementsSection
-                                    .id("statsSection")
+                                if statsEnabled {
+                                    statisticsAndAchievementsSection
+                                        .id("statsSection")
+                                }
                                 keyboardSettingsSection
                             }
 
@@ -203,6 +208,7 @@ struct HomeView: View {
                     }
                     .onChange(of: isStatsExpanded) { _, expanded in
                         if expanded {
+                            refreshStatsFromAppGroup(syncSQLite: true)
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 scroll.scrollTo("statsSection", anchor: .top)
                             }
@@ -238,7 +244,7 @@ struct HomeView: View {
                         }
                     }
                     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                        if isWritingFieldFocused {
+                        if isWritingFieldFocused && !isStatsExpanded {
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 scroll.scrollTo("writingArea", anchor: .bottom)
                             }
@@ -259,13 +265,14 @@ struct HomeView: View {
                     }
                 }
             }
-            .padding(.horizontal, Device.iPhone ? 12 : 24)
+            .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
             .padding(.top, Device.iPhone ? 12 : 16)
             .padding(.bottom, Device.iPhone ? 12 : 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .scrollDismissesKeyboard(.interactively)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: language)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: cyrillicEnabled)
+            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: statsEnabled)
         }
         .background {
             // Measure the window before keyboard avoidance; a docked keyboard must not
@@ -282,7 +289,7 @@ struct HomeView: View {
                 PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
                     navigationPath.append(DemoRoute.onboarding)
                 }
-                .padding(Device.iPhone ? 12 : 24)
+                .padding((Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         })
@@ -319,6 +326,8 @@ struct HomeView: View {
         }
         .onAppear {
             Self.registerFloatingRequestObserverIfNeeded()
+            Self.registerStatsSyncObserverIfNeeded()
+            Self.enforceFullScreenWindowIfNeeded()
             if !didInitializeThemeFromSystem {
                 didInitializeThemeFromSystem = true
                 selectedThemeMode = .mode(isDark: colorScheme == .dark)
@@ -331,6 +340,15 @@ struct HomeView: View {
             }
             refreshCyrillicStatus()
             keyboardState.refresh()
+            refreshStatsFromAppGroup(syncSQLite: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
+            refreshStatsFromAppGroup(syncSQLite: false)
+        }
+        .onReceive(Self.statsPollTimer) { _ in
+            if statsEnabled && scenePhase != .background {
+                refreshStatsFromAppGroup(syncSQLite: false)
+            }
         }
         .onChange(of: colorScheme) { _, newScheme in
             guard UIApplication.shared.applicationState == .active else { return }
@@ -372,22 +390,40 @@ struct HomeView: View {
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
             KeyboardPreferences.defaults.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: suggestionsEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
             KeyboardPreferences.defaults.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: wordLearningEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
             KeyboardPreferences.defaults.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
+        }
+        .onChange(of: statsEnabled) { _, newValue in
+            KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.statsEnabledKey)
+            KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.refreshCachedPreferences()
+            notifySandboxTraitsChanged()
+            if !newValue {
+                isStatsExpanded = false
+                liveWPM = 0
+                liveCPM = 0
+            } else {
+                refreshStatsFromAppGroup(syncSQLite: true)
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                Self.enforceFullScreenWindowIfNeeded()
                 if isWritingFieldFocused || shouldAutoFocusSandbox {
                     syncThemeToAppGroup(selectedThemeMode)
                 } else {
@@ -395,6 +431,9 @@ struct HomeView: View {
                 }
                 refreshCyrillicStatus()
                 keyboardState.refresh()
+                refreshStatsFromAppGroup(syncSQLite: true)
+            } else if newPhase == .inactive {
+                refreshStatsFromAppGroup(syncSQLite: false)
             } else {
                 shouldAutoFocusSandbox = false
                 clearThemeOverride()
@@ -406,7 +445,73 @@ struct HomeView: View {
         }
     }
 
+    private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
     private static var didRegisterFloatingObserver = false
+    private static var didRegisterStatsObserver = false
+
+    private static func registerStatsSyncObserverIfNeeded() {
+        guard !didRegisterStatsObserver else { return }
+        didRegisterStatsObserver = true
+        let center = CFNotificationCenterGetDarwinNotifyCenter()
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: HomeView.localStatsRefreshNotification, object: nil)
+                }
+            },
+            KeyboardUsageStats.statsUpdatedNotification as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: HomeView.localStatsRefreshNotification, object: nil)
+                }
+            },
+            KeyboardUsageStats.statsResetNotification as CFString,
+            nil,
+            .deliverImmediately
+        )
+    }
+
+    private func refreshStatsFromAppGroup(syncSQLite: Bool = false) {
+        guard statsEnabled else { return }
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        if syncSQLite {
+            KeyboardUsageStats.syncLearnedWordsCountFromSQLite()
+        }
+        let d = KeyboardPreferences.defaults
+        let newTotalWords = d.integer(forKey: KeyboardUsageStats.totalWordsKey)
+        let newManualWords = d.integer(forKey: KeyboardUsageStats.manualWordsKey)
+        let newSuggestedWords = d.integer(forKey: KeyboardUsageStats.suggestedWordsKey)
+        let newSuggestedChars = d.integer(forKey: KeyboardUsageStats.suggestedCharsKey)
+        let newTotalChars = d.integer(forKey: KeyboardUsageStats.totalCharsKey)
+        let newLearnedWords = d.integer(forKey: KeyboardUsageStats.learnedWordsKey)
+        let newActiveSeconds = d.double(forKey: KeyboardUsageStats.activeSecondsKey)
+        let newPeakWPM = d.integer(forKey: KeyboardUsageStats.peakWPMKey)
+        let newPeakCPM = d.integer(forKey: KeyboardUsageStats.peakCPMKey)
+        let newLastWPM = d.integer(forKey: KeyboardUsageStats.lastWPMKey)
+        let newLastCPM = d.integer(forKey: KeyboardUsageStats.lastCPMKey)
+        let newPhrasesInserted = d.integer(forKey: KeyboardUsageStats.phrasesInsertedKey)
+
+        if totalWords != newTotalWords { totalWords = newTotalWords }
+        if manualWords != newManualWords { manualWords = newManualWords }
+        if suggestedWords != newSuggestedWords { suggestedWords = newSuggestedWords }
+        if suggestedCharacters != newSuggestedChars { suggestedCharacters = newSuggestedChars }
+        if totalCharacters != newTotalChars { totalCharacters = newTotalChars }
+        if learnedWordsCount != newLearnedWords { learnedWordsCount = newLearnedWords }
+        if abs(activeSeconds - newActiveSeconds) > 0.3 { activeSeconds = newActiveSeconds }
+        if peakWPM != newPeakWPM { peakWPM = newPeakWPM }
+        if peakCPM != newPeakCPM { peakCPM = newPeakCPM }
+        if lastWPM != newLastWPM { lastWPM = newLastWPM }
+        if lastCPM != newLastCPM { lastCPM = newLastCPM }
+        if phrasesInserted != newPhrasesInserted { phrasesInserted = newPhrasesInserted }
+    }
 
     private static func registerFloatingRequestObserverIfNeeded() {
         guard !didRegisterFloatingObserver else { return }
@@ -520,8 +625,12 @@ struct HomeView: View {
         }
     }
 
+    private static var didApplyLaunchArguments = false
+
     /// Test hook: `-qt_field email -qt_theme modernDark` preselects the sandbox state at launch (no-op otherwise).
     private func applyLaunchArguments() {
+        guard !Self.didApplyLaunchArguments else { return }
+        Self.didApplyLaunchArguments = true
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -553,19 +662,21 @@ struct HomeView: View {
             }
             if args.contains("-qt_reset_text") {
                 text = ""
+                language = "crh"
                 suggestionsEnabled = true
                 wordLearningEnabled = true
                 cyrillicEnabled = true
+                statsEnabled = true
+                KeyboardPreferences.defaults.set("crh", forKey: KeyboardPreferences.languageKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
                 KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
                 KeyboardPreferences.defaults.synchronize()
-                if let containerDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID) {
-                    try? FileManager.default.removeItem(at: containerDir.appendingPathComponent("user_lexicon.sqlite"))
-                    try? FileManager.default.removeItem(at: containerDir.appendingPathComponent("user_lexicon.sqlite-wal"))
-                    try? FileManager.default.removeItem(at: containerDir.appendingPathComponent("user_lexicon.sqlite-shm"))
-                }
+                KeyboardPreferences.refreshCachedPreferences()
+                KeyboardUsageStats.resetAll()
+                refreshStatsFromAppGroup(syncSQLite: false)
             }
             if shouldAutoFocusSandbox {
                 syncThemeToAppGroup(selectedThemeMode)
@@ -585,12 +696,12 @@ struct HomeView: View {
         notifySandboxTraitsChanged()
     }
 
+    /// Allows flexible window resizing across Slide Over, Split View, Stage Manager, and full screen.
     static func enforceFullScreenWindowIfNeeded() {
         guard Device.iPad else { return }
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
-            let screenBounds = scene.screen.bounds.size
-            scene.sizeRestrictions?.minimumSize = screenBounds
-            scene.sizeRestrictions?.maximumSize = screenBounds
+            scene.sizeRestrictions?.minimumSize = CGSize(width: 280, height: 320)
+            scene.sizeRestrictions?.maximumSize = CGSize(width: 4096, height: 4096)
         }
     }
 
@@ -835,6 +946,25 @@ private extension HomeView {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
+
+            Divider().padding(.leading, 54)
+
+            // Typing statistics & progression levels toggle
+            HStack(spacing: 12) {
+                settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92))
+                interfaceLabel("settings.stats")
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                    .foregroundStyle(primaryInk)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Toggle("", isOn: $statsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("settings.stats.toggle")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
@@ -978,8 +1108,8 @@ private extension HomeView {
 
     var writingAreaSection: some View {
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let displayWPM = hasText ? liveWPM : 0
-        let displayCPM = hasText ? liveCPM : 0
+        let displayWPM = (statsEnabled && hasText) ? liveWPM : 0
+        let displayCPM = (statsEnabled && hasText) ? liveCPM : 0
 
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
@@ -991,7 +1121,7 @@ private extension HomeView {
                     .foregroundStyle(secondaryInk)
                     .lineLimit(1)
 
-                if displayCPM > 0 || displayWPM > 0 {
+                if statsEnabled && (displayCPM > 0 || displayWPM > 0) {
                     HStack(spacing: 3) {
                         Image(systemName: "bolt.heart.fill")
                             .font(.system(size: 10, weight: .bold))
@@ -1054,7 +1184,7 @@ private extension HomeView {
                     placeholder: Home.home_typing_key.localized,
                     fieldMode: selectedFieldMode,
                     themeMode: selectedThemeMode,
-                    preferencesToken: "\(cyrillicEnabled)-\(suggestionsEnabled)-\(wordLearningEnabled)",
+                    preferencesToken: "\(cyrillicEnabled)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
                     fontSize: Device.iPad ? 16 : 15
                 )
                 .frame(height: Device.iPad ? 96 : 82)
@@ -1116,8 +1246,10 @@ private extension HomeView {
 
     /// Top Basic Statistics bar with expandable Extended Statistics & Achievements card.
     var statisticsAndAchievementsSection: some View {
-        let bestWPM = max(peakWPM, liveWPM)
-        let bestCPM = max(peakCPM, liveCPM)
+        let bestWPM = max(peakWPM, max(lastWPM, liveWPM))
+        let bestCPM = max(peakCPM, max(lastCPM, liveCPM))
+        let recentWPM = liveWPM > 0 ? liveWPM : lastWPM
+        let recentCPM = liveCPM > 0 ? liveCPM : lastCPM
         let effectiveManualWords = (manualWords == 0 && suggestedWords == 0 && totalWords > 0)
             ? totalWords
             : manualWords
@@ -1130,6 +1262,50 @@ private extension HomeView {
         }()
         let speedTier = KeyboardUsageStats.speedTier(for: bestWPM)
         let volumeTier = KeyboardUsageStats.volumeTier(for: totalWords)
+        let wpmUnit = localizedInterfaceString("stats.wpmUnit")
+        let cpmUnit = localizedInterfaceString("stats.cpmUnit")
+
+        let speedSubtitle: String = {
+            if recentWPM > 0 || recentCPM > 0 {
+                return String(
+                    format: localizedInterfaceString("stats.speedSubtitle"),
+                    recentWPM,
+                    wpmUnit,
+                    recentCPM,
+                    cpmUnit
+                )
+            }
+            return localizedInterfaceString("stats.speedPeakSubtitle")
+        }()
+
+        let speedTierSubtitle: String = {
+            if let nextTarget = speedTier.nextTargetWPM, speedTier.level < 5 {
+                let nextName = localizedInterfaceString("stats.speedTier\(speedTier.level + 1)")
+                let remaining = max(nextTarget - bestWPM, 1)
+                return String(
+                    format: localizedInterfaceString("stats.speedNextFormat"),
+                    nextName,
+                    nextTarget,
+                    wpmUnit,
+                    remaining
+                )
+            }
+            return localizedInterfaceString("stats.speedMaxReached")
+        }()
+
+        let volumeTierSubtitle: String = {
+            if let nextTarget = volumeTier.nextTargetWords, volumeTier.level < 5 {
+                let nextName = localizedInterfaceString("stats.volumeTier\(volumeTier.level + 1)")
+                let remaining = max(nextTarget - totalWords, 1)
+                return String(
+                    format: localizedInterfaceString("stats.volumeNextFormat"),
+                    nextName,
+                    nextTarget,
+                    remaining
+                )
+            }
+            return localizedInterfaceString("stats.volumeMaxReached")
+        }()
 
         return VStack(alignment: .leading, spacing: 10) {
             Button {
@@ -1138,59 +1314,77 @@ private extension HomeView {
                     isStatsExpanded.toggle()
                 }
             } label: {
-                ViewThatFits(in: .horizontal) {
+                if isStatsExpanded {
                     HStack(spacing: 8) {
                         settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92))
                         interfaceLabel("stats.title")
                             .font(InterfaceFont.font("GeneralSans-Semibold", size: 14.5))
                             .foregroundStyle(primaryInk)
                             .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-
-                        Spacer(minLength: 6)
-
-                        HStack(spacing: 6) {
-                            compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
-                            compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(localizedInterfaceString("stats.wpmUnit"))")
-                            compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
-                            walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
-                        }
-
-                        Image(systemName: isStatsExpanded ? "chevron.up" : "chevron.down")
+                        Spacer()
+                        Image(systemName: "chevron.up")
                             .font(.system(size: 12.5, weight: .semibold))
                             .foregroundStyle(secondaryInk)
                             .frame(width: 24, height: 24)
                             .background(Color(.tertiarySystemFill), in: Circle())
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
-
-                    VStack(alignment: .leading, spacing: 8) {
+                } else {
+                    ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {
                             settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92))
                             interfaceLabel("stats.title")
                                 .font(InterfaceFont.font("GeneralSans-Semibold", size: 14.5))
                                 .foregroundStyle(primaryInk)
                                 .lineLimit(1)
-                            Spacer()
-                            Image(systemName: isStatsExpanded ? "chevron.up" : "chevron.down")
+                                .fixedSize(horizontal: true, vertical: false)
+
+                            Spacer(minLength: 6)
+
+                            HStack(spacing: 6) {
+                                compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
+                                compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)")
+                                compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
+                                walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
+                            }
+
+                            Image(systemName: "chevron.down")
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundStyle(secondaryInk)
                                 .frame(width: 24, height: 24)
                                 .background(Color(.tertiarySystemFill), in: Circle())
                         }
-                        HStack(spacing: 6) {
-                            compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
-                            compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(localizedInterfaceString("stats.wpmUnit"))")
-                            compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
-                            walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
-                            Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92))
+                                interfaceLabel("stats.title")
+                                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 14.5))
+                                    .foregroundStyle(primaryInk)
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 12.5, weight: .semibold))
+                                    .foregroundStyle(secondaryInk)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color(.tertiarySystemFill), in: Circle())
+                            }
+                            HStack(spacing: 6) {
+                                compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
+                                compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)")
+                                compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
+                                walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
+                                Spacer(minLength: 0)
+                            }
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
-                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("stats.expandToggle")
@@ -1198,58 +1392,93 @@ private extension HomeView {
             if isStatsExpanded {
                 Divider()
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                    statTile(
-                        icon: "text.word.spacing",
-                        color: brandBlue,
-                        title: localizedInterfaceString("stats.words"),
-                        value: "\(totalWords) (\(totalCharacters))"
-                    )
-                    statTile(
-                        icon: "bolt.heart.fill",
-                        color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                        title: localizedInterfaceString("stats.speed"),
-                        value: "\(bestWPM) \(localizedInterfaceString("stats.wpmUnit")) · \(bestCPM) \(localizedInterfaceString("stats.cpmUnit"))"
-                    )
-                    statTile(
-                        icon: "keyboard.fill",
-                        color: brandBlue,
-                        title: localizedInterfaceString("stats.manualWords"),
-                        value: "\(effectiveManualWords)"
-                    )
-                    statTile(
-                        icon: "sparkles",
-                        color: appleGreen,
-                        title: localizedInterfaceString("stats.suggestedWords"),
-                        value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))"
-                    )
-                    statTile(
-                        icon: "gauge.with.dots.needle.67percent",
-                        color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                        title: localizedInterfaceString("stats.speedLevel"),
-                        value: localizedInterfaceString("stats.speedTier\(speedTier.level)")
-                    )
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("stats.speedTierTile")
-                    statTile(
-                        icon: "flame.fill",
-                        color: Color(red: 0.58, green: 0.29, blue: 0.92),
-                        title: localizedInterfaceString("stats.volumeLevel"),
-                        value: localizedInterfaceString("stats.volumeTier\(volumeTier.level)")
-                    )
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("stats.volumeTierTile")
-                    statTile(
-                        icon: "clock.fill",
-                        color: appleGreen,
-                        title: localizedInterfaceString("stats.activeTime"),
-                        value: formattedActiveTime
-                    )
-                    walnutBrainStatTile(
-                        color: Color(red: 0.96, green: 0.58, blue: 0.04),
-                        title: localizedInterfaceString("stats.learnedWords"),
-                        value: "\(learnedWordsCount)"
-                    )
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        statTile(
+                            icon: "text.word.spacing",
+                            color: brandBlue,
+                            title: localizedInterfaceString("stats.words"),
+                            value: "\(totalWords)",
+                            subtitle: String(format: localizedInterfaceString("stats.charsSubtitle"), typedChars)
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.wordsTile")
+
+                        statTile(
+                            icon: "bolt.heart.fill",
+                            color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                            title: localizedInterfaceString("stats.speed"),
+                            value: "\(bestWPM) \(wpmUnit) · \(bestCPM) \(cpmUnit)",
+                            subtitle: speedSubtitle
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.speedTile")
+                    }
+
+                    HStack(spacing: 10) {
+                        statTile(
+                            icon: "keyboard.fill",
+                            color: brandBlue,
+                            title: localizedInterfaceString("stats.manualWords"),
+                            value: "\(effectiveManualWords)",
+                            subtitle: localizedInterfaceString("stats.manualWordsSubtitle")
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.manualWordsTile")
+
+                        statTile(
+                            icon: "sparkles",
+                            color: appleGreen,
+                            title: localizedInterfaceString("stats.suggestedWords"),
+                            value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))",
+                            subtitle: String(format: localizedInterfaceString("stats.suggestedWordsSubtitle"), savedChars)
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.suggestedWordsTile")
+                    }
+
+                    HStack(spacing: 10) {
+                        statTile(
+                            icon: "gauge.with.dots.needle.67percent",
+                            color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                            title: localizedInterfaceString("stats.speedLevel"),
+                            value: localizedInterfaceString("stats.speedTier\(speedTier.level)"),
+                            subtitle: speedTierSubtitle
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.speedTierTile")
+
+                        statTile(
+                            icon: "flame.fill",
+                            color: Color(red: 0.58, green: 0.29, blue: 0.92),
+                            title: localizedInterfaceString("stats.volumeLevel"),
+                            value: localizedInterfaceString("stats.volumeTier\(volumeTier.level)"),
+                            subtitle: volumeTierSubtitle
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.volumeTierTile")
+                    }
+
+                    HStack(spacing: 10) {
+                        statTile(
+                            icon: "clock.fill",
+                            color: appleGreen,
+                            title: localizedInterfaceString("stats.activeTime"),
+                            value: formattedActiveTime,
+                            subtitle: localizedInterfaceString("stats.activeTimeSubtitle")
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.activeTimeTile")
+
+                        walnutBrainStatTile(
+                            color: Color(red: 0.96, green: 0.58, blue: 0.04),
+                            title: localizedInterfaceString("stats.learnedWords"),
+                            value: "\(learnedWordsCount)",
+                            subtitle: localizedInterfaceString("stats.learnedWordsSubtitle")
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("stats.learnedWordsTile")
+                    }
                 }
 
                 Divider()
@@ -1284,35 +1513,39 @@ private extension HomeView {
                     .accessibilityIdentifier("stats.resetButton")
                 }
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                    achievementBadge(
-                        icon: "flag.checkered",
-                        title: localizedInterfaceString("stats.ach.firstStep"),
-                        subtitle: localizedInterfaceString("stats.ach.firstStep.desc"),
-                        progress: min(Double(totalWords) / 10.0, 1.0),
-                        unlocked: totalWords >= 10
-                    )
-                    achievementBadge(
-                        icon: "bolt.heart.fill",
-                        title: localizedInterfaceString("stats.ach.speed"),
-                        subtitle: localizedInterfaceString("stats.ach.speed.desc"),
-                        progress: min(Double(bestWPM) / 30.0, 1.0),
-                        unlocked: bestWPM >= 30
-                    )
-                    achievementBadge(
-                        icon: "book.closed.fill",
-                        title: localizedInterfaceString("stats.ach.scholar"),
-                        subtitle: localizedInterfaceString("stats.ach.scholar.desc"),
-                        progress: min(max(Double(totalWords) / 100.0, Double(learnedWordsCount) / 10.0), 1.0),
-                        unlocked: totalWords >= 100 || learnedWordsCount >= 10
-                    )
-                    achievementBadge(
-                        icon: "sparkles",
-                        title: localizedInterfaceString("stats.ach.wisdom"),
-                        subtitle: localizedInterfaceString("stats.ach.wisdom.desc"),
-                        progress: phrasesInserted >= 1 ? 1.0 : 0.0,
-                        unlocked: phrasesInserted >= 1
-                    )
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        achievementBadge(
+                            icon: "flag.checkered",
+                            title: localizedInterfaceString("stats.ach.firstStep"),
+                            subtitle: localizedInterfaceString("stats.ach.firstStep.desc"),
+                            progress: min(Double(totalWords) / 10.0, 1.0),
+                            unlocked: totalWords >= 10
+                        )
+                        achievementBadge(
+                            icon: "bolt.heart.fill",
+                            title: localizedInterfaceString("stats.ach.speed"),
+                            subtitle: localizedInterfaceString("stats.ach.speed.desc"),
+                            progress: min(Double(bestWPM) / 30.0, 1.0),
+                            unlocked: bestWPM >= 30
+                        )
+                    }
+                    HStack(spacing: 10) {
+                        achievementBadge(
+                            icon: "book.closed.fill",
+                            title: localizedInterfaceString("stats.ach.scholar"),
+                            subtitle: localizedInterfaceString("stats.ach.scholar.desc"),
+                            progress: min(max(Double(totalWords) / 100.0, Double(learnedWordsCount) / 10.0), 1.0),
+                            unlocked: totalWords >= 100 || learnedWordsCount >= 10
+                        )
+                        achievementBadge(
+                            icon: "sparkles",
+                            title: localizedInterfaceString("stats.ach.wisdom"),
+                            subtitle: localizedInterfaceString("stats.ach.wisdom.desc"),
+                            progress: phrasesInserted >= 1 ? 1.0 : 0.0,
+                            unlocked: phrasesInserted >= 1
+                        )
+                    }
                 }
             }
         }
@@ -1330,6 +1563,7 @@ private extension HomeView {
                 liveWPM = 0
                 liveCPM = 0
                 learnedWordsCount = 0
+                refreshStatsFromAppGroup(syncSQLite: false)
             }
             Button(localizedInterfaceString("stats.cancel"), role: .cancel) {}
         } message: {
@@ -1337,8 +1571,8 @@ private extension HomeView {
         }
     }
 
-    func statTile(icon: String, color: Color, title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+    func statTile(icon: String, color: Color, title: String, value: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .semibold))
@@ -1353,15 +1587,20 @@ private extension HomeView {
                 .foregroundStyle(primaryInk)
                 .lineLimit(1)
                 .contentTransition(.numericText())
+            Text(subtitle)
+                .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
+                .foregroundStyle(secondaryInk)
+                .lineLimit(1)
+                .contentTransition(.numericText())
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 9)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    func walnutBrainStatTile(color: Color, title: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+    func walnutBrainStatTile(color: Color, title: String, value: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
                 WalnutBrainIcon(color: color, size: 13)
                 Text(title)
@@ -1374,9 +1613,14 @@ private extension HomeView {
                 .foregroundStyle(primaryInk)
                 .lineLimit(1)
                 .contentTransition(.numericText())
+            Text(subtitle)
+                .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
+                .foregroundStyle(secondaryInk)
+                .lineLimit(1)
+                .contentTransition(.numericText())
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 9)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
@@ -1927,7 +2171,7 @@ private struct SandboxTextView: UIViewRepresentable {
         }
 
         func recordTypedCharacters(_ count: Int) {
-            guard count > 0 else { return }
+            guard KeyboardPreferences.statsEnabled, count > 0 else { return }
             let now = CACurrentMediaTime()
             let boundedCount = min(count, 2)
             for _ in 0..<boundedCount {

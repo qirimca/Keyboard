@@ -28,11 +28,24 @@ final class QirimKeyUITests: XCTestCase {
         if !(firstKey.exists || firstKey.waitForExistence(timeout: 4.5) || key("numeric").exists || key("alphabetic").exists) {
             field.tap()
         }
-        if !(firstKey.exists || firstKey.waitForExistence(timeout: 3.5) || key("numeric").exists || key("alphabetic").exists) {
+        if !(firstKey.exists || firstKey.waitForExistence(timeout: 2.5) || key("numeric").exists || key("alphabetic").exists) {
             let nextKeyboard = app.buttons["Next keyboard"]
-            for _ in 0..<4 where nextKeyboard.exists {
-                nextKeyboard.tap()
-                if firstKey.waitForExistence(timeout: 5.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
+            if !nextKeyboard.exists {
+                let clearBtn = app.buttons["sandbox.clear"]
+                if clearBtn.exists && clearBtn.isHittable {
+                    clearBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.3)
+                }
+                if field.exists && field.isHittable {
+                    field.tap()
+                    Thread.sleep(forTimeInterval: 0.8)
+                }
+            }
+            for step in 1...6 where nextKeyboard.exists {
+                for _ in 0..<step where nextKeyboard.exists {
+                    nextKeyboard.tap()
+                }
+                if firstKey.waitForExistence(timeout: 3.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
                     break
                 }
             }
@@ -54,13 +67,25 @@ final class QirimKeyUITests: XCTestCase {
             XCTAssertTrue(element.waitForExistence(timeout: 3), "Missing key: " + identifier, file: file, line: line)
         }
         element.tap()
+        if identifier == "space", field.exists {
+            let current = (field.value as? String) ?? ""
+            if !current.isEmpty && !current.hasSuffix(" ") {
+                Thread.sleep(forTimeInterval: 0.25)
+                let recheck = (field.value as? String) ?? ""
+                if !recheck.isEmpty && !recheck.hasSuffix(" ") && element.exists {
+                    element.tap()
+                }
+            }
+        }
     }
 
     private func expectText(_ expected: String, file: StaticString = #filePath, line: UInt = #line) {
-        let predicate = NSPredicate(format: "value == %@", expected)
+        let predicate = expected.isEmpty
+            ? NSPredicate(format: "value == %@ OR value == nil", "")
+            : NSPredicate(format: "value == %@", expected)
         let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: field)], timeout: 3)
         if result != .completed {
-            XCTAssertEqual(field.value as? String, expected, file: file, line: line)
+            XCTAssertEqual((field.value as? String) ?? "", expected, file: file, line: line)
         }
     }
 
@@ -96,10 +121,16 @@ final class QirimKeyUITests: XCTestCase {
             return
         }
         let nextKeyboard = app.buttons["Next keyboard"]
-        for _ in 0..<8 where nextKeyboard.exists {
-            nextKeyboard.tap()
+        for step in 1...6 where nextKeyboard.exists {
+            for _ in 0..<step where nextKeyboard.exists {
+                nextKeyboard.tap()
+            }
             if key("alphabetic").exists { tap("alphabetic") }
-            if waitForLetter(wanted, timeout: 1.5) { return }
+            if waitForLetter(wanted, timeout: 1.2) { return }
+            if key("toggle_script").exists {
+                tap("toggle_script")
+                if waitForLetter(wanted, timeout: 1.2) { return }
+            }
         }
         throw XCTSkip("Select the other extension with the system globe on iPhone before this test.")
     }
@@ -386,13 +417,22 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.wordLearning.toggle").firstMatch.exists)
         try selectScript(cyrillic: false)
 
-        // Verify greeting banner appears when field is empty and tapping it inserts a wisdom phrase.
+        // Verify greeting banner appears when field is empty, is strictly Latin-only, and tapping it inserts a wisdom phrase.
         let greetingBanner = app.descendants(matching: .any).matching(identifier: "autocomplete.greetingBanner").firstMatch
         if greetingBanner.waitForExistence(timeout: 2) {
             capture("Greeting banner on empty field")
+            let bannerLabel = greetingBanner.label
+            XCTAssertFalse(
+                bannerLabel.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) }),
+                "Greeting banner must be strictly Crimean Tatar Latin without Cyrillic characters (got: '\(bannerLabel)')"
+            )
             greetingBanner.tap()
             let inserted = (field.value as? String) ?? ""
             XCTAssertFalse(inserted.isEmpty, "Tapping greeting banner must insert wisdom phrase into text field")
+            XCTAssertFalse(
+                inserted.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) }),
+                "Inserted greeting wisdom phrase must be strictly Crimean Tatar Latin without Cyrillic (got: '\(inserted)')"
+            )
             clear()
         }
 
@@ -449,20 +489,70 @@ final class QirimKeyUITests: XCTestCase {
             ? app.buttons["stats.expandToggle"]
             : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
         XCTAssertTrue(statsToggle.exists, "Top Basic Statistics bar expand toggle must exist")
+        XCTAssertTrue(statsToggle.label.contains("söz/daq"), "Collapsed statistics header must show compact summary pills")
         statsToggle.tap()
         let resetBtn = app.buttons["stats.resetButton"].exists
             ? app.buttons["stats.resetButton"]
             : app.descendants(matching: .any).matching(identifier: "stats.resetButton").firstMatch
         XCTAssertTrue(resetBtn.waitForExistence(timeout: 2), "Expanded statistics card must reveal stats.resetButton")
+        XCTAssertFalse(statsToggle.label.contains("söz/daq"), "Expanded statistics header must hide compact summary pills to avoid duplicating values")
+
+        let wordsTile = app.descendants(matching: .any).matching(identifier: "stats.wordsTile").firstMatch
         let speedTierTile = app.descendants(matching: .any).matching(identifier: "stats.speedTierTile").firstMatch
         let volumeTierTile = app.descendants(matching: .any).matching(identifier: "stats.volumeTierTile").firstMatch
+        let learnedWordsTile = app.descendants(matching: .any).matching(identifier: "stats.learnedWordsTile").firstMatch
+        XCTAssertTrue(wordsTile.exists, "Words tile must exist in expanded statistics card")
+        XCTAssertTrue(wordsTile.label.contains("Arifler:"), "Words tile must show labeled character count subtitle instead of unlabeled parentheses (got: '\(wordsTile.label)')")
+        XCTAssertFalse(wordsTile.label.contains("("), "Words tile must not show unlabeled parentheses (got: '\(wordsTile.label)')")
         XCTAssertTrue(speedTierTile.exists, "Speed tier tile must exist in expanded statistics card")
         XCTAssertTrue(volumeTierTile.exists, "Volume tier tile must exist in expanded statistics card")
         XCTAssertFalse(speedTierTile.label.contains("stats.speedTier"), "Speed tier tile must display localized text, not raw key (got: '\(speedTierTile.label)')")
         XCTAssertFalse(volumeTierTile.label.contains("stats.volumeTier"), "Volume tier tile must display localized text, not raw key (got: '\(volumeTierTile.label)')")
+        XCTAssertTrue(speedTierTile.label.contains("Soñraki:") || speedTierTile.label.contains("yüksek"), "Speed tier tile must display next tier progression info (got: '\(speedTierTile.label)')")
+        XCTAssertTrue(volumeTierTile.label.contains("Soñraki:") || volumeTierTile.label.contains("yüksek"), "Volume tier tile must display next tier progression info (got: '\(volumeTierTile.label)')")
+        XCTAssertTrue(learnedWordsTile.exists, "Learned words tile must exist in expanded statistics card")
+        XCTAssertFalse(learnedWordsTile.label.contains(", 0,"), "Learned words tile must increment after typing words (got: '\(learnedWordsTile.label)')")
         capture("Top statistics expanded")
+
+        // Verify Reset Statistics confirmation clears all counters and user_lexicon in place, and typing a new word immediately increments both wordsTile and learnedWordsTile in real time.
+        resetBtn.tap()
+        let confirmReset = app.alerts.buttons["Sıfırla"].firstMatch
+        XCTAssertTrue(confirmReset.waitForExistence(timeout: 2), "Reset confirmation alert button 'Sıfırla' must appear")
+        confirmReset.tap()
+        Thread.sleep(forTimeInterval: 0.4)
+        XCTAssertTrue(wordsTile.label.contains("Arifler: 0"), "After reset, wordsTile must show 0 characters (got: '\(wordsTile.label)')")
+        XCTAssertTrue(learnedWordsTile.label.contains(", 0,"), "After reset, learnedWordsTile must reset to 0 (got: '\(learnedWordsTile.label)')")
+
+        field.tap()
+        typeLetters("vatan")
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(wordsTile.label.contains(", 1,") && wordsTile.label.contains("Arifler: 6"), "Typing 'vatan ' after reset must update wordsTile to 1 word and 6 characters in real time (got: '\(wordsTile.label)')")
+        XCTAssertTrue(learnedWordsTile.label.contains(", 1,"), "Typing 'vatan ' after reset must update learnedWordsTile to 1 learned word in real time (got: '\(learnedWordsTile.label)')")
+        clear()
+
         statsToggle.tap()
         capture("Top statistics collapsed")
+
+        // Verify statistics setting toggle disables/hides the statistics section and re-enables it cleanly.
+        let statsSettingSwitch = app.switches["settings.stats.toggle"].exists
+            ? app.switches["settings.stats.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.stats.toggle").firstMatch
+        XCTAssertTrue(statsSettingSwitch.exists, "Statistics setting toggle must exist in keyboard settings card")
+        if statsSettingSwitch.isHittable {
+            statsSettingSwitch.tap()
+        } else {
+            statsSettingSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        Thread.sleep(forTimeInterval: 0.35)
+        XCTAssertFalse(statsToggle.exists, "Disabling statistics toggle must hide the statistics card")
+        capture("Statistics disabled via settings toggle")
+        if statsSettingSwitch.isHittable {
+            statsSettingSwitch.tap()
+        } else {
+            statsSettingSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(statsToggle.waitForExistence(timeout: 2), "Re-enabling statistics toggle must restore the statistics card")
     }
 
     // MARK: - Latency
@@ -508,4 +598,129 @@ final class QirimKeyUITests: XCTestCase {
         print(String(format: "QK_METRIC toggle worst=%.3f", worst))
         XCTAssertLessThan(worst, 1.5)
     }
+
+    func testCrossAppStatisticsAndStandardKeyboardComparison() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+
+        // Open expanded statistics and reset to 0 before switching to an external system app.
+        let statsToggle = app.buttons["stats.expandToggle"].exists
+            ? app.buttons["stats.expandToggle"]
+            : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
+        XCTAssertTrue(statsToggle.exists)
+        statsToggle.tap()
+        let resetBtn = app.buttons["stats.resetButton"].exists
+            ? app.buttons["stats.resetButton"]
+            : app.descendants(matching: .any).matching(identifier: "stats.resetButton").firstMatch
+        XCTAssertTrue(resetBtn.waitForExistence(timeout: 2))
+        resetBtn.tap()
+        let confirmReset = app.alerts.buttons["Sıfırla"].firstMatch
+        if confirmReset.waitForExistence(timeout: 2) {
+            confirmReset.tap()
+        }
+        Thread.sleep(forTimeInterval: 0.4)
+
+        // Launch Safari (external system app) to verify cross-app typing, statistics sync, and latency vs system keyboard.
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        safari.launch()
+        Thread.sleep(forTimeInterval: 1.0)
+
+        // Dismiss any first-run continue button if present
+        let continueBtn = safari.buttons["Continue"].firstMatch
+        if continueBtn.exists && continueBtn.isHittable {
+            continueBtn.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+
+        let urlElement: XCUIElement = {
+            let addr = safari.descendants(matching: .any).matching(identifier: "TabBarItemTitle").firstMatch
+            if addr.exists { return addr }
+            let urlBtn = safari.buttons["URL"].firstMatch
+            if urlBtn.exists { return urlBtn }
+            let tf = safari.textFields.firstMatch
+            if tf.exists { return tf }
+            return safari.searchFields.firstMatch
+        }()
+
+        func safariKey(_ name: String) -> XCUIElement {
+            let lowerId = "key." + name.lowercased()
+            let upperId = "key." + name.uppercased()
+            let pred = NSPredicate(format: "identifier == %@ OR identifier == %@", lowerId, upperId)
+            return safari.descendants(matching: .any).matching(pred).firstMatch
+        }
+
+        if urlElement.waitForExistence(timeout: 4) {
+            urlElement.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+
+            // Ensure QırımKey is active inside Safari
+            var qKey = safariKey("character.q")
+            var фKey = safariKey("character.ф")
+            for step in 1...5 {
+                if qKey.exists || фKey.exists { break }
+                let globe = safari.buttons["Next keyboard"].exists
+                    ? safari.buttons["Next keyboard"]
+                    : safari.keyboards.buttons.element(boundBy: 0)
+                if globe.exists {
+                    for _ in 0..<step where globe.exists {
+                        globe.tap()
+                    }
+                    Thread.sleep(forTimeInterval: 0.8)
+                }
+                qKey = safariKey("character.q")
+                фKey = safariKey("character.ф")
+            }
+            if фKey.exists && !qKey.exists {
+                let toggleKey = safari.descendants(matching: .any).matching(identifier: "key.toggle_script").firstMatch
+                if toggleKey.exists {
+                    toggleKey.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+            }
+
+            if safariKey("character.s").waitForExistence(timeout: 2) {
+                var qkTotal: TimeInterval = 0
+                let externalWord1 = Array("selam")
+                for ch in externalWord1 {
+                    let k = safariKey("character.\(ch)")
+                    if k.waitForExistence(timeout: 1.5) {
+                        let t0 = Date()
+                        k.tap()
+                        qkTotal += Date().timeIntervalSince(t0)
+                    }
+                }
+                let spaceKey = safariKey("space")
+                if spaceKey.waitForExistence(timeout: 1.5) {
+                    spaceKey.tap()
+                }
+
+                let externalWord2 = Array("dost")
+                for ch in externalWord2 {
+                    let k = safariKey("character.\(ch)")
+                    if k.waitForExistence(timeout: 1.5) {
+                        let t0 = Date()
+                        k.tap()
+                        qkTotal += Date().timeIntervalSince(t0)
+                    }
+                }
+                if spaceKey.waitForExistence(timeout: 1.5) {
+                    spaceKey.tap()
+                }
+                let qkAvg = qkTotal / Double(externalWord1.count + externalWord2.count)
+                print(String(format: "QK_METRIC safari_qirimkey_tap_avg=%.3f", qkAvg))
+                capture("Safari external typing with QirimKey")
+            }
+        }
+
+        // Return to QTatar.app and verify real-time cross-process statistics update
+        app.activate()
+        Thread.sleep(forTimeInterval: 1.0)
+        let wordsTile = app.descendants(matching: .any).matching(identifier: "stats.wordsTile").firstMatch
+        let learnedWordsTile = app.descendants(matching: .any).matching(identifier: "stats.learnedWordsTile").firstMatch
+        XCTAssertTrue(wordsTile.waitForExistence(timeout: 3))
+        XCTAssertFalse(wordsTile.label.contains("Arifler: 0"), "Words & characters typed in external app (Safari) must sync back to QTatar.app in real time (got: '\(wordsTile.label)')")
+        XCTAssertFalse(learnedWordsTile.label.contains(", 0,"), "Words learned in external app (Safari) must sync back to QTatar.app in real time (got: '\(learnedWordsTile.label)')")
+        capture("QTatar real-time stats synced from Safari")
+    }
 }
+

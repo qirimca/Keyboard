@@ -30,9 +30,14 @@ final class SuggestionsDataBaseManager {
     /// Opens the dictionary on a background queue before the first autocomplete query.
     func prepareAsync() {
         databaseQueue.async { [weak self] in
-            self?.ensureDB()
-            self?.ensureUserDB()
-            self?.ensurePhrasesLoaded()
+            guard let self else { return }
+            self.ensureDB()
+            self.ensureUserDB()
+            let learnedCount = self.countUserUnigrams()
+            if learnedCount > 0 {
+                KeyboardUsageStats.updateLearnedWordsCount(learnedCount)
+            }
+            self.ensurePhrasesLoaded()
         }
     }
 
@@ -89,6 +94,7 @@ final class SuggestionsDataBaseManager {
             userDB = nil
             return
         }
+        sqlite3_busy_timeout(userDB, 2000)
         let schema = """
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
@@ -122,9 +128,13 @@ final class SuggestionsDataBaseManager {
 
     // MARK: - Personalized Word & Bigram Learning
 
+    private static let excludedURLTokens: Set<String> = ["http", "https", "www"]
+    private var sessionLearnedWords = Set<String>()
+
     static func isValidLearnableWord(_ rawWord: String) -> Bool {
         let trimmed = rawWord.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2, trimmed.count <= 32 else { return false }
+        if excludedURLTokens.contains(trimmed.lowercased()) { return false }
         var letterCount = 0
         for ch in trimmed {
             if ch.isLetter {
@@ -139,14 +149,12 @@ final class SuggestionsDataBaseManager {
     }
 
     static func shouldLearn(word: String, proxy: UITextDocumentProxy?) -> Bool {
-        guard KeyboardPreferences.wordLearningEnabled,
-              KeyboardPreferences.suggestionsEnabled else { return false }
+        guard KeyboardPreferences.wordLearningEnabled else { return false }
         if let proxy {
             if proxy.isSecureTextEntry == true { return false }
-            if proxy.keyboardAppearance == .alert { return false }
             if let kbType = proxy.keyboardType {
                 switch kbType {
-                case .emailAddress, .URL, .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation, .twitter:
+                case .emailAddress, .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad, .numbersAndPunctuation:
                     return false
                 default:
                     break
@@ -155,7 +163,7 @@ final class SuggestionsDataBaseManager {
             if let contentType = proxy.textContentType ?? nil {
                 let blocked: Set<UITextContentType> = [
                     .password, .newPassword, .oneTimeCode, .creditCardNumber,
-                    .emailAddress, .URL, .telephoneNumber
+                    .emailAddress, .telephoneNumber
                 ]
                 if blocked.contains(contentType) { return false }
             }
@@ -175,15 +183,23 @@ final class SuggestionsDataBaseManager {
                   Self.isValidLearnableWord(prev) else { return nil }
             return prev.lowercased(with: Self.casingLocale)
         }()
+        let isFirstTimeInSession = sessionLearnedWords.insert(normalizedWord).inserted
+        if isFirstTimeInSession {
+            KeyboardUsageStats.recordWordLearned()
+        }
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.async { [weak self] in
             guard let self else { return }
             self.ensureDB()
             self.ensureUserDB()
-            let isBrandNewWord = (self.frequency(of: normalizedWord) == 0 && self.userFrequency(of: normalizedWord) == 0)
+            let isNewUserWord = (self.userFrequency(of: normalizedWord) == 0)
             self.recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
-            if isBrandNewWord {
+            if isNewUserWord && !isFirstTimeInSession {
                 KeyboardUsageStats.recordWordLearned()
+            }
+            let totalLearned = self.countUserUnigrams()
+            if totalLearned > 0 {
+                KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
             }
         }
     }
@@ -196,10 +212,31 @@ final class SuggestionsDataBaseManager {
                   Self.isValidLearnableWord(prev) else { return nil }
             return prev.lowercased(with: Self.casingLocale)
         }()
+        let isFirstTimeInSession = sessionLearnedWords.insert(normalizedWord).inserted
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.sync {
+            let isNewUserWord = (userFrequency(of: normalizedWord) == 0)
             recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
+            if isNewUserWord || isFirstTimeInSession {
+                KeyboardUsageStats.recordWordLearned()
+            }
+            let totalLearned = countUserUnigrams()
+            if totalLearned > 0 {
+                KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
+            }
         }
+    }
+
+    private func countUserUnigrams() -> Int {
+        ensureUserDB()
+        guard let userDB else { return 0 }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(userDB, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else {
+            return 0
+        }
+        return Int(sqlite3_column_int(stmt, 0))
     }
 
     func hasLearnedWord(_ word: String) -> Bool {
@@ -212,6 +249,7 @@ final class SuggestionsDataBaseManager {
 
     func unlearnWord(_ word: String) {
         let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+        sessionLearnedWords.remove(normalized)
         databaseQueue.sync {
             ensureUserDB()
             guard let userDB else { return }
@@ -225,10 +263,15 @@ final class SuggestionsDataBaseManager {
     }
 
     func clearUserLexicon() {
-        databaseQueue.sync {
-            ensureUserDB()
-            guard let userDB else { return }
-            sqlite3_exec(userDB, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)
+        sessionLearnedWords.removeAll()
+        databaseQueue.async { [weak self] in
+            guard let self else { return }
+            self.ensureUserDB()
+            if let userDB = self.userDB {
+                sqlite3_exec(userDB, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)
+                sqlite3_close(userDB)
+                self.userDB = nil
+            }
         }
     }
 

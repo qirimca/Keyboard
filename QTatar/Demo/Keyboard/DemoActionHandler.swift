@@ -173,6 +173,37 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
     }
 
+    private static func currentWordBeforeCursor(in proxy: UITextDocumentProxy) -> String? {
+        if let tokenBeforeCursor = previousCompletedWord(in: proxy, excludingCurrentWord: false),
+           !tokenBeforeCursor.isEmpty {
+            return tokenBeforeCursor
+        }
+        if let word = proxy.currentWord, !word.isEmpty {
+            return word
+        }
+        return nil
+    }
+
+    private var didLearnWordDuringSpaceRelease = false
+    private var typedWordBuffer: String = ""
+    private var lastCompletedTypedWord: String?
+
+    private func resolveCompletedWord(in proxy: UITextDocumentProxy) -> (word: String?, prevWord: String?) {
+        let proxyWord = Self.currentWordBeforeCursor(in: proxy)
+        let proxyPrev = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true)
+        let word: String? = {
+            if let proxyWord, SuggestionsDataBaseManager.isValidLearnableWord(proxyWord) {
+                return proxyWord
+            }
+            if !typedWordBuffer.isEmpty {
+                return typedWordBuffer
+            }
+            return proxyWord
+        }()
+        let prevWord = proxyPrev ?? lastCompletedTypedWord
+        return (word, prevWord)
+    }
+
     /// Space applies the autocorrection computed from the text as it is right now. The published suggestions
     /// arrive asynchronously and are cleared on every edit, so a quick Space would otherwise find none.
     override func tryApplyAutocorrectSuggestion(
@@ -188,7 +219,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                let word = proxy.currentWord,
                !word.isEmpty,
                let provider = (keyboardController as? KeyboardViewController)?.services.autocompleteProvider as? CrimeanTatarAutocompleteProvider {
-                let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true)
+                let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true) ?? lastCompletedTypedWord
                 let suggestions = provider.suggestionsNow(for: word)
                 autocompleteContext.suggestions = suggestions
                 if let suggestion = suggestions.first(where: { $0.isAutocorrect }),
@@ -196,18 +227,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     for _ in 0..<word.count { proxy.deleteBackward() }
                     proxy.insertText(suggestion.text)
                     TextHistoryManager.shared.recordReplace(oldText: word, newText: suggestion.text)
+                    didLearnWordDuringSpaceRelease = true
+                    lastCompletedTypedWord = suggestion.text
+                    typedWordBuffer = ""
                     SuggestionsDataBaseManager.shared.learnWordIfPermitted(
                         suggestion.text,
                         previousWord: prevWord,
                         proxy: proxy
                     )
                     return
-                } else {
-                    SuggestionsDataBaseManager.shared.learnWordIfPermitted(
-                        word,
-                        previousWord: prevWord,
-                        proxy: proxy
-                    )
                 }
             }
         }
@@ -220,13 +248,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
-        let currentWord = proxy.currentWord ?? ""
-        let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty)
+        let currentWord = proxy.currentWord ?? typedWordBuffer
+        let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty) ?? lastCompletedTypedWord
         let replacement = suggestion.text
         let savedChars = max(replacement.count - currentWord.count + 1, 2)
         KeyboardUsageStats.markInjectedText(replacement)
         KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: savedChars)
         TextHistoryManager.shared.recordReplace(oldText: currentWord, newText: replacement)
+        lastCompletedTypedWord = replacement
+        typedWordBuffer = ""
         SuggestionsDataBaseManager.shared.learnWordIfPermitted(
             replacement,
             previousWord: prevWord,
@@ -255,6 +285,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     #if DEBUG
     private static let perfLog = Logger(subsystem: "crh.key.perf", category: "handler")
     #endif
+
+    private static let wordEndingPunctuation: Set<String> = [".", ",", "!", "?", ";", ":"]
 
     private func handleUntimed(
         _ gesture: Gestures.KeyboardGesture,
@@ -291,28 +323,78 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return
         }
+        var pendingSpaceWord: (word: String, prevWord: String?)?
         if gesture == .release {
             SpaceBarState.shared.fadeToResting()
+            let proxy = keyboardContext.textDocumentProxy
             switch action {
             case .character(let ch), .characterMargin(let ch):
                 GreetingBannerState.shared.dismissForTyping()
                 SpaceBarState.shared.recordKeystroke()
                 KeyboardUsageStats.recordCharacterTyped(count: max(ch.count, 1))
+                if Self.wordEndingPunctuation.contains(ch) {
+                    let before = proxy.documentContextBeforeInput ?? ""
+                    let hasWordBefore = !typedWordBuffer.isEmpty
+                        || (before.last.map { $0.isLetter || $0.isNumber } ?? false)
+                    if hasWordBefore {
+                        KeyboardUsageStats.recordManualWordCompleted()
+                        let resolved = resolveCompletedWord(in: proxy)
+                        if let word = resolved.word, !word.isEmpty {
+                            lastCompletedTypedWord = word
+                            SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                                word,
+                                previousWord: resolved.prevWord,
+                                proxy: proxy
+                            )
+                        }
+                        typedWordBuffer = ""
+                    }
+                } else if ch.contains(where: { $0.isLetter || $0.isNumber }) {
+                    typedWordBuffer.append(ch)
+                } else if (ch == "'" || ch == "’" || ch == "-") && !typedWordBuffer.isEmpty {
+                    typedWordBuffer.append(ch)
+                } else {
+                    typedWordBuffer = ""
+                }
             case .space:
+                didLearnWordDuringSpaceRelease = false
                 GreetingBannerState.shared.dismissForTyping()
                 KeyboardUsageStats.recordCharacterTyped(count: 1)
-                let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
-                if let last = before.last, !last.isWhitespace {
+                let before = proxy.documentContextBeforeInput ?? ""
+                let hasWordBefore = !typedWordBuffer.isEmpty
+                    || (before.last.map { $0.isLetter || $0.isNumber } ?? false)
+                if hasWordBefore {
                     KeyboardUsageStats.recordManualWordCompleted()
+                    let resolved = resolveCompletedWord(in: proxy)
+                    if let word = resolved.word, !word.isEmpty {
+                        pendingSpaceWord = (word, resolved.prevWord)
+                        lastCompletedTypedWord = word
+                    }
+                    typedWordBuffer = ""
                 }
             case .primary:
                 GreetingBannerState.shared.dismissForTyping()
-                let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
-                if let last = before.last, !last.isWhitespace {
+                let before = proxy.documentContextBeforeInput ?? ""
+                let hasWordBefore = !typedWordBuffer.isEmpty
+                    || (before.last.map { $0.isLetter || $0.isNumber } ?? false)
+                if hasWordBefore {
                     KeyboardUsageStats.recordManualWordCompleted()
+                    let resolved = resolveCompletedWord(in: proxy)
+                    if let word = resolved.word, !word.isEmpty {
+                        lastCompletedTypedWord = word
+                        SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                            word,
+                            previousWord: resolved.prevWord,
+                            proxy: proxy
+                        )
+                    }
+                    typedWordBuffer = ""
                 }
             case .backspace:
                 GreetingBannerState.shared.dismissForTyping()
+                if !typedWordBuffer.isEmpty {
+                    typedWordBuffer.removeLast()
+                }
             default:
                 break
             }
@@ -422,6 +504,13 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         super.handle(gesture, on: action, replaced: replaced)
         
         guard gesture == .release else { return }
+        if let pending = pendingSpaceWord, !didLearnWordDuringSpaceRelease {
+            SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                pending.word,
+                previousWord: pending.prevWord,
+                proxy: keyboardContext.textDocumentProxy
+            )
+        }
         if action.isShiftAction || action == .capsLock {
             keyboardController?.performAutocomplete()
         }
