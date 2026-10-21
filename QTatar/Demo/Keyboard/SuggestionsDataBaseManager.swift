@@ -946,13 +946,21 @@ final class SuggestionsDataBaseManager {
         return String(cString: ptr)
     }
 
-    /// Applies official Crimean Tatar morphological & phonological rules from NKKM `Language Tools/grammar.xml`:
+    /// Applies official Crimean Tatar morphological & phonological rules from NKKM `Language Tools/grammar.xml`
+    /// and online `community.languagetool.org/rule/list?lang=crh` (`LanguageTool 6.8-SNAPSHOT`):
+    /// 0. `TOPONOMY_TYPOS` (`Qrım*` -> `Qırım*`)
     /// 1. `PLURAL_AFFIX_CONFUSION` (`-lar` vs `-ler` vowel harmony)
     /// 2. `DATIVE_AFFIX_CONFUSION` (`-ğa/-ge/-qa/-ke` vowel + consonant voicing harmony)
     /// 3. `CONFIRMATION_AFFIX_CONFUSION` (`-dır/-dir/-tır/-tir` consonant voicing harmony)
-    /// 4. `MISSVOCALIZATION` (`q->ğ`, `k->g`, `p->b` voicing before possessive vowel)
+    /// 4. `LASTING_ADVERB_AFFIX` (`-ğanca/-gence/-qanca/-kence` vowel + consonant voicing harmony)
+    /// 5. `MISSVOCALIZATION` (`q->ğ`, `k->g`, `p->b` voicing before possessive & case vowel suffixes)
     private func harmonyOrGrammarCorrection(for queryLower: String) -> String? {
         guard queryLower.count >= 4 else { return nil }
+
+        // 0. TOPONOMY_TYPOS (Qrım* -> Qırım*)
+        if queryLower.hasPrefix("qrım") {
+            return "qırım" + String(queryLower.dropFirst(4))
+        }
 
         // 1. Plural suffix vowel harmony (-lar <-> -ler)
         if queryLower.count >= 5 && (queryLower.hasSuffix("lar") || queryLower.hasSuffix("ler")) {
@@ -1012,8 +1020,41 @@ final class SuggestionsDataBaseManager {
             }
         }
 
-        // 4. Voicing of stem-final q/k/p before possessive vowel suffixes (q->ğ, k->g, p->b)
-        for possSuffix in ["ım", "im", "um", "üm", "ıñ", "iñ", "uñ", "üñ", "ı", "i", "u", "ü"] {
+        // 4. LASTING_ADVERB_AFFIX (-ğanca / -gence / -qanca / -kence)
+        if queryLower.count >= 7 {
+            for suffix in ["ğanca", "gence", "qanca", "kence"] where queryLower.hasSuffix(suffix) {
+                let stem = String(queryLower.dropLast(5))
+                guard stem.count >= 2, let lastChar = stem.last, let isBack = lastVowelIsBack(in: stem) else { break }
+                let isVoiceless = Self.voicelessConsonants.contains(lastChar)
+                let expected: String
+                switch (isBack, isVoiceless) {
+                case (true, true): expected = "qanca"
+                case (false, true): expected = "kence"
+                case (true, false): expected = "ğanca"
+                case (false, false): expected = "gence"
+                }
+                if suffix != expected {
+                    return stem + expected
+                }
+                break
+            }
+        }
+
+        // 5. MISSVOCALIZATION: Voicing of stem-final q/k/p before possessive & case vowel suffixes (q->ğ, k->g, p->b)
+        let missvocalizationSuffixes = [
+            "ımızda", "imizde", "umızda", "ümizde",
+            "ıñnıñ", "iñniñ",
+            "ından", "inden", "undan", "ünden",
+            "ımız", "imiz", "umız", "ümiz",
+            "ıñız", "iñiz", "uñız", "üñiz",
+            "ında", "inde", "unda", "ünde",
+            "ına", "ine", "una", "üne",
+            "ını", "ini", "unı", "ünü",
+            "ım", "im", "um", "üm",
+            "ıñ", "iñ", "uñ", "üñ",
+            "ı", "i", "u", "ü"
+        ]
+        for possSuffix in missvocalizationSuffixes {
             if queryLower.hasSuffix(possSuffix) {
                 let stem = String(queryLower.dropLast(possSuffix.count))
                 guard stem.count >= 3, let stemLast = stem.last else { continue }
@@ -1027,7 +1068,8 @@ final class SuggestionsDataBaseManager {
                 }()
                 if let voicedChar {
                     let candidate = String(stem.dropLast()) + String(voicedChar) + possSuffix
-                    if frequency(of: candidate) > frequency(of: queryLower) * 3 && frequency(of: candidate) >= 5 {
+                    if (frequency(of: candidate) > frequency(of: queryLower) * 3 && frequency(of: candidate) >= 5)
+                        || (possSuffix.count >= 3 && frequency(of: stem) >= 5) {
                         return candidate
                     }
                 }
@@ -1226,9 +1268,17 @@ final class SuggestionsDataBaseManager {
         "seksen", "doqsan", "yüz", "biñ", "qaç"
     ]
 
-    /// Reranks and enriches next-word candidates using Crimean Tatar grammar rules (`Language Tools/grammar.xml`).
+    /// Reranks and enriches next-word candidates using Crimean Tatar grammar rules (`Language Tools/grammar.xml` & `community.languagetool.org`).
     private func applyGrammaticalReranking(lastWord: String, into scores: inout [String: Int]) {
         // A. Pronoun-Possessive Agreement (PERSON_COORDINATION & GENITIVE_CASE_COLLOCATION)
+        let isGenitivePronoun = ["menim", "seniñ", "onıñ", "bunıñ", "şunıñ", "bizim", "siziñ", "olarnıñ"].contains(lastWord)
+        if isGenitivePronoun {
+            for ppos in ["içün", "kibi", "ile", "aqqında"] {
+                if let existing = scores[ppos] {
+                    scores[ppos] = existing * 2 + 40
+                }
+            }
+        }
         switch lastWord {
         case "menim":
             for (cand, val) in scores {
@@ -1271,7 +1321,7 @@ final class SuggestionsDataBaseManager {
             }
         }
 
-        // B. Postposition Case Government (POSTPOSITION_CASE_COLLOCATION)
+        // B. Postposition & Verb Case Government (POSTPOSITION_CASE_COLLOCATION & VERB_CASE_COLLOCATION)
         let isDative = lastWord.count >= 4 && (
             lastWord.hasSuffix("ğa") || lastWord.hasSuffix("ge") ||
             lastWord.hasSuffix("qa") || lastWord.hasSuffix("ke") ||
@@ -1282,6 +1332,10 @@ final class SuggestionsDataBaseManager {
             lastWord.hasSuffix("tan") || lastWord.hasSuffix("ten") ||
             ["menden", "senden", "ondan", "bundan", "şundan"].contains(lastWord)
         )
+        let isAccusative = lastWord.count >= 4 && (
+            lastWord.hasSuffix("nı") || lastWord.hasSuffix("ni") ||
+            ["meni", "seni", "onı", "bunı", "şunı"].contains(lastWord)
+        )
         let isInfinitive = lastWord.count >= 5 && (lastWord.hasSuffix("maq") || lastWord.hasSuffix("mek"))
 
         if isDative {
@@ -1290,20 +1344,44 @@ final class SuggestionsDataBaseManager {
                     scores[ppos] = existing * 2 + 50
                 }
             }
+            for (cand, val) in scores where cand.hasPrefix("evlen") {
+                scores[cand] = val * 2 + 40
+            }
+            for invalidPpos in ["içün", "ile", "dayın", "kibi", "aqqında"] {
+                scores.removeValue(forKey: invalidPpos)
+            }
         } else if isAblative {
-            for ppos in ["soñ", "berli", "evel", "başqa", "ğayrı"] {
+            for ppos in ["soñ", "berli", "evel", "başqa", "ğayrı", "sebep", "burun", "ögüne"] {
                 if let existing = scores[ppos] {
                     scores[ppos] = existing * 2 + 50
                 }
             }
-            scores.removeValue(forKey: "içün") // grammar.xml REASON_PARTICLE_CASE_COLLOCATION: ablative + içün is invalid
+            for (cand, val) in scores where cand.hasPrefix("sora") {
+                scores[cand] = val * 2 + 40
+            }
+            for invalidPpos in ["içün", "ile", "dayın", "kibi", "aqqında"] {
+                scores.removeValue(forKey: invalidPpos)
+            }
+        } else if isAccusative {
+            for invalidPpos in ["içün", "ile", "dayın", "kibi", "aqqında"] {
+                scores.removeValue(forKey: invalidPpos)
+            }
         } else if isInfinitive {
             for modal in ["kerek", "içün", "mümkün"] {
                 scores[modal] = max(scores[modal] ?? 0, 120)
             }
         }
 
-        // C. Cardinal Numeral + Singular Noun (NUMERAL_PLURAL_COLLOCATION)
+        // C. PERCENTAGE_COORDINATION (yüzde + cardinal numeral)
+        if lastWord == "yüzde" {
+            for num in Self.cardinalNumerals {
+                if let existing = scores[num] {
+                    scores[num] = existing * 3 + 60
+                }
+            }
+        }
+
+        // D. Cardinal Numeral + Singular Noun (NUMERAL_PLURAL_COLLOCATION)
         if Self.cardinalNumerals.contains(lastWord) {
             for (cand, val) in scores {
                 if cand.count >= 5 && (cand.hasSuffix("lar") || cand.hasSuffix("ler")) {

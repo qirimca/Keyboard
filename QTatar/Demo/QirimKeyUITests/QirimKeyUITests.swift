@@ -907,7 +907,10 @@ final class QirimKeyUITests: XCTestCase {
         tap("space")
         expectText("2+2=4 ")
 
-        // 1b. Show Maths Results via direct tap on suggestion slot 0 (must preserve equation prefix!)
+        // 1b. Show Maths Results 3-slot toolbar («3+5=» | 3+5=8 | 8):
+        //     - slot 0 («3+5=»): literal expression in guillemets
+        //     - slot 1 (3+5=8): highlighted center completion (preserves equation prefix)
+        //     - slot 2 (8): replaces expression with result only
         clear()
         if key("numeric").exists { tap("numeric") }
         XCTAssertTrue(key("character.3").waitForExistence(timeout: 2))
@@ -927,11 +930,15 @@ final class QirimKeyUITests: XCTestCase {
         }
         XCTAssertTrue(key("character.=").waitForExistence(timeout: 2))
         tap("character.=")
-        let mathSlot = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
-        let mathReady = NSPredicate(format: "exists == true AND label CONTAINS '8'")
-        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: mathReady, object: mathSlot)], timeout: 3)
-        XCTAssertTrue(mathSlot.exists, "Math result suggestion slot must appear after 3+5=")
-        mathSlot.tap()
+        let mathSlot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let mathSlot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        let mathSlot2 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.2").firstMatch
+        let mathReady = NSPredicate(format: "exists == true AND label CONTAINS '3+5=8'")
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: mathReady, object: mathSlot1)], timeout: 3)
+        XCTAssertTrue(mathSlot0.exists && mathSlot0.label.contains("3+5="), "Math slot 0 must show literal «3+5=» (got: '\(mathSlot0.label)')")
+        XCTAssertTrue(mathSlot1.exists && mathSlot1.label.contains("3+5=8"), "Math slot 1 must show full equation 3+5=8 (got: '\(mathSlot1.label)')")
+        XCTAssertTrue(mathSlot2.exists && mathSlot2.label.contains("8"), "Math slot 2 must show result 8 (got: '\(mathSlot2.label)')")
+        mathSlot1.tap()
         expectText("3+5=8 ")
 
         // 2. Smart Punctuation: double hyphen (--) -> em-dash (—)

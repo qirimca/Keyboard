@@ -731,8 +731,38 @@ struct HomeView: View {
         return nil
     }
 
+    private static func hostDeviceSupportsSplitKeyboard() -> Bool {
+        guard Device.iPad else { return false }
+        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "UIKeyboardDeviceSupportsSplit") {
+            typealias SupportsSplitFn = @convention(c) () -> Bool
+            let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
+            return fn()
+        }
+        let modelIdentifier: String = {
+            if let simModel = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !simModel.isEmpty {
+                return simModel
+            }
+            var sysinfo = utsname()
+            uname(&sysinfo)
+            return withUnsafePointer(to: &sysinfo.machine) {
+                $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                    String(cString: $0)
+                }
+            }
+        }()
+        let supportedModels: Set<String> = [
+            "iPad11,3", "iPad11,4",
+            "iPad11,1", "iPad11,2", "iPad14,1", "iPad14,2", "iPad16,1", "iPad16,2",
+            "iPad6,11", "iPad6,12", "iPad7,5", "iPad7,6", "iPad7,11", "iPad7,12",
+            "iPad11,6", "iPad11,7", "iPad12,1", "iPad12,2",
+            "iPad6,3", "iPad6,4", "iPad7,3", "iPad7,4",
+            "iPad5,1", "iPad5,2", "iPad5,3", "iPad5,4"
+        ]
+        return supportedModels.contains(modelIdentifier)
+    }
+
     private static func syncHostSystemSplitStateIfNeeded() {
-        guard Device.iPad, KeyboardContext.deviceSupportsSplitKeyboard() else { return }
+        guard Device.iPad, hostDeviceSupportsSplitKeyboard() else { return }
         if let systemSplit = queryHostSystemIsSplit(), systemSplit, !KeyboardPreferences.splitKeyboardEnabled {
             KeyboardPreferences.setSplitKeyboardEnabled(true)
         }
@@ -744,13 +774,10 @@ struct HomeView: View {
         guard Device.iPad else { return }
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         KeyboardPreferences.refreshCachedPreferences()
-        let isSplitActive = KeyboardPreferences.splitKeyboardEnabled && KeyboardContext.deviceSupportsSplitKeyboard()
+        let isSplitActive = KeyboardPreferences.splitKeyboardEnabled && hostDeviceSupportsSplitKeyboard()
         var windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
-        for win in UIApplication.shared.windows where !windows.contains(win) {
-            windows.append(win)
-        }
         for (clsName, selName) in [
             ("UITextEffectsWindow", "sharedTextEffectsWindow"),
             ("UIRemoteKeyboardWindow", "remoteKeyboardWindowForScreen:create:")
