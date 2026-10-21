@@ -76,3 +76,9 @@
 "stats.volumeMaxReached" = "Eñ yüksek faallik seviyesi!";
 "stats.activeTimeSubtitle" = "Faal yazuv vaqtı";
 "stats.learnedWordsSubtitle" = "Şahsiy luğat";
+"settings.cyrillicStatusAdded" = "Qoşulğan";
+"settings.cyrillicStatusMissing" = "Qoşulmağan";
+"settings.cyrillicPromoTitle" = "Kirill klaviaturasını da qoşuñız";
+"settings.cyrillicPromoDesc" = "Cihazıñızda kirill elifbesi qullanıla. «Къырымтатарджа» klaviaturasını qoşıp, kirill ariflerinen de qolaylıqnen yazıñız.";
+"settings.cyrillicAddAction" = "Sazlamalarda qoşmaq";
+"settings.cyrillicGuideTitle" = "Kirill klaviaturasını nasıl qoşmalı?";

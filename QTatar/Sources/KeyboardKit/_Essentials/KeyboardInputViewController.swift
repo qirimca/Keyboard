@@ -177,7 +177,6 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
     open override func textWillChange(_ textInput: UITextInput?) {
         super.textWillChange(textInput)
-        state.keyboardContext.syncTextDocumentProxy(with: self)
         state.keyboardContext.syncTextInputProxy(with: self)
     }
     
@@ -346,5 +345,9 @@ public extension View {
     ) -> some View {
         self.keyboardState(from: controller)
     }
+}
+
+extension UIInputView: @retroactive UIInputViewAudioFeedback {
+    public var enableInputClicksWhenVisible: Bool { true }
 }
 #endif

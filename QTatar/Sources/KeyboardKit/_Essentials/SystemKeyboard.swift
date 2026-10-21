@@ -248,12 +248,18 @@ private extension SystemKeyboard {
     }
     
     func bodyContent(for size: CGSize) -> some View {
-        VStack(spacing: 0) {
+        let insets = styleProvider.keyboardEdgeInsets
+        let adjustedSize = CGSize(
+            width: max(0, size.width - insets.leading - insets.trailing),
+            height: max(0, size.height - insets.top - insets.bottom)
+        )
+        return VStack(spacing: 0) {
             toolbar()
                 .frame(width: size.width)
             systemKeyboard(for: size)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(splitClustersBackdrop(for: adjustedSize, insets: insets))
         .clipShape(RoundedRectangle(cornerRadius: keyboardContext.isKeyboardFloating ? 13 : 0, style: .continuous))
     }
     
@@ -282,6 +288,49 @@ private extension SystemKeyboard {
         }
         .padding(insets)
         .environment(\.layoutDirection, .leftToRight)
+    }
+
+    @ViewBuilder
+    func splitClustersBackdrop(for adjustedSize: CGSize, insets: EdgeInsets) -> some View {
+        if keyboardContext.deviceType == .pad && keyboardContext.isKeyboardSplit && !keyboardContext.isKeyboardFloating {
+            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
+            let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
+            let maxHalfWidth: CGFloat = isPortrait ? 276 : 320
+            let totalWidth = max(adjustedSize.width + insets.leading + insets.trailing, 1)
+            let half = min((1.0 - minGapFraction) / 2.0, maxHalfWidth / totalWidth)
+            let clusterWidth = max(0, adjustedSize.width * half + insets.leading)
+            let isDark = keyboardContext.hasDarkColorScheme
+            let cardTint = isDark
+                ? Color(white: 0.16).opacity(0.42)
+                : Color(red: 0.82, green: 0.83, blue: 0.86).opacity(0.48)
+            let cardStroke = isDark
+                ? Color.white.opacity(0.14)
+                : Color.black.opacity(0.12)
+            HStack(spacing: 0) {
+                SplitIslandBlurView(isDark: isDark)
+                    .overlay(cardTint)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(cardStroke, lineWidth: 0.85)
+                    )
+                    .shadow(color: Color.black.opacity(isDark ? 0.28 : 0.10), radius: 5, x: 0, y: 2)
+                    .frame(width: clusterWidth)
+                    .accessibilityIdentifier("split.cluster.left")
+                Spacer(minLength: 0)
+                SplitIslandBlurView(isDark: isDark)
+                    .overlay(cardTint)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(cardStroke, lineWidth: 0.85)
+                    )
+                    .shadow(color: Color.black.opacity(isDark ? 0.28 : 0.10), radius: 5, x: 0, y: 2)
+                    .frame(width: clusterWidth)
+                    .accessibilityIdentifier("split.cluster.right")
+            }
+            .padding(.vertical, 2)
+        }
     }
     
     func rowHeight(forRowAt rowIndex: Int) -> CGFloat {
@@ -385,3 +434,31 @@ private extension SystemKeyboard {
         .frame(height: toolbarHeight())
     }
 }
+
+#if os(iOS) || os(tvOS) || os(visionOS)
+private struct SplitIslandBlurView: UIViewRepresentable {
+    let isDark: Bool
+
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        let style: UIBlurEffect.Style = isDark ? .systemChromeMaterialDark : .systemChromeMaterialLight
+        let view = UIVisualEffectView(effect: UIBlurEffect(style: style))
+        view.clipsToBounds = true
+        view.layer.cornerRadius = 14
+        view.layer.cornerCurve = .continuous
+        return view
+    }
+
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        let style: UIBlurEffect.Style = isDark ? .systemChromeMaterialDark : .systemChromeMaterialLight
+        uiView.effect = UIBlurEffect(style: style)
+    }
+}
+#else
+private struct SplitIslandBlurView: View {
+    let isDark: Bool
+    var body: some View {
+        Color(white: isDark ? 0.19 : 0.82)
+    }
+}
+#endif
+

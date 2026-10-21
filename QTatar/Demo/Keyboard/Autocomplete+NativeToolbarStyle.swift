@@ -661,18 +661,18 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
     /// 2. Weekday / Weekend (#58, #83, #84)
     /// 3. Time-of-day greetings (#50–#54, #23)
     /// 4. General unrestricted wisdom & motivation pool (`dailyPool`: #1–#22, #24–#49)
-    static func candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
-        var specialAndTimeMatched: [KeyboardGreetingPhrase] = []
+    /// Returns Priority 1 commemorative / holiday phrases matched for the given date (`ios_verified.md` Section 2, Priority 1).
+    static func priority1Candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
+        var priority1: [KeyboardGreetingPhrase] = []
         let cal = Calendar(identifier: .gregorian)
-        let comps = cal.dateComponents([.year, .month, .day, .weekday, .hour], from: date)
+        let comps = cal.dateComponents([.year, .month, .day, .weekday], from: date)
         let month = comps.month ?? 1
         let day = comps.day ?? 1
         let weekday = comps.weekday ?? 2 // 1 = Sun, 2 = Mon, ..., 6 = Fri, 7 = Sat
-        let hour = comps.hour ?? 12
 
         func appendIfPresent(_ id: Int) {
-            if let item = byID[id], !specialAndTimeMatched.contains(item) {
-                specialAndTimeMatched.append(item)
+            if let item = byID[id], !priority1.contains(item) {
+                priority1.append(item)
             }
         }
 
@@ -687,14 +687,13 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(57) // Qurban Bayram (10–13 Dhu al-Hijjah)
         }
 
-        // Priority 1B: Exact Gregorian dates (dd.MM) (#59–#65, #68–#82, #85)
+        // Priority 1B: Exact Gregorian dates (dd.MM) (#59–#65, #68–#82)
         switch (day, month) {
         case (1, 2):
             appendIfPresent(59)            // 01.02: Amet-Han Sultan memorial day (Amet-Han — tillerde destansıñ!)
             appendIfPresent(81)            // 01.02 (alt.): Amet-Han Sultan memorial day (Amet-Han, köklerde Sultansıñ!)
         case (21, 2):  appendIfPresent(60) // 21.02: International Mother Language Day (Bu til maña — tolğun Ay!)
         case (23, 2):  appendIfPresent(61) // 23.02: Noman Çelebicihan memorial day (Ant etkenmen yaranı sarmağa!)
-        case (1, 3):   appendIfPresent(73) // 01.03: Beginning of spring (Baardeki areket — küzdeki bereket.)
         case (20, 3):  appendIfPresent(75) // 20.03: İsmail Gasprinskiy birthday (İlim barda — qaruv bar.)
         case (21, 3):  appendIfPresent(62) // 21.03: Navrez & World Poetry Day (Navrez keldi — yaz keldi!)
         case (10, 4):  appendIfPresent(63) // 10.04: Terciman newspaper day (Tilde, fikirde, işte — birlik!)
@@ -714,8 +713,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         case (22, 9):  appendIfPresent(73) // 22.09: Derviza harvest festival (Baardeki areket — küzdeki bereket.)
         case (5, 10):  appendIfPresent(74) // 05.10: Teachers' Day (Şegirt olmay, usta olmazsıñ.)
         case (10, 10): appendIfPresent(80) // 10.10: Üsein Şamil Tohtarğazı birthday (İlim — insannıñ kemalıdır!)
-        case (13, 11): appendIfPresent(82) // 13.11: İdris Asanin & Nuzet Ümerov day (Acayipsiñ, Ana tili!)
-        case (1, 12):  appendIfPresent(85) // 01.12: First day of winter (Birlikte — quvet!)
+        case (13, 11): appendIfPresent(82) // 13.11: İdris Asanin & Nuzet Ümerov tribute (Acayipsiñ, Ana tili!)
         default: break
         }
         if month == 5, weekday == 6, (1...7).contains(day) {
@@ -725,7 +723,32 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(67) // Mother's Day (second Sunday of May)
         }
 
-        // Priority 2: Weekday / Weekend (#58, #83, #84)
+        return priority1
+    }
+
+    /// Returns Priority 2 weekday & start-of-season phrases matched for the given date (`ios_verified.md` Section 2, Priority 2).
+    static func priority2Candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
+        var priority2: [KeyboardGreetingPhrase] = []
+        let cal = Calendar(identifier: .gregorian)
+        let comps = cal.dateComponents([.month, .day, .weekday, .hour], from: date)
+        let month = comps.month ?? 1
+        let day = comps.day ?? 1
+        let weekday = comps.weekday ?? 2 // 1 = Sun, 2 = Mon, ..., 6 = Fri, 7 = Sat
+        let hour = comps.hour ?? 12
+
+        func appendIfPresent(_ id: Int) {
+            if let item = byID[id], !priority2.contains(item) {
+                priority2.append(item)
+            }
+        }
+
+        if day == 1, month == 3 {
+            appendIfPresent(73) // 01.03: Beginning of spring (Baardeki areket — küzdeki bereket.)
+        }
+        if day == 1, month == 12 {
+            appendIfPresent(85) // 01.12: First day of winter (Birlikte — quvet!)
+        }
+
         if weekday == 6, (5..<16).contains(hour) {
             appendIfPresent(58) // Friday (Cuma, 05:00–16:00)
         } else if weekday == 2, (6..<12).contains(hour) {
@@ -734,7 +757,21 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(84) // Weekend (09:00–21:00)
         }
 
-        // Priority 3: Time-of-day greetings (#50–#54, #23)
+        return priority2
+    }
+
+    /// Returns Priority 3 time-of-day phrases matched for the given date (`ios_verified.md` Section 2, Priority 3).
+    static func priority3Candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
+        var priority3: [KeyboardGreetingPhrase] = []
+        let cal = Calendar(identifier: .gregorian)
+        let hour = cal.component(.hour, from: date)
+
+        func appendIfPresent(_ id: Int) {
+            if let item = byID[id], !priority3.contains(item) {
+                priority3.append(item)
+            }
+        }
+
         if (5..<11).contains(hour) {
             appendIfPresent(50) // 05:00–11:00
             appendIfPresent(51) // 05:00–11:00
@@ -749,12 +786,24 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(23) // 08:00–17:00
         }
 
-        // Priority 4: Combine time/date-specific candidates with the general wisdom pool
-        var list = specialAndTimeMatched
-        for item in dailyPool where !list.contains(item) {
+        return priority3
+    }
+
+    /// Returns Priority 4 general daily wisdom pool (`#1–#49` excluding `#23` and any IDs already present in Priorities 1–3).
+    static func priority4Candidates(excluding excludedIDs: Set<Int> = []) -> [KeyboardGreetingPhrase] {
+        dailyPool.filter { !excludedIDs.contains($0.id) }
+    }
+
+    static func candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
+        let p1 = priority1Candidates(for: date)
+        let p2 = priority2Candidates(for: date)
+        let p3 = priority3Candidates(for: date)
+        var list: [KeyboardGreetingPhrase] = []
+        for item in (p1 + p2 + p3) where !list.contains(item) {
             list.append(item)
         }
-
+        let excludedIDs = Set(list.map(\.id))
+        list.append(contentsOf: priority4Candidates(excluding: excludedIDs))
         return list.isEmpty ? [all[0]] : list
     }
 }
@@ -773,11 +822,35 @@ final class GreetingBannerState: ObservableObject {
     }
 
     private func reshufflePool(for date: Date = Date()) {
-        let eligible = KeyboardGreetingPhrase.candidates(for: date)
-        var shuffled = eligible.shuffled()
+        let p1 = KeyboardGreetingPhrase.priority1Candidates(for: date).shuffled()
+        var seenIDs = Set(p1.map(\.id))
+
+        let p2 = KeyboardGreetingPhrase.priority2Candidates(for: date)
+            .filter { seenIDs.insert($0.id).inserted }
+            .shuffled()
+
+        let p3 = KeyboardGreetingPhrase.priority3Candidates(for: date)
+            .filter { seenIDs.insert($0.id).inserted }
+            .shuffled()
+
+        let p4 = KeyboardGreetingPhrase.priority4Candidates(excluding: seenIDs).shuffled()
+
+        var shuffled = p1 + p2 + p3 + p4
         if let lastID = lastPickedID, shuffled.count > 1, shuffled.first?.id == lastID {
-            let first = shuffled.removeFirst()
-            shuffled.append(first)
+            let firstTierCount: Int
+            if !p1.isEmpty {
+                firstTierCount = p1.count
+            } else if !p2.isEmpty {
+                firstTierCount = p2.count
+            } else if !p3.isEmpty {
+                firstTierCount = p3.count
+            } else {
+                firstTierCount = p4.count
+            }
+            if firstTierCount > 1 {
+                let first = shuffled.removeFirst()
+                shuffled.insert(first, at: firstTierCount - 1)
+            }
         }
         shuffledPool = shuffled
         candidateIndex = 0
@@ -836,8 +909,12 @@ struct NativeAutocompleteToolbar: View {
         keyboardContext.deviceType == .pad && !isFloating
     }
 
+    private var isSplitPad: Bool {
+        isDockedPad && keyboardContext.isKeyboardSplit
+    }
+
     private var height: CGFloat {
-        isFloating ? 42 : (isDockedPad ? 37 : 42)
+        isFloating ? 38 : (isDockedPad ? 38 : 42)
     }
 
     private var shouldShowGreetingBanner: Bool {
@@ -849,6 +926,64 @@ struct NativeAutocompleteToolbar: View {
         return before.isEmpty && after.isEmpty
     }
 
+    private var isDark: Bool {
+        DemoStyleProvider.effectiveIsDark(for: keyboardContext)
+    }
+
+    @ViewBuilder
+    private func suggestionSlotButton(index: Int, suggestion: Autocomplete.Suggestion?, width: CGFloat) -> some View {
+        Button {
+            if let suggestion {
+                autocompleteAction(suggestion)
+            }
+        } label: {
+            ZStack {
+                Color.primary.opacity(0.001)
+
+                if let suggestion {
+                    let isMathUnknown = suggestion.additionalInfo["mathAction"] != nil
+                    let displayTitle = suggestion.isUnknown
+                        ? (isMathUnknown ? "«\(suggestion.title)»" : "“\(suggestion.title)”")
+                        : suggestion.title
+                    let isPad = keyboardContext.deviceType == .pad && !isFloating
+                    if suggestion.isAutocorrect {
+                        Text(displayTitle)
+                            .font(isFloating ? .subheadline.weight(.regular) : .system(size: 17, weight: .regular))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .padding(.horizontal, isFloating ? 8 : 14)
+                            .frame(
+                                minWidth: isPad ? 138 : 88,
+                                maxWidth: isPad ? 168 : .infinity,
+                                minHeight: isPad ? 35 : (isFloating ? 28 : 32)
+                            )
+                            .background(
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
+                                    .shadow(color: Color.black.opacity(isDark ? 0.18 : 0.06), radius: 1.5, x: 0, y: 0.5)
+                            )
+                            .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 14 : 8))
+                    } else {
+                        Text(displayTitle)
+                            .font(isFloating ? .subheadline : .system(size: 17, weight: .regular))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                            .padding(.horizontal, isFloating ? 6 : 12)
+                            .padding(.vertical, isFloating ? 3 : 5)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(FullSlotButtonStyle())
+        .frame(width: width, height: height)
+        .contentShape(Rectangle())
+        .accessibilityIdentifier("autocomplete.slot.\(index)")
+    }
+
     var body: some View {
         let suggestions = Array(autocompleteContext.suggestions.prefix(3))
         let slotCount = 3
@@ -858,54 +993,82 @@ struct NativeAutocompleteToolbar: View {
             let sideInset: CGFloat = 0
             let centerWidth = max(totalWidth - (sideInset * 2), 1)
             let slotWidth = max((centerWidth - 1.0) / CGFloat(slotCount), 1)
+            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
+            let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
+            let splitClusterWidth = min(max((totalWidth * (1.0 - minGapFraction)) / 2.0, 1), isPortrait ? 276 : 320)
 
             ZStack {
                 if shouldShowGreetingBanner {
-                    greetingBannerView(centerWidth: centerWidth)
+                    if isSplitPad {
+                        HStack(spacing: 0) {
+                            splitLeftGreetingBannerView(clusterWidth: splitClusterWidth)
+                                .frame(width: splitClusterWidth, height: height)
+                            Spacer(minLength: 0)
+                            splitRightGreetingControlsView(clusterWidth: splitClusterWidth)
+                                .frame(width: splitClusterWidth, height: height)
+                        }
                         .frame(width: totalWidth, height: height)
                         .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    } else {
+                        greetingBannerView(centerWidth: centerWidth)
+                            .frame(width: totalWidth, height: height)
+                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    }
                 } else {
-                    HStack(spacing: 0) {
-                        ForEach(0..<slotCount, id: \.self) { index in
-                            let suggestion: Autocomplete.Suggestion? = index < suggestions.count ? suggestions[index] : nil
-
-                            Button {
-                                if let suggestion {
-                                    autocompleteAction(suggestion)
-                                }
-                            } label: {
-                                ZStack {
-                                    Color.primary.opacity(0.001)
-
-                                    if let suggestion {
-                                        Text(suggestion.isUnknown ? "“\(suggestion.title)”" : suggestion.title)
-                                            .font(isFloating ? .subheadline : .system(size: 16, weight: suggestion.isAutocorrect ? .semibold : .regular))
-                                            .foregroundStyle(Color.primary)
-                                            .lineLimit(1)
-                                            .padding(.horizontal, isFloating ? 6 : 12)
-                                            .padding(.vertical, isFloating ? 3 : 5)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 6)
-                                                    .fill(suggestion.isAutocorrect ? Color.primary.opacity(0.12) : Color.clear)
-                                            )
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .contentShape(Rectangle())
+                    if isSplitPad {
+                        let leftSlotWidth = max((splitClusterWidth - 0.5) / 2.0, 1)
+                        let s0 = suggestions.indices.contains(0) ? suggestions[0] : nil
+                        let s1 = suggestions.indices.contains(1) ? suggestions[1] : nil
+                        let hideLeftDivider = (s0?.isAutocorrect == true) || (s1?.isAutocorrect == true)
+                        HStack(spacing: 0) {
+                            HStack(spacing: 0) {
+                                suggestionSlotButton(
+                                    index: 0,
+                                    suggestion: s0,
+                                    width: leftSlotWidth
+                                )
+                                Color.secondary.opacity(hideLeftDivider ? 0.0 : 0.28)
+                                    .frame(width: 0.5, height: 22)
+                                suggestionSlotButton(
+                                    index: 1,
+                                    suggestion: s1,
+                                    width: leftSlotWidth
+                                )
                             }
-                            .buttonStyle(FullSlotButtonStyle())
-                            .frame(width: slotWidth, height: height)
-                            .contentShape(Rectangle())
-                            .accessibilityIdentifier("autocomplete.slot.\(index)")
+                            .frame(width: splitClusterWidth, height: height)
 
-                            if index < slotCount - 1 {
-                                Color.secondary.opacity(0.28)
-                                    .frame(width: 0.5, height: isFloating ? 16 : 24)
+                            Spacer(minLength: 0)
+
+                            suggestionSlotButton(
+                                index: 2,
+                                suggestion: suggestions.indices.contains(2) ? suggestions[2] : nil,
+                                width: splitClusterWidth
+                            )
+                        }
+                        .frame(width: totalWidth, height: height)
+                        .transition(.opacity)
+                    } else {
+                        HStack(spacing: 0) {
+                            ForEach(0..<slotCount, id: \.self) { index in
+                                let suggestion: Autocomplete.Suggestion? = index < suggestions.count ? suggestions[index] : nil
+                                let nextSuggestion: Autocomplete.Suggestion? = (index + 1) < suggestions.count ? suggestions[index + 1] : nil
+                                let hideDivider = (suggestion?.isAutocorrect == true) || (nextSuggestion?.isAutocorrect == true)
+
+                                suggestionSlotButton(
+                                    index: index,
+                                    suggestion: suggestion,
+                                    width: slotWidth
+                                )
+
+                                if index < slotCount - 1 {
+                                    Color.secondary.opacity(hideDivider ? 0.0 : 0.28)
+                                        .frame(width: 0.5, height: isFloating ? 16 : 24)
+                                }
                             }
                         }
+                        .frame(width: totalWidth, height: height)
+                        .transition(.opacity)
                     }
-                    .frame(width: totalWidth, height: height)
-                    .transition(.opacity)
                 }
             }
             .animation(.easeInOut(duration: 0.2), value: shouldShowGreetingBanner)
@@ -924,21 +1087,100 @@ struct NativeAutocompleteToolbar: View {
         }
     }
 
+    private func insertCurrentPhrase(_ phrase: KeyboardGreetingPhrase) {
+        let inserted = phrase.formattedInsertText(for: KeyboardPreferences.interfaceLanguage)
+        KeyboardUsageStats.markInjectedText(inserted)
+        KeyboardUsageStats.recordPhraseInserted()
+        TextHistoryManager.shared.recordInsert(inserted)
+        keyboardContext.textDocumentProxy.insertText(inserted)
+        SpaceBarState.shared.fadeToResting()
+        greetingState.dismissForTyping()
+    }
+
+    @ViewBuilder
+    private func splitLeftGreetingBannerView(clusterWidth: CGFloat) -> some View {
+        let phrase = greetingState.currentPhrase()
+        Button {
+            insertCurrentPhrase(phrase)
+        } label: {
+            HStack(spacing: 5) {
+                TaraqTamgaShape()
+                    .fill(Color.primary.opacity(0.65))
+                    .frame(width: 12.5, height: 7.0)
+
+                Text(phrase.bannerCRH)
+                    .font(.system(size: 12.0, weight: .medium))
+                    .foregroundStyle(Color.primary.opacity(0.88))
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.55)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3.5)
+            .frame(maxWidth: max(clusterWidth - 12, 120))
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("autocomplete.greetingBanner")
+    }
+
+    @ViewBuilder
+    private func splitRightGreetingControlsView(clusterWidth: CGFloat) -> some View {
+        let phrase = greetingState.currentPhrase()
+        let attributionText = (phrase.attribution?.isEmpty == false) ? phrase.attribution! : "Qırımtatar hikmeti"
+        HStack(spacing: 6) {
+            Button {
+                insertCurrentPhrase(phrase)
+            } label: {
+                HStack(spacing: 5) {
+                    Text(attributionText)
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.secondary.opacity(0.9))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+
+                    Image(systemName: "arrow.up.left.circle.fill")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundStyle(Color.secondary.opacity(0.75))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                greetingState.cycleNext()
+            } label: {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.secondary.opacity(0.8))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.primary.opacity(0.06)))
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("autocomplete.greetingNext")
+        }
+        .padding(.horizontal, 6)
+        .frame(maxWidth: max(clusterWidth - 10, 120))
+    }
+
     @ViewBuilder
     private func greetingBannerView(centerWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
-        let maxPillWidth = min(max(centerWidth - rightReserved, 200), isDockedPad ? 660 : 520)
+        let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
 
         HStack(spacing: 5) {
             Button {
-                let inserted = phrase.formattedInsertText(for: KeyboardPreferences.interfaceLanguage)
-                KeyboardUsageStats.markInjectedText(inserted)
-                KeyboardUsageStats.recordPhraseInserted()
-                TextHistoryManager.shared.recordInsert(inserted)
-                keyboardContext.textDocumentProxy.insertText(inserted)
-                SpaceBarState.shared.fadeToResting()
-                greetingState.dismissForTyping()
+                insertCurrentPhrase(phrase)
             } label: {
                 HStack(spacing: 6) {
                     TaraqTamgaShape()

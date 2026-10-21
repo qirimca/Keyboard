@@ -25,7 +25,16 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
         if action == .dismissKeyboard,
            keyboardContext.deviceType == .pad,
            !keyboardContext.isKeyboardFloating {
-            return [.custom(named: "floating_keyboard")]
+            if keyboardContext.deviceSupportsSplitKeyboard {
+                let splitOrMerge = keyboardContext.isKeyboardSplit ? "merge_keyboard" : "split_keyboard"
+                return [
+                    .custom(named: "floating_keyboard"),
+                    .custom(named: splitOrMerge)
+                ]
+            }
+            return [
+                .custom(named: "floating_keyboard")
+            ]
         }
         return super.calloutActions(for: action)
     }

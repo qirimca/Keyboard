@@ -26,7 +26,6 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         self.context = context
         self.keyboardContext = keyboardContext
         self.controller = controller
-        manager.prepareAsync()
     }
 
     private var context: AutocompleteContext
@@ -78,6 +77,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 
     private struct QuerySnapshot {
         let query: String
+        let mathEvaluation: (expression: String, result: String)?
         let shouldCapitalize: Bool
         let isDocumentEmpty: Bool
         let completedContextWords: [String]
@@ -88,24 +88,75 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         let proxy = keyboardContext.textDocumentProxy
         let query = AutocompleteQueryResolver.queryText(for: proxy) ?? fallbackText
         latestQuery = query
+        let mathAllowed: Bool = {
+            guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+            if #available(iOS 18.0, *) {
+                return proxy.mathExpressionCompletionType != .no
+            }
+            return true
+        }()
+        let mathEvaluation = mathAllowed
+            ? MathExpressionEvaluator.evaluateTrailingExpressionWithLiteral(in: proxy.documentContextBeforeInput ?? fallbackText)
+            : nil
         let shouldCapitalize = Self.shouldCapitalize(
             typedText: query,
             proxy: proxy,
             keyboardContext: keyboardContext
         )
         let isEmpty = query.isEmpty ? Self.isDocumentEmpty(proxy) : false
-        let contextWords = (query.isEmpty && !isEmpty) ? Self.completedContextWords(before: proxy) : []
+        let rawContextWords = !isEmpty ? Self.completedContextWords(before: proxy) : []
+        let contextWords = query.isEmpty ? rawContextWords : Array(rawContextWords.dropLast())
+        let autocorrectAllowed = context.isAutocorrectEnabled
+            && proxy.autocorrectionType != .no
+            && SystemKeyboardSettings.isAutoCorrectionEnabled
         return QuerySnapshot(
             query: query,
+            mathEvaluation: mathEvaluation,
             shouldCapitalize: shouldCapitalize,
             isDocumentEmpty: isEmpty,
             completedContextWords: contextWords,
-            isAutocorrectEnabled: context.isAutocorrectEnabled
+            isAutocorrectEnabled: autocorrectAllowed
         )
     }
 
     private func computeSuggestions(for snapshot: QuerySnapshot) -> [Autocomplete.Suggestion] {
-        let suggestions: [Autocomplete.Suggestion]
+        if let mathEval = snapshot.mathEvaluation {
+            let expr = mathEval.expression
+            let result = mathEval.result
+            return [
+                Autocomplete.Suggestion(
+                    text: expr,
+                    title: expr,
+                    isUnknown: true,
+                    additionalInfo: [
+                        "mathAction": "literal",
+                        "mathExpr": expr,
+                        "mathResult": result
+                    ]
+                ),
+                Autocomplete.Suggestion(
+                    text: "\(expr)\(result)",
+                    title: "\(expr)\(result)",
+                    isAutocorrect: snapshot.isAutocorrectEnabled,
+                    additionalInfo: [
+                        "mathAction": "append",
+                        "mathExpr": expr,
+                        "mathResult": result
+                    ]
+                ),
+                Autocomplete.Suggestion(
+                    text: result,
+                    title: result,
+                    isAutocorrect: false,
+                    additionalInfo: [
+                        "mathAction": "replace",
+                        "mathExpr": expr,
+                        "mathResult": result
+                    ]
+                )
+            ]
+        }
+        var suggestions: [Autocomplete.Suggestion]
         if snapshot.query.isEmpty {
             if snapshot.isDocumentEmpty {
                 suggestions = []
@@ -120,8 +171,26 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         } else {
             suggestions = manager.suggestions(
                 for: snapshot.query,
-                shouldCapitalize: snapshot.shouldCapitalize
+                shouldCapitalize: snapshot.shouldCapitalize,
+                contextWords: snapshot.completedContextWords
             )
+            if let shortcutText = manager.shortcutReplacement(for: snapshot.query) {
+                var updated = suggestions.filter { $0.text != shortcutText }.map { item -> Autocomplete.Suggestion in
+                    var copy = item
+                    copy.isAutocorrect = false
+                    return copy
+                }
+                let shortcutSuggestion = Autocomplete.Suggestion(
+                    text: shortcutText,
+                    title: shortcutText,
+                    isAutocorrect: true
+                )
+                updated.insert(shortcutSuggestion, at: 0)
+                if updated.count > 3 {
+                    updated = Array(updated.prefix(3))
+                }
+                suggestions = updated
+            }
         }
         return suggestions.map { suggestion in
             var mapped = suggestion
@@ -135,6 +204,10 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 enum AutocompleteQueryResolver {
 
     static func queryText(for proxy: UITextDocumentProxy) -> String? {
+        if let mathQuery = MathExpressionEvaluator.trailingMathQuery(in: proxy.documentContextBeforeInput) {
+            return mathQuery
+        }
+
         if let word = proxy.currentWord, !word.isEmpty {
             return word
         }
@@ -195,7 +268,7 @@ private extension CrimeanTatarAutocompleteProvider {
         }
 
         // 3. Fallback for non-alphabetic or auto modes:
-        if proxy.isCursorAtNewSentence {
+        if SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence {
             return true
         }
         return false

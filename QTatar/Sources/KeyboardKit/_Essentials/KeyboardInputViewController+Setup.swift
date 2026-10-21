@@ -34,7 +34,9 @@ extension KeyboardInputViewController {
     /// Set up an initial width to avoid SwiftUI layout bugs.
     func setupInitialWidth() {
         #if os(iOS) || os(tvOS)
-        view.frame.size.width = UIScreen.main.bounds.width
+        if view.frame.size.width == 0 {
+            view.frame.size.width = UIScreen.main.bounds.width
+        }
         #else
         view.frame.size.width = 500
         #endif

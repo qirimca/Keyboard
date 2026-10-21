@@ -76,3 +76,9 @@
 "stats.volumeMaxReached" = "Досягнуто найвищого рівня!";
 "stats.activeTimeSubtitle" = "Чистий час набору";
 "stats.learnedWordsSubtitle" = "Особистий словник";
+"settings.cyrillicStatusAdded" = "Додано";
+"settings.cyrillicStatusMissing" = "Не додано";
+"settings.cyrillicPromoTitle" = "Додайте також кириличну клавіатуру";
+"settings.cyrillicPromoDesc" = "Ви використовуєте кириличну абетку. Додайте клавіатуру «Къырымтатарджа» в Параметрах iOS, щоб зручно писати і кирилицею.";
+"settings.cyrillicAddAction" = "Додати в Параметрах";
+"settings.cyrillicGuideTitle" = "Як додати кириличну клавіатуру?";

@@ -150,6 +150,7 @@ struct HomeView: View {
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
 
     @State private var showIndicatorSheet = false
+    @State private var showCyrillicGuideAlert = false
     @State private var isTestingExpanded = true
     @State private var shouldAutoFocusSandbox: Bool = {
         let args = ProcessInfo.processInfo.arguments
@@ -187,9 +188,11 @@ struct HomeView: View {
                             ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
                             : AnyLayout(VStackLayout(spacing: geometry.size.height < 360 ? 10 : 14))
                         layout {
-                            // Child 0: Status indicators (full-width top row in 2-col, top in 1-col)
-                            statusIndicatorsSection
-                                .id("statusIndicators")
+                            // Child 0: Status indicators (only shown when setup has issues / is incomplete)
+                            if !areAllIndicatorsEnabled {
+                                statusIndicatorsSection
+                                    .id("statusIndicators")
+                            }
 
                             // Child 1: Top Basic Statistics (expandable) + Keyboard settings (left column in 2-col, below status indicators in 1-col)
                             VStack(alignment: .leading, spacing: geometry.size.height < 360 ? 10 : 14) {
@@ -218,23 +221,13 @@ struct HomeView: View {
                         if isCompactHeight && Self.usesTwoColumns(viewportSize, containerSize: geometry.size) {
                             if isWritingFieldFocused {
                                 scroll.scrollTo("writingArea", anchor: .bottom)
-                            } else {
+                            } else if !areAllIndicatorsEnabled {
                                 scroll.scrollTo("statusIndicators", anchor: .top)
                             }
                         }
                     }
                     .onChange(of: isWritingFieldFocused) { _, focused in
                         syncSandboxFocusToAppGroup(focused)
-                        if focused {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                scroll.scrollTo("writingArea", anchor: .bottom)
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    scroll.scrollTo("writingArea", anchor: .bottom)
-                                }
-                            }
-                        }
                     }
                     .onChange(of: text) { _, _ in
                         if isWritingFieldFocused {
@@ -269,7 +262,6 @@ struct HomeView: View {
             .padding(.top, Device.iPhone ? 12 : 16)
             .padding(.bottom, Device.iPhone ? 12 : 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .scrollDismissesKeyboard(.interactively)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: language)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: cyrillicEnabled)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: statsEnabled)
@@ -324,6 +316,19 @@ struct HomeView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .alert(localizedInterfaceString("settings.cyrillicGuideTitle"), isPresented: $showCyrillicGuideAlert) {
+            Button(localizedInterfaceString("settings.cyrillicAddAction")) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button(Home.home_start_key.localized) {
+                showIndicatorSheet = true
+            }
+            Button(localizedInterfaceString("stats.resetCancel"), role: .cancel) {}
+        } message: {
+            Text(localizedInterfaceString("settings.missingCyrillic"))
+        }
         .onAppear {
             Self.registerFloatingRequestObserverIfNeeded()
             Self.registerStatsSyncObserverIfNeeded()
@@ -341,6 +346,7 @@ struct HomeView: View {
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
             let now = CFAbsoluteTimeGetCurrent()
@@ -360,10 +366,16 @@ struct HomeView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            refreshCyrillicStatus()
+            keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            refreshCyrillicStatus()
+            keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            Self.updateHostSplitBackdropMask()
         }
         .onReceive(Self.statsPollTimer) { _ in
             if statsEnabled && scenePhase != .background {
@@ -389,11 +401,22 @@ struct HomeView: View {
             withAnimation(.easeInOut(duration: 0.25)) {
                 isKeyboardVisible = true
             }
+            Self.syncHostSystemSplitStateIfNeeded()
+            Self.updateHostSplitBackdropMask()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { _ in
+            Self.syncHostSystemSplitStateIfNeeded()
+            Self.updateHostSplitBackdropMask()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidChangeFrameNotification)) { _ in
+            Self.syncHostSystemSplitStateIfNeeded()
+            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             withAnimation(.easeInOut(duration: 0.25)) {
                 isKeyboardVisible = false
             }
+            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
             refreshCyrillicStatus()
@@ -541,8 +564,9 @@ struct HomeView: View {
     private static func registerFloatingRequestObserverIfNeeded() {
         guard !didRegisterFloatingObserver else { return }
         didRegisterFloatingObserver = true
+        let center = CFNotificationCenterGetDarwinNotifyCenter()
         CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(),
+            center,
             nil,
             { _, _, _, _, _ in
                 DispatchQueue.main.async {
@@ -553,56 +577,368 @@ struct HomeView: View {
             nil,
             .deliverImmediately
         )
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    HomeView.invokeHostSetFloating(false)
+                }
+            },
+            "crh.key.requestDockedKeyboard" as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    HomeView.invokeHostSetSplit(true)
+                }
+            },
+            "crh.key.requestSplitKeyboard" as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    HomeView.invokeHostSetSplit(false)
+                }
+            },
+            "crh.key.requestMergedKeyboard" as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            center,
+            nil,
+            { _, _, _, _, _ in
+                DispatchQueue.main.async {
+                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                    KeyboardPreferences.refreshCachedPreferences()
+                    HomeView.updateHostSplitBackdropMask()
+                }
+            },
+            KeyboardPreferences.splitModeChangedNotification as CFString,
+            nil,
+            .deliverImmediately
+        )
     }
 
-    static func invokeHostSetFloating(_ floating: Bool) {
+    private static func invokeHostSetSplit(_ split: Bool) {
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            let rivenSel = NSSelectorFromString("setRivenPreference:")
+            if let method = class_getClassMethod(implClass, rivenSel) {
+                typealias SetRivenFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetRivenFn.self)
+                fn(implClass, rivenSel, split)
+            }
+            let splitSel = NSSelectorFromString("setSplit:")
+            if let method = class_getClassMethod(implClass, splitSel) {
+                typealias SetSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                let fn = unsafeBitCast(method_getImplementation(method), to: SetSplitFn.self)
+                fn(implClass, splitSel, split)
+            }
+        }
+        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            let sharedSel = NSSelectorFromString("sharedInstance")
+            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
+                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
+                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
+                if let hostInstance = sharedFn(hostClass, sharedSel) {
+                    let setSplitSel = NSSelectorFromString("setSplit:")
+                    if hostInstance.responds(to: setSplitSel),
+                       let m = class_getInstanceMethod(type(of: hostInstance), setSplitSel) {
+                        typealias SetInstSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                        let fn = unsafeBitCast(method_getImplementation(m), to: SetInstSplitFn.self)
+                        fn(hostInstance, setSplitSel, split)
+                    }
+                }
+            }
+        }
+        updateHostSplitBackdropMask()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            updateHostSplitBackdropMask()
+        }
+    }
+
+    private static func queryHostSystemIsSplit() -> Bool? {
+        guard Device.iPad else { return nil }
+        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            let sharedSel = NSSelectorFromString("sharedInstance")
+            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
+                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
+                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
+                if let hostInstance = sharedFn(hostClass, sharedSel) {
+                    for selName in ["isSplit", "isSplitting"] {
+                        let sel = NSSelectorFromString(selName)
+                        if hostInstance.responds(to: sel),
+                           let m = class_getInstanceMethod(type(of: hostInstance), sel) {
+                            typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                            let fn = unsafeBitCast(method_getImplementation(m), to: BoolFn.self)
+                            if fn(hostInstance, sel) { return true }
+                        }
+                    }
+                }
+            }
+        }
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            for selName in ["isSplit", "rivenPreference"] {
+                let sel = NSSelectorFromString(selName)
+                if let method = class_getClassMethod(implClass, sel) {
+                    typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                    let fn = unsafeBitCast(method_getImplementation(method), to: BoolFn.self)
+                    if fn(implClass, sel) { return true }
+                }
+            }
+        }
+        var windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
+            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
+            if let method = class_getClassMethod(effectsClass, sharedSel) {
+                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
+                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
+                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
+                    windows.append(win)
+                }
+            }
+        }
+        for win in windows {
+            if let rootVC = win.rootViewController {
+                let placementSel = NSSelectorFromString("placement")
+                if rootVC.responds(to: placementSel),
+                   let placementObj = rootVC.perform(placementSel)?.takeUnretainedValue() {
+                    let placementClassName = String(describing: type(of: placementObj))
+                    if placementClassName.contains("Split") {
+                        return true
+                    }
+                    let isSplitSel = NSSelectorFromString("isSplit")
+                    if placementObj.responds(to: isSplitSel),
+                       let m = class_getInstanceMethod(type(of: placementObj), isSplitSel) {
+                        typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                        let fn = unsafeBitCast(method_getImplementation(m), to: BoolFn.self)
+                        if fn(placementObj, isSplitSel) { return true }
+                    }
+                }
+            }
+        }
+        return nil
+    }
+
+    private static func syncHostSystemSplitStateIfNeeded() {
+        guard Device.iPad, KeyboardContext.deviceSupportsSplitKeyboard() else { return }
+        if let systemSplit = queryHostSystemIsSplit(), systemSplit, !KeyboardPreferences.splitKeyboardEnabled {
+            KeyboardPreferences.setSplitKeyboardEnabled(true)
+        }
+    }
+
+    /// Masks/hides the full-width `UIKBInputBackdropView` in the host app's `UITextEffectsWindow` and `UIRemoteKeyboardWindow`
+    /// when Split keyboard mode is active so the middle gap is 100% transparent without any blur.
+    private static func updateHostSplitBackdropMask() {
+        guard Device.iPad else { return }
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        KeyboardPreferences.refreshCachedPreferences()
+        let isSplitActive = KeyboardPreferences.splitKeyboardEnabled && KeyboardContext.deviceSupportsSplitKeyboard()
+        var windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        for win in UIApplication.shared.windows where !windows.contains(win) {
+            windows.append(win)
+        }
+        for (clsName, selName) in [
+            ("UITextEffectsWindow", "sharedTextEffectsWindow"),
+            ("UIRemoteKeyboardWindow", "remoteKeyboardWindowForScreen:create:")
+        ] {
+            if let cls: AnyClass = NSClassFromString(clsName) {
+                let sel = NSSelectorFromString(selName)
+                if selName == "sharedTextEffectsWindow", let method = class_getClassMethod(cls, sel) {
+                    typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
+                    let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
+                    if let win = fn(cls, sel), !windows.contains(win) {
+                        windows.append(win)
+                    }
+                } else if selName == "remoteKeyboardWindowForScreen:create:", let method = class_getClassMethod(cls, sel) {
+                    typealias RemoteWinFn = @convention(c) (AnyObject, Selector, UIScreen, Bool) -> UIWindow?
+                    let fn = unsafeBitCast(method_getImplementation(method), to: RemoteWinFn.self)
+                    if let win = fn(cls, sel, UIScreen.main, false), !windows.contains(win) {
+                        windows.append(win)
+                    }
+                }
+            }
+        }
+        func processBackdrop(_ view: UIView, in window: UIWindow) {
+            let typeName = String(describing: type(of: view))
+            let isBackdropView = typeName.contains("Backdrop")
+                || typeName.contains("VisualEffect")
+                || typeName.contains("Platter")
+                || typeName.contains("Shadow")
+                || typeName.contains("Background")
+            let frameInWin = view.superview?.convert(view.frame, to: window) ?? view.frame
+            if isBackdropView && frameInWin.width >= window.bounds.width * 0.70 && frameInWin.height >= 24 {
+                if isSplitActive {
+                    let b = view.bounds
+                    let isPortrait = window.bounds.height >= window.bounds.width
+                    let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
+                    let maxHalfWidth: CGFloat = isPortrait ? 276 : 320
+                    let islandW = min(max((b.width * (1.0 - minGapFraction)) / 2.0, 1), maxHalfWidth)
+                    let path = UIBezierPath()
+                    path.append(UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: islandW, height: b.height), cornerRadius: 14))
+                    path.append(UIBezierPath(roundedRect: CGRect(x: max(0, b.width - islandW), y: 0, width: islandW, height: b.height), cornerRadius: 14))
+                    let maskLayer = (view.layer.mask as? CAShapeLayer) ?? CAShapeLayer()
+                    maskLayer.path = path.cgPath
+                    view.layer.mask = maskLayer
+                    view.alpha = 0
+                    view.isHidden = true
+                } else {
+                    if view.layer.mask != nil || view.alpha == 0 || view.isHidden {
+                        view.layer.mask = nil
+                        view.alpha = 1
+                        view.isHidden = false
+                    }
+                }
+            }
+            for sub in view.subviews {
+                processBackdrop(sub, in: window)
+            }
+        }
+        for window in windows {
+            let winName = String(describing: type(of: window))
+            if winName.contains("TextEffects") || winName.contains("RemoteKeyboard") || winName.contains("Input") {
+                processBackdrop(window, in: window)
+            }
+        }
+    }
+
+    private static func invokeHostSetFloating(_ floating: Bool) {
+        var alreadyMatching = false
         if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
             let isFloatingSel = NSSelectorFromString("isFloating")
             if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
                 typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
                 let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
-                if checkFn(implClass, isFloatingSel) == floating {
-                    return
+                alreadyMatching = (checkFn(implClass, isFloatingSel) == floating)
+            }
+            if !alreadyMatching {
+                let implSel = NSSelectorFromString("setFloating:")
+                if let method = class_getClassMethod(implClass, implSel) {
+                    typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                    let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
+                    fn(implClass, implSel, floating)
                 }
             }
         }
-        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if !alreadyMatching, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
             let hostSel = NSSelectorFromString("setFloating:onCompletion:")
             if let method = class_getClassMethod(hostClass, hostSel) {
                 typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
                 let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
                 fn(hostClass, hostSel, floating, nil)
-                return
             }
         }
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
-            let implSel = NSSelectorFromString("setFloating:")
-            if let method = class_getClassMethod(implClass, implSel) {
-                typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
-                fn(implClass, implSel, floating)
+        if floating {
+            clampFloatingKeyboardToScreenBounds()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                clampFloatingKeyboardToScreenBounds()
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                clampFloatingKeyboardToScreenBounds()
+            }
+        }
+        updateHostSplitBackdropMask()
+    }
+
+    private static func clampFloatingKeyboardToScreenBounds() {
+        let screenBounds = UIScreen.main.bounds
+        guard screenBounds.width > 500 else { return }
+        let safeRect = screenBounds.insetBy(dx: 16, dy: 24)
+        var windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
+            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
+            if let method = class_getClassMethod(effectsClass, sharedSel) {
+                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
+                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
+                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
+                    windows.append(win)
+                }
+            }
+        }
+        func clampRecursively(_ view: UIView, in window: UIWindow) {
+            let typeName = String(describing: type(of: view))
+            let frameInWin = view.superview?.convert(view.frame, to: window) ?? view.frame
+            if (typeName.contains("UIInputSetHostView") || typeName.contains("UIKBInputBackdropView") || typeName.contains("Floating"))
+                && frameInWin.width >= 240 && frameInWin.width <= 420
+                && frameInWin.height >= 160 && frameInWin.height <= 360 {
+                var targetX = frameInWin.origin.x
+                var targetY = frameInWin.origin.y
+                if targetX < safeRect.minX {
+                    targetX = safeRect.minX
+                } else if targetX + frameInWin.width > safeRect.maxX {
+                    targetX = safeRect.maxX - frameInWin.width
+                }
+                if targetY < safeRect.minY {
+                    targetY = safeRect.minY
+                } else if targetY + frameInWin.height > safeRect.maxY {
+                    targetY = safeRect.maxY - frameInWin.height
+                }
+                if abs(targetX - frameInWin.origin.x) > 0.5 || abs(targetY - frameInWin.origin.y) > 0.5,
+                   let superview = view.superview {
+                    let clampedInSuper = window.convert(
+                        CGRect(x: targetX, y: targetY, width: frameInWin.width, height: frameInWin.height),
+                        to: superview
+                    )
+                    view.frame = clampedInSuper
+                }
+            }
+            for sub in view.subviews {
+                clampRecursively(sub, in: window)
+            }
+        }
+        for window in windows {
+            clampRecursively(window, in: window)
         }
     }
 
     private func refreshCyrillicStatus() {
         cachedIsFullAccessEnabled = keyboardState.isFullAccessEnabled
         cachedIsRtl = keyboardState.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_cyrillic_missing") {
+            cyrillicStatus = .missing
+            return
+        }
+        if args.contains("-qt_cyrillic_added") {
+            cyrillicStatus = .enabled
+            return
+        }
         let appleKeyboards = (UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String]) ?? []
         let modes = UITextInputMode.activeInputModes
         let modeIdentifiers = modes.compactMap { $0.value(forKey: "identifier") as? String }
-        let identifiers = appleKeyboards + modeIdentifiers
+        let extensionIdentifiers = modes.compactMap {
+            ($0.value(forKey: "extension") as? NSObject)?.value(forKey: "identifier") as? String
+        }
+        let identifiers = appleKeyboards + modeIdentifiers + extensionIdentifiers
         let languages = modes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
-        let cyrillicByIdentifier = identifiers.contains { $0.contains(AppConfiguration.cyrillicKeyboardBundleId) }
-        let cyrillicSeenInAppGroup = KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
-        if cyrillicByIdentifier || cyrillicSeenInAppGroup || languages.contains(where: { $0.hasPrefix("crh-cyrl") }) {
+        let cyrillicByIdentifier = identifiers.contains {
+            $0.contains(AppConfiguration.cyrillicKeyboardBundleId) || $0.localizedCaseInsensitiveContains("KeyboardCyrillic")
+        }
+        let cyrillicByLanguage = languages.contains { $0.hasPrefix("crh-cyrl") }
+        if cyrillicByIdentifier || cyrillicByLanguage {
             cyrillicStatus = .enabled
-        } else if appleKeyboards.contains(where: { $0.contains(AppConfiguration.keyboardBundleId) }) {
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+        } else if !modes.isEmpty || !appleKeyboards.isEmpty {
             cyrillicStatus = .missing
-        } else if identifiers.contains(where: { $0.hasPrefix(AppConfiguration.keyboardBundleIdPattern.replacingOccurrences(of: "*", with: "")) }) ||
-                  languages.contains("crh") || languages.isEmpty || modes.contains(where: { $0.primaryLanguage == nil }) {
-            cyrillicStatus = .unknown
+            KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
+        } else if KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+            cyrillicStatus = .enabled
         } else {
             cyrillicStatus = .missing
         }
@@ -686,6 +1022,7 @@ struct HomeView: View {
                 shouldAutoFocusSandbox = true
             }
             if args.contains("-qt_reset_text") {
+                let startSplit = args.contains("-qt_split")
                 text = ""
                 language = "crh"
                 suggestionsEnabled = true
@@ -696,12 +1033,15 @@ struct HomeView: View {
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.set(startSplit, forKey: KeyboardPreferences.splitKeyboardKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
-                KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                KeyboardPreferences.defaults.set(args.contains("-qt_cyrillic_added"), forKey: "crh.key.cyrillicExtensionSeen")
                 KeyboardPreferences.defaults.synchronize()
                 KeyboardPreferences.refreshCachedPreferences()
                 KeyboardUsageStats.resetAll()
                 refreshStatsFromAppGroup(syncSQLite: false)
+            } else if args.contains("-qt_split") {
+                KeyboardPreferences.setSplitKeyboardEnabled(true)
             }
             if shouldAutoFocusSandbox {
                 syncThemeToAppGroup(selectedThemeMode)
@@ -752,26 +1092,47 @@ private struct HomeTwoColumnLayout: Layout {
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        guard subviews.count >= 3 else { return .zero }
         let totalWidth = proposal.width ?? 800
         let w = widths(totalWidth)
+        if subviews.count == 2 {
+            let h0 = subviews[0].sizeThatFits(.init(width: w.left, height: nil)).height
+            let h1 = subviews[1].sizeThatFits(.init(width: w.right, height: nil)).height
+            return CGSize(width: totalWidth, height: max(h0, h1))
+        }
+        guard subviews.count >= 3 else { return .zero }
         let h0 = subviews[0].sizeThatFits(.init(width: totalWidth, height: nil)).height
         let h1 = subviews[1].sizeThatFits(.init(width: w.left, height: nil)).height
         let h2 = subviews[2].sizeThatFits(.init(width: w.right, height: nil)).height
-        return CGSize(width: totalWidth, height: h0 + spacing + max(h1, h2))
+        let topOffset = h0 > 0 ? (h0 + spacing) : 0
+        return CGSize(width: totalWidth, height: topOffset + max(h1, h2))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        guard subviews.count >= 3 else { return }
         let totalWidth = bounds.width
         let w = widths(totalWidth)
+        if subviews.count == 2 {
+            let h0 = subviews[0].sizeThatFits(.init(width: w.left, height: nil)).height
+            subviews[0].place(
+                at: CGPoint(x: bounds.minX, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: .init(width: w.left, height: h0)
+            )
+            let h1 = subviews[1].sizeThatFits(.init(width: w.right, height: nil)).height
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX + w.left + spacing, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: .init(width: w.right, height: h1)
+            )
+            return
+        }
+        guard subviews.count >= 3 else { return }
         let h0 = subviews[0].sizeThatFits(.init(width: totalWidth, height: nil)).height
         subviews[0].place(
             at: CGPoint(x: bounds.minX, y: bounds.minY),
             anchor: .topLeading,
             proposal: .init(width: totalWidth, height: h0)
         )
-        let rowY = bounds.minY + h0 + spacing
+        let rowY = bounds.minY + (h0 > 0 ? (h0 + spacing) : 0)
         let h1 = subviews[1].sizeThatFits(.init(width: w.left, height: nil)).height
         subviews[1].place(
             at: CGPoint(x: bounds.minX, y: rowY),
@@ -839,15 +1200,24 @@ private extension HomeView {
     }
 
     var statusIndicatorsSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            KeyboardStateIndicatorsRow(
-                states: [
+        VStack(alignment: .leading, spacing: 8) {
+            let states: [KeyboardState] = {
+                var list: [KeyboardState] = [
                     .active(keyboardState.isKeyboardActive),
                     .enable(keyboardState.isKeyboardEnabled),
                     .fullAccess(cachedIsFullAccessEnabled)
                 ]
-            ) {
+                if shouldIncludeCyrillicStatusTile {
+                    list.append(.cyrillic(isCyrillicKeyboardAdded))
+                }
+                return list
+            }()
+            KeyboardStateIndicatorsRow(states: states) {
                 showIndicatorSheet = true
+            }
+
+            if userUsesCyrillicEnvironment && !isCyrillicKeyboardAdded {
+                cyrillicRecommendationBanner
             }
 
             if !keyboardState.isKeyboardActive {
@@ -860,6 +1230,49 @@ private extension HomeView {
                 .padding(.horizontal, 4)
             }
         }
+    }
+
+    var cyrillicRecommendationBanner: some View {
+        HStack(alignment: .center, spacing: 12) {
+            cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84))
+            VStack(alignment: .leading, spacing: 2) {
+                interfaceLabel("settings.cyrillicPromoTitle")
+                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 13.5))
+                    .foregroundStyle(primaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                interfaceLabel("settings.cyrillicPromoDesc")
+                    .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                    .foregroundStyle(secondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 6)
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                interfaceLabel("settings.cyrillicAddAction")
+                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(brandBlue, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("status.cyrillicPromoAddButton")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color(red: 0.35, green: 0.34, blue: 0.84).opacity(0.32), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("status.cyrillicPromoBanner")
     }
 
     /// Keyboard Settings displayed directly on the Home screen in a clean Apple Settings card style.
@@ -895,10 +1308,11 @@ private extension HomeView {
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
 
-            // Cyrillic toggle: only iPad has an in-place script key (абв/abc) it can hide.
-            if Device.iPad {
-                Divider().padding(.leading, 54)
+            Divider().padding(.leading, 54)
 
+            // Cyrillic row: iPad has an in-place script key (абв/abc) toggle;
+            // iPhone has no in-keyboard script key and shows a tappable status indicator row instead.
+            if Device.iPad {
                 HStack(spacing: 12) {
                     cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84))
                     interfaceLabel("settings.cyrillic")
@@ -914,22 +1328,69 @@ private extension HomeView {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
+            } else {
+                Button {
+                    if !isCyrillicKeyboardAdded {
+                        showCyrillicGuideAlert = true
+                    } else if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84))
+                        interfaceLabel("settings.cyrillic")
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                            .foregroundStyle(primaryInk)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        HStack(spacing: 5) {
+                            Image(systemName: isCyrillicKeyboardAdded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(isCyrillicKeyboardAdded ? appleGreen : .orange)
+                            interfaceLabel(isCyrillicKeyboardAdded ? "settings.cyrillicStatusAdded" : "settings.cyrillicStatusMissing")
+                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 13))
+                                .foregroundStyle(isCyrillicKeyboardAdded ? appleGreen : .orange)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(secondaryInk.opacity(0.6))
+                        }
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(
+                            (isCyrillicKeyboardAdded ? appleGreen : Color.orange).opacity(0.12),
+                            in: Capsule()
+                        )
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.cyrillic.statusRow")
             }
 
             if (cyrillicEnabled || !Device.iPad) && cyrillicStatus == .missing {
-                HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.orange)
-                    StableLocalizedText(
-                        key: "settings.missingCyrillic",
-                        font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                        color: secondaryInk
-                    )
+                Button {
+                    showCyrillicGuideAlert = true
+                } label: {
+                    HStack(alignment: .center, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.orange)
+                        StableLocalizedText(
+                            key: "settings.missingCyrillic",
+                            font: InterfaceFont.font("GeneralSans-Regular", size: 12),
+                            color: secondaryInk
+                        )
+                    }
+                    .padding(.leading, 54)
+                    .padding(.trailing, 14)
+                    .padding(.bottom, 8)
+                    .contentShape(Rectangle())
                 }
-                .padding(.leading, 54)
-                .padding(.trailing, 14)
-                .padding(.bottom, 8)
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.cyrillicWarning")
             }
 
@@ -1694,10 +2155,48 @@ private extension HomeView {
         cachedIsRtl
     }
 
+    var isCyrillicKeyboardAdded: Bool {
+        cyrillicStatus == .enabled
+    }
+
+    var userUsesCyrillicEnvironment: Bool {
+        if language == "uk" { return true }
+        let cyrillicPrefixes = [
+            "uk", "ru", "be", "bg", "kk", "ky", "mk", "sr",
+            "mn", "tg", "uz-cyrl", "tt", "ba", "cv", "sah",
+            "os", "ce", "crh-cyrl"
+        ]
+        for pref in Locale.preferredLanguages {
+            let norm = pref.replacingOccurrences(of: "_", with: "-").lowercased()
+            if cyrillicPrefixes.contains(where: { norm == $0 || norm.hasPrefix($0 + "-") }) {
+                return true
+            }
+        }
+        for mode in UITextInputMode.activeInputModes {
+            if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
+                if cyrillicPrefixes.contains(where: { lang == $0 || lang.hasPrefix($0 + "-") }) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    var shouldIncludeCyrillicStatusTile: Bool {
+        if Device.iPad {
+            return cyrillicEnabled || userUsesCyrillicEnvironment
+        } else {
+            return !isCyrillicKeyboardAdded || userUsesCyrillicEnvironment
+        }
+    }
+
     var areAllIndicatorsEnabled: Bool {
-        keyboardState.isKeyboardActive &&
-        keyboardState.isKeyboardEnabled &&
-        cachedIsFullAccessEnabled
+        let baseOk = keyboardState.isKeyboardActive &&
+            keyboardState.isKeyboardEnabled &&
+            cachedIsFullAccessEnabled
+        let cyrillicRequiredOnPad = Device.iPad && cyrillicEnabled && !isCyrillicKeyboardAdded
+        let cyrillicRecommendedByEnv = userUsesCyrillicEnvironment && !isCyrillicKeyboardAdded
+        return baseOk && !cyrillicRequiredOnPad && !cyrillicRecommendedByEnv
     }
 }
 
@@ -2039,6 +2538,7 @@ private struct SandboxTextView: UIViewRepresentable {
         if uiView.font?.fontName != targetFont.fontName || uiView.font?.pointSize != targetFont.pointSize {
             uiView.font = targetFont
         }
+        context.coordinator.updateInlineMathPreview(for: uiView)
 
         let fieldOrThemeChanged = context.coordinator.lastFieldMode != fieldMode ||
                                   context.coordinator.lastThemeMode != themeMode
@@ -2082,6 +2582,9 @@ private struct SandboxTextView: UIViewRepresentable {
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         }
 
+        let isStructuredField = (fieldMode == .email || fieldMode == .url || fieldMode == .numbers)
+        textView.autocapitalizationType = isStructuredField ? .none : .sentences
+        textView.autocorrectionType = isStructuredField ? .no : .yes
         textView.keyboardType = fieldMode.keyboardType
         textView.returnKeyType = fieldMode.returnKeyType
         textView.textContentType = fieldMode.textContentType
@@ -2099,6 +2602,60 @@ private struct SandboxTextView: UIViewRepresentable {
         var isReloadingTraits = false
         private var observers: [NSObjectProtocol] = []
         private var keystrokeTimestamps: [CFTimeInterval] = []
+        private lazy var inlineMathPreviewLabel: UILabel = {
+            let label = UILabel()
+            label.accessibilityIdentifier = "sandbox.inlineMathPreview"
+            label.textColor = .placeholderText
+            label.backgroundColor = .clear
+            label.isUserInteractionEnabled = false
+            label.isHidden = true
+            return label
+        }()
+
+        func updateInlineMathPreview(for textView: UITextView) {
+            if inlineMathPreviewLabel.superview !== textView {
+                textView.addSubview(inlineMathPreviewLabel)
+            }
+            guard SystemKeyboardSettings.isShowMathResultsEnabled,
+                  KeyboardPreferences.suggestionsEnabled else {
+                inlineMathPreviewLabel.isHidden = true
+                return
+            }
+            if #available(iOS 18.0, *), textView.mathExpressionCompletionType == .no {
+                inlineMathPreviewLabel.isHidden = true
+                return
+            }
+            let fullText = (textView.text ?? "") as NSString
+            let selRange = textView.selectedRange
+            let cursorLocation = min(max(selRange.location, 0), fullText.length)
+            let beforeCursor = fullText.substring(to: cursorLocation)
+            let afterCursor = fullText.substring(from: cursorLocation)
+            let trimmedAfter = afterCursor.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard selRange.length == 0,
+                  trimmedAfter.isEmpty || afterCursor.hasPrefix("\n"),
+                  let mathResult = MathExpressionEvaluator.evaluateTrailingExpression(in: beforeCursor),
+                  let selectedTextRange = textView.selectedTextRange else {
+                inlineMathPreviewLabel.isHidden = true
+                return
+            }
+            let caretRect = textView.caretRect(for: selectedTextRange.end)
+            guard caretRect.height > 0 && !caretRect.origin.x.isInfinite && !caretRect.origin.y.isInfinite else {
+                inlineMathPreviewLabel.isHidden = true
+                return
+            }
+            inlineMathPreviewLabel.font = textView.font ?? UIFont.systemFont(ofSize: parent.fontSize)
+            inlineMathPreviewLabel.textColor = .placeholderText
+            inlineMathPreviewLabel.text = mathResult
+            inlineMathPreviewLabel.sizeToFit()
+            let labelSize = inlineMathPreviewLabel.bounds.size
+            inlineMathPreviewLabel.frame = CGRect(
+                x: caretRect.maxX + 1.5,
+                y: caretRect.midY - labelSize.height / 2.0,
+                width: labelSize.width,
+                height: labelSize.height
+            )
+            inlineMathPreviewLabel.isHidden = false
+        }
 
         init(_ parent: SandboxTextView) {
             self.parent = parent
@@ -2123,6 +2680,7 @@ private struct SandboxTextView: UIViewRepresentable {
                 self.parent.text = ""
                 self.resetSpeedState()
                 self.refreshUndoRedoState(for: tv)
+                self.updateInlineMathPreview(for: tv)
             })
             observers.append(nc.addObserver(
                 forName: Notification.Name("crh.key.sandboxUndo"),
@@ -2138,6 +2696,7 @@ private struct SandboxTextView: UIViewRepresentable {
                         self.resetSpeedState()
                     }
                     self.refreshUndoRedoState(for: tv)
+                    self.updateInlineMathPreview(for: tv)
                 }
             })
             observers.append(nc.addObserver(
@@ -2154,6 +2713,7 @@ private struct SandboxTextView: UIViewRepresentable {
                         self.resetSpeedState()
                     }
                     self.refreshUndoRedoState(for: tv)
+                    self.updateInlineMathPreview(for: tv)
                 }
             })
             observers.append(nc.addObserver(
@@ -2173,6 +2733,7 @@ private struct SandboxTextView: UIViewRepresentable {
                     self.lastSyncedText = tv.text
                     self.parent.text = tv.text
                     self.refreshUndoRedoState(for: tv)
+                    self.updateInlineMathPreview(for: tv)
                 }
             })
         }
@@ -2220,46 +2781,36 @@ private struct SandboxTextView: UIViewRepresentable {
         }
 
         func textViewDidBeginEditing(_ textView: UITextView) {
-            if UIApplication.shared.applicationState == .active {
-                let defaults = KeyboardPreferences.defaults
-                defaults.set(parent.themeMode.isDark, forKey: "crh.key.test.isDark")
-                defaults.set(parent.fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
-                defaults.set(true, forKey: "crh.key.test.sandboxFocused")
-                defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
-                defaults.synchronize()
-                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                CFNotificationCenterPostNotification(
-                    CFNotificationCenterGetDarwinNotifyCenter(),
-                    CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                    nil,
-                    nil,
-                    true
-                )
-            }
             if !isReloadingTraits {
-                parent.isFocused = true
+                if parent.isFocused {
+                    if UIApplication.shared.applicationState == .active {
+                        let defaults = KeyboardPreferences.defaults
+                        defaults.set(parent.themeMode.isDark, forKey: "crh.key.test.isDark")
+                        defaults.set(parent.fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
+                        defaults.set(true, forKey: "crh.key.test.sandboxFocused")
+                        defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
+                        defaults.synchronize()
+                        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                    }
+                } else {
+                    parent.isFocused = true
+                }
             }
             refreshUndoRedoState(for: textView)
+            updateInlineMathPreview(for: textView)
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
             guard !isReloadingTraits else { return }
-            parent.isFocused = false
-            let defaults = KeyboardPreferences.defaults
-            defaults.removeObject(forKey: "crh.key.test.isDark")
-            defaults.removeObject(forKey: "crh.key.test.fieldMode")
-            defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
-            defaults.set(false, forKey: "crh.key.test.sandboxFocused")
-            defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                nil,
-                nil,
-                true
-            )
+            if parent.isFocused {
+                parent.isFocused = false
+            }
             refreshUndoRedoState(for: textView)
+            inlineMathPreviewLabel.isHidden = true
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            updateInlineMathPreview(for: textView)
         }
 
         func textViewDidChange(_ textView: UITextView) {
@@ -2281,6 +2832,7 @@ private struct SandboxTextView: UIViewRepresentable {
             }
             textView.scrollRangeToVisible(textView.selectedRange)
             refreshUndoRedoState(for: textView)
+            updateInlineMathPreview(for: textView)
         }
     }
 }

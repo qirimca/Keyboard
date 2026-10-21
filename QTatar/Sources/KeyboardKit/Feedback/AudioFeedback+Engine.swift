@@ -9,6 +9,9 @@
 #if os(iOS) || os(macOS) || os(tvOS)
 import AudioToolbox
 #endif
+#if os(iOS)
+import UIKit
+#endif
 
 public extension AudioFeedback {
     
@@ -41,7 +44,22 @@ public extension AudioFeedback.Engine {
 private extension AudioFeedback.Engine {
     
     func play(_ audio: AudioFeedback) {
-        #if os(iOS) || os(macOS) || os(tvOS)
+        #if os(iOS)
+        switch audio {
+        case .input, .delete, .system:
+            if Thread.isMainThread {
+                UIDevice.current.playInputClick()
+            } else {
+                DispatchQueue.main.async {
+                    UIDevice.current.playInputClick()
+                }
+            }
+        case .custom:
+            AudioServicesPlaySystemSound(audio.id)
+        case .none:
+            break
+        }
+        #elseif os(macOS) || os(tvOS)
         AudioServicesPlaySystemSound(audio.id)
         #endif
     }

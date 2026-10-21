@@ -30,8 +30,20 @@ extension Keyboard {
         private var keyboardContext: KeyboardContext
         
         var body: some View {
-            let _ = (keyboardContext.renderVersion, keyboardContext.locale.identifier, keyboardContext.keyboardType)
-            view()
+            let _ = (
+                keyboardContext.renderVersion,
+                keyboardContext.locale.identifier,
+                keyboardContext.keyboardType,
+                keyboardContext.isKeyboardFloating,
+                keyboardContext.isKeyboardSplit,
+                keyboardContext.interfaceOrientation
+            )
+            if keyboardContext.isKeyboardFloating {
+                view()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else {
+                view()
+            }
         }
     }
 }

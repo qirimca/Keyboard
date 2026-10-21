@@ -15,7 +15,9 @@ enum KeyboardPreferences {
     static let wordLearningKey = "crh.key.wordLearningEnabled"
     static let cyrillicKey = "crh.key.cyrillicEnabled"
     static let statsEnabledKey = "crh.key.statsEnabled"
+    static let splitKeyboardKey = "crh.key.splitKeyboardEnabled"
     static let languageKey = "crh.key.interfaceLanguage"
+    static let splitModeChangedNotification = "crh.key.splitKeyboardModeDidChange"
     /// Created once: `UserDefaults(suiteName:)` is expensive and used by the style provider for every key.
     static let defaults: UserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard
 
@@ -23,12 +25,14 @@ enum KeyboardPreferences {
     private static var cachedWordLearning: Bool?
     private static var cachedCyrillic: Bool?
     private static var cachedStatsEnabled: Bool?
+    private static var cachedSplitKeyboard: Bool?
 
     static func refreshCachedPreferences() {
         cachedSuggestions = defaults.object(forKey: suggestionsKey) as? Bool ?? true
         cachedWordLearning = defaults.object(forKey: wordLearningKey) as? Bool ?? true
         cachedCyrillic = defaults.object(forKey: cyrillicKey) as? Bool ?? true
         cachedStatsEnabled = defaults.object(forKey: statsEnabledKey) as? Bool ?? true
+        cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
     }
 
     static var suggestionsEnabled: Bool {
@@ -52,6 +56,14 @@ enum KeyboardPreferences {
         return val
     }
 
+    static var splitKeyboardEnabled: Bool {
+        if UIDevice.current.userInterfaceIdiom != .pad { return false }
+        if let cached = cachedSplitKeyboard { return cached }
+        let val = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
+        cachedSplitKeyboard = val
+        return val
+    }
+
     static func setStatsEnabled(_ enabled: Bool) {
         cachedStatsEnabled = enabled
         defaults.set(enabled, forKey: statsEnabledKey)
@@ -70,6 +82,19 @@ enum KeyboardPreferences {
     static func setCyrillicEnabled(_ enabled: Bool) {
         cachedCyrillic = enabled
         defaults.set(enabled, forKey: cyrillicKey)
+    }
+
+    static func setSplitKeyboardEnabled(_ enabled: Bool) {
+        cachedSplitKeyboard = enabled
+        defaults.set(enabled, forKey: splitKeyboardKey)
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(splitModeChangedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
     }
 
     /// Only iPad has a place where the toggle matters (the абв/abc key); on iPhone the Cyrillic keyboard is always available,
@@ -553,12 +578,305 @@ enum AppConfiguration {
     static let cyrillicKeyboardBundleId = "crh.key.keyboard.KeyboardCyrillic"
     static let keyboardBundleIdPattern = "crh.key.keyboard*"
     static let fallbackDocumentID = UUID()
+    static var lastValidDocumentIdentifier: UUID?
 }
 
 extension UITextDocumentProxy {
     /// Safely reads `documentIdentifier` via KVC so a temporarily `nil` Objective-C return during an XPC transition
-    /// does not trap in `UUID._unconditionallyBridgeFromObjectiveC`.
+    /// does not trap in `UUID._unconditionallyBridgeFromObjectiveC` or reset session state mid-typing.
     var safeDocumentIdentifier: UUID {
-        ((self as AnyObject).value(forKey: "documentIdentifier") as? UUID) ?? AppConfiguration.fallbackDocumentID
+        if let id = (self as AnyObject).value(forKey: "documentIdentifier") as? UUID {
+            AppConfiguration.lastValidDocumentIdentifier = id
+            return id
+        }
+        return AppConfiguration.lastValidDocumentIdentifier ?? AppConfiguration.fallbackDocumentID
     }
 }
+
+/// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
+/// from `TIPreferencesController` / `UIKeyboardPreferencesController` and `UITextDocumentProxy`.
+enum SystemKeyboardSettings {
+
+    private static var lastSyncTimestamp: TimeInterval = 0
+
+    private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
+        for key in keys {
+            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
+                return testOverride
+            }
+        }
+        let now = ProcessInfo.processInfo.systemUptime
+        let shouldSync = (now - lastSyncTimestamp) >= 1.0
+        if shouldSync {
+            lastSyncTimestamp = now
+        }
+        for className in ["TIPreferencesController", "UIKeyboardPreferencesController"] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let syncSel = NSSelectorFromString("synchronizePreferences")
+            if shouldSync, controller.responds(to: syncSel) {
+                _ = controller.perform(syncSel)
+            }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in keys {
+                if controller.responds(to: valSel),
+                   let raw = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() {
+                    if let num = raw as? NSNumber {
+                        return num.boolValue
+                    }
+                }
+            }
+        }
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for key in keys {
+            for domain in domains {
+                if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
+                    return val.boolValue
+                }
+            }
+            if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
+                return num.boolValue
+            }
+        }
+        return defaultValue
+    }
+
+    static var isCapsLockEnabled: Bool {
+        readSystemPreferenceBool(["KeyboardCapsLock", "UIKeyboardCapsLock"], default: true)
+    }
+
+    static var isPeriodShortcutEnabled: Bool {
+        readSystemPreferenceBool(["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], default: true)
+    }
+
+    static var isKeyFlicksEnabled: Bool {
+        readSystemPreferenceBool(["KeyboardPullDown", "UIKeyboardGesturePullDown"], default: true)
+    }
+
+    static var isSlideToTypeEnabled: Bool {
+        readSystemPreferenceBool(["KeyboardContinuousPathEnabled", "KeyboardFloatingContinuousPathEnabled"], default: true)
+    }
+
+    static var isSmartPunctuationEnabled: Bool {
+        isSmartPunctuationEnabled(for: nil)
+    }
+
+    static func isSmartPunctuationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        if let proxy {
+            if proxy.smartQuotesType == .no && proxy.smartDashesType == .no {
+                return false
+            }
+        }
+        return readSystemPreferenceBool(["KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation"], default: true)
+    }
+
+    static var isPredictiveTextEnabled: Bool {
+        isPredictiveTextEnabled(for: nil)
+    }
+
+    static func isPredictiveTextEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        guard KeyboardPreferences.suggestionsEnabled else { return false }
+        return readSystemPreferenceBool(["KeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
+    }
+
+    static var isAutoCorrectionEnabled: Bool {
+        isAutoCorrectionEnabled(for: nil)
+    }
+
+    static func isAutoCorrectionEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        guard KeyboardPreferences.suggestionsEnabled else { return false }
+        if let proxy, proxy.autocorrectionType == .no { return false }
+        return readSystemPreferenceBool(["KeyboardAutocorrection", "UIKeyboardAutocorrection"], default: true)
+    }
+
+    static var isAutoCapitalizationEnabled: Bool {
+        isAutoCapitalizationEnabled(for: nil)
+    }
+
+    static func isAutoCapitalizationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        if let proxy, let cap = proxy.autocapitalizationType, cap == .none { return false }
+        return readSystemPreferenceBool(["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], default: true)
+    }
+
+    static var isShowMathResultsEnabled: Bool {
+        isShowMathResultsEnabled(for: nil)
+    }
+
+    static func isShowMathResultsEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        if #available(iOS 18.0, *), let proxy, proxy.mathExpressionCompletionType == .no {
+            return false
+        }
+        return readSystemPreferenceBool(["KeyboardMathExpressionCompletion", "ShowMathResults"], default: true)
+    }
+}
+
+/// Evaluates trailing arithmetic expressions ending with `=` (iOS "Show Maths Results" / `mathExpressionCompletionType`).
+enum MathExpressionEvaluator {
+
+    static func trailingMathQuery(in beforeInput: String?) -> String? {
+        guard let eval = evaluateTrailingExpressionWithLiteral(in: beforeInput) else { return nil }
+        return eval.expression
+    }
+
+    static func evaluateTrailingExpression(in beforeInput: String?) -> String? {
+        evaluateTrailingExpressionWithLiteral(in: beforeInput)?.result
+    }
+
+    /// Returns both the literal trailing expression (e.g. `"2+2="` or `"2+2^4="`) and its formatted result (`"4"` or `"18"`).
+    static func evaluateTrailingExpressionWithLiteral(in beforeInput: String?) -> (expression: String, result: String)? {
+        guard let before = beforeInput else { return nil }
+        let trimmedRight = before.replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
+        guard trimmedRight.hasSuffix("="), !trimmedRight.hasSuffix("=="),
+              !trimmedRight.hasSuffix("!="), !trimmedRight.hasSuffix("<="), !trimmedRight.hasSuffix(">=") else {
+            return nil
+        }
+        let withoutEquals = String(trimmedRight.dropLast())
+        let allowedChars = CharacterSet(charactersIn: "0123456789.,+-−*×/÷^() ")
+        var exprChars: [Character] = []
+        for ch in withoutEquals.reversed() {
+            if ch.unicodeScalars.allSatisfy({ allowedChars.contains($0) }) {
+                exprChars.append(ch)
+            } else {
+                break
+            }
+        }
+        let rawExpr = String(exprChars.reversed()).trimmingCharacters(in: .whitespaces)
+        guard rawExpr.count >= 3, rawExpr.count <= 64 else { return nil }
+        let hasOperator = rawExpr.dropFirst().contains(where: { "+-−*×/÷^".contains($0) })
+        guard hasOperator else { return nil }
+        let usesCommaDecimal = rawExpr.contains(",") && !rawExpr.contains(".")
+        let normalized = rawExpr
+            .replacingOccurrences(of: ",", with: ".")
+            .replacingOccurrences(of: "−", with: "-")
+            .replacingOccurrences(of: "×", with: "*")
+            .replacingOccurrences(of: "÷", with: "/")
+            .replacingOccurrences(of: " ", with: "")
+        var parser = Parser(Array(normalized))
+        guard let value = parser.parseExpression(),
+              parser.isAtEnd,
+              value.isFinite,
+              abs(value) < 1e15 else {
+            return nil
+        }
+        let formattedResult = formatResult(value, usesCommaDecimal: usesCommaDecimal)
+        return (expression: rawExpr + "=", result: formattedResult)
+    }
+
+    private static func formatResult(_ value: Double, usesCommaDecimal: Bool) -> String {
+        let roundedInt = value.rounded()
+        if abs(value - roundedInt) < 1e-9, abs(roundedInt) < 1e15 {
+            return String(Int64(roundedInt))
+        }
+        let scaled = (value * 1_000_000).rounded() / 1_000_000
+        var text = String(format: "%.6f", scaled)
+        while text.hasSuffix("0") { text.removeLast() }
+        if text.hasSuffix(".") { text.removeLast() }
+        if usesCommaDecimal {
+            text = text.replacingOccurrences(of: ".", with: ",")
+        }
+        return text
+    }
+
+    private struct Parser {
+        let chars: [Character]
+        var index: Int = 0
+
+        init(_ chars: [Character]) {
+            self.chars = chars
+        }
+
+        var isAtEnd: Bool { index >= chars.count }
+
+        mutating func parseExpression() -> Double? {
+            guard var lhs = parseTerm() else { return nil }
+            while !isAtEnd {
+                let op = chars[index]
+                if op == "+" || op == "-" {
+                    index += 1
+                    guard let rhs = parseTerm() else { return nil }
+                    lhs = (op == "+") ? (lhs + rhs) : (lhs - rhs)
+                } else {
+                    break
+                }
+            }
+            return lhs
+        }
+
+        mutating func parseTerm() -> Double? {
+            guard var lhs = parsePower() else { return nil }
+            while !isAtEnd {
+                let op = chars[index]
+                if op == "*" || op == "/" {
+                    index += 1
+                    guard let rhs = parsePower() else { return nil }
+                    if op == "/" {
+                        guard abs(rhs) > 1e-12 else { return nil }
+                        lhs /= rhs
+                    } else {
+                        lhs *= rhs
+                    }
+                } else {
+                    break
+                }
+            }
+            return lhs
+        }
+
+        mutating func parsePower() -> Double? {
+            guard let base = parseUnary() else { return nil }
+            if !isAtEnd && chars[index] == "^" {
+                index += 1
+                guard let exp = parsePower() else { return nil }
+                return pow(base, exp)
+            }
+            return base
+        }
+
+        mutating func parseUnary() -> Double? {
+            guard !isAtEnd else { return nil }
+            if chars[index] == "+" {
+                index += 1
+                return parseUnary()
+            }
+            if chars[index] == "-" {
+                index += 1
+                guard let v = parseUnary() else { return nil }
+                return -v
+            }
+            return parsePrimary()
+        }
+
+        mutating func parsePrimary() -> Double? {
+            guard !isAtEnd else { return nil }
+            if chars[index] == "(" {
+                index += 1
+                guard let val = parseExpression(), !isAtEnd, chars[index] == ")" else { return nil }
+                index += 1
+                return val
+            }
+            let start = index
+            var dotCount = 0
+            while !isAtEnd {
+                let c = chars[index]
+                if c.isWholeNumber {
+                    index += 1
+                } else if c == "." {
+                    dotCount += 1
+                    if dotCount > 1 { return nil }
+                    index += 1
+                } else {
+                    break
+                }
+            }
+            guard index > start else { return nil }
+            return Double(String(chars[start..<index]))
+        }
+    }
+}
+

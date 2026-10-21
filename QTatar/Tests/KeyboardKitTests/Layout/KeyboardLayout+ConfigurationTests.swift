@@ -118,4 +118,37 @@ class KeyboardLayout_ConfigurationTests: XCTestCase {
         XCTAssertEqual(config.buttonInsets, .init(horizontal: 3, vertical: 6))
         XCTAssertEqual(config.rowHeight, 54)
     }
+
+    func testStandardKeyboardConfigurationReturnsPhoneConfigWhenPadIsFloating() {
+        let context = KeyboardContext()
+        context.deviceType = .pad
+        context.screenSize = .iPadScreenPortrait
+        context.interfaceOrientation = .portrait
+        context.isKeyboardFloating = false
+        XCTAssertEqual(KeyboardLayout.Configuration.standard(for: context), .standardPad)
+
+        context.isKeyboardFloating = true
+        XCTAssertEqual(KeyboardLayout.Configuration.standard(for: context), .standardPhone)
+    }
+
+    func testKeyboardContextSplitModeAndFloatingSync() {
+        let context = KeyboardContext()
+        context.deviceType = .pad
+        XCTAssertFalse(context.isKeyboardSplit)
+        context.isKeyboardSplit = true
+        XCTAssertTrue(context.isKeyboardSplit)
+
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        let controller = KeyboardInputViewController()
+        let v0 = context.renderVersion
+        context.syncIsFloating(with: controller, targetWidth: 320)
+        XCTAssertTrue(context.isKeyboardFloating)
+        XCTAssertGreaterThan(context.renderVersion, v0)
+
+        let v1 = context.renderVersion
+        context.syncIsFloating(with: controller, targetWidth: 820)
+        XCTAssertFalse(context.isKeyboardFloating)
+        XCTAssertGreaterThan(context.renderVersion, v1)
+        #endif
+    }
 }

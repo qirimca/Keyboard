@@ -38,7 +38,7 @@ public extension UITextDocumentProxy {
         whenInserting text: String,
         for locale: Locale
     ) -> String? {
-        documentContextBeforeInput?
+        (documentContextBeforeInput ?? "")
             .preferredQuotationReplacement(whenAppending: text, for: locale)
     }
 }

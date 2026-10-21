@@ -50,7 +50,14 @@ extension KeyboardContext {
         for locale: Locale
     ) -> String? {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        textDocumentProxy.documentContextBeforeInput?.preferredQuotationReplacement(whenAppending: text, for: locale)
+        let effectiveKeyboardType = proxyKeyboardTypeOverride ?? textDocumentProxy.keyboardType
+        if textDocumentProxy.smartQuotesType == .no
+            || effectiveKeyboardType == .URL
+            || effectiveKeyboardType == .emailAddress {
+            return nil
+        }
+        return (textDocumentProxy.documentContextBeforeInput ?? "")
+            .preferredQuotationReplacement(whenAppending: text, for: locale)
         #else
         return nil
         #endif

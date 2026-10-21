@@ -97,12 +97,17 @@ private extension Callouts.ActionCallout {
     var buttonInset: CGSize { calloutStyle.buttonInset }
     var calloutActions: [KeyboardAction] { calloutContext.actions }
     var isFloatingMenuCallout: Bool {
-        calloutActions.first == .custom(named: "floating_keyboard")
+        calloutActions.contains {
+            if case .custom(let name) = $0 {
+                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard"
+            }
+            return false
+        }
     }
     var calloutButtonSize: CGSize {
         let frameSize = buttonFrame.size
         if isFloatingMenuCallout {
-            return CGSize(width: max(frameSize.width * 1.45, 124), height: max(frameSize.height, 44))
+            return CGSize(width: max(frameSize.width * 1.8, 156), height: max(frameSize.height, 44))
         }
         let widthScale = (calloutActions.count == 1) ? 1.2 : 1
         let buttonSize = CGSize(width: frameSize.width * widthScale, height: frameSize.height)
@@ -122,19 +127,40 @@ private extension Callouts.ActionCallout {
         .calloutStyle(calloutStyle)
     }
     
+    @ViewBuilder
     var callout: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(calloutActions.enumerated()), id: \.offset) {
-                calloutView(for: $0.element)
-                    .frame(width: calloutButtonSize.width, height: calloutButtonSize.height)
-                    .background(isSelected($0.offset) ? style.selectedBackgroundColor : .clear)
-                    .foregroundColor(isSelected($0.offset) ? style.selectedForegroundColor : style.callout.textColor)
-                    .cornerRadius(cornerRadius)
-                    .padding(.vertical, style.verticalTextPadding)
+        if isFloatingMenuCallout {
+            let reversedItems = Array(calloutActions.enumerated().reversed())
+            VStack(spacing: 0) {
+                ForEach(Array(reversedItems.enumerated()), id: \.element.offset) { rowIdx, item in
+                    calloutView(for: item.element)
+                        .frame(width: calloutButtonSize.width, height: calloutButtonSize.height)
+                        .background(isSelected(item.offset) ? style.selectedBackgroundColor : .clear)
+                        .foregroundColor(isSelected(item.offset) ? style.selectedForegroundColor : style.callout.textColor)
+                        .cornerRadius(cornerRadius)
+                        .padding(.vertical, style.verticalTextPadding)
+                    if rowIdx < reversedItems.count - 1 {
+                        Color.secondary.opacity(0.28)
+                            .frame(width: max(calloutButtonSize.width - 16, 40), height: 0.5)
+                    }
+                }
             }
+            .padding(.horizontal, curveSize.width)
+            .background(calloutBackground)
+        } else {
+            HStack(spacing: 0) {
+                ForEach(Array(calloutActions.enumerated()), id: \.offset) {
+                    calloutView(for: $0.element)
+                        .frame(width: calloutButtonSize.width, height: calloutButtonSize.height)
+                        .background(isSelected($0.offset) ? style.selectedBackgroundColor : .clear)
+                        .foregroundColor(isSelected($0.offset) ? style.selectedForegroundColor : style.callout.textColor)
+                        .cornerRadius(cornerRadius)
+                        .padding(.vertical, style.verticalTextPadding)
+                }
+            }
+            .padding(.horizontal, curveSize.width)
+            .background(calloutBackground)
         }
-        .padding(.horizontal, curveSize.width)
-        .background(calloutBackground)
     }
     
     var calloutBackground: some View {
@@ -153,31 +179,75 @@ private extension Callouts.ActionCallout {
         case .character(let char): calloutView(for: char)
         case .emoji(let emoji): calloutView(for: emoji)
         case .custom(let name) where name == "floating_keyboard":
-            HStack(spacing: 6) {
-                Image(systemName: "rectangle.inset.bottomright.filled")
-                    .font(.system(size: 15, weight: .medium))
-                Text(floatingKeyboardTitle)
-                    .font(.system(size: 16, weight: .medium))
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 8)
-            .accessibilityIdentifier("callout.floating_keyboard")
+            Text(floatingKeyboardTitle)
+                .font(.system(size: 16, weight: .medium))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.floating_keyboard")
+        case .custom(let name) where name == "split_keyboard":
+            Text(splitKeyboardTitle)
+                .font(.system(size: 16, weight: .medium))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.split_keyboard")
+        case .custom(let name) where name == "merge_keyboard":
+            Text(mergeKeyboardTitle)
+                .font(.system(size: 16, weight: .medium))
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.merge_keyboard")
         default: EmptyView()
         }
+    }
+
+    private var resolvedInterfaceLanguage: String {
+        let suite = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+        return suite?.string(forKey: "crh.key.interfaceLanguage")
+            ?? suite?.string(forKey: "crh.key.language")
+            ?? Locale.preferredLanguages.first
+            ?? "crh"
     }
 
     var floatingKeyboardTitle: String {
         if keyboardContext.locale.identifier.contains("Cyrl") {
             return "Юзюджи"
         }
-        let appGroupLang = UserDefaults(suiteName: "group.crh.key.keyboardplus")?.string(forKey: "crh.key.language")
-        let preferred = appGroupLang ?? Locale.preferredLanguages.first ?? "crh"
+        let preferred = resolvedInterfaceLanguage
         if preferred.hasPrefix("uk") {
             return "Плаваюча"
         } else if preferred.hasPrefix("en") {
             return "Floating"
         }
         return "Yüzüci"
+    }
+
+    var splitKeyboardTitle: String {
+        if keyboardContext.locale.identifier.contains("Cyrl") {
+            return "Болюнген"
+        }
+        let preferred = resolvedInterfaceLanguage
+        if preferred.hasPrefix("uk") {
+            return "Розділити"
+        } else if preferred.hasPrefix("en") {
+            return "Split"
+        }
+        return "Bölüngen"
+    }
+
+    var mergeKeyboardTitle: String {
+        if keyboardContext.locale.identifier.contains("Cyrl") {
+            return "Бирлештир"
+        }
+        let preferred = resolvedInterfaceLanguage
+        if preferred.hasPrefix("uk") {
+            return "Об’єднати"
+        } else if preferred.hasPrefix("en") {
+            return "Dock & Merge"
+        }
+        return "Birleştir"
     }
 
     func calloutView(for character: String) -> some View {
@@ -191,20 +261,22 @@ private extension Callouts.ActionCallout {
     
     var positionX: CGFloat {
         let buttonWidth = calloutButtonSize.width
-        let adjustment = (CGFloat(calloutActions.count) * buttonWidth)/2
+        let horizontalCount = isFloatingMenuCallout ? 1 : calloutActions.count
+        let adjustment = (CGFloat(horizontalCount) * buttonWidth)/2
         let widthDiff = buttonWidth - buttonFrameSize.width
         let signedAdjustment = isTrailing ? -adjustment + buttonWidth - widthDiff : adjustment
         return buttonFrame.origin.x + signedAdjustment
     }
     
     var positionY: CGFloat {
-        let ideal = buttonFrame.origin.y - style.verticalTextPadding
+        let ideal = buttonFrame.maxY - totalCalloutHeight / 2
         let minCenterY = totalCalloutHeight / 2 + Self.topEdgeInset
         return max(ideal, minCenterY)
     }
     
     var totalCalloutHeight: CGFloat {
-        let bubbleHeight = calloutButtonSize.height + 2 * style.verticalTextPadding
+        let verticalCount = isFloatingMenuCallout ? CGFloat(calloutActions.count) : 1
+        let bubbleHeight = verticalCount * (calloutButtonSize.height + 2 * style.verticalTextPadding)
         return bubbleHeight + buttonFrameSize.height
     }
     

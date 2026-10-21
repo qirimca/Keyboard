@@ -25,8 +25,8 @@ public extension String {
      string is a quotation begin delimiter.
      */
     func hasUnclosedQuotation(for locale: Locale) -> Bool {
-        guard let begin = locale.quotationBeginDelimiter else { return false}
-        guard let end = locale.quotationEndDelimiter else { return false}
+        guard let begin = locale.effectiveQuotationBeginDelimiter else { return false }
+        guard let end = locale.effectiveQuotationEndDelimiter else { return false }
         return hasUnclosedQuotation(beginDelimiter: begin, endDelimiter: end)
     }
 
@@ -77,12 +77,38 @@ public extension String {
     }
 }
 
+private extension Locale {
+
+    var effectiveQuotationBeginDelimiter: String? {
+        if identifier.hasPrefix("crh") {
+            return identifier.contains("Cyrl") ? "«" : "“"
+        }
+        if let delimiter = quotationBeginDelimiter, !delimiter.isEmpty {
+            return delimiter
+        }
+        return nil
+    }
+
+    var effectiveQuotationEndDelimiter: String? {
+        if identifier.hasPrefix("crh") {
+            return identifier.contains("Cyrl") ? "»" : "”"
+        }
+        if let delimiter = quotationEndDelimiter, !delimiter.isEmpty {
+            return delimiter
+        }
+        return nil
+    }
+}
+
 private extension String {
 
     func preferredQuotationReplacement(for text: String, locale: Locale) -> String? {
-        guard text == locale.quotationEndDelimiter || (text == "”" && text != locale.alternateQuotationEndDelimiter)  else { return nil }
+        let begin = locale.effectiveQuotationBeginDelimiter
+        let end = locale.effectiveQuotationEndDelimiter
+        let isStraightQuoteForCrh = (text == "\"" && locale.identifier.hasPrefix("crh"))
+        guard text == end || (text == "”" && text != locale.alternateQuotationEndDelimiter) || isStraightQuoteForCrh else { return nil }
         let isOpen = hasUnclosedQuotation(for: locale)
-        let result = isOpen ? locale.quotationEndDelimiter : locale.quotationBeginDelimiter
+        let result = isOpen ? end : begin
         return result == text ? nil : result
     }
 

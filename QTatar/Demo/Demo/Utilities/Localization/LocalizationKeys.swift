@@ -17,6 +17,8 @@ enum Home: String {
     case home_keyboard_off_key
     case home_full_on_key
     case home_full_off_key
+    case home_cyrillic_on_key
+    case home_cyrillic_off_key
     case home_writearea_key
     case home_typing_key
     case home_ok_key

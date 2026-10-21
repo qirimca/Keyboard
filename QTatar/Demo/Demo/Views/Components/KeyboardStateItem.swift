@@ -12,6 +12,7 @@ enum KeyboardState {
     case active(Bool)
     case enable(Bool)
     case fullAccess(Bool)
+    case cyrillic(Bool)
     
     var title: String {
         switch self {
@@ -21,6 +22,8 @@ enum KeyboardState {
             return value ? Home.home_keyboard_on_key.localized : Home.home_keyboard_off_key.localized
         case .fullAccess(let value):
             return value ? Home.home_full_on_key.localized : Home.home_full_off_key.localized
+        case .cyrillic(let value):
+            return value ? Home.home_cyrillic_on_key.localized : Home.home_cyrillic_off_key.localized
         }
     }
 
@@ -32,6 +35,8 @@ enum KeyboardState {
             return (value ? Home.home_keyboard_on_key : Home.home_keyboard_off_key).allLocalizedVersions
         case .fullAccess(let value):
             return (value ? Home.home_full_on_key : Home.home_full_off_key).allLocalizedVersions
+        case .cyrillic(let value):
+            return (value ? Home.home_cyrillic_on_key : Home.home_cyrillic_off_key).allLocalizedVersions
         }
     }
     
@@ -43,6 +48,8 @@ enum KeyboardState {
             return value
         case .fullAccess(let value):
             return value
+        case .cyrillic(let value):
+            return value
         }
     }
     
@@ -51,6 +58,7 @@ enum KeyboardState {
         case .active: return state ? "keyboard.fill" : "keyboard"
         case .enable: return state ? "checkmark.circle.fill" : "xmark.circle.fill"
         case .fullAccess: return state ? "lock.open.fill" : "lock.fill"
+        case .cyrillic: return state ? "character.textbox" : "plus.rectangle.on.rectangle"
         }
     }
 }
@@ -67,10 +75,16 @@ struct KeyboardStateIndicatorsRow: View {
     private let verticalPadding: CGFloat = Device.iPad ? 8 : 6
     private let maxLines = 2
     
+    private var usesTwoRowGrid: Bool {
+        states.count == 4 && Device.iPhone
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             let titles = states.flatMap(\.allLocalizedTitles)
-            let cellWidth = max((geometry.size.width - spacing * 2) / 3, 1)
+            let isTwoRows = states.count == 4 && geometry.size.width < 520
+            let columnsCount = isTwoRows ? 2 : max(states.count, 1)
+            let cellWidth = max((geometry.size.width - spacing * CGFloat(columnsCount - 1)) / CGFloat(columnsCount), 1)
             let textWidth = max(cellWidth - iconWidth - horizontalPadding * 2 - 8, 1)
             let textHeight = max(rowHeight - verticalPadding * 2, 1)
             let fontSize = String.uniformFontSize(
@@ -81,17 +95,42 @@ struct KeyboardStateIndicatorsRow: View {
                 maxLines: maxLines
             )
             
-            HStack(spacing: spacing) {
-                ForEach(Array(states.enumerated()), id: \.offset) { _, state in
-                    KeyboardStateItem(
-                        state: state,
-                        titleFontSize: fontSize,
-                        action: action
-                    )
+            if isTwoRows {
+                VStack(spacing: spacing) {
+                    HStack(spacing: spacing) {
+                        ForEach(0..<2, id: \.self) { index in
+                            KeyboardStateItem(
+                                state: states[index],
+                                titleFontSize: fontSize,
+                                action: action
+                            )
+                        }
+                    }
+                    .frame(height: rowHeight)
+                    HStack(spacing: spacing) {
+                        ForEach(2..<4, id: \.self) { index in
+                            KeyboardStateItem(
+                                state: states[index],
+                                titleFontSize: fontSize,
+                                action: action
+                            )
+                        }
+                    }
+                    .frame(height: rowHeight)
+                }
+            } else {
+                HStack(spacing: spacing) {
+                    ForEach(Array(states.enumerated()), id: \.offset) { _, state in
+                        KeyboardStateItem(
+                            state: state,
+                            titleFontSize: fontSize,
+                            action: action
+                        )
+                    }
                 }
             }
         }
-        .frame(height: rowHeight)
+        .frame(height: usesTwoRowGrid ? (rowHeight * 2 + spacing) : rowHeight)
         .layoutPriority(2)
     }
 }

@@ -38,3 +38,7 @@
 /* (No Comment) */
 "home_writearea_key" = "Поле введення";
 
+"home_cyrillic_on_key" = "Кириличну додано";
+
+"home_cyrillic_off_key" = "Кириличну не додано";
+

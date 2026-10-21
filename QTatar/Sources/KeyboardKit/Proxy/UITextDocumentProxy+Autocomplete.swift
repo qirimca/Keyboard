@@ -45,6 +45,7 @@ public extension UITextDocumentProxy {
     /// Call this function instead of just inserting a space
     /// to apply the correct autocomplete state to the proxy.
     func tryInsertSpaceAfterAutocomplete() {
+        if smartInsertDeleteType == .no { return }
         let space = " "
         let hasPreviousSpace = documentContextBeforeInput?.hasSuffix(space) ?? false
         let hasNextSpace = documentContextAfterInput?.hasPrefix(space) ?? false

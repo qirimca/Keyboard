@@ -89,6 +89,27 @@ final class TextHistoryManager {
     }
 }
 
+/// Custom keyboard behavior that respects iOS `Settings → General → Keyboards` preferences
+/// (`Enable Caps Lock` and `.` Shortcut).
+final class DemoKeyboardBehavior: StandardKeyboardBehavior {
+
+    override func shouldEndSentence(
+        after gesture: Gesture,
+        on action: KeyboardAction
+    ) -> Bool {
+        guard SystemKeyboardSettings.isPeriodShortcutEnabled else { return false }
+        return super.shouldEndSentence(after: gesture, on: action)
+    }
+
+    override func shouldSwitchToCapsLock(
+        after gesture: Gesture,
+        on action: KeyboardAction
+    ) -> Bool {
+        guard SystemKeyboardSettings.isCapsLockEnabled else { return false }
+        return super.shouldSwitchToCapsLock(after: gesture, on: action)
+    }
+}
+
 /**
  Action handler that performs standard keyboard actions, undo/redo handling,
  autocomplete triggers, and inactive primary action suppression.
@@ -212,9 +233,29 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         before gesture: Gestures.KeyboardGesture,
         on action: KeyboardAction
     ) {
-        if gesture == .release, action == .space, KeyboardPreferences.suggestionsEnabled {
-            autocompleteContext.isAutocorrectEnabled = true
+        if gesture == .release, action == .space,
+           KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
             let proxy = keyboardContext.textDocumentProxy
+            let isAutocorrectAllowed = proxy.autocorrectionType != .no && SystemKeyboardSettings.isAutoCorrectionEnabled
+            autocompleteContext.isAutocorrectEnabled = isAutocorrectAllowed
+            guard isAutocorrectAllowed else { return }
+            if spaceDragGestureHandler.currentDragTextPositionOffset == 0 {
+                let mathAllowed: Bool = {
+                    guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+                    if #available(iOS 18.0, *) {
+                        return proxy.mathExpressionCompletionType != .no
+                    }
+                    return true
+                }()
+                if mathAllowed,
+                   let mathResult = MathExpressionEvaluator.evaluateTrailingExpression(in: proxy.documentContextBeforeInput) {
+                    proxy.insertText(mathResult)
+                    TextHistoryManager.shared.recordInsert(mathResult)
+                    didLearnWordDuringSpaceRelease = true
+                    typedWordBuffer = ""
+                    return
+                }
+            }
             if spaceDragGestureHandler.currentDragTextPositionOffset == 0,
                !proxy.isCursorAtNewWord,
                proxy.isCursorAtTheEndOfTheCurrentWord,
@@ -258,6 +299,54 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
+        let mathAllowed: Bool = {
+            guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+            if #available(iOS 18.0, *) {
+                return proxy.mathExpressionCompletionType != .no
+            }
+            return true
+        }()
+        if mathAllowed,
+           let mathEval = MathExpressionEvaluator.evaluateTrailingExpressionWithLiteral(in: proxy.documentContextBeforeInput) {
+            let mathAction = (suggestion.additionalInfo["mathAction"] as? String) ?? {
+                if suggestion.isUnknown || suggestion.text == mathEval.expression {
+                    return "literal"
+                } else if suggestion.text == mathEval.result {
+                    return "replace"
+                } else {
+                    return "append"
+                }
+            }()
+            let expr = (suggestion.additionalInfo["mathExpr"] as? String) ?? mathEval.expression
+            let result = (suggestion.additionalInfo["mathResult"] as? String) ?? mathEval.result
+            switch mathAction {
+            case "literal":
+                // Slot 0 («2+2=»): keep the literal expression as-is and advance with a space
+                proxy.tryInsertSpaceAfterAutocomplete()
+            case "replace":
+                // Slot 2 (4): replace the entire expression (e.g. "2+2=") with just the result ("4")
+                let before = proxy.documentContextBeforeInput ?? ""
+                let deleteCount = before.hasSuffix(expr) ? expr.count : mathEval.expression.count
+                for _ in 0..<deleteCount {
+                    proxy.deleteBackward()
+                }
+                KeyboardUsageStats.markInjectedText(result)
+                KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(result.count, 2))
+                proxy.insertText(result)
+                proxy.tryInsertSpaceAfterAutocomplete()
+                TextHistoryManager.shared.recordReplace(oldText: expr, newText: result)
+            default:
+                // Slot 1 (2+2=4): append the result right after "="
+                KeyboardUsageStats.markInjectedText(result)
+                KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(result.count, 2))
+                proxy.insertText(result)
+                proxy.tryInsertSpaceAfterAutocomplete()
+                TextHistoryManager.shared.recordInsert(result)
+            }
+            typedWordBuffer = ""
+            handle(.release, on: .character(""))
+            return
+        }
         let currentWord = proxy.currentWord ?? typedWordBuffer
         let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty) ?? lastCompletedTypedWord
         let replacement = suggestion.text
@@ -316,13 +405,31 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             activeFlickSymbol = nil
             SpaceBarState.shared.fadeToResting()
             GreetingBannerState.shared.dismissForTyping()
-            handleUntimed(.release, on: .character(flick.symbol), replaced: true)
+            handleUntimed(.release, on: .character(flick.symbol), replaced: false)
+            return
+        }
+        if !replaced, replacementAction(for: gesture, on: action) != nil {
+            super.handle(gesture, on: action, replaced: false)
             return
         }
         if action == .custom(named: "floating_keyboard") {
-            if gesture == .release || gesture == .press {
+            if gesture == .release {
                 triggerFeedback(for: .press, on: action)
                 (keyboardController as? KeyboardViewController)?.requestFloatingKeyboardMode()
+            }
+            return
+        }
+        if action == .custom(named: "split_keyboard") {
+            if gesture == .release {
+                triggerFeedback(for: .press, on: action)
+                (keyboardController as? KeyboardViewController)?.setSplitKeyboardMode(true)
+            }
+            return
+        }
+        if action == .custom(named: "merge_keyboard") {
+            if gesture == .release {
+                triggerFeedback(for: .press, on: action)
+                (keyboardController as? KeyboardViewController)?.setSplitKeyboardMode(false)
             }
             return
         }
@@ -426,6 +533,38 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
         if (gesture == .press || gesture == .release), case .keyboardType(let type) = action, type.isAlphabetic {
             keyboardContext.hasChosenLettersInNumericField = true
+        }
+        if gesture == .release {
+            let proxy = keyboardContext.textDocumentProxy
+            let effectiveKeyboardType = DemoStyleProvider.effectiveProxyKeyboardType(for: keyboardContext)
+            if proxy.smartDashesType != .no,
+               effectiveKeyboardType != .URL,
+               effectiveKeyboardType != .emailAddress {
+                switch action {
+                case .character(let ch), .characterMargin(let ch):
+                    if ch == "-", (proxy.documentContextBeforeInput ?? "").hasSuffix("-") {
+                        resetComposition()
+                        proxy.deleteBackward()
+                        proxy.insertText("—")
+                        TextHistoryManager.shared.recordReplace(oldText: "-", newText: "—")
+                        tryChangeKeyboardType(after: gesture, on: action)
+                        keyboardController?.performAutocomplete()
+                        return
+                    }
+                    if ch == ".", (proxy.documentContextBeforeInput ?? "").hasSuffix("..") {
+                        resetComposition()
+                        proxy.deleteBackward()
+                        proxy.deleteBackward()
+                        proxy.insertText("…")
+                        TextHistoryManager.shared.recordReplace(oldText: "..", newText: "…")
+                        tryChangeKeyboardType(after: gesture, on: action)
+                        keyboardController?.performAutocomplete()
+                        return
+                    }
+                default:
+                    break
+                }
+            }
         }
         if keyboardContext.locale.identifier.contains("Cyrl") {
             let proxy = keyboardContext.textDocumentProxy

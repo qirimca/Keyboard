@@ -27,6 +27,7 @@ public extension KeyboardInputViewController {
     var hostBundleId: String? {
         let cache = hostBundleIdCache
         if let id = cache.value { return id }
+        guard parent != nil else { return nil }
         if let failedAt = cache.failedAt, Date().timeIntervalSince(failedAt) < 1 { return nil }
         let id = hostBundleIdValueBefore16 ?? hostBundleIdValueFor16
         cache.value = id
@@ -62,6 +63,18 @@ private extension KeyboardInputViewController {
 
 private extension KeyboardInputViewController {
 
+    private typealias XPCConnectionCopyBundleIdFn = @convention(c) (AnyObject) -> UnsafeMutablePointer<CChar>?
+
+    private static let cachedXPCCopyBundleIdFn: XPCConnectionCopyBundleIdFn? = {
+        let rtldDefault = UnsafeMutableRawPointer(bitPattern: -2)
+        if let sym = dlsym(rtldDefault, "xpc_connection_copy_bundle_id") {
+            return unsafeBitCast(sym, to: XPCConnectionCopyBundleIdFn.self)
+        }
+        guard let handle = dlopen("/usr/lib/libc.dylib", RTLD_LAZY) else { return nil }
+        guard let sym = dlsym(handle, "xpc_connection_copy_bundle_id") else { return nil }
+        return unsafeBitCast(sym, to: XPCConnectionCopyBundleIdFn.self)
+    }()
+
     var hostBundleIdValueBefore16: String? {
         let selector = NSSelectorFromString("_hostBundleID")
         var current: UIViewController? = self
@@ -78,6 +91,7 @@ private extension KeyboardInputViewController {
     }
 
     var hostBundleIdValueFor16: String? {
+        guard let cFunc = Self.cachedXPCCopyBundleIdFn else { return nil }
         let pidSelector = NSSelectorFromString("_hostPID")
         var pidValue: Any?
         var current: UIViewController? = self
@@ -107,11 +121,6 @@ private extension KeyboardInputViewController {
            let con = info.perform(NSSelectorFromString("connection"))?.takeUnretainedValue() as? NSObjectProtocol
         else { return nil }
         guard let xpcCon = con.perform(NSSelectorFromString("_xpcConnection"))?.takeUnretainedValue() else { return nil }
-        guard let handle = dlopen("/usr/lib/libc.dylib", RTLD_NOW) else { return nil }
-        defer { dlclose(handle) }
-        guard let sym = dlsym(handle, "xpc_connection_copy_bundle_id") else { return nil }
-        typealias xpcFunc = @convention(c) (AnyObject) -> UnsafeMutablePointer<CChar>?
-        let cFunc = unsafeBitCast(sym, to: xpcFunc.self)
         guard let response = cFunc(xpcCon) else { return nil }
         defer { free(response) }
         return String(cString: response)

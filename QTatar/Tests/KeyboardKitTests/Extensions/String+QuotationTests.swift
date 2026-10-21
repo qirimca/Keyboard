@@ -164,5 +164,23 @@ class String_QuotationTests: XCTestCase {
             XCTAssertNil(text.preferredQuotationReplacement(whenAppending: insert, for: $0.locale))
         }
     }
+
+    func testCrimeanTatarSmartQuotationReplacement() {
+        let crhLatn = Locale(identifier: "crh-Latn")
+        let crhCyrl = Locale(identifier: "crh-Cyrl")
+
+        // Empty string (start of field) replaces straight quote with opening quote
+        XCTAssertEqual("".preferredQuotationReplacement(whenAppending: "\"", for: crhLatn), "“")
+        XCTAssertEqual("".preferredQuotationReplacement(whenAppending: "\"", for: crhCyrl), "«")
+
+        // After unclosed opening quote, straight quote is replaced with closing quote
+        XCTAssertEqual("“selam".preferredQuotationReplacement(whenAppending: "\"", for: crhLatn), "”")
+        XCTAssertEqual("«селям".preferredQuotationReplacement(whenAppending: "\"", for: crhCyrl), "»")
+
+        // After closed quote, straight quote is replaced with opening quote again
+        XCTAssertEqual("“selam” ".preferredQuotationReplacement(whenAppending: "\"", for: crhLatn), "“")
+        XCTAssertEqual("«селям» ".preferredQuotationReplacement(whenAppending: "\"", for: crhCyrl), "«")
+    }
 }
 #endif
+

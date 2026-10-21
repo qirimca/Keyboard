@@ -26,35 +26,129 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
         if !(firstKey.exists || firstKey.waitForExistence(timeout: 4.5) || key("numeric").exists || key("alphabetic").exists) {
-            field.tap()
+            if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
+                field.tap()
+            }
         }
         if !(firstKey.exists || firstKey.waitForExistence(timeout: 2.5) || key("numeric").exists || key("alphabetic").exists) {
-            let nextKeyboard = app.buttons["Next keyboard"]
-            if !nextKeyboard.exists {
-                let clearBtn = app.buttons["sandbox.clear"]
-                if clearBtn.exists && clearBtn.isHittable {
-                    clearBtn.tap()
-                    Thread.sleep(forTimeInterval: 0.3)
-                }
-                if field.exists && field.isHittable {
+            cycleToCustomKeyboard(firstKey: firstKey)
+        }
+        if !(firstKey.exists || key("numeric").exists || key("alphabetic").exists) {
+            enableKeyboardInSettingsIfNeeded()
+            app.activate()
+            if field.waitForExistence(timeout: 5) {
+                if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
                     field.tap()
-                    Thread.sleep(forTimeInterval: 0.8)
                 }
+                Thread.sleep(forTimeInterval: 0.8)
             }
-            for step in 1...6 where nextKeyboard.exists {
-                for _ in 0..<step where nextKeyboard.exists {
-                    nextKeyboard.tap()
-                }
-                if firstKey.waitForExistence(timeout: 3.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
-                    break
-                }
-            }
+            cycleToCustomKeyboard(firstKey: firstKey)
         }
         XCTAssertTrue(firstKey.exists ||
                       firstKey.waitForExistence(timeout: 6) ||
                       key("numeric").exists ||
                       key("alphabetic").exists,
                       "Enable and select Qırımtatarca in Settings before running keyboard tests.")
+    }
+
+    private func cycleToCustomKeyboard(firstKey: XCUIElement) {
+        let nextKeyboard = app.buttons["Next keyboard"]
+        let abcBtn = app.buttons["ABC"]
+        if !nextKeyboard.exists && !abcBtn.exists && app.keyboards.count == 0 {
+            let clearBtn = app.buttons["sandbox.clear"]
+            if clearBtn.exists && clearBtn.isHittable {
+                clearBtn.tap()
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+            if field.exists && field.isHittable {
+                field.tap()
+                Thread.sleep(forTimeInterval: 0.8)
+            }
+        }
+        for _ in 1...6 {
+            if firstKey.exists || key("numeric").exists || key("alphabetic").exists || key("space").exists {
+                break
+            }
+            if abcBtn.exists && abcBtn.isHittable {
+                abcBtn.tap()
+            } else if nextKeyboard.exists && nextKeyboard.isHittable {
+                nextKeyboard.tap()
+            } else {
+                break
+            }
+            if firstKey.waitForExistence(timeout: 2.5) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
+                break
+            }
+        }
+    }
+
+    private func enableKeyboardInSettingsIfNeeded() {
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        settings.launch()
+        guard settings.wait(for: .runningForeground, timeout: 8) else { return }
+        Thread.sleep(forTimeInterval: 1.0)
+
+        let generalBtn = settings.buttons.matching(NSPredicate(format: "identifier == 'com.apple.settings.general' OR label == 'General'")).firstMatch
+        if generalBtn.waitForExistence(timeout: 3.0) {
+            generalBtn.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        let keyboardBtn = settings.buttons.matching(NSPredicate(format: "identifier == 'com.apple.settings.general.keyboard' OR label == 'Keyboard'")).firstMatch
+        if keyboardBtn.waitForExistence(timeout: 3.0) {
+            keyboardBtn.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        let keyboardsBtn = settings.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Keyboards' OR identifier CONTAINS[c] 'KEYBOARDS'")).firstMatch
+        if keyboardsBtn.waitForExistence(timeout: 3.0) {
+            keyboardsBtn.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        let existingCell = settings.cells.matching(NSPredicate(format: "identifier == 'crh.key.keyboard.keyboard' OR label CONTAINS[c] 'Qırımtatarca'")).firstMatch
+        if !existingCell.exists {
+            let addNewPredicate = NSPredicate(format: "label CONTAINS[c] 'Add New Keyboard' OR identifier CONTAINS[c] 'AddNewKeyboard'")
+            let addNewBtn = settings.buttons.matching(addNewPredicate).firstMatch.exists
+                ? settings.buttons.matching(addNewPredicate).firstMatch
+                : settings.cells.matching(addNewPredicate).firstMatch
+            if addNewBtn.waitForExistence(timeout: 3.0) {
+                addNewBtn.tap()
+                Thread.sleep(forTimeInterval: 1.2)
+                let qtatarPredicate = NSPredicate(format: "identifier == 'QTatar' OR label == 'QTatar' OR label CONTAINS[c] 'QırımKey'")
+                let qtatarBtn = settings.buttons.matching(qtatarPredicate).firstMatch.exists
+                    ? settings.buttons.matching(qtatarPredicate).firstMatch
+                    : settings.cells.matching(qtatarPredicate).firstMatch
+                if qtatarBtn.waitForExistence(timeout: 3.0) {
+                    qtatarBtn.tap()
+                    Thread.sleep(forTimeInterval: 1.0)
+                    let switches = settings.switches.allElementsBoundByIndex
+                    for sw in switches {
+                        let val = (sw.value as? String) ?? ""
+                        if val == "0" {
+                            sw.tap()
+                            Thread.sleep(forTimeInterval: 0.5)
+                        }
+                    }
+                    let doneBtn = settings.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Done' OR identifier CONTAINS[c] 'Done'")).firstMatch
+                    if doneBtn.exists {
+                        doneBtn.tap()
+                        Thread.sleep(forTimeInterval: 0.8)
+                    }
+                }
+            }
+        }
+        if existingCell.waitForExistence(timeout: 2.0) && existingCell.isHittable {
+            existingCell.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+            let fullAccessSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Allow Full Access'")).firstMatch
+            if fullAccessSwitch.waitForExistence(timeout: 2.0), ((fullAccessSwitch.value as? String) ?? "") == "0" {
+                fullAccessSwitch.tap()
+                Thread.sleep(forTimeInterval: 0.5)
+                let allowBtn = settings.alerts.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Allow'")).firstMatch
+                if allowBtn.waitForExistence(timeout: 1.5) {
+                    allowBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+            }
+        }
     }
 
     private func key(_ identifier: String) -> XCUIElement {
@@ -83,7 +177,7 @@ final class QirimKeyUITests: XCTestCase {
         let predicate = expected.isEmpty
             ? NSPredicate(format: "value == %@ OR value == nil", "")
             : NSPredicate(format: "value == %@", expected)
-        let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: field)], timeout: 3)
+        let result = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: field)], timeout: 5)
         if result != .completed {
             XCTAssertEqual((field.value as? String) ?? "", expected, file: file, line: line)
         }
@@ -385,7 +479,7 @@ final class QirimKeyUITests: XCTestCase {
         }
 
         // Verify long-pressing the bottom-right dismiss key triggers the Floating callout and switches to floating mode,
-        // and dragging the floating grabber to the bottom edge docks the keyboard back.
+        // stays strictly within screen bounds, and dragging the floating grabber to the bottom edge docks the keyboard back.
         let dismissKey = key("dismiss")
         if dismissKey.exists && app.frame.width >= 750 {
             let start = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -396,6 +490,8 @@ final class QirimKeyUITests: XCTestCase {
             let spaceKey = key("space")
             XCTAssertTrue(spaceKey.exists)
             if spaceKey.frame.width < 320 {
+                XCTAssertGreaterThanOrEqual(spaceKey.frame.minX, 0, "Floating keyboard must not jump off the left edge of the screen")
+                XCTAssertLessThanOrEqual(spaceKey.frame.maxX, app.frame.width, "Floating keyboard must not jump off the right edge of the screen")
                 // Drag the floating keyboard's bottom grabber bar down to the bottom edge of the screen to re-dock.
                 let grabberX = spaceKey.frame.midX - app.frame.minX
                 let grabberY = spaceKey.frame.maxY + 18 - app.frame.minY
@@ -597,6 +693,289 @@ final class QirimKeyUITests: XCTestCase {
         capture(String(format: "script toggle worst=%.3fs", worst))
         print(String(format: "QK_METRIC toggle worst=%.3f", worst))
         XCTAssertLessThan(worst, 1.5)
+    }
+
+    func testColdStartKeyboardAppearsOnFirstTap() throws {
+        app.launchArguments = ["-qt_field", "standard", "-qt_theme", "modernLight", "-qt_reset_text"]
+        var launchStart = Date()
+        app.launch()
+        XCTAssertTrue(field.waitForExistence(timeout: 6))
+        let firstKey = key("numeric")
+        var appearedOnFirstAttempt = firstKey.exists || firstKey.waitForExistence(timeout: 3.5) || key("space").exists
+        if !appearedOnFirstAttempt {
+            // On a freshly created simulator where Qırımtatarca has not yet been enabled/selected in Settings,
+            // enable and select it once, terminate the app, and then measure a true cold start.
+            cycleToCustomKeyboard(firstKey: firstKey)
+            if !(firstKey.exists || key("space").exists) {
+                enableKeyboardInSettingsIfNeeded()
+                app.activate()
+                if field.waitForExistence(timeout: 5) {
+                    if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
+                        field.tap()
+                    }
+                    Thread.sleep(forTimeInterval: 0.8)
+                }
+                cycleToCustomKeyboard(firstKey: firstKey)
+            }
+            app.terminate()
+            Thread.sleep(forTimeInterval: 1.0)
+            launchStart = Date()
+            app.launch()
+            XCTAssertTrue(field.waitForExistence(timeout: 6))
+            appearedOnFirstAttempt = firstKey.exists || firstKey.waitForExistence(timeout: 3.5) || key("space").exists
+        }
+        let coldStartLatency = Date().timeIntervalSince(launchStart)
+        print(String(format: "QK_METRIC cold_start_first_attempt=%.3fs appeared=%@", coldStartLatency, appearedOnFirstAttempt ? "YES" : "NO"))
+        XCTAssertTrue(appearedOnFirstAttempt, "Keyboard extension must appear on the very first attempt without requiring a second tap")
+        try selectScript(cyrillic: false)
+        typeLetters("q")
+        expectText("q")
+        capture("Cold start first attempt verified")
+    }
+
+    private func letterElement(_ value: String) -> XCUIElement {
+        let lowerId = "key.character." + value.lowercased()
+        let upperId = "key.character." + value.uppercased()
+        let predicate = NSPredicate(format: "identifier == %@ OR identifier == %@", lowerId, upperId)
+        return app.descendants(matching: .any).matching(predicate).firstMatch
+    }
+
+    private static var currentIPadSupportsSplitKeyboard: Bool {
+        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "UIKeyboardDeviceSupportsSplit") {
+            typealias SupportsSplitFn = @convention(c) () -> Bool
+            let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
+            return fn()
+        }
+        let modelIdentifier: String = {
+            if let simModel = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !simModel.isEmpty {
+                return simModel
+            }
+            var sysinfo = utsname()
+            uname(&sysinfo)
+            return withUnsafePointer(to: &sysinfo.machine) {
+                $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                    String(cString: $0)
+                }
+            }
+        }()
+        let supportedModels: Set<String> = [
+            "iPad11,3", "iPad11,4",
+            "iPad11,1", "iPad11,2", "iPad14,1", "iPad14,2", "iPad16,1", "iPad16,2",
+            "iPad6,11", "iPad6,12", "iPad7,5", "iPad7,6", "iPad7,11", "iPad7,12",
+            "iPad11,6", "iPad11,7", "iPad12,1", "iPad12,2",
+            "iPad6,3", "iPad6,4", "iPad7,3", "iPad7,4",
+            "iPad5,1", "iPad5,2", "iPad5,3", "iPad5,4"
+        ]
+        return supportedModels.contains(modelIdentifier)
+    }
+
+    func testIPadSplitKeyboardModeAndTransitions() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else {
+            throw XCTSkip("Split keyboard mode is iPad-only.")
+        }
+        try launch()
+        try selectScript(cyrillic: false)
+
+        let splitToggle = app.descendants(matching: .any).matching(identifier: "settings.split.toggle").firstMatch
+        XCTAssertFalse(splitToggle.exists, "Split keyboard toggle must NOT exist in HomeView settings card; split mode is controlled exclusively from the keyboard")
+
+        let leftCluster = app.descendants(matching: .any).matching(identifier: "split.cluster.left").firstMatch
+        let rightCluster = app.descendants(matching: .any).matching(identifier: "split.cluster.right").firstMatch
+        XCTAssertFalse(leftCluster.exists, "Keyboard must start in normal merged Docked mode by default")
+
+        if !Self.currentIPadSupportsSplitKeyboard {
+            // On modern full-screen iPads that do not support Split Keyboard in official iPadOS (e.g. iPad A16),
+            // long-pressing the dismiss key must show only Floating (not Split) and transition cleanly to on-screen Floating mode.
+            let dismiss = key("dismiss")
+            XCTAssertTrue(dismiss.waitForExistence(timeout: 2), "Dismiss key must exist on iPad keyboard")
+            let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.1))
+            start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.15)
+            Thread.sleep(forTimeInterval: 0.8)
+            XCTAssertFalse(leftCluster.exists, "Non-split iPad model must never enter Split Keyboard mode")
+            let spaceKey = key("space")
+            XCTAssertTrue(spaceKey.exists)
+            if spaceKey.frame.width < 320 {
+                XCTAssertGreaterThanOrEqual(spaceKey.frame.minX, 0, "Floating keyboard must remain inside screen bounds (minX >= 0)")
+                XCTAssertLessThanOrEqual(spaceKey.frame.maxX, app.frame.width, "Floating keyboard must remain inside screen bounds (maxX <= screenWidth)")
+                capture("iPad non-split model Floating keyboard")
+                let grabberX = spaceKey.frame.midX - app.frame.minX
+                let grabberY = spaceKey.frame.maxY + 18 - app.frame.minY
+                let root = app.coordinate(withNormalizedOffset: .zero)
+                let dragStart = root.withOffset(CGVector(dx: grabberX, dy: grabberY))
+                let dragEnd = root.withOffset(CGVector(dx: app.frame.width / 2, dy: app.frame.height - 4))
+                dragStart.press(forDuration: 0.15, thenDragTo: dragEnd, withVelocity: .slow, thenHoldForDuration: 0.35)
+                XCTAssertTrue(dismiss.waitForExistence(timeout: 3), "Dragging floating grabber to bottom must re-dock keyboard")
+            }
+            return
+        }
+
+        func triggerDismissCalloutTopOption() {
+            let dismiss = key("dismiss")
+            XCTAssertTrue(dismiss.waitForExistence(timeout: 2), "Dismiss key must exist on iPad keyboard")
+            let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -2.1))
+            start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.2)
+            Thread.sleep(forTimeInterval: 0.45)
+        }
+
+        // Trigger Split Keyboard directly from the vertical dismiss callout's top row ("Split")
+        triggerDismissCalloutTopOption()
+
+        XCTAssertTrue(leftCluster.waitForExistence(timeout: 3), "Left split thumb cluster backdrop must exist in Split mode")
+        XCTAssertTrue(rightCluster.exists, "Right split thumb cluster backdrop must exist in Split mode")
+
+        let yKey = letterElement("y")
+        let uKey = letterElement("u")
+        XCTAssertTrue(yKey.exists && uKey.exists, "Both left ('y') and right ('u') split cluster boundary keys must exist")
+        let centerGap = uKey.frame.minX - yKey.frame.maxX
+        print(String(format: "QK_METRIC split_center_gap_pt=%.1f", centerGap))
+        XCTAssertGreaterThan(centerGap, 80, "Split keyboard must have a wide thumb gap (> 80pt) between left ('y') and right ('u') clusters")
+
+        let spaceKeys = app.descendants(matching: .any).matching(identifier: "key.space")
+        XCTAssertGreaterThanOrEqual(spaceKeys.count, 2, "Split keyboard must render two spacebars (left and right)")
+        capture("iPad Split Keyboard Latin Portrait")
+
+        // Type across left and right clusters and split spacebar
+        clear()
+        typeLetters("qp")
+        tap("space")
+        typeLetters("al")
+        expectText("qp al")
+
+        // Verify Split Keyboard in Cyrillic mode
+        if key("toggle_script").exists {
+            tap("toggle_script")
+            XCTAssertTrue(waitForLetter("ф", timeout: 2))
+            capture("iPad Split Keyboard Cyrillic Portrait")
+            tap("toggle_script")
+            XCTAssertTrue(waitForLetter("q", timeout: 2))
+        }
+
+        // Verify Split Keyboard in Numeric (.?123) and Symbolic (#+=) modes
+        tap("numeric")
+        XCTAssertTrue(key("character.6").waitForExistence(timeout: 2))
+        XCTAssertTrue(key("character.7").exists)
+        XCTAssertGreaterThan(key("character.7").frame.minX - key("character.6").frame.maxX, 80, "Split numeric row must preserve center gap between '6' and '7'")
+        capture("iPad Split Keyboard Numeric Portrait")
+        tap("symbolic")
+        XCTAssertTrue(key("character.€").waitForExistence(timeout: 2))
+        capture("iPad Split Keyboard Symbolic Portrait")
+        tap("alphabetic")
+
+        // Verify Split Keyboard in Landscape orientation
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertTrue(leftCluster.exists && rightCluster.exists, "Split clusters must persist in Landscape")
+        XCTAssertGreaterThan(letterElement("u").frame.minX - letterElement("y").frame.maxX, 120, "Landscape split gap must be > 120pt")
+        capture("iPad Split Keyboard Latin Landscape")
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 0.5)
+
+        // Merge Split Keyboard back to Docked mode directly from the vertical dismiss callout's top row ("Merge")
+        triggerDismissCalloutTopOption()
+        XCTAssertFalse(leftCluster.exists, "Left split cluster backdrop must disappear when merged back to Docked mode")
+        XCTAssertLessThan(letterElement("u").frame.minX - letterElement("y").frame.maxX, 25, "Merged Docked keyboard must have adjacent 'y' and 'u' keys")
+        capture("iPad Merged Docked Keyboard")
+    }
+
+    func testSystemKeyboardFeaturesMathAndSmartPunctuation() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+
+        // 1a. Show Maths Results (2+2= -> 4 on Space)
+        clear()
+        tap("numeric")
+        XCTAssertTrue(key("character.2").waitForExistence(timeout: 2))
+        tap("character.2")
+        if key("character.+").exists {
+            tap("character.+")
+        } else {
+            tap("symbolic")
+            XCTAssertTrue(key("character.+").waitForExistence(timeout: 2))
+            tap("character.+")
+            tap("numeric")
+        }
+        XCTAssertTrue(key("character.2").waitForExistence(timeout: 2))
+        tap("character.2")
+        if !key("character.=").exists {
+            tap("symbolic")
+        }
+        XCTAssertTrue(key("character.=").waitForExistence(timeout: 2))
+        tap("character.=")
+        Thread.sleep(forTimeInterval: 0.15)
+        tap("space")
+        expectText("2+2=4 ")
+
+        // 1b. Show Maths Results via direct tap on suggestion slot 0 (must preserve equation prefix!)
+        clear()
+        if key("numeric").exists { tap("numeric") }
+        XCTAssertTrue(key("character.3").waitForExistence(timeout: 2))
+        tap("character.3")
+        if key("character.+").exists {
+            tap("character.+")
+        } else {
+            tap("symbolic")
+            XCTAssertTrue(key("character.+").waitForExistence(timeout: 2))
+            tap("character.+")
+            tap("numeric")
+        }
+        XCTAssertTrue(key("character.5").waitForExistence(timeout: 2))
+        tap("character.5")
+        if !key("character.=").exists {
+            tap("symbolic")
+        }
+        XCTAssertTrue(key("character.=").waitForExistence(timeout: 2))
+        tap("character.=")
+        let mathSlot = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let mathReady = NSPredicate(format: "exists == true AND label CONTAINS '8'")
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: mathReady, object: mathSlot)], timeout: 3)
+        XCTAssertTrue(mathSlot.exists, "Math result suggestion slot must appear after 3+5=")
+        mathSlot.tap()
+        expectText("3+5=8 ")
+
+        // 2. Smart Punctuation: double hyphen (--) -> em-dash (—)
+        clear()
+        if key("numeric").exists { tap("numeric") }
+        XCTAssertTrue(key("character.-").waitForExistence(timeout: 2))
+        tap("character.-")
+        tap("character.-")
+        expectText("—")
+
+        // 3. Smart Punctuation: straight quotes (") -> smart opening/closing quotes (“ok”)
+        clear()
+        if key("numeric").exists { tap("numeric") }
+        XCTAssertTrue(key("character.\"").waitForExistence(timeout: 2))
+        tap("character.\"")
+        if key("alphabetic").exists { tap("alphabetic") }
+        typeLetters("ok")
+        if key("numeric").exists { tap("numeric") }
+        tap("character.\"")
+        expectText("“ok”")
+
+        // 4. Smart Punctuation: triple period (...) -> ellipsis (…)
+        clear()
+        if key("alphabetic").exists { tap("alphabetic") }
+        if key("character..").exists {
+            tap("character..")
+            tap("character..")
+            tap("character..")
+        } else {
+            if key("numeric").exists { tap("numeric") }
+            tap("character..")
+            tap("character..")
+            tap("character..")
+            if key("alphabetic").exists { tap("alphabetic") }
+        }
+        expectText("…")
+
+        // 5. "." Shortcut on double-space
+        clear()
+        typeLetters("selam")
+        let spaceBtn = app.buttons["key.space"].exists ? app.buttons["key.space"] : key("space")
+        spaceBtn.tap()
+        spaceBtn.tap()
+        expectText("selâm. ")
     }
 
     func testCrossAppStatisticsAndStandardKeyboardComparison() throws {

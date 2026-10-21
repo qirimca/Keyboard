@@ -71,7 +71,14 @@ public class KeyboardContext: ObservableObject {
     /// Whether or not the keyboard is in floating mode.
     @Published
     public var isKeyboardFloating = false
-    
+
+    /// Whether or not the iPad keyboard is in split (thumb-cluster) mode.
+    @Published
+    public var isKeyboardSplit = false
+
+    /// Tracks the last observed UIKit system split state (`UIKeyboardImpl` / `UIPeripheralHost` / `UIInputWindowController`).
+    public var lastObservedSystemSplit: Bool?
+
     /// Whether or not a space drag gesture is active.
     @Published
     public var isSpaceDragGestureActive = false
@@ -222,6 +229,42 @@ public extension KeyboardContext {
     /// Map the current ``locale`` to a ``KeyboardLocale``.
     var keyboardLocale: KeyboardLocale? {
         KeyboardLocale.allCases.first { $0.localeIdentifier == locale.identifier }
+    }
+
+    /// Whether or not the current iPad hardware model supports Split Keyboard in official iPadOS
+    /// (Home-button iPads such as iPad Air 3rd generation and iPad 5th–9th gen, plus iPad mini).
+    var deviceSupportsSplitKeyboard: Bool {
+        guard deviceType == .pad else { return false }
+        #if os(iOS)
+        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "UIKeyboardDeviceSupportsSplit") {
+            typealias SupportsSplitFn = @convention(c) () -> Bool
+            let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
+            return fn()
+        }
+        let modelIdentifier: String = {
+            if let simModel = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !simModel.isEmpty {
+                return simModel
+            }
+            var sysinfo = utsname()
+            uname(&sysinfo)
+            return withUnsafePointer(to: &sysinfo.machine) {
+                $0.withMemoryRebound(to: CChar.self, capacity: 1) {
+                    String(cString: $0)
+                }
+            }
+        }()
+        let supportedModels: Set<String> = [
+            "iPad11,3", "iPad11,4",
+            "iPad11,1", "iPad11,2", "iPad14,1", "iPad14,2", "iPad16,1", "iPad16,2",
+            "iPad6,11", "iPad6,12", "iPad7,5", "iPad7,6", "iPad7,11", "iPad7,12",
+            "iPad11,6", "iPad11,7", "iPad12,1", "iPad12,2",
+            "iPad6,3", "iPad6,4", "iPad7,3", "iPad7,4",
+            "iPad5,1", "iPad5,2", "iPad5,3", "iPad5,4"
+        ]
+        return supportedModels.contains(modelIdentifier)
+        #else
+        return false
+        #endif
     }
 }
 
@@ -376,29 +419,28 @@ extension KeyboardContext {
         sync(with: controller)
     }
 
-    /// Perform a sync to check if the keyboard is floating.
-    func syncIsFloating(with controller: KeyboardInputViewController) {
-        let width = controller.view.bounds.width > 0 ? controller.view.bounds.width : controller.view.frame.width
-        #if os(iOS)
-        let screenWidth = controller.screenSize.width > 0 ? controller.screenSize.width : UIScreen.main.bounds.width
-        #else
-        let screenWidth = controller.screenSize.width
-        #endif
+    /// Perform an immediate sync to check if the iPad keyboard is in floating mode (`width <= 360`).
+    public func syncIsFloating(
+        with controller: KeyboardInputViewController,
+        targetWidth: CGFloat? = nil
+    ) {
+        let resolvedWidth: CGFloat = {
+            if let targetWidth, targetWidth > 0 { return targetWidth }
+            if controller.view.bounds.width > 0 { return controller.view.bounds.width }
+            return controller.view.frame.width
+        }()
         let isPadDevice = controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad
-        guard isPadDevice, width > 0, screenWidth > 0 else {
+        guard isPadDevice, resolvedWidth > 0 else {
             if isKeyboardFloating { isKeyboardFloating = false }
             return
         }
-        let isFloating = width < screenWidth / 2
-        if isKeyboardFloating == isFloating { return }
-
+        if targetWidth == nil && controller.view.window == nil && resolvedWidth > 360 {
+            return
+        }
         #if os(iOS)
-        // During an active system drag-to-dock or pinch-to-float transition on iPad,
-        // UIKeyboardFloatingTransitionController temporarily previews the target frame
-        // while the user's finger is still down. Flipping `isKeyboardFloating` mid-gesture
-        // changes the SwiftUI keyboard height constraint and aborts the system dock transition.
-        let isIntermediateWidth = width > 360 && width < screenWidth - 16
-        if controller.view.window != nil && (isIntermediateWidth || Self.hasActiveSystemFloatingGesture(in: controller.view)) {
+        let screenWidth = controller.screenSize.width > 0 ? controller.screenSize.width : UIScreen.main.bounds.width
+        let isIntermediateWidth = resolvedWidth > 360 && screenWidth > 0 && resolvedWidth < screenWidth - 16
+        if targetWidth == nil && controller.view.window != nil && (isIntermediateWidth || Self.hasActiveSystemFloatingGesture(in: controller.view)) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak controller] in
                 guard let self, let controller else { return }
                 self.syncIsFloating(with: controller)
@@ -406,11 +448,164 @@ extension KeyboardContext {
             return
         }
         #endif
-        isKeyboardFloating = isFloating
+        let wasFloating = isKeyboardFloating
+        let isFloating = resolvedWidth <= 360
+        if isKeyboardFloating != isFloating {
+            isKeyboardFloating = isFloating
+            renderVersion &+= 1
+        }
+        #if os(iOS)
+        if !isFloating && controller.preferredContentSize != .zero {
+            controller.preferredContentSize = .zero
+        }
+        if wasFloating && !isFloating && deviceSupportsSplitKeyboard {
+            for delay in [0.06, 0.18, 0.35] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self, weak controller] in
+                    guard let self, let controller, !self.isKeyboardFloating else { return }
+                    if let delayedSplit = Self.querySystemIsSplit(in: controller) {
+                        self.lastObservedSystemSplit = delayedSplit
+                        if self.isKeyboardSplit != delayedSplit {
+                            self.isKeyboardSplit = delayedSplit
+                            self.renderVersion &+= 1
+                            NotificationCenter.default.post(
+                                name: Notification.Name("crh.key.systemSplitStateDidChange"),
+                                object: NSNumber(value: delayedSplit)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        if !isFloating && deviceSupportsSplitKeyboard, let sysSplit = Self.querySystemIsSplit(in: controller) {
+            if (wasFloating && sysSplit) || (lastObservedSystemSplit != nil && lastObservedSystemSplit != sysSplit) {
+                lastObservedSystemSplit = sysSplit
+                if isKeyboardSplit != sysSplit {
+                    isKeyboardSplit = sysSplit
+                    renderVersion &+= 1
+                    NotificationCenter.default.post(
+                        name: Notification.Name("crh.key.systemSplitStateDidChange"),
+                        object: NSNumber(value: sysSplit)
+                    )
+                }
+            } else if lastObservedSystemSplit == nil {
+                lastObservedSystemSplit = sysSplit
+                if sysSplit && !isKeyboardSplit {
+                    isKeyboardSplit = true
+                    renderVersion &+= 1
+                    NotificationCenter.default.post(
+                        name: Notification.Name("crh.key.systemSplitStateDidChange"),
+                        object: NSNumber(value: true)
+                    )
+                }
+            }
+        }
+        #endif
     }
 
     #if os(iOS)
-    private static func hasActiveSystemFloatingGesture(in view: UIView) -> Bool {
+    public static func querySystemIsSplit(in controller: UIInputViewController) -> Bool? {
+        if let tiClass = NSClassFromString("TIPreferencesController") as? NSObject.Type {
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            if tiClass.responds(to: sharedSel),
+               let tiCtrl = tiClass.perform(sharedSel)?.takeUnretainedValue() as? NSObject {
+                let syncSel = NSSelectorFromString("synchronizePreferences")
+                if tiCtrl.responds(to: syncSel) {
+                    _ = tiCtrl.perform(syncSel)
+                }
+                let valSel = NSSelectorFromString("valueForPreferenceKey:")
+                if tiCtrl.responds(to: valSel) {
+                    for key in ["RivenKeyboard", "UIKeyboardPersistentSplitLock"] {
+                        if let num = tiCtrl.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? NSNumber,
+                           num.boolValue {
+                            return true
+                        }
+                    }
+                    if let prog = tiCtrl.perform(valSel, with: "UIKeyboardPersistentSplitProgress" as NSString)?.takeUnretainedValue() as? NSNumber,
+                       prog.doubleValue > 0.5 {
+                        return true
+                    }
+                }
+            }
+        }
+        for domain in ["com.apple.keyboard.preferences", "com.apple.Preferences", ".GlobalPreferences"] {
+            if let val = CFPreferencesCopyAppValue("RivenKeyboard" as CFString, domain as CFString) as? NSNumber,
+               val.boolValue {
+                return true
+            }
+        }
+        if let rootVC = controller.view.window?.rootViewController {
+            let placementSel = NSSelectorFromString("placement")
+            if rootVC.responds(to: placementSel),
+               let placement = rootVC.perform(placementSel)?.takeUnretainedValue() {
+                let className = NSStringFromClass(type(of: placement))
+                if className.contains("Split") {
+                    return true
+                }
+                let isSplitSel = NSSelectorFromString("isSplit")
+                if placement.responds(to: isSplitSel),
+                   let method = class_getInstanceMethod(type(of: placement), isSplitSel) {
+                    typealias IsSplitFn = @convention(c) (AnyObject, Selector) -> Bool
+                    let fn = unsafeBitCast(method_getImplementation(method), to: IsSplitFn.self)
+                    if fn(placement, isSplitSel) {
+                        return true
+                    }
+                }
+            }
+        }
+        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            let sharedSel = NSSelectorFromString("sharedInstance")
+            if hostClass.responds(to: sharedSel),
+               let host = (hostClass as AnyObject).perform(sharedSel)?.takeUnretainedValue() {
+                for selName in ["isSplit", "isSplitting"] {
+                    let sel = NSSelectorFromString(selName)
+                    if host.responds(to: sel),
+                       let method = class_getInstanceMethod(type(of: host), sel) {
+                        typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                        let fn = unsafeBitCast(method_getImplementation(method), to: BoolFn.self)
+                        if fn(host, sel) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            for selName in ["isSplit", "rivenPreference"] {
+                let sel = NSSelectorFromString(selName)
+                if let method = class_getClassMethod(implClass, sel) {
+                    typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                    let fn = unsafeBitCast(method_getImplementation(method), to: ClassBoolFn.self)
+                    if fn(implClass, sel) {
+                        return true
+                    }
+                }
+            }
+            let activeSel = NSSelectorFromString("activeInstance")
+            if implClass.responds(to: activeSel),
+               let active = (implClass as AnyObject).perform(activeSel)?.takeUnretainedValue() {
+                for selName in ["isSplit", "rivenPreference"] {
+                    let sel = NSSelectorFromString(selName)
+                    if active.responds(to: sel),
+                       let method = class_getInstanceMethod(type(of: active), sel) {
+                        typealias InstBoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                        let fn = unsafeBitCast(method_getImplementation(method), to: InstBoolFn.self)
+                        if fn(active, sel) {
+                            return true
+                        }
+                    }
+                }
+            }
+            let isSplitSel = NSSelectorFromString("isSplit")
+            if let method = class_getClassMethod(implClass, isSplitSel) {
+                typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                let fn = unsafeBitCast(method_getImplementation(method), to: ClassBoolFn.self)
+                return fn(implClass, isSplitSel)
+            }
+        }
+        return nil
+    }
+
+    public static func hasActiveSystemFloatingGesture(in view: UIView) -> Bool {
         var current: UIView? = view
         while let node = current {
             if let recognizers = node.gestureRecognizers {

@@ -114,26 +114,44 @@ public extension CalloutContext.ActionContext {
         guard let actions = actionProvider?.calloutActions(for: action) else { return }
         self.buttonFrame = geo.frame(in: .named(coordinateSpace))
         self.alignment = alignment ?? getAlignment(for: geo)
-        self.actions = isLeading ? actions : actions.reversed()
-        self.selectedIndex = startIndex
+        if Self.isMenuCalloutActions(actions) {
+            self.actions = actions
+            self.selectedIndex = actions.isEmpty ? -1 : 0
+        } else {
+            self.actions = isLeading ? actions : actions.reversed()
+            self.selectedIndex = startIndex
+        }
         guard isActive else { return }
         triggerHapticFeedbackForSelectionChange()
     }
     
     /// Update the selected action for a drag gesture.
     func updateSelection(with dragTranslation: CGSize?) {
-        guard let value = dragTranslation, buttonFrame != .zero else { return }
+        guard let value = dragTranslation, buttonFrame != .zero, !actions.isEmpty else { return }
         if shouldReset(for: value) { return reset() }
+        if Self.isMenuCalloutActions(actions) {
+            let rowStep = max(buttonFrame.height * 0.78, 38)
+            let verticalOffset = Int(max(0, -value.height - (rowStep * 0.6)) / rowStep)
+            let horizontalOffset = Int(max(0, -value.width - (buttonFrame.width * 0.45)) / max(buttonFrame.width * 0.75, 48))
+            let offset = max(verticalOffset, horizontalOffset)
+            let clampedIndex = min(max(offset, 0), actions.count - 1)
+            if self.selectedIndex != clampedIndex {
+                triggerHapticFeedbackForSelectionChange()
+            }
+            self.selectedIndex = clampedIndex
+            return
+        }
         guard shouldUpdateSelection(for: value) else { return }
         let translation = value.width
         let standardStyle = Callouts.ActionCalloutStyle.standard
         let maxButtonSize = standardStyle.maxButtonSize
         let buttonSize = buttonFrame.size.limited(to: maxButtonSize)
         let indexWidth = 0.9 * buttonSize.width
-        let offset = Int(abs(translation) / indexWidth)
-        let index = isLeading ? offset : actions.count - offset - 1
+        let offset = Int(abs(translation) / max(indexWidth, 1))
+        let rawIndex = isLeading ? offset : actions.count - offset - 1
+        let clampedIndex = min(max(rawIndex, 0), actions.count - 1)
         let currentIndex = self.selectedIndex
-        let newIndex = isIndexValid(index) ? index : startIndex
+        let newIndex = isIndexValid(clampedIndex) ? clampedIndex : startIndex
         if currentIndex != newIndex { triggerHapticFeedbackForSelectionChange() }
         self.selectedIndex = newIndex
     }
@@ -157,6 +175,15 @@ public extension CalloutContext.ActionContext {
 // MARK: - Private functionality
 
 private extension CalloutContext.ActionContext {
+
+    static func isMenuCalloutActions(_ actions: [KeyboardAction]) -> Bool {
+        actions.contains {
+            if case .custom(let name) = $0 {
+                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard"
+            }
+            return false
+        }
+    }
     
     var startIndex: Int {
         isLeading ? 0 : actions.count - 1

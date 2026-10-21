@@ -144,6 +144,7 @@ private extension Gestures.GestureButton {
                             dragAction?(value)
                         }
                         .onEnded { value in
+                            dragAction?(value)
                             tryHandleRelease(value, in: geo)
                         }
                 )

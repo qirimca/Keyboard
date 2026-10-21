@@ -129,7 +129,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         var config = super.keyboardLayoutConfiguration
         if keyboardContext.isKeyboardFloating {
             config.rowHeight = 43
-            config.buttonInsets = EdgeInsets(top: 5.0, leading: 2.5, bottom: 5.0, trailing: 2.5)
+            config.buttonInsets = EdgeInsets(top: 4.5, leading: 2.5, bottom: 4.5, trailing: 2.5)
             config.buttonCornerRadius = 7.5
         } else if keyboardContext.deviceType == .phone {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait

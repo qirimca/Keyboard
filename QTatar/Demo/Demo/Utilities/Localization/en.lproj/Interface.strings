@@ -77,3 +77,9 @@
 "stats.volumeMaxReached" = "Top activity tier reached!";
 "stats.activeTimeSubtitle" = "Active typing sessions";
 "stats.learnedWordsSubtitle" = "Personal dictionary";
+"settings.cyrillicStatusAdded" = "Added";
+"settings.cyrillicStatusMissing" = "Not Added";
+"settings.cyrillicPromoTitle" = "Also Add the Cyrillic Keyboard";
+"settings.cyrillicPromoDesc" = "You use a Cyrillic language. Add the “Къырымтатарджа” keyboard in iOS Settings to type in Cyrillic as well.";
+"settings.cyrillicAddAction" = "Add in Settings";
+"settings.cyrillicGuideTitle" = "How to Add the Cyrillic Keyboard";

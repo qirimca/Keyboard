@@ -52,7 +52,10 @@ public extension KeyboardLayout.Configuration {
     static func standard(
         for context: KeyboardContext
     ) -> Self {
-        standard(
+        if context.isKeyboardFloating {
+            return .standardPhone
+        }
+        return standard(
             forDevice: context.deviceType,
             screenSize: context.screenSize,
             orientation: context.interfaceOrientation
@@ -111,13 +114,13 @@ public extension KeyboardLayout.Configuration {
     static var standardPadProLargeLandscapeRowHeight = 88.0
 
     /// The standard iPhone portrait row height.
-    static var standardPhoneRowHeight = 43.0
+    static var standardPhoneRowHeight = 54.0
 
     /// The standard iPhone portrait row height.
     static var standardPhoneLandscapeRowHeight = 40.0
 
     /// The standard iPhone Pro Max portrait row height.
-    static var standardPhoneProMaxRowHeight = 43.0
+    static var standardPhoneProMaxRowHeight = 56.0
 
     /// The standard iPhone Pro Max portrait row height.
     static var standardPhoneProMaxLandscapeRowHeight = 40.0

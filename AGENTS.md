@@ -5,6 +5,7 @@
 ## Simulator & Device Testing Rules
 - Every UI/keyboard change MUST be tested on **both iPad and iPhone** (iPadOS 26/27 + iOS 27).
 - Check connected physical devices first (`xcrun devicectl list devices`): **iPad Air 3rd generation** (`<IPAD_DEVICE_UDID>`) and **iPhone 15 Pro** (`<IPHONE_DEVICE_UDID>`).
+- **Mandatory Parallel Execution Across Physical Devices & Simulator**: Connected physical devices and the already-booted simulator consume zero extra simulator disk space. Automated installations (`xcrun devicectl device install/process launch`) and test runs (`xcodebuild test-without-building` with separate `-resultBundlePath` paths) MUST ALWAYS be launched **in parallel simultaneously** across all connected physical devices and the active simulator — never sequentially one after another — so results from all devices are collected at the same time.
 - If a physical device (e.g. **iPhone 15 Pro**) is offline/unavailable, you MUST test that form factor on an iOS 27 simulator (`xcrun simctl`):
   - Check free disk space (`df -h /`) first.
   - If sufficient disk space is available, create/boot the missing approved simulator (**iPhone 15 Pro** / **iPhone 16 Pro** on iOS 27 or **iPad (A16)** on iPadOS 27) and test in parallel.
@@ -17,6 +18,7 @@
 - Typing statistics MUST distinguish words typed manually letter-by-letter from words completed via the 3 autocomplete suggestions (suggestions do not inflate manual typing speed), include speed/volume progression levels based on realistic typing norms, and provide a confirmation dialog before resetting statistics.
 - Peer UI elements of the same hierarchy level (such as settings row titles or subtitles in `HomeView.swift`) MUST render at an identical effective font size without per-row `.minimumScaleFactor` shrinkage differences.
 - Default interface language MUST be Crimean Tatar (`crh`), managed in-app without exposing a redundant language picker in iOS System Settings.
+- Standard iOS/iPadOS keyboard features MUST strictly match official system behavior without inventing redundant settings in `HomeView.swift`: iPad Split Keyboard MUST only be active on iPad models supported by UIKit (`UIKeyboardDeviceSupportsSplit()`), controlled via the bottom-right `⌄⌨` vertical callout menu and pinch gesture; `Docked ↔ Floating` transitions MUST keep the floating platter clamped within `UIScreen.main.bounds`; and all `Settings → General → Keyboards` traits (`UITextDocumentProxy`, `UILexicon`, `playInputClick()`, Smart Punctuation, Show Maths Results) MUST be respected.
 - In `task_tracker.md` (and any progress artifacts), mark `[x]` for completed items, `[/]` **only** for the exact item(s) actively being executed at that moment, and `[ ]` for queued items — never mark all items `[/]` simultaneously unless they are genuinely running at the exact same instant.
 
 ## Browser Rules

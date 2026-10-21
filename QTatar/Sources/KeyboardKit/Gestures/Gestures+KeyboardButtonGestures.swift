@@ -201,10 +201,16 @@ private extension Gestures.KeyboardButtonGestures {
         guard let context = calloutContext?.actionContext else { return }
         context.updateInputs(for: action, in: geo)
         guard context.isActive else { return }
+        if let drag = lastDragValue {
+            context.updateSelection(with: drag.translation)
+        }
         calloutContext?.inputContext.reset()
     }
 
     func endActionCallout() {
+        if let drag = lastDragValue, let context = calloutContext?.actionContext, context.isActive {
+            context.updateSelection(with: drag.translation)
+        }
         calloutContext?.actionContext.endDragGesture()
     }
 
