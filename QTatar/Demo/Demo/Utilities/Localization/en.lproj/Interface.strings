@@ -50,6 +50,7 @@
 "stats.resetConfirmMessage" = "All typing and speed statistics will be permanently cleared. This action cannot be undone.";
 "stats.resetConfirmAction" = "Reset";
 "stats.cancel" = "Cancel";
+"stats.resetCancel" = "Cancel";
 "stats.speedLevel" = "Speed Level";
 "stats.speedTier0" = "Calm Start";
 "stats.speedTier1" = "Careful Step";

@@ -349,16 +349,16 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 43,
             text: "Elleriñiz dert körmesin!",
-            attribution: "Halq alğışı",
-            translationUA: "«Нехай ваші руки ніколи не знають болю (біди)!» (Народне благословення)",
-            translationEN: "\"May your hands never know pain!\" (Folk blessing)"
+            attribution: nil,
+            translationUA: "Нехай ваші руки ніколи не знають болю (біди)!",
+            translationEN: "May your hands never know pain!"
         ),
         .init(
             id: 44,
             text: "Eliñe sağlıq!",
-            attribution: "Halq alğışı",
-            translationUA: "«Здоров'я твоїм рукам! (вдячність за гарну працю чи письмо).» (Народне благословення)",
-            translationEN: "\"Health to your hands! (traditional gratitude for good work or writing).\" (Folk blessing)"
+            attribution: nil,
+            translationUA: "Здоров'я твоїм рукам!",
+            translationEN: "Health to your hands!"
         ),
         .init(
             id: 45,
@@ -377,86 +377,86 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 47,
             text: "Ağzıñızdan bal tamlay!",
-            attribution: "Qırımtatar aytımı",
-            translationUA: "«З ваших уст мед крапає! (комплімент красномовній людині).» (Кримськотатарський фразеологізм)",
-            translationEN: "\"Honey drips from your lips! (idiom praising eloquent speech).\" (Crimean Tatar idiom)"
+            attribution: nil,
+            translationUA: "З ваших уст мед крапає!",
+            translationEN: "Honey drips from your lips!"
         ),
         .init(
             id: 48,
             text: "Körüşkenimiz ne de yahşı oldı!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Як же добре, що ми зустрілися (побачилися)!» (Вітання)",
-            translationEN: "\"How wonderful it is that we met!\" (Greeting)"
+            attribution: nil,
+            translationUA: "Як же добре, що ми зустрілися (побачилися)!",
+            translationEN: "How wonderful it is that we met!"
         ),
         .init(
             id: 49,
             text: "Hoş sefa keldiñiz!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Ласкаво просимо! (Раді вашому приходу!).» (Вітання)",
-            translationEN: "\"Welcome! (Glad you have come!).\" (Greeting)"
+            attribution: nil,
+            translationUA: "Ласкаво просимо! (Раді вашому приходу!)",
+            translationEN: "Welcome! (Glad you have come!)"
         ),
         .init(
             id: 50,
             text: "Saba şerfiñiz hayır olsun!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Нехай ваш благословенний ранок буде добрим!» (Вітання)",
-            translationEN: "\"May your blessed morning be good!\" (Greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваш благословенний ранок буде добрим!",
+            translationEN: "May your blessed morning be good!"
         ),
         .init(
             id: 51,
             text: "Hayırlı sabalar olsun!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Доброго ранку!» (Вітання)",
-            translationEN: "\"Good morning!\" (Greeting)"
+            attribution: nil,
+            translationUA: "Доброго ранку!",
+            translationEN: "Good morning!"
         ),
         .init(
             id: 52,
             text: "Künüñiz hayırlı olsun!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Нехай ваш день буде добрим (вдалим)!» (Вітання)",
-            translationEN: "\"Have a good and blessed day!\" (Greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваш день буде добрим (вдалим)!",
+            translationEN: "Have a good and blessed day!"
         ),
         .init(
             id: 53,
             text: "Aqşam şerfiñiz hayır olsun!",
-            attribution: "Selâmlaşuv",
-            translationUA: "«Нехай ваш благословенний вечір буде добрим!» (Вітання)",
-            translationEN: "\"May your blessed evening be good!\" (Greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваш благословенний вечір буде добрим!",
+            translationEN: "May your blessed evening be good!"
         ),
         .init(
             id: 54,
             text: "Geceler hayır!",
-            attribution: "Sağlıqlaşuv",
-            translationUA: "«На добраніч! (Доброї ночі!)» (Побажання на добраніч)",
-            translationEN: "\"Good night!\" (Goodnight wish)"
+            attribution: nil,
+            translationUA: "На добраніч! (Доброї ночі!)",
+            translationEN: "Good night!"
         ),
         .init(
             id: 55,
             text: "Şehr-u Ramazan, merhaba!",
-            attribution: "Ramazan ilâhisi",
-            translationUA: "«Ласкаво просимо, благословенний місяцю Рамазан!» (Традиційне вітання Рамазану)",
-            translationEN: "\"Welcome, O blessed month of Ramadan!\" (Traditional Ramadan hymn)"
+            attribution: nil,
+            translationUA: "Ласкаво просимо, благословенний місяцю Рамазан!",
+            translationEN: "Welcome, O blessed month of Ramadan!"
         ),
         .init(
             id: 56,
             text: "Oraza bayramıñız hayırlı olsun!",
-            attribution: "Bayram qutlavı",
-            translationUA: "«Нехай ваше свято Ораза-байрам буде благословенним і добрим!» (Святкове привітання)",
-            translationEN: "\"May your Eid al-Fitr (Oraza Bayram) be blessed and auspicious!\" (Holiday greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваше свято Ораза-байрам буде благословенним і добрим!",
+            translationEN: "May your Eid al-Fitr (Oraza Bayram) be blessed and auspicious!"
         ),
         .init(
             id: 57,
             text: "Qurban bayramıñız hayırlı olsun!",
-            attribution: "Bayram qutlavı",
-            translationUA: "«Нехай ваше свято Курбан-байрам буде благословенним і добрим!» (Святкове привітання)",
-            translationEN: "\"May your Eid al-Adha (Qurban Bayram) be blessed and auspicious!\" (Holiday greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваше свято Курбан-байрам буде благословенним і добрим!",
+            translationEN: "May your Eid al-Adha (Qurban Bayram) be blessed and auspicious!"
         ),
         .init(
             id: 58,
             text: "Cuma künüñiz mubarek olsun!",
-            attribution: "Cuma qutlavı",
-            translationUA: "«Нехай ваша п'ятниця (Джума) буде благословенною!» (П'ятничне вітання)",
-            translationEN: "\"May your Friday (Jumu'ah) be blessed!\" (Friday greeting)"
+            attribution: nil,
+            translationUA: "Нехай ваша п'ятниця (Джума) буде благословенною!",
+            translationEN: "May your Friday (Jumu'ah) be blessed!"
         ),
         .init(
             id: 59,
@@ -531,9 +531,9 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 69,
             text: "Allah keçmişlerimizni rahmet eylesin!",
-            attribution: "Hatıra duası",
-            translationUA: "«Нехай Всевишній помилує душі наших предків (померлих)!» (Молитва пам'яті)",
-            translationEN: "\"May God have mercy on the souls of our departed ancestors!\" (Prayer of remembrance)"
+            attribution: nil,
+            translationUA: "Нехай Всевишній помилує душі наших предків (померлих)!",
+            translationEN: "May God have mercy on the souls of our departed ancestors!"
         ),
         .init(
             id: 70,
@@ -629,9 +629,9 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 83,
             text: "İşiñiz oñ kelsin!",
-            attribution: "Halq alğışı",
-            translationUA: "«Нехай ваша справа легко вдається (йде на лад)!» (Народне благословення)",
-            translationEN: "\"May your work go smoothly and succeed!\" (Folk blessing)"
+            attribution: nil,
+            translationUA: "Нехай ваша справа легко вдається (йде на лад)!",
+            translationEN: "May your work go smoothly and succeed!"
         ),
         .init(
             id: 84,
@@ -1131,30 +1131,42 @@ struct NativeAutocompleteToolbar: View {
     @ViewBuilder
     private func splitRightGreetingControlsView(clusterWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
-        let attributionText = (phrase.attribution?.isEmpty == false) ? phrase.attribution! : "Qırımtatar hikmeti"
         HStack(spacing: 6) {
-            Button {
-                insertCurrentPhrase(phrase)
-            } label: {
-                HStack(spacing: 5) {
-                    Text(attributionText)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Color.secondary.opacity(0.9))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
+            if let attributionText = phrase.attribution, !attributionText.isEmpty {
+                Button {
+                    insertCurrentPhrase(phrase)
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(attributionText)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Color.secondary.opacity(0.9))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.65)
 
-                    Image(systemName: "arrow.up.left.circle.fill")
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Color.secondary.opacity(0.75))
+                        Image(systemName: "arrow.up.left.circle.fill")
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Color.secondary.opacity(0.75))
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule(style: .continuous)
+                            .fill(Color.primary.opacity(0.06))
+                    )
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(Color.primary.opacity(0.06))
-                )
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    insertCurrentPhrase(phrase)
+                } label: {
+                    Image(systemName: "arrow.up.left.circle.fill")
+                        .font(.system(size: 13.0, weight: .medium))
+                        .foregroundStyle(Color.secondary.opacity(0.8))
+                        .frame(width: 26, height: 26)
+                        .background(Circle().fill(Color.primary.opacity(0.06)))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             Button {
                 greetingState.cycleNext()

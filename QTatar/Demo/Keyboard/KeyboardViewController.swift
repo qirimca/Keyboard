@@ -300,20 +300,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                     || subName.contains("Platter")
                     || subName.contains("Shadow")
                     || subName.contains("Background")
-                let isAncestorOrSelf = (sub === view) || view.isDescendant(of: sub)
                 let isChildOfSelf = sub.isDescendant(of: view)
 
                 if isBackdropLike && !isChildOfSelf {
+                    if sub.alpha == 0 { sub.alpha = 1 }
+                    if sub.isHidden { sub.isHidden = false }
                     applyIslandMask(to: sub)
-                    if !isAncestorOrSelf {
-                        if isSplitActive && totalWidth > 400 {
-                            sub.alpha = 0
-                            sub.isHidden = true
-                        } else {
-                            if sub.alpha == 0 { sub.alpha = 1 }
-                            if sub.isHidden { sub.isHidden = false }
-                        }
-                    }
                 }
                 if sub !== view && !isChildOfSelf {
                     inspectViewHierarchy(sub)

@@ -318,9 +318,7 @@ struct HomeView: View {
         }
         .alert(localizedInterfaceString("settings.cyrillicGuideTitle"), isPresented: $showCyrillicGuideAlert) {
             Button(localizedInterfaceString("settings.cyrillicAddAction")) {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
+                Self.openKeyboardSettings()
             }
             Button(Home.home_start_key.localized) {
                 showIndicatorSheet = true
@@ -768,8 +766,31 @@ struct HomeView: View {
         }
     }
 
-    /// Masks/hides the full-width `UIKBInputBackdropView` in the host app's `UITextEffectsWindow` and `UIRemoteKeyboardWindow`
-    /// when Split keyboard mode is active so the middle gap is 100% transparent without any blur.
+    static func openKeyboardSettings() {
+        let candidates = [
+            "App-Prefs:root=General&path=Keyboard/KEYBOARDS",
+            "App-Prefs:root=General&path=Keyboard",
+            "prefs:root=General&path=Keyboard/KEYBOARDS",
+            "prefs:root=General&path=Keyboard",
+            UIApplication.openSettingsURLString
+        ]
+        func tryNext(_ index: Int) {
+            guard index < candidates.count else { return }
+            guard let url = URL(string: candidates[index]) else {
+                tryNext(index + 1)
+                return
+            }
+            UIApplication.shared.open(url, options: [:]) { success in
+                if !success {
+                    tryNext(index + 1)
+                }
+            }
+        }
+        tryNext(0)
+    }
+
+    /// Masks the full-width `UIKBInputBackdropView` in the host app's `UITextEffectsWindow` and `UIRemoteKeyboardWindow`
+    /// when Split keyboard mode is active so the middle gap is 100% transparent without any blur while keeping the left and right islands blurred.
     private static func updateHostSplitBackdropMask() {
         guard Device.iPad else { return }
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
@@ -778,6 +799,16 @@ struct HomeView: View {
         var windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .flatMap { $0.windows }
+        let allWinSel = NSSelectorFromString("_allWindowsIncludingInternalWindows:onlyVisibleWindows:")
+        if let method = class_getClassMethod(UIWindow.self, allWinSel) {
+            typealias AllWinFn = @convention(c) (AnyObject, Selector, Bool, Bool) -> NSArray?
+            let fn = unsafeBitCast(method_getImplementation(method), to: AllWinFn.self)
+            if let allWins = fn(UIWindow.self, allWinSel, true, false) as? [UIWindow] {
+                for win in allWins where !windows.contains(win) {
+                    windows.append(win)
+                }
+            }
+        }
         for (clsName, selName) in [
             ("UITextEffectsWindow", "sharedTextEffectsWindow"),
             ("UIRemoteKeyboardWindow", "remoteKeyboardWindowForScreen:create:")
@@ -808,6 +839,8 @@ struct HomeView: View {
                 || typeName.contains("Background")
             let frameInWin = view.superview?.convert(view.frame, to: window) ?? view.frame
             if isBackdropView && frameInWin.width >= window.bounds.width * 0.70 && frameInWin.height >= 24 {
+                if view.alpha == 0 { view.alpha = 1 }
+                if view.isHidden { view.isHidden = false }
                 if isSplitActive {
                     let b = view.bounds
                     let isPortrait = window.bounds.height >= window.bounds.width
@@ -820,14 +853,8 @@ struct HomeView: View {
                     let maskLayer = (view.layer.mask as? CAShapeLayer) ?? CAShapeLayer()
                     maskLayer.path = path.cgPath
                     view.layer.mask = maskLayer
-                    view.alpha = 0
-                    view.isHidden = true
-                } else {
-                    if view.layer.mask != nil || view.alpha == 0 || view.isHidden {
-                        view.layer.mask = nil
-                        view.alpha = 1
-                        view.isHidden = false
-                    }
+                } else if view.layer.mask != nil {
+                    view.layer.mask = nil
                 }
             }
             for sub in view.subviews {
@@ -1274,9 +1301,7 @@ private extension HomeView {
             }
             Spacer(minLength: 6)
             Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
+                Self.openKeyboardSettings()
             } label: {
                 interfaceLabel("settings.cyrillicAddAction")
                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
@@ -1359,8 +1384,8 @@ private extension HomeView {
                 Button {
                     if !isCyrillicKeyboardAdded {
                         showCyrillicGuideAlert = true
-                    } else if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
+                    } else {
+                        Self.openKeyboardSettings()
                     }
                 } label: {
                     HStack(spacing: 12) {

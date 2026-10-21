@@ -50,6 +50,7 @@
 "stats.resetConfirmMessage" = "Усю статистику набору та швидкості буде видалено. Цю дію неможливо скасувати.";
 "stats.resetConfirmAction" = "Скинути";
 "stats.cancel" = "Скасувати";
+"stats.resetCancel" = "Скасувати";
 "stats.speedLevel" = "Рівень швидкості";
 "stats.speedTier0" = "Спокійний старт";
 "stats.speedTier1" = "Уважний крок";

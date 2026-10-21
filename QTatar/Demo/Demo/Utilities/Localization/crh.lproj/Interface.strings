@@ -50,6 +50,7 @@
 "stats.resetConfirmMessage" = "Bütün yazuv ve tezlik statistikası yoq etilecek. Bu amelni keri qaytarıp olmaz.";
 "stats.resetConfirmAction" = "Sıfırla";
 "stats.cancel" = "Vazgeç";
+"stats.resetCancel" = "Vazgeç";
 "stats.speedLevel" = "Tezlik derecesi";
 "stats.speedTier0" = "Asuda başlanğıç";
 "stats.speedTier1" = "Diqqatlı adım";

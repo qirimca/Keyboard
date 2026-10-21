@@ -75,7 +75,7 @@ private extension OnboardingView {
             
             if page == .onboard1 || page == .onboard2 {
                 navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
-                    openURL(URL(string: UIApplication.openSettingsURLString)!)
+                    HomeView.openKeyboardSettings()
                 }
                 .padding(.horizontal, 20)
             }
