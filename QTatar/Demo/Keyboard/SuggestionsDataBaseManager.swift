@@ -858,11 +858,14 @@ final class SuggestionsDataBaseManager {
 
                 let coverage = Double(exactHits) + Double(neighborHits) * 0.65 - Double(misses) * 1.5
                 let coverageRatio = coverage / Double(max(1, wordBase.count))
-                let lengthPenalty = Double(abs( basePath.count - wordBase.count )) * 0.12
+                let matchedKeyBonus = min(Double(exactHits) * 0.95 + Double(neighborHits) * 0.40, 7.5)
+                let shortWordDetourPenalty: Double = (basePath.count >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
+                let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55
+                    + Double(max(0, basePath.count - wordBase.count)) * 0.02
                 let endBonus = exactLast ? 2.5 : 0.4
                 let contextFreq = bigramBoosts[lower] ?? 0
                 let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.0) * 1.35
-                let totalScore = (coverageRatio * 6.0) + endBonus + freqScore - lengthPenalty
+                let totalScore = (coverageRatio * 6.0) + matchedKeyBonus + endBonus + freqScore - lengthPenalty - shortWordDetourPenalty
                 scoredCandidates.append((word, totalScore))
             }
 

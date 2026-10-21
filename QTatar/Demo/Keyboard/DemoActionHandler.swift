@@ -167,6 +167,66 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         super.handleDrag(on: action, from: startLocation, to: currentLocation)
     }
 
+    func handleSwipePath(_ keys: [String]) {
+        guard (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating),
+              !keyboardContext.isKeyboardSplit,
+              SystemKeyboardSettings.isSlideToTypeEnabled,
+              keys.count >= 2 else {
+            return
+        }
+        let proxy = keyboardContext.textDocumentProxy
+        let before = proxy.documentContextBeforeInput ?? ""
+        let isCyrillic = keyboardContext.locale.identifier.contains("Cyrl")
+        let isUpper = keyboardContext.keyboardType == .alphabetic(.uppercased)
+            || keyboardContext.keyboardType == .alphabetic(.capsLocked)
+        let isAllCaps = keyboardContext.keyboardType == .alphabetic(.capsLocked)
+        let shouldCap = isUpper || (SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence)
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        let contextWords = before
+            .components(separatedBy: delimiters)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        var suggestions = SuggestionsDataBaseManager.shared.matchSwipePath(
+            keySequence: keys,
+            isCyrillic: isCyrillic,
+            shouldCapitalize: shouldCap,
+            contextWords: contextWords
+        )
+        if isAllCaps {
+            suggestions = suggestions.map {
+                Autocomplete.Suggestion(
+                    text: $0.text.uppercased(with: Self.casingLocale),
+                    isAutocorrect: $0.isAutocorrect
+                )
+            }
+        }
+        guard let best = suggestions.first?.text, !best.isEmpty else { return }
+
+        GreetingBannerState.shared.dismissForTyping()
+        SpaceBarState.shared.fadeToResting()
+        resetComposition()
+
+        let needsLeadingSpace: Bool = {
+            guard let lastChar = before.last else { return false }
+            return !lastChar.isWhitespace && lastChar != "\n" && lastChar != "(" && lastChar != "[" && lastChar != "\"" && lastChar != "«"
+        }()
+        let textToInsert = needsLeadingSpace ? (" " + best) : best
+        proxy.insertText(textToInsert)
+        TextHistoryManager.shared.recordInsert(textToInsert)
+        KeyboardUsageStats.recordCharacterTyped(count: best.count, keystrokes: keys.count)
+        KeyboardUsageStats.recordManualWordCompleted()
+        lastCompletedTypedWord = best
+        typedWordBuffer = ""
+        if keyboardContext.keyboardType == .alphabetic(.uppercased) {
+            keyboardController?.setKeyboardType(.alphabetic(.lowercased))
+        }
+        autocompleteContext.suggestions = suggestions
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
+            self?.autocompleteContext.suggestions = suggestions
+        }
+    }
+
     private func apply(_ edit: CrimeanTatarTransliterator.Edit) {
         let proxy = keyboardContext.textDocumentProxy
         let removed = String((proxy.documentContextBeforeInput ?? "").suffix(edit.deleteCount))

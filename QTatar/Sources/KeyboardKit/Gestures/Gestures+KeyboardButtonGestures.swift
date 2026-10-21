@@ -98,16 +98,169 @@ private extension View {
     }
 }
 
+private struct KeyFramePreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+/// Coordinates continuous glide/swipe typing across character keys exclusively for iPhone and iPad Floating keyboards.
+public final class SwipeTypingState: ObservableObject {
+    public static let shared = SwipeTypingState()
+    public static let didCompleteSwipeNotification = Notification.Name("crh.key.didCompleteSwipePath")
+    public static let coordinateSpaceName = "SystemKeyboardZStack"
+
+    public var isFormFactorEligible: Bool = false {
+        didSet {
+            if !isFormFactorEligible && (isSwiping || !visitedKeys.isEmpty) {
+                reset()
+            }
+        }
+    }
+
+    public var isSlideToTypeSettingEnabled: Bool = true {
+        didSet {
+            if !isSlideToTypeSettingEnabled && (isSwiping || !visitedKeys.isEmpty) {
+                reset()
+            }
+        }
+    }
+
+    public var isSwipeEnabled: Bool {
+        isFormFactorEligible && isSlideToTypeSettingEnabled
+    }
+
+    @Published public private(set) var activeTrailPoints: [CGPoint] = []
+    public private(set) var isSwiping: Bool = false
+
+    private var keyFrames: [String: CGRect] = [:]
+    private var visitedKeys: [String] = []
+    private var pendingPoints: [CGPoint] = []
+    private var lastPoint: CGPoint?
+    private var totalDistance: CGFloat = 0
+
+    private init() {}
+
+    public func registerKeyFrame(character: String, frame: CGRect) {
+        guard !character.isEmpty, frame.width > 4, frame.height > 4 else { return }
+        keyFrames[character] = frame
+    }
+
+    public func beginPotentialSwipe(startChar: String, pointInKeyboard: CGPoint) {
+        guard isSwipeEnabled, startChar.first?.isLetter == true else {
+            reset()
+            return
+        }
+        visitedKeys = [startChar]
+        pendingPoints = [pointInKeyboard]
+        lastPoint = pointInKeyboard
+        totalDistance = 0
+        isSwiping = false
+    }
+
+    public func updateDrag(pointInKeyboard: CGPoint, isActionCalloutActive: Bool) -> Bool {
+        guard isSwipeEnabled, !isActionCalloutActive, !visitedKeys.isEmpty else {
+            if isSwiping || !visitedKeys.isEmpty {
+                reset()
+            }
+            return false
+        }
+
+        if let prev = lastPoint {
+            let step = hypot(pointInKeyboard.x - prev.x, pointInKeyboard.y - prev.y)
+            if step >= 2.0 {
+                totalDistance += step
+                lastPoint = pointInKeyboard
+                pendingPoints.append(pointInKeyboard)
+                if pendingPoints.count > 40 {
+                    pendingPoints.removeFirst(pendingPoints.count - 40)
+                }
+            }
+        } else {
+            lastPoint = pointInKeyboard
+            pendingPoints.append(pointInKeyboard)
+        }
+
+        if let hitChar = hitTestCharacter(at: pointInKeyboard), visitedKeys.last != hitChar {
+            visitedKeys.append(hitChar)
+        }
+
+        if !isSwiping && totalDistance >= 36.0 && visitedKeys.count >= 2 {
+            isSwiping = true
+        }
+
+        if isSwiping {
+            activeTrailPoints = Array(pendingPoints.suffix(28))
+        }
+        return isSwiping
+    }
+
+    @discardableResult
+    public func endSwipe() -> [String]? {
+        defer { reset() }
+        guard isSwiping, visitedKeys.count >= 2 else { return nil }
+        let seq = visitedKeys
+        NotificationCenter.default.post(
+            name: Self.didCompleteSwipeNotification,
+            object: nil,
+            userInfo: ["keys": seq]
+        )
+        return seq
+    }
+
+    public func reset() {
+        visitedKeys.removeAll(keepingCapacity: true)
+        pendingPoints.removeAll(keepingCapacity: true)
+        lastPoint = nil
+        totalDistance = 0
+        isSwiping = false
+        if !activeTrailPoints.isEmpty {
+            activeTrailPoints = []
+        }
+    }
+
+    private func hitTestCharacter(at point: CGPoint) -> String? {
+        for (ch, rect) in keyFrames {
+            let insetRect = rect.insetBy(dx: rect.width * 0.10, dy: rect.height * 0.10)
+            if insetRect.contains(point) {
+                return ch
+            }
+        }
+        for (ch, rect) in keyFrames where rect.contains(point) {
+            return ch
+        }
+        return nil
+    }
+}
+
 // MARK: - Views
 
 private extension Gestures.KeyboardButtonGestures {
 
+    var characterKeyString: String? {
+        if case .character(let ch) = action, ch.first?.isLetter == true {
+            return ch
+        }
+        return nil
+    }
+
     @ViewBuilder
     func button(for geo: GeometryProxy) -> some View {
-        if isInScrollView {
-            scrollButton(for: geo)
+        let base: AnyView = isInScrollView ? AnyView(scrollButton(for: geo)) : AnyView(gestureButton(for: geo))
+        if let ch = characterKeyString {
+            base
+                .background(
+                    Color.clear.preference(
+                        key: KeyFramePreferenceKey.self,
+                        value: geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+                    )
+                )
+                .onPreferenceChange(KeyFramePreferenceKey.self) { frame in
+                    SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
+                }
         } else {
-            gestureButton(for: geo)
+            base
         }
     }
 
@@ -153,11 +306,30 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleDrag(in geo: GeometryProxy, value: DragGesture.Value) {
         lastDragValue = value
+        if let ch = characterKeyString, SwipeTypingState.shared.isSwipeEnabled {
+            let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+            SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
+            let globalPoint = CGPoint(
+                x: frame.origin.x + value.location.x,
+                y: frame.origin.y + value.location.y
+            )
+            let calloutActive = calloutContext?.actionContext.isActive ?? false
+            if SwipeTypingState.shared.updateDrag(pointInKeyboard: globalPoint, isActionCalloutActive: calloutActive) {
+                shouldApplyReleaseAction = false
+                calloutContext?.inputContext.reset()
+                return
+            }
+        }
         calloutContext?.actionContext.updateSelection(with: value.translation)
         dragAction?(value.startLocation, value.location)
     }
 
     func handleGestureEnded(in geo: GeometryProxy) {
+        if SwipeTypingState.shared.isSwiping {
+            _ = SwipeTypingState.shared.endSwipe()
+        } else {
+            SwipeTypingState.shared.reset()
+        }
         endActionCallout()
         calloutContext?.inputContext.resetWithDelay()
         calloutContext?.actionContext.reset()
@@ -166,35 +338,51 @@ private extension Gestures.KeyboardButtonGestures {
     }
 
     func handleLongPress(in geo: GeometryProxy) {
+        guard !SwipeTypingState.shared.isSwiping else { return }
         tryBeginActionCallout(in: geo)
         longPressAction?()
     }
 
     func handlePress(in geo: GeometryProxy) {
+        if let ch = characterKeyString, SwipeTypingState.shared.isSwipeEnabled {
+            let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+            SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
+            SwipeTypingState.shared.beginPotentialSwipe(
+                startChar: ch,
+                pointInKeyboard: CGPoint(x: frame.midX, y: frame.midY)
+            )
+        }
         pressAction?()
         calloutContext?.inputContext.updateInput(for: action, in: geo)
     }
 
     func handleReleaseInside(in geo: GeometryProxy) {
+        guard !SwipeTypingState.shared.isSwiping else { return }
         updateShouldApplyReleaseAction()
         guard shouldApplyReleaseAction else { return }
         releaseAction?()
     }
 
     func handleReleaseOutside(in geo: GeometryProxy) {
+        guard !SwipeTypingState.shared.isSwiping else { return }
         guard shouldApplyReleaseOutsize(for: geo) else { return }
         handleReleaseInside(in: geo)
     }
 
     func handleRepeat(in geo: GeometryProxy) {
+        guard !SwipeTypingState.shared.isSwiping else { return }
         repeatAction?()
     }
 
     func tryBeginActionCallout(in geo: GeometryProxy) {
+        guard !SwipeTypingState.shared.isSwiping else { return }
         if let drag = lastDragValue {
             let dx = drag.location.x - drag.startLocation.x
             let dy = drag.location.y - drag.startLocation.y
             if dy >= 12 && dy > abs(dx) {
+                return
+            }
+            if SwipeTypingState.shared.isSwipeEnabled && hypot(dx, dy) > 24 {
                 return
             }
         }

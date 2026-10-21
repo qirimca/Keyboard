@@ -438,6 +438,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             SpaceBarState.shared.triggerSwitchAnimation()
         }
         warmTransliteratorIfNeeded()
+        SwipeTypingState.shared.isSlideToTypeSettingEnabled = SystemKeyboardSettings.isSlideToTypeEnabled
+            && KeyboardPreferences.suggestionsEnabled
+            && SystemKeyboardSettings.isPredictiveTextEnabled
         updateKeyboardHeightConstraint()
         state.keyboardContext.renderVersion &+= 1
     }
@@ -530,6 +533,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         NotificationCenter.default.publisher(for: UITextField.textDidChangeNotification)
             .sink { [weak self] _ in
                 self?.view.setNeedsLayout()
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: SwipeTypingState.didCompleteSwipeNotification)
+            .sink { [weak self] note in
+                guard let self, let keys = note.userInfo?["keys"] as? [String] else { return }
+                (self.services.actionHandler as? DemoActionHandler)?.handleSwipePath(keys)
             }
             .store(in: &cancellables)
 

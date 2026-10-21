@@ -199,6 +199,14 @@ public struct SystemKeyboard<
 
     public var body: some View {
         StandardKeyboardStyleProvider.iPadProRenderingModeActive = layout.ipadProLayout
+        #if os(iOS) || os(macOS) || os(watchOS)
+        let swipeEligible = (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating)
+            && !keyboardContext.isKeyboardSplit
+            && keyboardContext.keyboardType.isAlphabetic
+        if SwipeTypingState.shared.isFormFactorEligible != swipeEligible {
+            SwipeTypingState.shared.isFormFactorEligible = swipeEligible
+        }
+        #endif
         return geoContent
             .autocorrectionDisabled(with: autocompleteContext)
             .opacity(shouldShowEmojiKeyboard ? 0 : 1)
@@ -288,6 +296,10 @@ private extension SystemKeyboard {
         }
         .padding(insets)
         .environment(\.layoutDirection, .leftToRight)
+        #if os(iOS) || os(macOS) || os(watchOS)
+        .coordinateSpace(name: SwipeTypingState.coordinateSpaceName)
+        .overlay(SwipeTrailOverlay(isDark: keyboardContext.hasDarkColorScheme))
+        #endif
     }
 
     @ViewBuilder
@@ -461,4 +473,30 @@ private struct SplitIslandBlurView: View {
     }
 }
 #endif
+
+#if os(iOS) || os(macOS) || os(watchOS)
+private struct SwipeTrailOverlay: View {
+    let isDark: Bool
+    @ObservedObject private var swipeState = SwipeTypingState.shared
+
+    var body: some View {
+        let points = swipeState.activeTrailPoints
+        if points.count >= 2 {
+            Path { path in
+                path.move(to: points[0])
+                for pt in points.dropFirst() {
+                    path.addLine(to: pt)
+                }
+            }
+            .stroke(
+                (isDark ? Color.white : Color(white: 0.25)).opacity(0.46),
+                style: StrokeStyle(lineWidth: 6.5, lineCap: .round, lineJoin: .round)
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+}
+#endif
+
 
