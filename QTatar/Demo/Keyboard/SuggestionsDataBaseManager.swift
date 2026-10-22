@@ -802,22 +802,264 @@ final class SuggestionsDataBaseManager {
         baseCharacterMap[ch] ?? ch
     }
 
-    /// Matches a swipe key sequence (from iPhone or iPad Floating keyboard) to top dictionary candidates.
+    private static let cyrillicRow0RightCorridor: Set<Character> = [
+        "у", "к", "е", "н", "г", "ш", "щ", "з", "х"
+    ]
+    private static let cyrillicRow0ReturnTransit: Set<Character> = [
+        "х", "з", "щ", "ш", "г", "н", "е"
+    ]
+    private static let cyrillicSignChars: Set<Character> = [
+        "ъ", "ь", "\u{02BC}", "'", "’"
+    ]
+    private static let cyrillicDigraphTriggers: Set<Character> = [
+        "к", "г", "н"
+    ]
+
+    /// Canonical 12-column physical key centers (`keyWidth = 32 pt`, `rowHeight = 52 pt`) for `crh-Latn`, `ФЫВА`, and `ФІВА`,
+    /// overlaid with live `keyFrames` when available from `SwipeTypingState`.
+    private static func resolveKeyCenters(
+        isCyrillic: Bool,
+        isUkrainianCyrillic: Bool,
+        keyFrames: [String: CGRect]
+    ) -> (centers: [Character: CGPoint], keyWidth: CGFloat) {
+        let w: CGFloat = 32.0
+        let h: CGFloat = 52.0
+        var centers: [Character: CGPoint] = [:]
+        if !isCyrillic {
+            let row0 = Array("qwertyuıopğü")
+            let row1 = Array("âasdfghjklşi")
+            let row2 = Array("zxcvbnmöçñ")
+            for (c, ch) in row0.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 0.5 * h) }
+            for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 1.5 * h) }
+            for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
+        } else if isUkrainianCyrillic {
+            let row0 = Array("йцукенгшщзхʼ")
+            let row1 = Array("фівапролджє")
+            let row2 = Array("ячсмитьбюґ")
+            for (c, ch) in row0.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 0.5 * h) }
+            for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.0) * w, y: 1.5 * h) }
+            for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
+            centers["ъ"] = centers["ʼ"]
+            centers["ы"] = centers["и"]
+            centers["э"] = centers["є"]
+            centers["ї"] = CGPoint(x: 11.5 * w, y: 1.5 * h)
+            centers["ё"] = centers["о"]
+        } else {
+            let row0 = Array("йцукенгшщзхъ")
+            let row1 = Array("фывапролджэ")
+            let row2 = Array("ячсмитьбюё")
+            for (c, ch) in row0.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 0.5 * h) }
+            for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.0) * w, y: 1.5 * h) }
+            for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
+            centers["ʼ"] = centers["ъ"]
+            centers["і"] = centers["и"]
+            centers["є"] = centers["э"]
+            centers["ґ"] = centers["г"]
+        }
+
+        var widths: [CGFloat] = []
+        for (k, rect) in keyFrames where rect.width > 4 && rect.height > 4 {
+            if let ch = k.lowercased(with: Self.casingLocale).first {
+                centers[ch] = CGPoint(x: rect.midX, y: rect.midY)
+                widths.append(rect.width)
+            }
+        }
+        let resolvedWidth: CGFloat = {
+            guard !widths.isEmpty else { return w }
+            let sorted = widths.sorted()
+            return max(18.0, sorted[sorted.count / 2])
+        }()
+        return (centers, resolvedWidth)
+    }
+
+    private static func targetWordCharCenter(
+        for ch: Character,
+        centers: [Character: CGPoint],
+        isCyrillic: Bool,
+        isUkrainianCyrillic: Bool
+    ) -> CGPoint? {
+        if !isCyrillic {
+            return centers[ch] ?? centers[normalizeBaseChar(ch)]
+        }
+        switch ch {
+        case "a", "â": return centers["а"]
+        case "b": return centers["б"]
+        case "c": return centers["д"] ?? centers["ж"]
+        case "ç": return centers["ч"]
+        case "d": return centers["д"]
+        case "e": return centers["е"]
+        case "f": return centers["ф"]
+        case "g": return isUkrainianCyrillic ? (centers["ґ"] ?? centers["г"]) : centers["г"]
+        case "ğ": return centers["г"]
+        case "h": return centers["х"]
+        case "ı": return isUkrainianCyrillic ? (centers["и"] ?? centers["ы"]) : (centers["ы"] ?? centers["и"])
+        case "i", "î": return isUkrainianCyrillic ? (centers["і"] ?? centers["и"]) : (centers["и"] ?? centers["ы"])
+        case "j": return centers["ж"]
+        case "k", "q": return centers["к"]
+        case "l": return centers["л"]
+        case "m": return centers["м"]
+        case "n", "ñ": return centers["н"]
+        case "o", "ö": return centers["о"]
+        case "p": return centers["п"]
+        case "r": return centers["р"]
+        case "s": return centers["с"]
+        case "ş": return centers["ш"]
+        case "t": return centers["т"]
+        case "u", "ü", "û": return centers["у"]
+        case "v": return centers["в"]
+        case "y": return centers["й"]
+        case "z": return centers["з"]
+        default: return nil
+        }
+    }
+
+    /// Strips Row-0 transit keys (`е, н, г, ш, щ, з, х`) crossed when swiping from `к/г/н` to `ъ/ʼ` at `(Row 0, Col 11)`
+    /// and records explicit digraph diacritics (`q`, `ğ`, `ñ`) so `endCandidates` and `rawKeySet` are never polluted.
+    private static func cleanCyrillicSwipeSequence(
+        _ rawKeys: [Character]
+    ) -> (cleanedKeys: [Character], explicitDiacritics: Set<Character>, softEndBases: Set<Character>) {
+        guard !rawKeys.isEmpty else { return ([], [], []) }
+        var removedIndices = Set<Int>()
+        var explicitDiacritics = Set<Character>()
+        var softEndBases = Set<Character>()
+
+        for (idx, ch) in rawKeys.enumerated() where cyrillicSignChars.contains(ch) {
+            removedIndices.insert(idx)
+            var tIdx: Int? = nil
+            var scan = idx - 1
+            while scan >= 0 {
+                let c = rawKeys[scan]
+                if cyrillicDigraphTriggers.contains(c) {
+                    tIdx = scan
+                }
+                if cyrillicRow0RightCorridor.contains(c) || cyrillicSignChars.contains(c) {
+                    scan -= 1
+                } else {
+                    break
+                }
+            }
+            if let triggerPos = tIdx {
+                let trigger = rawKeys[triggerPos]
+                if trigger == "к" { explicitDiacritics.insert("q") }
+                else if trigger == "г" { explicitDiacritics.insert("ğ") }
+                else if trigger == "н" { explicitDiacritics.insert("ñ") }
+                if triggerPos + 1 < idx {
+                    for k in (triggerPos + 1)..<idx {
+                        removedIndices.insert(k)
+                    }
+                }
+                var fwd = idx + 1
+                while fwd < rawKeys.count {
+                    let fc = rawKeys[fwd]
+                    if ["х", "з", "щ", "ш"].contains(fc) {
+                        removedIndices.insert(fwd)
+                        fwd += 1
+                    } else if cyrillicRow0ReturnTransit.contains(fc), fwd + 1 < rawKeys.count {
+                        removedIndices.insert(fwd)
+                        fwd += 1
+                    } else {
+                        break
+                    }
+                }
+            }
+        }
+
+        // Also handle swipes that aimed for `ъ`/`ʼ` at Col 11 after `к/г/н` and lifted slightly short on `х` or `з`
+        if let lastCh = rawKeys.last, ["х", "з"].contains(lastCh), rawKeys.count >= 4 {
+            var scan = rawKeys.count - 1
+            var transitCount = 0
+            while scan >= 0 && ["г", "ш", "щ", "з", "х", "е", "н"].contains(rawKeys[scan]) {
+                if cyrillicDigraphTriggers.contains(rawKeys[scan]) && transitCount >= 2 {
+                    let trigger = rawKeys[scan]
+                    if trigger == "к" { softEndBases.formUnion(["q", "k"]); explicitDiacritics.insert("q") }
+                    else if trigger == "г" { softEndBases.insert("g"); explicitDiacritics.insert("ğ") }
+                    else if trigger == "н" { softEndBases.insert("n"); explicitDiacritics.insert("ñ") }
+                    break
+                }
+                transitCount += 1
+                scan -= 1
+            }
+        }
+
+        var cleaned: [Character] = []
+        for (idx, ch) in rawKeys.enumerated() where !removedIndices.contains(idx) {
+            if cleaned.last != ch {
+                cleaned.append(ch)
+            }
+        }
+        return (cleaned.isEmpty ? rawKeys : cleaned, explicitDiacritics, softEndBases)
+    }
+
+    private static func resamplePolyline(_ points: [CGPoint], count: Int = 16) -> [CGPoint] {
+        guard !points.isEmpty else { return [] }
+        if points.count == 1 || count <= 1 {
+            return Array(repeating: points[0], count: max(1, count))
+        }
+        var cumulative: [CGFloat] = [0]
+        var totalLen: CGFloat = 0
+        for i in 1..<points.count {
+            let d = hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+            totalLen += d
+            cumulative.append(totalLen)
+        }
+        guard totalLen > 0.001 else {
+            return Array(repeating: points[0], count: count)
+        }
+        var result: [CGPoint] = []
+        result.reserveCapacity(count)
+        var segIdx = 0
+        for k in 0..<count {
+            let targetDist = totalLen * CGFloat(k) / CGFloat(count - 1)
+            while segIdx + 1 < cumulative.count - 1 && cumulative[segIdx + 1] < targetDist {
+                segIdx += 1
+            }
+            let segStart = cumulative[segIdx]
+            let segEnd = cumulative[segIdx + 1]
+            let segLen = segEnd - segStart
+            let t = segLen > 0.0001 ? min(1.0, max(0.0, (targetDist - segStart) / segLen)) : 0.0
+            let p0 = points[segIdx]
+            let p1 = points[segIdx + 1]
+            result.append(CGPoint(
+                x: p0.x + (p1.x - p0.x) * t,
+                y: p0.y + (p1.y - p0.y) * t
+            ))
+        }
+        return result
+    }
+
+    /// Matches a swipe key sequence (from iPhone or iPad Floating keyboard) to top dictionary candidates
+    /// using the QırımKey Swipe v2 hybrid decoder (12-column physical layout geometry, `Δθ >= 22°` curvature
+    /// anchor weighting, 16-point resampled SHARK2 trajectory comparison, `ъ`/`ʼ` corridor cleaning, and
+    /// two-sided `(prefix, allowedEndBaseChars)` candidate retrieval).
     func matchSwipePath(
         keySequence: [String],
         isCyrillic: Bool = false,
         shouldCapitalize: Bool = false,
-        contextWords: [String] = []
+        contextWords: [String] = [],
+        trailPoints: [CGPoint] = [],
+        keyFrames: [String: CGRect] = [:]
     ) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
             ensureDB()
-            var basePath: [Character] = []
-            var startCandidates: [Character] = []
-            var endCandidates = Set<Character>()
-            let lowerKeys: [Character] = keySequence.compactMap {
+            let isUkrainianCyr = isCyrillic && KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+            let (keyCenters, keyWidth) = Self.resolveKeyCenters(
+                isCyrillic: isCyrillic,
+                isUkrainianCyrillic: isUkrainianCyr,
+                keyFrames: keyFrames
+            )
+
+            let rawLowerKeys: [Character] = keySequence.compactMap {
                 $0.lowercased(with: Self.casingLocale).first
             }
+            let (lowerKeys, explicitCyrDiacritics, softEndBases): ([Character], Set<Character>, Set<Character>) = isCyrillic
+                ? Self.cleanCyrillicSwipeSequence(rawLowerKeys)
+                : (rawLowerKeys, [], [])
             let rawKeySet = Set(lowerKeys)
+
+            var basePath: [Character] = []
+            var basePathKeyPoints: [CGPoint] = []
+            var startCandidates: [Character] = []
+            var endCandidates = softEndBases
 
             if isCyrillic, lowerKeys.first == "д", lowerKeys.prefix(3).contains("ж") {
                 startCandidates.append("c")
@@ -825,8 +1067,9 @@ final class SuggestionsDataBaseManager {
 
             var prevCyrChar: Character?
             for (idx, ch) in lowerKeys.enumerated() {
+                let pt = keyCenters[ch]
                 if isCyrillic {
-                    if ch == "ъ" || ch == "ь" || ch == "\u{02BC}" || ch == "'" || ch == "’" {
+                    if Self.cyrillicSignChars.contains(ch) {
                         prevCyrChar = ch
                         continue
                     }
@@ -834,13 +1077,21 @@ final class SuggestionsDataBaseManager {
                         prevCyrChar = ch
                         continue
                     }
+                    // Fold interior `дж` digraph so `ж` right after `д` adds `c` instead of spurious `j`
+                    if ch == "ж", prevCyrChar == "д" {
+                        prevCyrChar = ch
+                        continue
+                    }
                     var mapped = Self.cyrillicToLatinSwipeMap[ch] ?? []
+                    if ch == "д", idx + 1 < lowerKeys.count, lowerKeys[idx + 1] == "ж" {
+                        mapped = ["c", "d"]
+                    }
                     let isWordStartOrAfterVowel = basePath.isEmpty || (prevCyrChar.map { Self.cyrillicVowelOrSign.contains($0) } ?? false)
                     if isWordStartOrAfterVowel {
                         if ch == "ё" { mapped = ["y", "o"] }
                         else if ch == "ю" { mapped = ["y", "u"] }
                         else if ch == "я" { mapped = ["y", "a"] }
-                        else if ch == "е", !KeyboardPreferences.ukrainianCyrillicLayoutEnabled { mapped = ["y", "e"] }
+                        else if ch == "е", !isUkrainianCyr { mapped = ["y", "e"] }
                     }
                     if !mapped.isEmpty {
                         if startCandidates.isEmpty {
@@ -850,11 +1101,12 @@ final class SuggestionsDataBaseManager {
                                 startCandidates.append(m)
                             }
                         }
-                        endCandidates = Set(mapped.map { Self.normalizeBaseChar($0) })
+                        endCandidates = Set(mapped.map { Self.normalizeBaseChar($0) }).union(softEndBases)
                         for m in mapped {
                             let b = Self.normalizeBaseChar(m)
                             if basePath.last != b {
                                 basePath.append(b)
+                                if let pt { basePathKeyPoints.append(pt) }
                             }
                         }
                     }
@@ -867,6 +1119,7 @@ final class SuggestionsDataBaseManager {
                     endCandidates = [b]
                     if basePath.last != b {
                         basePath.append(b)
+                        if let pt { basePathKeyPoints.append(pt) }
                     }
                 }
             }
@@ -878,26 +1131,67 @@ final class SuggestionsDataBaseManager {
                 endCandidates.insert(lastBase)
             }
 
+            // Compute per-key curvature turn angles (`Δθ >= 22°` = anchor/inflection; `< 22°` = collinear transit key)
+            var isPathAnchor = Array(repeating: true, count: basePath.count)
+            var pathKeyWeights = Array(repeating: 1.0, count: basePath.count)
+            if basePathKeyPoints.count == basePath.count && basePath.count >= 3 {
+                for idx in 1..<(basePath.count - 1) {
+                    let pPrev = basePathKeyPoints[idx - 1]
+                    let pCurr = basePathKeyPoints[idx]
+                    let pNext = basePathKeyPoints[idx + 1]
+                    let v1x = pCurr.x - pPrev.x
+                    let v1y = pCurr.y - pPrev.y
+                    let v2x = pNext.x - pCurr.x
+                    let v2y = pNext.y - pCurr.y
+                    let n1 = hypot(v1x, v1y)
+                    let n2 = hypot(v2x, v2y)
+                    if n1 > 1.0 && n2 > 1.0 {
+                        let cosTheta = min(1.0, max(-1.0, (v1x * v2x + v1y * v2y) / (n1 * n2)))
+                        let angleDeg = Double(acos(cosTheta) * 180.0 / .pi)
+                        if angleDeg < 22.0 {
+                            isPathAnchor[idx] = false
+                            pathKeyWeights[idx] = 0.20 + (angleDeg / 22.0) * 0.18
+                        } else {
+                            isPathAnchor[idx] = true
+                            pathKeyWeights[idx] = min(1.0, 0.70 + (angleDeg - 22.0) / 90.0 * 0.30)
+                        }
+                    }
+                }
+            }
+            let anchorCount = max(2, isPathAnchor.filter { $0 }.count)
+            let effectiveSwipePoints: [CGPoint] = {
+                if !isCyrillic && trailPoints.count >= 2 {
+                    return trailPoints
+                }
+                return basePathKeyPoints
+            }()
+            let resampledSwipePoints = Self.resamplePolyline(effectiveSwipePoints, count: 16)
+            let startTouchPoint: CGPoint? = effectiveSwipePoints.first ?? (lowerKeys.first.flatMap { keyCenters[$0] })
+
             var prefixes = Set<String>()
             for sc in startCandidates {
                 let b = Self.normalizeBaseChar(sc)
                 prefixes.insert(String(b))
                 for variant in Self.diacriticForms[b] ?? [] {
+                    // On 12-column Latin (`crh-Latn`), `k` and `q` are distinct physical keys 262 pt apart
+                    if !isCyrillic && b == "k" && variant == "q" { continue }
                     prefixes.insert(String(variant))
                 }
             }
             prefixes.insert(String(firstBase))
             for variant in Self.diacriticForms[firstBase] ?? [] {
+                if !isCyrillic && firstBase == "k" && variant == "q" { continue }
                 prefixes.insert(String(variant))
             }
 
-            let minLen = basePath.count >= 8 ? 3 : 2
+            let minLen = 2
             let maxLen = min(22, basePath.count + 5)
             let neighborMap = isCyrillic ? Self.cyrillicBaseNeighbors : Self.qwertyNeighbors
             var lastNeighbors = Set<Character>()
             for ec in endCandidates {
                 lastNeighbors.formUnion(neighborMap[ec] ?? [])
             }
+            let allowedEndBaseChars = endCandidates.union(lastNeighbors)
 
             var bigramBoosts: [String: Int] = [:]
             if let prev = contextWords.last?.lowercased(with: Self.casingLocale), !prev.isEmpty {
@@ -925,7 +1219,8 @@ final class SuggestionsDataBaseManager {
                     prefix: prefix,
                     minLen: minLen,
                     maxLen: maxLen,
-                    limit: 320
+                    allowedEndBaseChars: allowedEndBaseChars,
+                    limit: 480
                 ) {
                     let k = bw.lowercased(with: Self.casingLocale)
                     if seenWords.insert(k).inserted {
@@ -938,13 +1233,22 @@ final class SuggestionsDataBaseManager {
             var scoredCandidates: [(word: String, score: Double)] = []
             for (word, freq) in candidatePool {
                 let lower = word.lowercased(with: Self.casingLocale)
-                guard !lower.contains(" ") else { continue }
+                guard !lower.contains(" "), let firstWordChar = lower.first else { continue }
                 var wordBase: [Character] = []
+                var wordCenters: [CGPoint] = []
                 for ch in lower {
                     if ch == "-" { continue }
                     let b = Self.normalizeBaseChar(ch)
                     if wordBase.last != b {
                         wordBase.append(b)
+                        if let cPt = Self.targetWordCharCenter(
+                            for: ch,
+                            centers: keyCenters,
+                            isCyrillic: isCyrillic,
+                            isUkrainianCyrillic: isUkrainianCyr
+                        ) {
+                            wordCenters.append(cPt)
+                        }
                     }
                 }
                 guard wordBase.count >= 2, let wordLast = wordBase.last else { continue }
@@ -955,20 +1259,57 @@ final class SuggestionsDataBaseManager {
 
                 var pathIdx = 0
                 var exactHits = 0
+                var weightedExactHits: Double = 0.0
+                var matchedAnchors = 0
+                var transitOnlyHits = 0
                 var neighborHits = 0
                 var misses = 0
                 var repeatedVowelMisses = 0
                 var matchedVowels = Set<Character>()
+                var startDistanceBonus: Double = 0.0
 
                 for (i, targetChar) in wordBase.enumerated() {
                     if i == 0 {
-                        exactHits += 1
+                        if let u1 = startTouchPoint,
+                           let k1 = Self.targetWordCharCenter(
+                               for: firstWordChar,
+                               centers: keyCenters,
+                               isCyrillic: isCyrillic,
+                               isUkrainianCyrillic: isUkrainianCyr
+                           ) {
+                            let d0 = Double(hypot(u1.x - k1.x, u1.y - k1.y) / max(1.0, keyWidth))
+                            if d0 <= 0.75 {
+                                exactHits += 1
+                                weightedExactHits += 1.0
+                                matchedAnchors += 1
+                                startDistanceBonus = 1.65
+                            } else if d0 <= 1.75 {
+                                neighborHits += 1
+                                weightedExactHits += 0.65
+                                startDistanceBonus = 0.25
+                            } else {
+                                // Distant diacritic prefix (e.g. `ş` vs `s` or `q` vs `k`, 256+ pt apart on Latin)
+                                neighborHits += 1
+                                weightedExactHits += 0.30
+                                startDistanceBonus = -min(2.6, d0 * 0.42)
+                            }
+                        } else {
+                            exactHits += 1
+                            weightedExactHits += 1.0
+                            matchedAnchors += 1
+                        }
                         if Self.baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
                         pathIdx = 1
                         continue
                     }
                     if i == wordBase.count - 1 {
-                        if exactLast { exactHits += 1 } else { neighborHits += 1 }
+                        if exactLast {
+                            exactHits += 1
+                            weightedExactHits += 1.0
+                            matchedAnchors += 1
+                        } else {
+                            neighborHits += 1
+                        }
                         continue
                     }
                     // If targetChar is a vowel and the next char in wordBase is a consonant that appears earlier in basePath,
@@ -991,6 +1332,13 @@ final class SuggestionsDataBaseManager {
                             foundExact = true
                             pathIdx = searchIdx + 1
                             exactHits += 1
+                            let w = pathKeyWeights[searchIdx]
+                            weightedExactHits += w
+                            if isPathAnchor[searchIdx] {
+                                matchedAnchors += 1
+                            } else {
+                                transitOnlyHits += 1
+                            }
                             if Self.baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
                             break
                         }
@@ -1026,7 +1374,7 @@ final class SuggestionsDataBaseManager {
                 let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
                 guard misses <= maxAllowedMisses else { continue }
 
-                var specificCharBonus: Double = 0.0
+                var specificCharBonus: Double = startDistanceBonus
                 if isCyrillic {
                     if rawKeySet.contains("ш") || rawKeySet.contains("щ") {
                         if lower.contains("ş") { specificCharBonus += 1.8 }
@@ -1035,6 +1383,9 @@ final class SuggestionsDataBaseManager {
                     if rawKeySet.contains("с") && lower.contains("s") { specificCharBonus += 0.8 }
                     if rawKeySet.contains("ч") && lower.contains("ç") { specificCharBonus += 1.6 }
                     if rawKeySet.contains("ґ") && lower.contains("g") { specificCharBonus += 1.4 }
+                    for expDia in explicitCyrDiacritics where lower.contains(expDia) {
+                        specificCharBonus += 1.8
+                    }
                 } else {
                     if rawKeySet.contains("ş") && lower.contains("ş") { specificCharBonus += 1.6 }
                     if rawKeySet.contains("ç") && lower.contains("ç") { specificCharBonus += 1.6 }
@@ -1042,19 +1393,46 @@ final class SuggestionsDataBaseManager {
                     if rawKeySet.contains("ñ") && lower.contains("ñ") { specificCharBonus += 1.6 }
                 }
 
+                // 16-point resampled SHARK2 geometric trajectory similarity
+                var geometricBonus: Double = 0.0
+                if resampledSwipePoints.count == 16 && wordCenters.count >= 2 {
+                    let resampledWord = Self.resamplePolyline(wordCenters, count: 16)
+                    var distSum: CGFloat = 0
+                    for k in 0..<16 {
+                        distSum += hypot(
+                            resampledSwipePoints[k].x - resampledWord[k].x,
+                            resampledSwipePoints[k].y - resampledWord[k].y
+                        )
+                    }
+                    let meanKeyDist = Double((distSum / 16.0) / max(1.0, keyWidth))
+                    geometricBonus = max(-2.6, (1.20 - meanKeyDist) * 1.95)
+                }
+
                 let regularMisses = max(0, misses - repeatedVowelMisses)
                 let missPenalty = Double(regularMisses) * 1.65 + Double(repeatedVowelMisses) * 0.35
-                let coverage = Double(exactHits) + Double(neighborHits) * 0.65 - missPenalty
+                let coverage = weightedExactHits + Double(neighborHits) * 0.55 - missPenalty
                 let coverageRatio = coverage / Double(max(1, wordBase.count))
-                let matchedKeyBonus = min(Double(exactHits) * 0.95 + Double(neighborHits) * 0.40, 7.5)
+                let matchedKeyBonus = min(weightedExactHits * 0.95 + Double(neighborHits) * 0.35, 7.5)
                 let allExactBonus: Double = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
-                let shortWordDetourPenalty: Double = (basePath.count >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
+                let anchorExactMatchBonus: Double = (matchedAnchors == anchorCount && wordBase.count == anchorCount && misses == 0) ? 2.1 : 0.0
+                let unanchoredComplexityPenalty: Double = Double(max(0, transitOnlyHits)) * 0.55
+                let shortWordDetourPenalty: Double = (anchorCount >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
                 let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55
                     + Double(max(0, basePath.count - wordBase.count)) * 0.02
                 let endBonus = exactLast ? 2.5 : 0.4
                 let contextFreq = bigramBoosts[lower] ?? 0
                 let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.35) * 1.35
-                let totalScore = (coverageRatio * 6.0) + matchedKeyBonus + allExactBonus + endBonus + freqScore + specificCharBonus - lengthPenalty - shortWordDetourPenalty
+                let totalScore = (coverageRatio * 6.0)
+                    + matchedKeyBonus
+                    + allExactBonus
+                    + anchorExactMatchBonus
+                    + geometricBonus
+                    + endBonus
+                    + freqScore
+                    + specificCharBonus
+                    - lengthPenalty
+                    - unanchoredComplexityPenalty
+                    - shortWordDetourPenalty
                 scoredCandidates.append((word, totalScore))
             }
 
@@ -1078,6 +1456,7 @@ final class SuggestionsDataBaseManager {
         prefix: String,
         minLen: Int,
         maxLen: Int,
+        allowedEndBaseChars: Set<Character>,
         limit: Int
     ) -> [(String, Int)] {
         guard let db else { return [] }
@@ -1086,24 +1465,31 @@ final class SuggestionsDataBaseManager {
         let query = """
         SELECT word, freq FROM words
         WHERE word >= ?1 AND word < ?2
-          AND freq >= 3
+          AND freq >= 2
           AND length(word) BETWEEN ?3 AND ?4
           AND instr(word, ' ') = 0
-        ORDER BY freq DESC
-        LIMIT ?5;
+        ORDER BY freq DESC;
         """
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK,
               bindText(stmt, index: 1, value: prefix),
               bindText(stmt, index: 2, value: prefix + "\u{FFFF}"),
               sqlite3_bind_int(stmt, 3, Int32(minLen)) == SQLITE_OK,
-              sqlite3_bind_int(stmt, 4, Int32(maxLen)) == SQLITE_OK,
-              sqlite3_bind_int(stmt, 5, Int32(limit)) == SQLITE_OK else {
+              sqlite3_bind_int(stmt, 4, Int32(maxLen)) == SQLITE_OK else {
             return []
         }
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let wordPtr = sqlite3_column_text(stmt, 0) {
-                results.append((String(cString: wordPtr), Int(sqlite3_column_int(stmt, 1))))
+                let word = String(cString: wordPtr)
+                if !allowedEndBaseChars.isEmpty,
+                   let lastCh = word.lowercased(with: Self.casingLocale).last,
+                   !allowedEndBaseChars.contains(Self.normalizeBaseChar(lastCh)) {
+                    continue
+                }
+                results.append((word, Int(sqlite3_column_int(stmt, 1))))
+                if results.count >= limit {
+                    break
+                }
             }
         }
         return results

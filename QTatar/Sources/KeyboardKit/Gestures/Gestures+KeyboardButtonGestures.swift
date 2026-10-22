@@ -150,6 +150,7 @@ public final class SwipeTypingState: ObservableObject {
     private var keyFrames: [String: CGRect] = [:]
     private var visitedKeys: [String] = []
     private var pendingSamples: [TrailSample] = []
+    private var fullSwipeSamples: [TrailSample] = []
     private var lastPoint: CGPoint?
     private var swipeGeneration: Int = 0
 
@@ -194,8 +195,10 @@ public final class SwipeTypingState: ObservableObject {
         }
         swipeGeneration &+= 1
         let now = ProcessInfo.processInfo.systemUptime
+        let sample = TrailSample(point: pointInKeyboard, timestamp: now)
         visitedKeys = [norm]
-        pendingSamples = [TrailSample(point: pointInKeyboard, timestamp: now)]
+        pendingSamples = [sample]
+        fullSwipeSamples = [sample]
         lastPoint = pointInKeyboard
         totalDragDistance = 0
         isSwiping = false
@@ -216,15 +219,22 @@ public final class SwipeTypingState: ObservableObject {
             if step >= 1.5 {
                 totalDragDistance += step
                 lastPoint = pointInKeyboard
-                pendingSamples.append(TrailSample(point: pointInKeyboard, timestamp: now))
+                let sample = TrailSample(point: pointInKeyboard, timestamp: now)
+                pendingSamples.append(sample)
+                fullSwipeSamples.append(sample)
             }
         } else {
             lastPoint = pointInKeyboard
-            pendingSamples.append(TrailSample(point: pointInKeyboard, timestamp: now))
+            let sample = TrailSample(point: pointInKeyboard, timestamp: now)
+            pendingSamples.append(sample)
+            fullSwipeSamples.append(sample)
         }
         pendingSamples.removeAll { now - $0.timestamp > 0.38 }
         if pendingSamples.count > 56 {
             pendingSamples.removeFirst(pendingSamples.count - 56)
+        }
+        if fullSwipeSamples.count > 256 {
+            fullSwipeSamples.removeFirst(fullSwipeSamples.count - 256)
         }
 
         if let prev = previousPoint {
@@ -259,12 +269,18 @@ public final class SwipeTypingState: ObservableObject {
     public func endSwipe() -> [String]? {
         let wasSwiping = isSwiping
         let seq = visitedKeys
+        let pts = fullSwipeSamples.map(\.point)
+        let framesSnapshot = keyFrames
         reset(clearTrailImmediately: !wasSwiping)
         guard wasSwiping, seq.count >= 2 else { return nil }
         NotificationCenter.default.post(
             name: Self.didCompleteSwipeNotification,
             object: nil,
-            userInfo: ["keys": seq]
+            userInfo: [
+                "keys": seq,
+                "points": pts,
+                "keyFrames": framesSnapshot
+            ]
         )
         return seq
     }
@@ -272,6 +288,7 @@ public final class SwipeTypingState: ObservableObject {
     public func reset(clearTrailImmediately: Bool = false) {
         visitedKeys.removeAll(keepingCapacity: true)
         pendingSamples.removeAll(keepingCapacity: true)
+        fullSwipeSamples.removeAll(keepingCapacity: true)
         lastPoint = nil
         totalDragDistance = 0
         isSwiping = false

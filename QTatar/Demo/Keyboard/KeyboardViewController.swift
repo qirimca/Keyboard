@@ -457,7 +457,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         NotificationCenter.default.publisher(for: SwipeTypingState.didCompleteSwipeNotification)
             .sink { [weak self] note in
                 guard let self, let keys = note.userInfo?["keys"] as? [String] else { return }
-                (self.services.actionHandler as? DemoActionHandler)?.handleSwipePath(keys)
+                let points = note.userInfo?["points"] as? [CGPoint] ?? []
+                let keyFrames = note.userInfo?["keyFrames"] as? [String: CGRect] ?? [:]
+                (self.services.actionHandler as? DemoActionHandler)?.handleSwipePath(
+                    keys,
+                    trailPoints: points,
+                    keyFrames: keyFrames
+                )
             }
             .store(in: &cancellables)
 

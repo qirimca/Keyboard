@@ -169,7 +169,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         super.handleDrag(on: action, from: startLocation, to: currentLocation)
     }
 
-    func handleSwipePath(_ keys: [String]) {
+    func handleSwipePath(
+        _ keys: [String],
+        trailPoints: [CGPoint] = [],
+        keyFrames: [String: CGRect] = [:]
+    ) {
         let controllerWidth = (keyboardController as? UIViewController)?.view.bounds.width ?? 0
         let isPadFloatingWidth = keyboardContext.deviceType == .pad && controllerWidth > 0 && controllerWidth < 420
         guard (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating || isPadFloatingWidth),
@@ -195,7 +199,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             keySequence: keys,
             isCyrillic: isCyrillic,
             shouldCapitalize: shouldCap,
-            contextWords: contextWords
+            contextWords: contextWords,
+            trailPoints: trailPoints,
+            keyFrames: keyFrames
         )
         if isAllCaps {
             suggestions = suggestions.map {
