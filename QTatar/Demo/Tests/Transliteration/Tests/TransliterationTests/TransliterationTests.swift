@@ -654,6 +654,9 @@ private let parityCases: [(String, String)] = {
     }
 }
 
+@Suite(.serialized)
+struct DatabaseAndSwipeTests {
+
 @Test func phase8SwipeProperNounsAndSenNeVerification() throws {
     // 1. Verify Cyrillic swipe path "машала" / "машла" transliterates to "maşala" / "maşla" and matches "maşalla" in qırım_tatar.db
     let cyrSwipeFull = CrimeanTatarTransliterator.transliterate(["м", "а", "ш", "а", "л", "а"].joined())
@@ -800,6 +803,189 @@ private let parityCases: [(String, String)] = {
         contextWords: []
     )
     #expect(postReleaseMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "bir")
+}
+
+@Test func phase12UkrainianYiSwipeSelamSkeletonAndLexiconVerification() throws {
+    // 1. Ukrainian ФІВА 12/12 `Ї -> yi` transliteration & O(1) exception/whole-word lookup
+    #expect(CrimeanTatarTransliterator.transliterate("ї", ukrainianLayout: true) == "yi")
+    #expect(CrimeanTatarTransliterator.transliterate("Ї", ukrainianLayout: true) == "Yi")
+    #expect(CrimeanTatarTransliterator.transliterate("кіїв", ukrainianLayout: true) == "kiyiv")
+    #expect(CrimeanTatarTransliterator.transliterate("київ", ukrainianLayout: true) == "kıyiv")
+    #expect(CrimeanTatarTransliterator.transliterate("коби", ukrainianLayout: false) == "köbi")
+    #expect(CrimeanTatarTransliterator.transliterate("кобі", ukrainianLayout: true) == "köbi")
+    #expect(CrimeanTatarTransliterator.transliterate("більше", ukrainianLayout: true) == "bilşe")
+    #expect(CrimeanTatarTransliterator.transliterate("москва", ukrainianLayout: false) == "moskva")
+    #expect(CrimeanTatarTransliterator.transliterate("вашингтон", ukrainianLayout: false) == "vaşington")
+    #expect(CrimeanTatarTransliterator.transliterate("донецьк", ukrainianLayout: true) == "donetsk")
+
+    // 2. `selâm` swipe on Latin & Cyrillic (including noisy real-finger arc paths) + limit: 4 non-autocorrect toolbar candidates
+    let selamLatinArc = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["s", "d", "r", "e", "d", "f", "g", "h", "j", "k", "l", "g", "s", "a", "s", "d", "f", "g", "v", "b", "n", "m"],
+        isCyrillic: false,
+        shouldCapitalize: true,
+        contextWords: [],
+        limit: 4
+    )
+    #expect(selamLatinArc.first?.text == "Selâm")
+    #expect(selamLatinArc.allSatisfy { !$0.isAutocorrect })
+    #expect(selamLatinArc.count >= 2)
+
+    let selamCyrillicArc = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["с", "в", "а", "п", "е", "н", "г", "ш", "л", "о", "п", "а", "я", "ч", "с", "м"],
+        isCyrillic: true,
+        shouldCapitalize: true,
+        contextWords: [],
+        limit: 4
+    )
+    #expect(selamCyrillicArc.first?.text == "Selâm")
+
+    // 3. Ukrainian 12/12 Row-1 corridor cleaning before `ʼ` at Row 1 Col 11 (`л, д, ж, є`)
+    KeyboardPreferences.ukrainianCyrillicLayoutEnabled = true
+    let ukrRow1ApostropheSwipe = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["с", "о", "н", "л", "д", "ж", "є", "ʼ"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    KeyboardPreferences.ukrainianCyrillicLayoutEnabled = false
+    #expect(ukrRow1ApostropheSwipe.first?.text.lowercased(with: Locale(identifier: "tr")) == "soñ")
+
+    // 4. Single-query diacritic skeleton lookup (including >8 diacritic positions) & hybrid neighbor/phonetic typoCorrection
+    #expect(SuggestionsDataBaseManager.skeleton(of: "qırımtatarlarnıñ") == "kirimtatarlarnin")
+    let longDiacriticSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "qirimtatarlar",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(longDiacriticSuggestions.contains(where: { $0.text.lowercased(with: Locale(identifier: "tr")) == "qırımtatarlar" && $0.isAutocorrect }))
+
+    let neighborTypoSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "kitsp",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(neighborTypoSuggestions.contains(where: { $0.text == "kitap" && $0.isAutocorrect }))
+
+    // 5. UILexicon Contact names & proper nouns + inflected case suffixes
+    SuggestionsDataBaseManager.shared.updateSupplementaryLexicon([
+        "omw": "Men yoldam!",
+        "Aliye": "Aliye",
+        "Mustafa": "Mustafa"
+    ])
+    defer { SuggestionsDataBaseManager.shared.updateSupplementaryLexicon([:]) }
+
+    let shortcutSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "omw",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(shortcutSuggestions.contains(where: { $0.text == "Men yoldam!" && $0.isAutocorrect }))
+
+    let contactExactSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "aliye",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(contactExactSuggestions.contains(where: { $0.text == "Aliye" }))
+
+    let contactInflectedSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "aliyeniñ",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(contactInflectedSuggestions.contains(where: { $0.text == "Aliyeniñ" }))
+}
+
+@Test func reviewFixesVerification() {
+    // 1. Mixed-script hyphen guard: Latin prefix + Cyrillic suffix after hyphen transliterates properly
+    #expect(CrimeanTatarTransliterator.transliterate("iOS-та") == "iOS-ta")
+    #expect(CrimeanTatarTransliterator.transliterate("бус-бутюн") == "büs-bütün")
+
+    // 2. Toolbar 3-suggestion padding for spaced question particles and harmony/assimilation corrections
+    let questionParticleSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "yaptıñ mı",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(questionParticleSuggestions.count == 3)
+    #expect(questionParticleSuggestions.contains(where: { $0.text == "yaptıñmı" && $0.isAutocorrect }))
+
+    let instrumentalSuggestions = SuggestionsDataBaseManager.shared.suggestions(
+        for: "sağlıqman",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(instrumentalSuggestions.count == 3)
+    #expect(instrumentalSuggestions.contains(where: { $0.text == "sağlıqnen" && $0.isAutocorrect }))
+
+    for (input, expected) in [
+        ("menga", "maña"),
+        ("manga", "maña"),
+        ("sanga", "saña"),
+        ("yangı", "yañı"),
+        ("kitab", "kitap"),
+        ("mekteb", "mektep"),
+        ("cevab", "cevap"),
+        ("salam", "selâm")
+    ] {
+        let res = SuggestionsDataBaseManager.shared.suggestions(
+            for: input,
+            shouldCapitalize: false,
+            contextWords: []
+        )
+        #expect(res.contains(where: { $0.text.lowercased(with: Locale(identifier: "tr")) == expected && $0.isAutocorrect }))
+    }
+
+    // 3. Cyrillic ФЫВА & Ukrainian ФІВА swipe-to-type (including soft-sign 'ь', iotated 'є', and Row-1 diagonal 'ʼ')
+    let guzelSwipe = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["г", "н", "е", "к", "у", "к", "е", "н", "г", "ш", "щ", "з", "щ", "ш", "г", "н", "е", "р", "о", "л", "ь"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 3
+    )
+    #expect(guzelSwipe.first?.text.lowercased(with: Locale(identifier: "tr")) == "güzel")
+
+    KeyboardPreferences.ukrainianCyrillicLayoutEnabled = true
+    defer { KeyboardPreferences.ukrainianCyrillicLayoutEnabled = false }
+
+    let yeshilClean = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["є", "ш", "и", "л", "ь"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 3
+    )
+    #expect(yeshilClean.first?.text.lowercased(with: Locale(identifier: "tr")) == "yeşil")
+
+    let yeshilNoisy = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["є", "ж", "д", "л", "о", "г", "ш", "о", "п", "а", "в", "и", "в", "а", "п", "р", "о", "л", "ь"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 3
+    )
+    #expect(yeshilNoisy.first?.text.lowercased(with: Locale(identifier: "tr")) == "yeşil")
+
+    let selamUkrSwipe = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["с", "п", "р", "о", "л", "д", "ж", "є", "ж", "д", "л", "о", "р", "п", "а", "в", "я", "ч", "с", "м"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 3
+    )
+    #expect(selamUkrSwipe.first?.text.lowercased(with: Locale(identifier: "tr")) == "selâm")
+
+    let coqUkrSwipe = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["ч", "а", "п", "р", "о", "н", "е", "к", "п", "р", "о", "л", "д", "ж", "є", "\u{02BC}"],
+        isCyrillic: true,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 3
+    )
+    #expect(coqUkrSwipe.first?.text.lowercased(with: Locale(identifier: "tr")) == "çoq")
+}
+
 }
 
 #if !canImport(UIKit)

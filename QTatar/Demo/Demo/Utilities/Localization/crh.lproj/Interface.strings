@@ -84,5 +84,7 @@
 "settings.cyrillicAddAction" = "Sazlamalarda qoşmaq";
 "settings.cyrillicGuideTitle" = "Kirill klaviaturasını nasıl qoşmalı?";
 "settings.ukrainianCyrillic" = "Ukraina tizilişi";
-"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
+"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · ї → yi · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek";
+"settings.systemKeyboard" = "iOS klaviatura sazlamaları";
+"settings.systemKeyboard.desc" = "Avto-tüzetüv, matematik neticeler, aqıllı tinış";

@@ -3,3 +3,15 @@
 "Name" = "Ad";
 "Enabled" = "Qoşulğan";
 "none given" = "Belgilenmegen";
+"settings.cyrillic" = "Kirill klaviaturası";
+"settings.ukrainianCyrillic" = "Ukraina tizilişi";
+"settings.suggestions" = "Söz teklifleri";
+"settings.wordLearning" = "Sözlerni ögrenüv";
+"settings.stats" = "Statistika ve yazuv seviyeleri";
+"settings.footer" = "Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura.";
+"Kirill klaviaturası" = "Kirill klaviaturası";
+"Ukraina tizilişi" = "Ukraina tizilişi";
+"Söz teklifleri" = "Söz teklifleri";
+"Sözlerni ögrenüv" = "Sözlerni ögrenüv";
+"Statistika ve yazuv seviyeleri" = "Statistika ve yazuv seviyeleri";
+"Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura." = "Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura.";

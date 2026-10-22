@@ -84,5 +84,7 @@
 "settings.cyrillicAddAction" = "Додати в Параметрах";
 "settings.cyrillicGuideTitle" = "Як додати кириличну клавіатуру?";
 "settings.ukrainianCyrillic" = "Українська розкладка";
-"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
+"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · ї → yi · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму";
+"settings.systemKeyboard" = "Системні параметри клавіатури";
+"settings.systemKeyboard.desc" = "Автовиправлення, математичні підказки, пунктуація";

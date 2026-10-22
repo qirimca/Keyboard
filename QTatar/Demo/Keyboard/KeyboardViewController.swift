@@ -258,7 +258,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let isPad = context.deviceType == .pad
         let isTargetFloating = targetSize.map { $0.width > 0 && $0.width < 420 } ?? false
         let isFloating = context.isKeyboardFloating || isTransitioningToFloating || isTargetFloating || (isPad && view.bounds.width > 0 && view.bounds.width < 420)
-        let hasToolbar = state.autocompleteContext.isAutocompleteEnabled
+        let hasToolbar = state.autocompleteContext.isAutocompleteEnabled && DemoStyleProvider.shouldShowTopToolbar(for: context)
         if isFloating {
             return (hasToolbar ? 38 : 0) + (49 * 4) + 6
         }
@@ -322,7 +322,10 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         }
         KeyboardPreferences.refreshCachedPreferences()
-        let suggestionsOn = KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled
+        let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: state.keyboardContext)
+        let suggestionsOn = KeyboardPreferences.suggestionsEnabled
+            && SystemKeyboardSettings.isPredictiveTextEnabled
+            && topBarAllowed
         state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
         state.autocompleteContext.isAutocorrectEnabled = suggestionsOn
             && (textDocumentProxy.autocorrectionType != .no)
@@ -439,13 +442,43 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         state.feedbackConfiguration.isHapticFeedbackEnabled = true
         #endif
 
-        /// Observe shift / keyboard case changes to immediately synchronize autocomplete word casing.
+        /// Observe shift / keyboard case changes to immediately synchronize autocomplete word casing in memory.
         state.keyboardContext.$keyboardType
             .dropFirst()
             .removeDuplicates()
-            .sink { [weak self] _ in
+            .sink { [weak self] newType in
+                guard let self else { return }
+                if case .alphabetic(let casing) = newType {
+                    let trLocale = Locale(identifier: "tr")
+                    let current = self.state.autocompleteContext.suggestions
+                    if !current.isEmpty {
+                        self.state.autocompleteContext.suggestions = current.map { s in
+                            let recased: String = {
+                                switch casing {
+                                case .capsLocked:
+                                    return s.text.uppercased(with: trLocale)
+                                case .uppercased:
+                                    guard let first = s.text.first else { return s.text }
+                                    return String(first).uppercased(with: trLocale) + String(s.text.dropFirst())
+                                case .lowercased:
+                                    return s.isUnknown ? s.text : s.text.lowercased(with: trLocale)
+                                default:
+                                    return s.text
+                                }
+                            }()
+                            return Autocomplete.Suggestion(
+                                text: recased,
+                                title: s.title,
+                                isAutocorrect: s.isAutocorrect,
+                                isUnknown: s.isUnknown,
+                                subtitle: s.subtitle,
+                                additionalInfo: s.additionalInfo
+                            )
+                        }
+                    }
+                }
                 DispatchQueue.main.async {
-                    self?.performAutocomplete()
+                    self.performAutocomplete()
                 }
             }
             .store(in: &cancellables)
@@ -469,6 +502,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                     timestamps: timestamps,
                     keyFrames: keyFrames
                 )
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: Notification.Name("crh.key.backspaceSlideLeft"))
+            .sink { [weak self] _ in
+                (self?.services.actionHandler as? DemoActionHandler)?.handleBackspaceSlideLeft()
             }
             .store(in: &cancellables)
 
@@ -645,7 +684,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             for entry in lexicon.entries {
                 let key = entry.userInput.trimmingCharacters(in: .whitespacesAndNewlines)
                 let val = entry.documentText.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !key.isEmpty, !val.isEmpty, key != val else { continue }
+                guard !key.isEmpty, !val.isEmpty else { continue }
                 map[key] = val
             }
             SuggestionsDataBaseManager.shared.updateSupplementaryLexicon(map)
@@ -741,6 +780,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     private func performAutocompleteNow() {
         guard !isResettingDocumentState, isViewLoaded, view.window != nil else { return }
+        if (services.actionHandler as? DemoActionHandler)?.hasActivePostSwipeSuggestions == true {
+            return
+        }
         super.performAutocomplete()
     }
 
@@ -813,13 +855,19 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         context.proxyKeyboardTypeOverride = isSandboxActive
             ? DemoStyleProvider.effectiveProxyKeyboardType(for: context)
             : nil
-        let effectiveKeyboardType = context.proxyKeyboardTypeOverride ?? textDocumentProxy.keyboardType
-        let isURLOrEmail = effectiveKeyboardType == .URL || effectiveKeyboardType == .emailAddress
-        let shouldAutocorrect = KeyboardPreferences.suggestionsEnabled
+        let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: context)
+        let suggestionsOn = KeyboardPreferences.suggestionsEnabled
             && SystemKeyboardSettings.isPredictiveTextEnabled
+            && topBarAllowed
+        if state.autocompleteContext.isAutocompleteEnabled != suggestionsOn {
+            state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
+        }
+        if !suggestionsOn && !state.autocompleteContext.suggestions.isEmpty {
+            state.autocompleteContext.suggestions = []
+        }
+        let shouldAutocorrect = suggestionsOn
             && SystemKeyboardSettings.isAutoCorrectionEnabled
             && (textDocumentProxy.autocorrectionType != .no)
-            && !isURLOrEmail
         if state.autocompleteContext.isAutocorrectEnabled != shouldAutocorrect {
             state.autocompleteContext.isAutocorrectEnabled = shouldAutocorrect
         }
@@ -864,6 +912,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             if prefsChanged {
                 applyPreferences(syncDisk: forceRender)
             } else {
+                updateKeyboardHeightConstraint()
                 state.keyboardContext.renderVersion &+= 1
             }
             lastRenderSignature = currentRenderSignature
@@ -999,6 +1048,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         case .keyboardType(.numeric): return "key.numeric"
         case .keyboardType(.symbolic): return "key.symbolic"
         case .keyboardType(.alphabetic): return "key.alphabetic"
+        case .keyboardType(.emojis): return "key.emojis"
         case .custom(let name): return "key." + name
         case .backspace: return "key.backspace"
         case .space: return "key.space"
@@ -1050,6 +1100,22 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                         ) {
                             params.view
                         }
+                    } else if context.deviceType == .pad,
+                              !context.isKeyboardFloating,
+                              !context.isKeyboardSplit,
+                              SystemKeyboardSettings.isKeyFlicksEnabled,
+                              itemRow == 0,
+                              case .character = params.item.action {
+                        let isLandscape = context.interfaceOrientation.isLandscape
+                        let isDark = DemoStyleProvider.effectiveIsDark(for: context)
+                        FlickKeyContentView(
+                            action: params.item.action,
+                            flickSymbol: nil,
+                            isLandscape: isLandscape,
+                            isDark: isDark
+                        ) {
+                            params.view
+                        }
                     } else {
                         params.view
                     }
@@ -1059,11 +1125,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 },
                 emojiKeyboard: { $0.view },
                 toolbar: { params in
-                    if controller.state.autocompleteContext.isAutocompleteEnabled {
+                    if controller.state.autocompleteContext.isAutocompleteEnabled,
+                       DemoStyleProvider.shouldShowTopToolbar(for: controller.state.keyboardContext) {
                         NativeAutocompleteToolbar(
-                        autocompleteContext: controller.state.autocompleteContext,
-                        keyboardContext: controller.state.keyboardContext,
-                        autocompleteAction: params.autocompleteAction
+                            autocompleteContext: controller.state.autocompleteContext,
+                            keyboardContext: controller.state.keyboardContext,
+                            autocompleteAction: params.autocompleteAction
                         )
                     }
                 }
@@ -1117,12 +1184,12 @@ final class KeyFlickState {
     }
 }
 
-/// Renders an iPad Docked key with a top secondary flick symbol that smoothly slides down
+/// Renders an iPad Docked key with an optional top secondary flick symbol that smoothly slides down
 /// into the center, scales up to primary font size, and transitions from gray to solid black/white
 /// while the primary character slides down and fades out during a downward key flick.
 struct FlickKeyContentView<PrimaryContent: View>: View {
     let action: KeyboardAction
-    let flickSymbol: String
+    let flickSymbol: String?
     let isLandscape: Bool
     let isDark: Bool
     @ViewBuilder let primaryContent: () -> PrimaryContent
@@ -1141,7 +1208,7 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
     }
     private var restingOffsetY: CGFloat { (isLandscape ? -19.5 : -13.5) + flickGlyphBaselineCompensation }
     private var restingOpacity: Double { isDark ? 0.42 : 0.34 }
-    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 9.5 : 8.5 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 7.5 : 6.5 }
 
     var body: some View {
         let currentFlickScale = restingScale + (1.0 - restingScale) * progress
@@ -1158,13 +1225,15 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
                 .offset(y: currentPrimaryOffsetY)
                 .opacity(currentPrimaryOpacity)
 
-            Text(flickSymbol)
-                .font(.system(size: primaryFontSize, weight: .regular))
-                .foregroundColor((isDark ? Color.white : Color.black).opacity(currentFlickOpacity))
-                .scaleEffect(currentFlickScale)
-                .offset(y: currentFlickOffsetY)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            if let flickSymbol {
+                Text(flickSymbol)
+                    .font(.system(size: primaryFontSize, weight: .regular))
+                    .foregroundColor((isDark ? Color.white : Color.black).opacity(currentFlickOpacity))
+                    .scaleEffect(currentFlickScale)
+                    .offset(y: currentFlickOffsetY)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
         .onReceive(KeyFlickState.shared.subject) { event in
             guard event.action == action else { return }

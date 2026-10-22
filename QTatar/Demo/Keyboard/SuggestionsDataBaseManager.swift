@@ -27,6 +27,14 @@ final class SuggestionsDataBaseManager {
 
     private var db: OpaquePointer?
     private var userDB: OpaquePointer?
+    private var stmtBundledFrequency: OpaquePointer?
+    private var stmtBestKnownWord: OpaquePointer?
+    private var stmtWordsStartingWith: OpaquePointer?
+    private var stmtHyphenWordsStartingWith: OpaquePointer?
+    private var stmtNextWordsWithFrequency: OpaquePointer?
+    private var stmtTypoCorrectionFromDB: OpaquePointer?
+    private var stmtSwipeCandidates: OpaquePointer?
+    private var stmtDiacriticSkeleton: OpaquePointer?
     private let databaseQueue = DispatchQueue(label: "crh.keyboard.databaseQueue")
     private static let crimeanLocale = Locale(identifier: "crh")
     /// i/ı/İ/I casing for Crimean Tatar Latin (same rules as Turkish script).
@@ -39,19 +47,32 @@ final class SuggestionsDataBaseManager {
     private var lifecycleObservers: [NSObjectProtocol] = []
     private let supplementaryLock = NSLock()
     private var supplementaryLexicon: [String: String] = [:]
+    private var supplementaryProperNouns: [String: String] = [:]
 
-    func updateSupplementaryLexicon(_ entries: [String: String]) {
+    func updateSupplementaryLexicon(_ entries: [String: String], properNouns: [String: String] = [:]) {
         supplementaryLock.lock()
-        var normalized: [String: String] = [:]
+        var normalizedShortcuts: [String: String] = [:]
+        var normalizedNouns: [String: String] = [:]
         for (key, value) in entries {
             let trimmedKey = key.trimmingCharacters(in: .whitespacesAndNewlines)
             let k = trimmedKey.lowercased(with: Self.casingLocale)
             let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !k.isEmpty && !v.isEmpty && trimmedKey != v {
-                normalized[k] = v
+            guard !k.isEmpty && !v.isEmpty else { continue }
+            if trimmedKey != v {
+                normalizedShortcuts[k] = v
+            } else if v.first?.isUppercase == true && v.count >= 2 && !v.contains(" ") {
+                normalizedNouns[k] = v
             }
         }
-        supplementaryLexicon = normalized
+        for (key, value) in properNouns {
+            let k = key.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
+            let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !k.isEmpty && v.first?.isUppercase == true && v.count >= 2 && !v.contains(" ") {
+                normalizedNouns[k] = v
+            }
+        }
+        supplementaryLexicon = normalizedShortcuts
+        supplementaryProperNouns = normalizedNouns
         supplementaryLock.unlock()
     }
 
@@ -107,6 +128,17 @@ final class SuggestionsDataBaseManager {
         }
     }
 
+    private func finalizeCachedStatements() {
+        if let s = stmtBundledFrequency { sqlite3_finalize(s); stmtBundledFrequency = nil }
+        if let s = stmtBestKnownWord { sqlite3_finalize(s); stmtBestKnownWord = nil }
+        if let s = stmtWordsStartingWith { sqlite3_finalize(s); stmtWordsStartingWith = nil }
+        if let s = stmtHyphenWordsStartingWith { sqlite3_finalize(s); stmtHyphenWordsStartingWith = nil }
+        if let s = stmtNextWordsWithFrequency { sqlite3_finalize(s); stmtNextWordsWithFrequency = nil }
+        if let s = stmtTypoCorrectionFromDB { sqlite3_finalize(s); stmtTypoCorrectionFromDB = nil }
+        if let s = stmtSwipeCandidates { sqlite3_finalize(s); stmtSwipeCandidates = nil }
+        if let s = stmtDiacriticSkeleton { sqlite3_finalize(s); stmtDiacriticSkeleton = nil }
+    }
+
     /// Synchronously closes the writable App Group SQLite database (`user_lexicon.sqlite`) before process suspension
     /// to prevent RunningBoard `0xdead10cc` termination.
     func suspendAccess() {
@@ -147,6 +179,7 @@ final class SuggestionsDataBaseManager {
             NotificationCenter.default.removeObserver(observer)
         }
         databaseQueue.sync {
+            finalizeCachedStatements()
             if let db {
                 sqlite3_close_v2(db)
                 self.db = nil
@@ -651,22 +684,38 @@ final class SuggestionsDataBaseManager {
                 return text
             }()
 
+            if let shortcut = shortcutReplacement(for: effectiveQuery) ?? shortcutReplacement(for: text) {
+                var shortcutResult: [Autocomplete.Suggestion] = [
+                    .init(text: text, isUnknown: true),
+                    .init(text: shortcut, title: shortcut, isAutocorrect: true)
+                ]
+                let matches = fetchWordsStartingWith(prefix: effectiveQuery, limit: 3)
+                if let third = matches.first(where: { $0.caseInsensitiveCompare(shortcut) != .orderedSame && $0.caseInsensitiveCompare(text) != .orderedSame }) {
+                    shortcutResult.append(.init(text: formatWord(third, capitalize: shouldCapitalize)))
+                }
+                return shortcutResult
+            }
+
             let isAllCaps = effectiveQuery.count > 1 && effectiveQuery == effectiveQuery.uppercased(with: Self.casingLocale)
             var matches = fetchWordsStartingWith(prefix: effectiveQuery, limit: 12)
             let queryLower = effectiveQuery.lowercased(with: Self.casingLocale)
-            let prevWordRaw = contextWords.last
+            let inlineParts = effectiveQuery.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+            let prevWordRaw: String? = (inlineParts.count == 2) ? inlineParts[0] : contextWords.last
             let prevLower = prevWordRaw?.lowercased(with: Self.casingLocale)
+            let particleCandidateLower: String = (inlineParts.count == 2)
+                ? inlineParts[1].lowercased(with: Self.casingLocale)
+                : queryLower
 
             // Contextual multi-token replacements (question particle -mı/-mi and space-separated hyphenated words)
             if let prevRaw = prevWordRaw, let prevLower, prevLower.count >= 2 {
-                if ["mı", "mi", "mu", "mü"].contains(queryLower),
+                if ["mı", "mi", "mu", "mü"].contains(particleCandidateLower),
                    !["ve", "da", "de", "ki", "ya", "hem", "amma", "lâkin"].contains(prevLower),
                    !prevLower.hasSuffix("mı"), !prevLower.hasSuffix("mi") {
                     let isBack = lastVowelIsBack(in: prevLower) ?? true
                     let particle = isBack ? "mı" : "mi"
                     let joinedSuffix = isAllCaps ? particle.uppercased(with: Self.casingLocale) : particle
                     let joinedWord = prevRaw + joinedSuffix
-                    let replaceCount = prevRaw.count + 1 + text.count
+                    let replaceCount = (inlineParts.count == 2) ? text.count : (prevRaw.count + 1 + text.count)
                     var particleResult: [Autocomplete.Suggestion] = [
                         .init(text: text, isUnknown: true),
                         .init(
@@ -676,8 +725,17 @@ final class SuggestionsDataBaseManager {
                             additionalInfo: ["replaceCharCount": replaceCount]
                         )
                     ]
-                    if let thirdMatch = matches.first(where: { $0.lowercased(with: Self.casingLocale) != queryLower }) {
+                    if let thirdMatch = matches.first(where: { $0.lowercased(with: Self.casingLocale) != particleCandidateLower }) {
                         particleResult.append(.init(text: formatWord(thirdMatch, capitalize: shouldCapitalize, isAllCaps: isAllCaps)))
+                    }
+                    if particleResult.count < 3 {
+                        let stemPrefix = String(prevLower.prefix(min(3, prevLower.count)))
+                        for fb in fetchWordsStartingWith(prefix: stemPrefix, limit: 6) where particleResult.count < 3 {
+                            let formatted = formatWord(fb, capitalize: shouldCapitalize, isAllCaps: isAllCaps)
+                            if !particleResult.contains(where: { $0.text.caseInsensitiveCompare(formatted) == .orderedSame }) {
+                                particleResult.append(.init(text: formatted))
+                            }
+                        }
                     }
                     return particleResult
                 }
@@ -772,13 +830,30 @@ final class SuggestionsDataBaseManager {
                 // completions (e.g. "nasıl" for "nası") are not shadowed by rare diacritic variants ("naşı").
                 let diacritic = diacriticCorrection(for: queryLower)
                 let completion = shortCompletion(for: queryLower, in: matches)
+                let typoFix: String? = {
+                    if diacritic != nil { return nil }
+                    if matches.isEmpty { return typoCorrection(for: queryLower) }
+                    if let c = completion, queryLower.count >= 4 {
+                        let cFreq = frequency(of: c.lowercased(with: Self.casingLocale))
+                        if cFreq < 100 {
+                            return typoCorrection(for: queryLower)
+                        }
+                    }
+                    return nil
+                }()
                 let correction: String? = {
                     if let d = diacritic, let c = completion {
                         let dFreq = frequency(of: d.lowercased(with: Self.casingLocale))
                         let cFreq = frequency(of: c.lowercased(with: Self.casingLocale))
                         return (cFreq > dFreq) ? c : d
                     }
-                    return diacritic ?? completion ?? (matches.isEmpty ? typoCorrection(for: queryLower) : nil)
+                    if let t = typoFix, let c = completion {
+                        let tFreq = frequency(of: t.lowercased(with: Self.casingLocale))
+                        let cFreq = frequency(of: c.lowercased(with: Self.casingLocale))
+                        if tFreq >= max(100, cFreq * 10) { return t }
+                        return c
+                    }
+                    return diacritic ?? completion ?? typoFix
                 }()
                 result.append(.init(text: text, isUnknown: true))
                 if let correction {
@@ -800,6 +875,30 @@ final class SuggestionsDataBaseManager {
                 result.append(.init(text: formatted))
             }
 
+            if result.count < 3 {
+                var fallbackPrefixes: [String] = []
+                if result.count >= 2 {
+                    fallbackPrefixes.append(result[1].text.lowercased(with: Self.casingLocale))
+                }
+                if queryLower.count >= 3 {
+                    fallbackPrefixes.append(String(queryLower.prefix(3)))
+                }
+                if queryLower.count >= 2 {
+                    fallbackPrefixes.append(String(queryLower.prefix(2)))
+                }
+                for fbPrefix in fallbackPrefixes {
+                    guard result.count < 3 else { break }
+                    for fbMatch in fetchWordsStartingWith(prefix: fbPrefix, limit: 6) {
+                        guard result.count < 3 else { break }
+                        let formatted = formatWord(fbMatch, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords)
+                        let key = formatted.lowercased(with: Self.casingLocale)
+                        guard !usedKeys.contains(key) else { continue }
+                        usedKeys.insert(key)
+                        result.append(.init(text: formatted))
+                    }
+                }
+            }
+
             return Array(result.prefix(3))
         }
     }
@@ -813,7 +912,7 @@ final class SuggestionsDataBaseManager {
 
     private static let cyrillicToLatinSwipeMap: [Character: [Character]] = [
         "а": ["a"], "б": ["b"], "в": ["v"], "г": ["g", "ğ"], "ґ": ["g"], "д": ["d"],
-        "е": ["e"], "є": ["y", "e"], "ё": ["o"], "ж": ["j", "c"], "з": ["z"], "и": ["i"],
+        "е": ["e"], "є": ["e"], "ё": ["o"], "ж": ["j", "c"], "з": ["z"], "и": ["i"],
         "і": ["i"], "ї": ["y", "i"], "й": ["y"], "к": ["q", "k"], "л": ["l"], "м": ["m"],
         "н": ["n"], "о": ["o"], "п": ["p"], "р": ["r"], "с": ["s"], "т": ["t"],
         "у": ["u"], "ф": ["f"], "х": ["h"], "ц": ["s", "t"], "ч": ["c"],
@@ -830,30 +929,30 @@ final class SuggestionsDataBaseManager {
     private static let qwertyNeighbors: [Character: Set<Character>] = [
         "q": ["w", "a"],
         "w": ["q", "e", "a", "s"],
-        "e": ["w", "r", "s", "d"],
-        "r": ["e", "t", "d", "f"],
-        "t": ["r", "y", "f", "g"],
-        "y": ["t", "u", "g", "h"],
-        "u": ["y", "i", "h", "j"],
-        "i": ["u", "o", "j", "k"],
-        "o": ["i", "p", "k", "l"],
-        "p": ["o", "l"],
-        "a": ["q", "w", "s", "z"],
-        "s": ["w", "e", "a", "d", "z", "x"],
-        "d": ["e", "r", "s", "f", "x", "c"],
-        "f": ["r", "t", "d", "g", "c", "v"],
-        "g": ["t", "y", "f", "h", "v", "b"],
-        "h": ["y", "u", "g", "j", "b", "n"],
-        "j": ["u", "i", "h", "k", "n", "m"],
-        "k": ["i", "o", "j", "l", "m"],
-        "l": ["o", "p", "k"],
-        "z": ["a", "s", "x"],
-        "x": ["s", "d", "z", "c"],
-        "c": ["d", "f", "x", "v"],
-        "v": ["f", "g", "c", "b"],
-        "b": ["g", "h", "v", "n"],
-        "n": ["h", "j", "b", "m"],
-        "m": ["j", "k", "n"]
+        "e": ["w", "r", "a", "s", "d"],
+        "r": ["e", "t", "s", "d", "f"],
+        "t": ["r", "y", "d", "f", "g"],
+        "y": ["t", "u", "f", "g", "h"],
+        "u": ["y", "i", "g", "h", "j"],
+        "i": ["u", "o", "h", "j", "k"],
+        "o": ["i", "p", "j", "k", "l", "m"],
+        "p": ["o", "k", "l"],
+        "a": ["q", "w", "e", "s", "d", "z", "x"],
+        "s": ["w", "e", "r", "a", "d", "f", "z", "x", "c"],
+        "d": ["e", "r", "t", "a", "s", "f", "g", "z", "x", "c", "v"],
+        "f": ["r", "t", "y", "s", "d", "g", "h", "x", "c", "v", "b"],
+        "g": ["t", "y", "u", "d", "f", "h", "c", "v", "b", "n"],
+        "h": ["y", "u", "i", "f", "g", "j", "v", "b", "n", "m"],
+        "j": ["u", "i", "o", "g", "h", "k", "b", "n", "m"],
+        "k": ["i", "o", "p", "h", "j", "l", "n", "m"],
+        "l": ["o", "p", "k", "m"],
+        "z": ["a", "s", "d", "x"],
+        "x": ["a", "s", "d", "f", "z", "c"],
+        "c": ["s", "d", "f", "g", "x", "v"],
+        "v": ["d", "f", "g", "h", "c", "b"],
+        "b": ["f", "g", "h", "j", "v", "n"],
+        "n": ["g", "h", "j", "k", "b", "m"],
+        "m": ["h", "j", "k", "l", "n", "o"]
     ]
 
     /// Physical key adjacency on Cyrillic (`ЙЦУКЕН` / `ФІВА`) layouts projected to normalized Latin base characters.
@@ -865,8 +964,8 @@ final class SuggestionsDataBaseManager {
         "e": ["q", "k", "n", "p", "r", "j", "c", "h"],
         "f": ["i", "y", "c"],
         "g": ["n", "s", "r", "o", "a", "f"],
-        "h": ["z", "d", "j", "c", "e"],
-        "i": ["f", "v", "y", "s", "t", "m", "p", "r"],
+        "h": ["z", "d", "j", "c", "e", "y", "i"],
+        "i": ["f", "v", "y", "s", "t", "m", "p", "r", "h"],
         "j": ["d", "e", "z", "h", "u"],
         "k": ["u", "e", "v", "a", "p"],
         "l": ["o", "d", "s", "b", "u"],
@@ -880,7 +979,7 @@ final class SuggestionsDataBaseManager {
         "t": ["i", "b", "r", "o", "y", "u", "v"],
         "u": ["s", "t", "q", "k", "v", "a", "b", "d", "j"],
         "v": ["i", "a", "u", "q", "k", "c", "s"],
-        "y": ["s", "t", "f", "i"],
+        "y": ["s", "t", "f", "i", "h", "z"],
         "z": ["s", "h", "l", "d", "j", "c"]
     ]
 
@@ -889,10 +988,12 @@ final class SuggestionsDataBaseManager {
     }
 
     private static let cyrillicRow0RightCorridor: Set<Character> = [
-        "у", "к", "е", "н", "г", "ш", "щ", "з", "х"
+        "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ї",
+        "в", "а", "п", "р", "о", "л", "д", "ж", "є", "э"
     ]
     private static let cyrillicRow0ReturnTransit: Set<Character> = [
-        "х", "з", "щ", "ш", "г", "н", "е"
+        "ї", "х", "з", "щ", "ш", "г", "н", "е",
+        "є", "э", "ж", "д", "л", "р", "п"
     ]
     private static let cyrillicSignChars: Set<Character> = [
         "ъ", "ь", "\u{02BC}", "'", "’"
@@ -919,16 +1020,15 @@ final class SuggestionsDataBaseManager {
             for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 1.5 * h) }
             for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
         } else if isUkrainianCyrillic {
-            let row0 = Array("йцукенгшщзхʼ")
-            let row1 = Array("фівапролджє")
+            let row0 = Array("йцукенгшщзхї")
+            let row1 = Array("фівапролджє\u{02BC}")
             let row2 = Array("ячсмитьбюґ")
             for (c, ch) in row0.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 0.5 * h) }
-            for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.0) * w, y: 1.5 * h) }
+            for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 1.5 * h) }
             for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
-            centers["ъ"] = centers["ʼ"]
+            centers["ъ"] = centers["\u{02BC}"]
             centers["ы"] = centers["и"]
             centers["э"] = centers["є"]
-            centers["ї"] = CGPoint(x: 11.5 * w, y: 1.5 * h)
             centers["ё"] = centers["о"]
         } else {
             let row0 = Array("йцукенгшщзхъ")
@@ -937,10 +1037,11 @@ final class SuggestionsDataBaseManager {
             for (c, ch) in row0.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 0.5) * w, y: 0.5 * h) }
             for (c, ch) in row1.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.0) * w, y: 1.5 * h) }
             for (c, ch) in row2.enumerated() { centers[ch] = CGPoint(x: (CGFloat(c) + 1.5) * w, y: 2.5 * h) }
-            centers["ʼ"] = centers["ъ"]
+            centers["\u{02BC}"] = centers["ъ"]
             centers["і"] = centers["и"]
             centers["є"] = centers["э"]
             centers["ґ"] = centers["г"]
+            centers["ї"] = centers["ъ"]
         }
 
         var widths: [CGFloat] = []
@@ -961,19 +1062,27 @@ final class SuggestionsDataBaseManager {
     private static func targetWordCharCenter(
         for ch: Character,
         centers: [Character: CGPoint],
+        rawKeySet: Set<Character> = [],
         isCyrillic: Bool,
         isUkrainianCyrillic: Bool
     ) -> CGPoint? {
         if !isCyrillic {
+            if ["â", "î", "û"].contains(ch) && !rawKeySet.contains(ch) {
+                return centers[normalizeBaseChar(ch)] ?? centers[ch]
+            }
             return centers[ch] ?? centers[normalizeBaseChar(ch)]
         }
         switch ch {
-        case "a", "â": return centers["а"]
+        case "â":
+            return (rawKeySet.contains("а") && !rawKeySet.contains("я")) ? (centers["а"] ?? centers["я"]) : (centers["я"] ?? centers["а"])
+        case "a":
+            return (rawKeySet.contains("я") && !rawKeySet.contains("а")) ? (centers["я"] ?? centers["а"]) : centers["а"]
         case "b": return centers["б"]
         case "c": return centers["д"] ?? centers["ж"]
         case "ç": return centers["ч"]
         case "d": return centers["д"]
-        case "e": return centers["е"]
+        case "e":
+            return (rawKeySet.contains("є") && !rawKeySet.contains("е")) ? (centers["є"] ?? centers["е"]) : centers["е"]
         case "f": return centers["ф"]
         case "g": return isUkrainianCyrillic ? (centers["ґ"] ?? centers["г"]) : centers["г"]
         case "ğ": return centers["г"]
@@ -991,19 +1100,32 @@ final class SuggestionsDataBaseManager {
         case "s": return centers["с"]
         case "ş": return centers["ш"]
         case "t": return centers["т"]
-        case "u", "ü", "û": return centers["у"]
+        case "u": return centers["у"]
+        case "ü", "û":
+            return rawKeySet.contains("ю") ? (centers["ю"] ?? centers["у"]) : centers["у"]
         case "v": return centers["в"]
-        case "y": return centers["й"]
+        case "y":
+            if !rawKeySet.contains("й") {
+                if rawKeySet.contains("ї"), let pt = centers["ї"] { return pt }
+                if rawKeySet.contains("є"), let pt = centers["є"] { return pt }
+                if rawKeySet.contains("я"), let pt = centers["я"] { return pt }
+                if rawKeySet.contains("ю"), let pt = centers["ю"] { return pt }
+                if rawKeySet.contains("ё"), let pt = centers["ё"] { return pt }
+                if !isUkrainianCyrillic, rawKeySet.contains("е"), let pt = centers["е"] { return pt }
+            }
+            return centers["й"]
         case "z": return centers["з"]
         default: return nil
         }
     }
 
     private static let cyrillicRow0ColIndex: [Character: Int] = [
-        "й": 0, "ц": 1, "у": 2, "к": 3, "е": 4, "н": 5, "г": 6, "ш": 7, "щ": 8, "з": 9, "х": 10
+        "й": 0, "ц": 1, "у": 2, "к": 3, "е": 4, "н": 5, "г": 6, "ш": 7, "щ": 8, "з": 9, "х": 10, "ї": 11,
+        "ф": 0, "і": 1, "ы": 1, "в": 2, "а": 3, "п": 4, "р": 5, "о": 6, "л": 7, "д": 8, "ж": 9, "є": 10, "э": 10
     ]
 
-    /// Strips Row-0 transit keys (`е, н, г, ш, щ, з, х`) crossed when swiping from `к/г/н` to `ъ/ʼ` at `(Row 0, Col 11)`
+    /// Strips right-flank transit keys (`е, н, г, ш, щ, з, х, ї` on Row 0 and `в, а, п, р, о, л, д, ж, є` on Row 1)
+    /// crossed when swiping from `к/г/н` to `ъ` `(Row 0, Col 11)` or `ʼ` `(Row 1, Col 11)`
     /// and records explicit digraph diacritics (`q`, `ğ`, `ñ`) so `endCandidates` and `rawKeySet` are never polluted.
     private static func cleanCyrillicSwipeSequence(
         _ rawKeys: [Character]
@@ -1012,6 +1134,10 @@ final class SuggestionsDataBaseManager {
         var removedIndices = Set<Int>()
         var explicitDiacritics = Set<Character>()
         var softEndBases = Set<Character>()
+        let nonTriggerCorridorKeys: Set<Character> = [
+            "у", "е", "ш", "щ", "з", "х", "ї",
+            "в", "а", "п", "р", "о", "л", "д", "ж", "є", "э"
+        ]
 
         func recordTrigger(_ trigger: Character, isWordEnd: Bool) {
             if trigger == "к" {
@@ -1028,6 +1154,7 @@ final class SuggestionsDataBaseManager {
 
         for (idx, ch) in rawKeys.enumerated() where cyrillicSignChars.contains(ch) {
             removedIndices.insert(idx)
+            guard ch != "ь" else { continue }
             var corridorStart = idx
             var scan = idx - 1
             while scan >= 0 {
@@ -1038,6 +1165,27 @@ final class SuggestionsDataBaseManager {
                 } else {
                     break
                 }
+            }
+
+            // If entering Row 1 from left-flank (`ч`, `с`, `я`, `ф`) across `а -> п -> р -> о` before a trigger (`чокʼ`),
+            // strip transit `а, п, р` and preserve the peak vowel `о`.
+            if corridorStart > 0,
+               ["я", "ч", "с", "ф", "і", "ы"].contains(rawKeys[corridorStart - 1]),
+               rawKeys[corridorStart] == "а",
+               let firstTrigBeforeSign = (corridorStart..<idx).first(where: { cyrillicDigraphTriggers.contains(rawKeys[$0]) }),
+               let oIdx = (corridorStart..<firstTrigBeforeSign).first(where: { rawKeys[$0] == "о" }),
+               rawKeys[corridorStart..<oIdx].allSatisfy({ ["а", "п", "р"].contains($0) }) {
+                for k in corridorStart..<oIdx {
+                    removedIndices.insert(k)
+                }
+                corridorStart = oIdx
+            }
+
+            // Preserve an intentional syllable vowel/consonant (`в`, `а`, `п`, `р`, `о`) at the entry of the corridor before the trigger (`алмакъ`, `чокъ`, `сонъ`, `топракъ`, `байракъ`)
+            while corridorStart < idx,
+                  ["в", "а", "п", "р", "о"].contains(rawKeys[corridorStart]),
+                  ((corridorStart + 1)..<idx).contains(where: { cyrillicDigraphTriggers.contains(rawKeys[$0]) }) {
+                corridorStart += 1
             }
 
             let isWordEnd = (idx == rawKeys.count - 1)
@@ -1076,7 +1224,7 @@ final class SuggestionsDataBaseManager {
                         }
                         for k in corridorStart..<idx {
                             let kc = rawKeys[k]
-                            if ["у", "е", "ш", "щ", "з", "х"].contains(kc) {
+                            if nonTriggerCorridorKeys.contains(kc) {
                                 removedIndices.insert(k)
                             } else if kc == "г", k > corridorStart, rawKeys[corridorStart..<k].contains("н") {
                                 removedIndices.insert(k)
@@ -1085,7 +1233,10 @@ final class SuggestionsDataBaseManager {
                     } else if isWordEnd {
                         // Case 4a: Word-final monotonic rightward sweep starting at trigger `firstTrig` (`алмакъ`, `сонъ`, `топракъ`, `байракъ`)
                         recordTrigger(rawKeys[firstTrig], isWordEnd: true)
-                        for k in corridorStart..<idx where k != firstTrig {
+                        for k in corridorStart..<firstTrig where nonTriggerCorridorKeys.contains(rawKeys[k]) && k > 0 {
+                            removedIndices.insert(k)
+                        }
+                        for k in (firstTrig + 1)..<idx {
                             removedIndices.insert(k)
                         }
                     } else {
@@ -1093,17 +1244,17 @@ final class SuggestionsDataBaseManager {
                         for tPos in triggerIndices {
                             recordTrigger(rawKeys[tPos], isWordEnd: false)
                         }
-                        for k in corridorStart..<idx where ["у", "е", "ш", "щ", "з", "х"].contains(rawKeys[k]) {
+                        for k in (firstTrig + 1)..<idx where nonTriggerCorridorKeys.contains(rawKeys[k]) {
                             removedIndices.insert(k)
                         }
                     }
                 }
 
-                // Strip return transit keys after `ъ`/`ʼ` when returning left across Row 0 to the next vowel/consonant
+                // Strip return transit keys after `ъ`/`ʼ` when returning left across Row 0/1 to the next vowel/consonant
                 var fwd = idx + 1
                 while fwd < rawKeys.count {
                     let fc = rawKeys[fwd]
-                    if ["х", "з", "щ", "ш"].contains(fc) {
+                    if ["ї", "х", "з", "щ", "ш", "є", "э", "ж", "д"].contains(fc) {
                         removedIndices.insert(fwd)
                         fwd += 1
                     } else if (cyrillicRow0ReturnTransit.contains(fc) || fc == "к" || fc == "у"), fwd + 1 < rawKeys.count {
@@ -1116,11 +1267,11 @@ final class SuggestionsDataBaseManager {
             }
         }
 
-        // Also handle swipes that aimed for `ъ`/`ʼ` at Col 11 after `к/г/н` and lifted slightly short on `х` or `з`
-        if let lastCh = rawKeys.last, ["х", "з"].contains(lastCh), rawKeys.count >= 4 {
+        // Also handle swipes that aimed for `ъ`/`ʼ` at Col 11 after `к/г/н` and lifted slightly short on `х`, `з`, `ї`, `є`, or `ж`
+        if let lastCh = rawKeys.last, ["х", "з", "ї", "є", "ж"].contains(lastCh), rawKeys.count >= 4 {
             var scan = rawKeys.count - 1
             var transitCount = 0
-            while scan >= 0 && ["г", "ш", "щ", "з", "х", "е", "н"].contains(rawKeys[scan]) {
+            while scan >= 0 && (cyrillicRow0RightCorridor.contains(rawKeys[scan]) || cyrillicDigraphTriggers.contains(rawKeys[scan])) {
                 if cyrillicDigraphTriggers.contains(rawKeys[scan]) && transitCount >= 2 {
                     let trigger = rawKeys[scan]
                     if trigger == "к" { softEndBases.formUnion(["q", "k"]); explicitDiacritics.insert("q") }
@@ -1190,7 +1341,8 @@ final class SuggestionsDataBaseManager {
         contextWords: [String] = [],
         trailPoints: [CGPoint] = [],
         timestamps: [TimeInterval] = [],
-        keyFrames: [String: CGRect] = [:]
+        keyFrames: [String: CGRect] = [:],
+        limit: Int = 3
     ) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
             ensureDB()
@@ -1239,11 +1391,34 @@ final class SuggestionsDataBaseManager {
                     if ch == "д", idx + 1 < lowerKeys.count, lowerKeys[idx + 1] == "ж" {
                         mapped = ["c", "d"]
                     }
-                    let isWordStartOrAfterVowel = basePath.isEmpty || (prevCyrChar.map { Self.cyrillicVowelOrSign.contains($0) } ?? false)
+                    let isAfterIntentionalVowelOrSign: Bool = {
+                        guard let prev = prevCyrChar else { return true }
+                        if Self.cyrillicSignChars.contains(prev) { return true }
+                        guard Self.cyrillicVowelOrSign.contains(prev) else { return false }
+                        if idx <= 1 { return true }
+                        if idx >= 2,
+                           let p0 = keyCenters[lowerKeys[idx - 2]],
+                           let p1 = keyCenters[prev],
+                           let p2 = keyCenters[ch] {
+                            let v1x = p1.x - p0.x, v1y = p1.y - p0.y
+                            let v2x = p2.x - p1.x, v2y = p2.y - p1.y
+                            let n1 = hypot(v1x, v1y), n2 = hypot(v2x, v2y)
+                            if n1 > 1.0 && n2 > 1.0 {
+                                let cosT = min(1.0, max(-1.0, (v1x * v2x + v1y * v2y) / (n1 * n2)))
+                                let deg = Double(acos(cosT) * 180.0 / .pi)
+                                if deg < 28.0 && n1 <= 3.0 * keyWidth && n2 <= 3.0 * keyWidth {
+                                    return false
+                                }
+                            }
+                        }
+                        return true
+                    }()
+                    let isWordStartOrAfterVowel = basePath.isEmpty || isAfterIntentionalVowelOrSign
                     if isWordStartOrAfterVowel {
                         if ch == "ё" { mapped = ["y", "o"] }
                         else if ch == "ю" { mapped = ["y", "u"] }
                         else if ch == "я" { mapped = ["y", "a"] }
+                        else if ch == "є" { mapped = ["y", "e"] }
                         else if ch == "е", !isUkrainianCyr { mapped = ["y", "e"] }
                     }
                     if !mapped.isEmpty {
@@ -1315,7 +1490,7 @@ final class SuggestionsDataBaseManager {
             // and local finger slowdown (`v_local < 0.55 * v_median`)
             var isPathAnchor = Array(repeating: true, count: basePath.count)
             var pathKeyWeights = Array(repeating: 1.0, count: basePath.count)
-            var pathTurnAngles = Array(repeating: 180.0, count: basePath.count)
+            var pathTurnAngles = Array(repeating: 0.0, count: basePath.count)
             if basePathKeyPoints.count == basePath.count && basePath.count >= 3 {
                 for idx in 1..<(basePath.count - 1) {
                     let pPrev = basePathKeyPoints[idx - 1]
@@ -1370,15 +1545,27 @@ final class SuggestionsDataBaseManager {
                     }
                 }
             }
-            let hasCyrillicSignInRaw = isCyrillic && rawLowerKeys.contains(where: { Self.cyrillicSignChars.contains($0) })
+            let hasCyrillicSignInRaw = isCyrillic && rawLowerKeys.contains(where: { Self.cyrillicSignChars.contains($0) && $0 != "ь" })
             let effectiveSwipePoints: [CGPoint] = {
                 if !hasCyrillicSignInRaw && trailPoints.count >= 2 {
                     return trailPoints
                 }
                 return basePathKeyPoints
             }()
+            let swipePolylineLength: Double = {
+                guard effectiveSwipePoints.count >= 2 else { return 0 }
+                var total: CGFloat = 0
+                for idx in 1..<effectiveSwipePoints.count {
+                    total += hypot(
+                        effectiveSwipePoints[idx].x - effectiveSwipePoints[idx - 1].x,
+                        effectiveSwipePoints[idx].y - effectiveSwipePoints[idx - 1].y
+                    )
+                }
+                return Double(total / max(1.0, keyWidth))
+            }()
             let resampledSwipePoints = Self.resamplePolyline(effectiveSwipePoints, count: 16)
             let startTouchPoint: CGPoint? = effectiveSwipePoints.first ?? (lowerKeys.first.flatMap { keyCenters[$0] })
+            let endTouchPoint: CGPoint? = effectiveSwipePoints.last ?? (lowerKeys.last.flatMap { keyCenters[$0] })
 
             var prefixes = Set<String>()
             if !isCyrillic, let firstRaw = lowerKeys.first {
@@ -1471,6 +1658,7 @@ final class SuggestionsDataBaseManager {
                         wordCharCenters.append(Self.targetWordCharCenter(
                             for: ch,
                             centers: keyCenters,
+                            rawKeySet: rawKeySet,
                             isCyrillic: isCyrillic,
                             isUkrainianCyrillic: isUkrainianCyr
                         ))
@@ -1535,6 +1723,12 @@ final class SuggestionsDataBaseManager {
                             matchedAnchors += 1
                         } else {
                             neighborHits += 1
+                            if let uEnd = endTouchPoint, let kEnd = wordCharCenters[i] {
+                                let dEnd = Double(hypot(uEnd.x - kEnd.x, uEnd.y - kEnd.y) / max(1.0, keyWidth))
+                                if dEnd <= 1.15 {
+                                    weightedExactHits += 0.35
+                                }
+                            }
                         }
                         continue
                     }
@@ -1666,6 +1860,7 @@ final class SuggestionsDataBaseManager {
                     if rawKeySet.contains("с") && lower.contains("s") { specificCharBonus += 0.8 }
                     if rawKeySet.contains("ч") && lower.contains("ç") { specificCharBonus += 1.6 }
                     if rawKeySet.contains("ґ") && lower.contains("g") { specificCharBonus += 1.4 }
+                    if rawKeySet.contains("я") && lower.contains("â") { specificCharBonus += 1.2 }
                     for expDia in explicitCyrDiacritics where lower.contains(expDia) {
                         specificCharBonus += 1.8
                     }
@@ -1676,26 +1871,50 @@ final class SuggestionsDataBaseManager {
                     if rawKeySet.contains("ñ") && lower.contains("ñ") { specificCharBonus += 1.6 }
                 }
 
-                // 16-point resampled SHARK2 geometric trajectory similarity
+                // 16-point resampled SHARK2 geometric trajectory similarity & polyline length consistency
                 var geometricBonus: Double = 0.0
-                if resampledSwipePoints.count == 16 && matchedWordCenters.count >= 2 {
-                    let resampledWord = Self.resamplePolyline(matchedWordCenters, count: 16)
-                    var distSum: CGFloat = 0
-                    for k in 0..<16 {
-                        distSum += hypot(
-                            resampledSwipePoints[k].x - resampledWord[k].x,
-                            resampledSwipePoints[k].y - resampledWord[k].y
+                var wordPolylineLength: Double = 0.0
+                if matchedWordCenters.count >= 2 {
+                    var wTotal: CGFloat = 0
+                    for k in 1..<matchedWordCenters.count {
+                        wTotal += hypot(
+                            matchedWordCenters[k].x - matchedWordCenters[k - 1].x,
+                            matchedWordCenters[k].y - matchedWordCenters[k - 1].y
                         )
                     }
-                    let meanKeyDist = Double((distSum / 16.0) / max(1.0, keyWidth))
-                    geometricBonus = max(-2.6, (1.20 - meanKeyDist) * 1.95)
+                    wordPolylineLength = Double(wTotal / max(1.0, keyWidth))
+                    if resampledSwipePoints.count == 16 {
+                        let resampledWord = Self.resamplePolyline(matchedWordCenters, count: 16)
+                        var distSum: CGFloat = 0
+                        for k in 0..<16 {
+                            distSum += hypot(
+                                resampledSwipePoints[k].x - resampledWord[k].x,
+                                resampledSwipePoints[k].y - resampledWord[k].y
+                            )
+                        }
+                        let meanKeyDist = Double((distSum / 16.0) / max(1.0, keyWidth))
+                        geometricBonus = max(-2.6, (1.20 - meanKeyDist) * 1.95)
+                    }
                 }
 
                 var missedTurnaroundPenalty: Double = 0.0
                 if !sharpTurnaroundBases.isEmpty {
                     let wordBaseSet = Set(wordBase)
-                    for tb in sharpTurnaroundBases where !wordBaseSet.contains(tb) {
-                        missedTurnaroundPenalty += 1.85
+                    let interiorBases = wordBase.count >= 3 ? Array(wordBase.dropFirst().dropLast()) : []
+                    for tb in sharpTurnaroundBases {
+                        if !wordBaseSet.contains(tb) {
+                            let hasCloseInteriorNeighbor = interiorBases.contains { ic in
+                                ic == tb || (Self.baseVowels.contains(ic) && (neighborMap[ic]?.contains(tb) ?? false))
+                            }
+                            missedTurnaroundPenalty += hasCloseInteriorNeighbor ? 0.35 : 1.85
+                        } else if !interiorBases.contains(tb) {
+                            let hasCloseInteriorNeighbor = interiorBases.contains { ic in
+                                neighborMap[ic]?.contains(tb) ?? false
+                            }
+                            if !hasCloseInteriorNeighbor {
+                                missedTurnaroundPenalty += 1.45
+                            }
+                        }
                     }
                 }
 
@@ -1708,7 +1927,13 @@ final class SuggestionsDataBaseManager {
                 let allExactBonus: Double = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
                 let anchorExactMatchBonus: Double = (matchedAnchors >= anchorCount && regularMisses == 0 && neighborHits == 0 && (wordBase.count == anchorCount || exactHits == anchorCount)) ? 2.1 : 0.0
                 let unanchoredComplexityPenalty: Double = Double(max(0, transitOnlyHits)) * 0.55
-                let shortWordDetourPenalty: Double = (anchorCount >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
+                let excessRatioPenalty: Double = {
+                    guard swipePolylineLength > 4.5, wordBase.count <= 3, wordPolylineLength > 0.1 else { return 0.0 }
+                    let excess = swipePolylineLength - (wordPolylineLength * 1.45 + 1.8)
+                    guard excess > 0 else { return 0.0 }
+                    return min(3.8, excess * 0.42)
+                }()
+                let shortWordDetourPenalty: Double = ((anchorCount >= 4 && wordBase.count <= 2) ? 2.5 : 0.0) + excessRatioPenalty
                 let geminateShortWordPenalty: Double = (wordBase.count <= 3 && lower.count > wordBase.count) ? 0.35 : 0.0
                 let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55
                     + Double(max(0, basePath.count - wordBase.count)) * 0.02
@@ -1738,10 +1963,10 @@ final class SuggestionsDataBaseManager {
                 return lhs.word < rhs.word
             }
 
-            return scoredCandidates.prefix(3).enumerated().map { idx, item in
+            return scoredCandidates.prefix(max(1, limit)).map { item in
                 Autocomplete.Suggestion(
                     text: formatWord(item.word, capitalize: shouldCapitalize, contextWords: contextWords),
-                    isAutocorrect: idx == 0
+                    isAutocorrect: false
                 )
             }
         }
@@ -1780,7 +2005,6 @@ final class SuggestionsDataBaseManager {
         neighborLimit: Int
     ) -> [(String, Int)] {
         guard let db else { return [] }
-        var stmt: OpaquePointer?
         let query = """
         SELECT word, freq FROM words
         WHERE substr(word, 1, 1) = ?1
@@ -1791,9 +2015,15 @@ final class SuggestionsDataBaseManager {
         ORDER BY freq DESC
         LIMIT ?5;
         """
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
-            return []
+        if stmtSwipeCandidates == nil {
+            guard sqlite3_prepare_v2(db, query, -1, &stmtSwipeCandidates, nil) == SQLITE_OK else {
+                return []
+            }
+        }
+        guard let stmt = stmtSwipeCandidates else { return [] }
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
         }
 
         func fetchForEndSurfaces(_ endSurfaces: [String], totalLimit: Int) -> [(String, Int)] {
@@ -1831,10 +2061,58 @@ final class SuggestionsDataBaseManager {
     // MARK: - Autocorrect & Crimean Tatar Grammar / Harmony Rules
 
     private static let lettersForTypos = Array("abcçdefgğhıijklmnñoöpqrsştuüvwxyzâîû")
+    private static let coreInsertionLettersForTypos: [Character] = Array("aeıioöuüâyrlmnñstkq")
+    private static let surfaceTypoReplacements: [Character: [Character]] = [
+        "a": ["e", "ı", "o", "â", "q", "w", "s", "z"],
+        "â": ["a", "e", "ı"],
+        "b": ["v", "p", "g", "h", "n"],
+        "c": ["ç", "j", "x", "d", "f", "v"],
+        "ç": ["c", "ş", "j", "ö", "l"],
+        "d": ["t", "s", "e", "r", "f", "x", "c"],
+        "e": ["a", "i", "ı", "w", "s", "d", "r"],
+        "f": ["v", "p", "d", "r", "t", "g", "c", "b"],
+        "g": ["ğ", "k", "q", "f", "t", "y", "h", "v", "b"],
+        "ğ": ["g", "q", "k", "p", "ü", "ş", "l"],
+        "h": ["g", "ğ", "q", "k", "y", "u", "j", "b", "n", "x"],
+        "ı": ["i", "a", "e", "u", "ü", "s", "ş", "o", "p", "l"],
+        "i": ["ı", "î", "e", "ü", "u", "j", "k", "o"],
+        "î": ["i", "ı", "e"],
+        "j": ["c", "ç", "z", "ş", "u", "i", "k", "h", "n", "m"],
+        "k": ["q", "g", "ğ", "i", "o", "l", "j", "m"],
+        "l": ["r", "n", "k", "o", "p", "ş", "ö", "ç"],
+        "m": ["n", "ñ", "j", "k", "ö"],
+        "n": ["ñ", "m", "l", "r", "h", "j", "b"],
+        "ñ": ["n", "m", "g", "ğ", "k", "q"],
+        "o": ["ö", "u", "ü", "a", "i", "k", "l", "p"],
+        "ö": ["o", "ü", "u", "e", "l", "m", "ç"],
+        "p": ["b", "f", "v", "o", "l", "ğ", "ş"],
+        "q": ["k", "ğ", "g", "h", "w", "a"],
+        "r": ["l", "n", "e", "d", "f", "t"],
+        "s": ["ş", "z", "c", "ç", "a", "w", "e", "d", "x"],
+        "ş": ["s", "ç", "j", "z", "p", "ğ", "ü", "l", "ı"],
+        "t": ["d", "r", "f", "g", "y"],
+        "u": ["ü", "û", "o", "ö", "ı", "i", "y", "h", "j"],
+        "ü": ["u", "û", "ö", "o", "i", "ı", "ğ", "ş"],
+        "û": ["u", "ü", "o"],
+        "v": ["b", "f", "w", "y", "c", "g"],
+        "w": ["v", "q", "a", "s", "e"],
+        "x": ["z", "s", "d", "c", "h"],
+        "y": ["i", "ı", "v", "t", "g", "h", "u"],
+        "z": ["s", "ş", "c", "j", "a", "x"]
+    ]
     private static let diacriticForms: [Character: [Character]] = [
-        "a": ["â"], "c": ["ç"], "g": ["ğ"], "i": ["ı"], "k": ["q"], "n": ["ñ"],
+        "a": ["â"], "c": ["ç"], "g": ["ğ"], "i": ["ı", "î"], "k": ["q"], "n": ["ñ"],
         "o": ["ö"], "s": ["ş"], "u": ["ü", "û"]
     ]
+    private static let skeletonMap: [Character: Character] = [
+        "q": "k", "ğ": "g", "ş": "s", "ç": "c", "ñ": "n",
+        "ı": "i", "î": "i", "ö": "o", "ü": "u", "û": "u", "â": "a"
+    ]
+
+    static func skeleton(of word: String) -> String {
+        String(word.map { skeletonMap[$0] ?? $0 })
+    }
+
     private static let backVowels: Set<Character> = ["a", "ı", "o", "u", "â", "û"]
     private static let frontVowels: Set<Character> = ["e", "i", "ö", "ü", "î"]
     private static let voicelessConsonants: Set<Character> = ["p", "f", "k", "ç", "t", "ş", "s", "h", "q"]
@@ -1880,11 +2158,20 @@ final class SuggestionsDataBaseManager {
     /// Instant lookup in `typo_corrections` table populated from NKKM `lat_diff.csv` and `grammar.xml` syncope rules.
     private func typoCorrectionFromDB(for queryLower: String) -> String? {
         guard let db, queryLower.count >= 3 else { return nil }
-        var stmt: OpaquePointer?
-        defer { sqlite3_finalize(stmt) }
         let sql = "SELECT correction FROM typo_corrections WHERE typo = ?1 LIMIT 1;"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK,
-              bindText(stmt, index: 1, value: queryLower),
+        if stmtTypoCorrectionFromDB == nil {
+            guard sqlite3_prepare_v2(db, sql, -1, &stmtTypoCorrectionFromDB, nil) == SQLITE_OK else {
+                return nil
+            }
+        }
+        guard let stmt = stmtTypoCorrectionFromDB else { return nil }
+        sqlite3_reset(stmt)
+        sqlite3_clear_bindings(stmt)
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
+        }
+        guard bindText(stmt, index: 1, value: queryLower),
               sqlite3_step(stmt) == SQLITE_ROW,
               let ptr = sqlite3_column_text(stmt, 0) else {
             return nil
@@ -1939,16 +2226,54 @@ final class SuggestionsDataBaseManager {
             return "qırım" + String(queryLower.dropFirst(4))
         }
 
+        // 0a. Pronominal dative assimilations (`menga` / `manga` -> `maña`, `sanga` -> `saña`)
+        switch queryLower {
+        case "menga", "manga", "menğa", "manğa":
+            return "maña"
+        case "sanga", "sanğa", "senga", "senğa":
+            return "saña"
+        default:
+            break
+        }
+
         // Dictionary protection: never overwrite a word already verified in the bundled dictionary (freq >= 2)
         if bundledFrequency(of: queryLower) >= 2 {
             return nil
         }
 
-        // 0b. Attached rounded question particle (-mu / -mü -> -mı / -mi, § 2 п. 1, § 67 п. 3.1)
+        // 0b. Digram `ng -> ñ` velar nasal assimilation (`yangı` / `yangi` -> `yañı`, `songra` -> `soñra`)
+        if queryLower.contains("ng") {
+            let ngReplaced = queryLower.replacingOccurrences(of: "ng", with: "ñ")
+            if frequency(of: ngReplaced) >= 5 {
+                return ngReplaced
+            }
+            if let d = diacriticCorrection(for: ngReplaced), frequency(of: d) >= 5 {
+                return d
+            }
+        }
+
+        // 0c. Word-final consonant devoicing `b -> p` (`kitab` -> `kitap`, `mekteb` -> `mektep`, `cevab` -> `cevap`)
+        if queryLower.hasSuffix("b") {
+            let devoiced = String(queryLower.dropLast()) + "p"
+            if frequency(of: devoiced) >= 5 {
+                return devoiced
+            }
+        }
+
+        // 0d. Attached rounded question particle (-mu / -mü -> -mı / -mi, § 2 п. 1, § 67 п. 3.1)
         if queryLower.count >= 5 && (queryLower.hasSuffix("mu") || queryLower.hasSuffix("mü")) {
             let stem = String(queryLower.dropLast(2))
             if let isBack = lastVowelIsBack(in: stem), frequency(of: stem) >= 5 {
                 return stem + (isBack ? "mı" : "mi")
+            }
+        }
+
+        // 0e. Dialectal instrumental suffix (-man / -men -> -nen, e.g. `sağlıqman` -> `sağlıqnen`)
+        if queryLower.count >= 6 && (queryLower.hasSuffix("man") || queryLower.hasSuffix("men")) {
+            let stem = String(queryLower.dropLast(3))
+            let candidate = stem + "nen"
+            if frequency(of: candidate) >= 5 || frequency(of: stem) >= 20 {
+                return candidate
             }
         }
 
@@ -2094,12 +2419,60 @@ final class SuggestionsDataBaseManager {
         return best
     }
 
+    private static func isValidDiacriticExpansion(_ candidate: String, from typedChars: [Character]) -> Bool {
+        let candChars = Array(candidate)
+        guard candChars.count == typedChars.count else { return false }
+        var changedAny = false
+        for idx in typedChars.indices {
+            let t = typedChars[idx]
+            let c = candChars[idx]
+            if t == c { continue }
+            if let allowed = diacriticForms[t], allowed.contains(c) {
+                changedAny = true
+            } else {
+                return false
+            }
+        }
+        return changedAny
+    }
+
     /// Most frequent dictionary word that differs from the typed text only by diacritics (i→ı, s→ş, …).
+    /// Uses a single indexed query on `words(skeleton, freq DESC)` instead of $2^k$ individual queries.
     /// With `knownFrequency`, the variant must also be at least 20x more frequent than the typed word.
     private func diacriticCorrection(for queryLower: String, over knownFrequency: Int32? = nil) -> String? {
+        guard let db else { return nil }
         let chars = Array(queryLower)
         let positions = chars.indices.filter { Self.diacriticForms[chars[$0]] != nil }
-        guard !positions.isEmpty, positions.count <= 8, chars.count <= 20 else { return nil }
+        guard !positions.isEmpty, chars.count <= 24 else { return nil }
+
+        let skel = Self.skeleton(of: queryLower)
+        let sql = "SELECT word, freq FROM words WHERE skeleton = ?1 ORDER BY freq DESC LIMIT 16;"
+        if stmtDiacriticSkeleton == nil {
+            _ = sqlite3_prepare_v2(db, sql, -1, &stmtDiacriticSkeleton, nil)
+        }
+        if let stmt = stmtDiacriticSkeleton {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
+            defer {
+                sqlite3_reset(stmt)
+                sqlite3_clear_bindings(stmt)
+            }
+            if bindText(stmt, index: 1, value: skel) {
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    guard let ptr = sqlite3_column_text(stmt, 0) else { continue }
+                    let candidate = String(cString: ptr)
+                    let freq = sqlite3_column_int(stmt, 1)
+                    if Self.isValidDiacriticExpansion(candidate, from: chars) {
+                        if let knownFrequency, freq < knownFrequency * 20 { return nil }
+                        return candidate
+                    }
+                }
+                return nil
+            }
+        }
+
+        // Fallback if database lacks `skeleton` column
+        guard positions.count <= 8 else { return nil }
         var variants: [[Character]] = [chars]
         for position in positions {
             var next: [[Character]] = []
@@ -2120,61 +2493,139 @@ final class SuggestionsDataBaseManager {
 
     private func bundledFrequency(of word: String) -> Int32 {
         guard let db else { return 0 }
-        var stmt: OpaquePointer?
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, "SELECT MAX(freq) FROM words WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
-              bindText(stmt, index: 1, value: word),
+        if stmtBundledFrequency == nil {
+            guard sqlite3_prepare_v2(db, "SELECT MAX(freq) FROM words WHERE word = ?1;", -1, &stmtBundledFrequency, nil) == SQLITE_OK else {
+                return 0
+            }
+        }
+        guard let stmt = stmtBundledFrequency else { return 0 }
+        sqlite3_reset(stmt)
+        sqlite3_clear_bindings(stmt)
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
+        }
+        guard bindText(stmt, index: 1, value: word),
               sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
         return sqlite3_column_int(stmt, 0)
     }
 
     private func frequency(of word: String) -> Int32 {
-        let userBoost = userFrequency(of: word) * 500
-        return bundledFrequency(of: word) + userBoost
+        let lower = word.lowercased(with: Self.casingLocale)
+        let userBoost = userFrequency(of: lower) * 500
+        let lexiconBoost: Int32 = supplementaryProperNouns[lower] != nil ? 1000 : 0
+        return bundledFrequency(of: lower) + userBoost + lexiconBoost
     }
 
-    /// Most frequent dictionary word one edit away (delete / transpose / replace / insert).
+    /// Most frequent dictionary word one edit away (delete / transpose / physical-neighbor or phonetic replace / insert),
+    /// plus 1-edit skeleton resolution for 4+ letter words with combined typo + missing diacritics (`salam -> selâm`, `tesekur -> teşekkür`).
     private func typoCorrection(for queryLower: String) -> String? {
         let chars = Array(queryLower)
         guard chars.count >= 3, chars.count <= 14, chars.allSatisfy({ $0.isLetter }) else { return nil }
         var candidates = Set<String>()
+        var primaryEdits = Set<String>()
+        candidates.reserveCapacity(chars.count * 26)
         for index in chars.indices {
             var deleted = chars
             deleted.remove(at: index)
-            candidates.insert(String(deleted))
+            let delStr = String(deleted)
+            candidates.insert(delStr)
+            primaryEdits.insert(delStr)
             if index + 1 < chars.count {
                 var swapped = chars
                 swapped.swapAt(index, index + 1)
-                candidates.insert(String(swapped))
+                let swapStr = String(swapped)
+                candidates.insert(swapStr)
+                primaryEdits.insert(swapStr)
             }
-            for letter in Self.lettersForTypos where letter != chars[index] {
+            let replacements = Self.surfaceTypoReplacements[chars[index]] ?? Self.lettersForTypos
+            for letter in replacements where letter != chars[index] {
                 var replaced = chars
                 replaced[index] = letter
-                candidates.insert(String(replaced))
+                let repStr = String(replaced)
+                candidates.insert(repStr)
+                primaryEdits.insert(repStr)
             }
         }
         for index in 0...chars.count {
-            for letter in Self.lettersForTypos {
+            var allowedInsertions = Set(Self.coreInsertionLettersForTypos)
+            if index > 0 {
+                let leftChar = chars[index - 1]
+                allowedInsertions.insert(leftChar)
+                if let leftNeighbors = Self.surfaceTypoReplacements[leftChar] {
+                    allowedInsertions.formUnion(leftNeighbors)
+                }
+            }
+            if index < chars.count {
+                let rightChar = chars[index]
+                allowedInsertions.insert(rightChar)
+                if let rightNeighbors = Self.surfaceTypoReplacements[rightChar] {
+                    allowedInsertions.formUnion(rightNeighbors)
+                }
+            }
+            for letter in allowedInsertions {
                 var inserted = chars
                 inserted.insert(letter, at: index)
-                candidates.insert(String(inserted))
+                let insStr = String(inserted)
+                candidates.insert(insStr)
+                if Self.coreInsertionLettersForTypos.contains(letter) {
+                    primaryEdits.insert(insStr)
+                }
             }
         }
         candidates.remove(queryLower)
-        guard let best = bestKnownWord(among: Array(candidates)), best.freq >= 10 else { return nil }
-        return best.word
+        primaryEdits.remove(queryLower)
+        var best = bestKnownWord(among: Array(candidates))
+
+        if chars.count >= 4, (best == nil || best!.freq < 100), let db {
+            let sql = "SELECT word, freq FROM words WHERE skeleton = ?1 ORDER BY freq DESC LIMIT 16;"
+            if stmtDiacriticSkeleton == nil {
+                _ = sqlite3_prepare_v2(db, sql, -1, &stmtDiacriticSkeleton, nil)
+            }
+            if let skelStmt = stmtDiacriticSkeleton {
+                defer {
+                    sqlite3_reset(skelStmt)
+                    sqlite3_clear_bindings(skelStmt)
+                }
+                let querySkel = Self.skeleton(of: queryLower)
+                var checkedSkeletons: Set<String> = [querySkel]
+                for edit in primaryEdits {
+                    let skel = Self.skeleton(of: edit)
+                    guard checkedSkeletons.insert(skel).inserted else { continue }
+                    sqlite3_reset(skelStmt)
+                    sqlite3_clear_bindings(skelStmt)
+                    guard bindText(skelStmt, index: 1, value: skel),
+                          sqlite3_step(skelStmt) == SQLITE_ROW,
+                          let ptr = sqlite3_column_text(skelStmt, 0) else { continue }
+                    let skelWord = String(cString: ptr)
+                    let skelFreq = sqlite3_column_int(skelStmt, 1)
+                    if skelFreq >= 40 && (best == nil || skelFreq > best!.freq * 10) {
+                        best = (skelWord, skelFreq)
+                    }
+                }
+            }
+        }
+
+        guard let resolved = best, resolved.freq >= 10 else { return nil }
+        return resolved.word
     }
 
     private func bestKnownWord(among candidates: [String]) -> (word: String, freq: Int32)? {
         guard let db, !candidates.isEmpty else { return nil }
-        var stmt: OpaquePointer?
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, "SELECT freq FROM words WHERE word = ?1 LIMIT 1;", -1, &stmt, nil) == SQLITE_OK else {
-            return nil
+        if stmtBestKnownWord == nil {
+            guard sqlite3_prepare_v2(db, "SELECT freq FROM words WHERE word = ?1 LIMIT 1;", -1, &stmtBestKnownWord, nil) == SQLITE_OK else {
+                return nil
+            }
+        }
+        guard let stmt = stmtBestKnownWord else { return nil }
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
         }
         var best: (word: String, freq: Int32)?
         for candidate in candidates {
             sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
             guard bindText(stmt, index: 1, value: candidate) else { continue }
             if sqlite3_step(stmt) == SQLITE_ROW {
                 let freq = sqlite3_column_int(stmt, 0)
@@ -2325,6 +2776,17 @@ final class SuggestionsDataBaseManager {
             if let lastOne = normalizedContext.last,
                let match = Self.properCollocationSecondWord[lastOne]?[wordLower] {
                 return match
+            }
+        }
+        if let cased = supplementaryProperNouns[wordLower] {
+            return cased
+        }
+        if !supplementaryProperNouns.isEmpty && wordLower.count >= 4 {
+            for (stem, casedStem) in supplementaryProperNouns where wordLower.hasPrefix(stem) {
+                let suffix = String(wordLower.dropFirst(stem.count))
+                if Self.properNounInflectionSuffixes.contains(suffix) {
+                    return casedStem + suffix
+                }
             }
         }
         return Self.standaloneProperNounCasing(for: wordLower)
@@ -2719,29 +3181,28 @@ final class SuggestionsDataBaseManager {
         guard let db else { return [] }
 
         var results: [(String, Int)] = []
-        var stmt: OpaquePointer?
         let query = """
             SELECT word2, freq FROM bigrams
-            WHERE word1 = ? AND freq >= ?
+            WHERE word1 = ?1 AND freq >= ?2
             ORDER BY freq DESC
-            LIMIT ?;
+            LIMIT ?3;
             """
-
-        defer { sqlite3_finalize(stmt) }
-
-        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
-            return []
+        if stmtNextWordsWithFrequency == nil {
+            guard sqlite3_prepare_v2(db, query, -1, &stmtNextWordsWithFrequency, nil) == SQLITE_OK else {
+                return []
+            }
+        }
+        guard let stmt = stmtNextWordsWithFrequency else { return [] }
+        sqlite3_reset(stmt)
+        sqlite3_clear_bindings(stmt)
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
         }
 
-        guard bindText(stmt, index: 1, value: previousWord) else {
-            return []
-        }
-
-        guard sqlite3_bind_int(stmt, 2, Int32(minFrequency)) == SQLITE_OK else {
-            return []
-        }
-
-        guard sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
+        guard bindText(stmt, index: 1, value: previousWord),
+              sqlite3_bind_int(stmt, 2, Int32(minFrequency)) == SQLITE_OK,
+              sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
             return []
         }
 
@@ -2821,9 +3282,6 @@ final class SuggestionsDataBaseManager {
         let lowercasePrefix = prefix.lowercased(with: Self.casingLocale)
         let userMatches = fetchUserWordsStartingWith(prefix: lowercasePrefix, limit: limit)
 
-        guard let db else {
-            return userMatches.map(\.word)
-        }
         var scored: [String: Int] = [:]
         var ordered: [String] = []
 
@@ -2832,16 +3290,37 @@ final class SuggestionsDataBaseManager {
             ordered.append(word)
         }
 
-        var stmt: OpaquePointer?
+        if !supplementaryProperNouns.isEmpty {
+            for (lowerName, casedName) in supplementaryProperNouns where lowerName.hasPrefix(lowercasePrefix) {
+                if scored[lowerName] == nil {
+                    ordered.append(casedName)
+                }
+                scored[lowerName, default: 0] += 1500
+            }
+        }
+
+        guard let db else {
+            return Array(ordered.prefix(limit))
+        }
+
         let query = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY (word = ?1) DESC, freq DESC LIMIT ?3;"
+        if stmtWordsStartingWith == nil {
+            guard sqlite3_prepare_v2(db, query, -1, &stmtWordsStartingWith, nil) == SQLITE_OK else {
+                return Array(ordered.prefix(limit))
+            }
+        }
+        guard let stmt = stmtWordsStartingWith else { return Array(ordered.prefix(limit)) }
+        sqlite3_reset(stmt)
+        sqlite3_clear_bindings(stmt)
+        defer {
+            sqlite3_reset(stmt)
+            sqlite3_clear_bindings(stmt)
+        }
 
-        defer { sqlite3_finalize(stmt) }
-
-        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK,
-              bindText(stmt, index: 1, value: lowercasePrefix),
+        guard bindText(stmt, index: 1, value: lowercasePrefix),
               bindText(stmt, index: 2, value: lowercasePrefix + "\u{FFFF}"),
               sqlite3_bind_int(stmt, 3, Int32(limit)) == SQLITE_OK else {
-            return ordered
+            return Array(ordered.prefix(limit))
         }
 
         while sqlite3_step(stmt) == SQLITE_ROW {
@@ -2858,21 +3337,29 @@ final class SuggestionsDataBaseManager {
         }
 
         if lowercasePrefix.count >= 3 && !lowercasePrefix.contains("-") {
-            var hStmt: OpaquePointer?
             let hPrefix = lowercasePrefix + "-"
             let hQuery = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY freq DESC LIMIT 2;"
-            defer { sqlite3_finalize(hStmt) }
-            if sqlite3_prepare_v2(db, hQuery, -1, &hStmt, nil) == SQLITE_OK,
-               bindText(hStmt, index: 1, value: hPrefix),
-               bindText(hStmt, index: 2, value: hPrefix + "\u{FFFF}") {
-                while sqlite3_step(hStmt) == SQLITE_ROW {
-                    if let wordPtr = sqlite3_column_text(hStmt, 0) {
-                        let word = String(cString: wordPtr)
-                        let freq = Int(sqlite3_column_int(hStmt, 1))
-                        let key = word.lowercased(with: Self.casingLocale)
-                        if scored[key] == nil {
-                            ordered.append(word)
-                            scored[key] = freq * 2 + 120
+            if stmtHyphenWordsStartingWith == nil {
+                _ = sqlite3_prepare_v2(db, hQuery, -1, &stmtHyphenWordsStartingWith, nil)
+            }
+            if let hStmt = stmtHyphenWordsStartingWith {
+                sqlite3_reset(hStmt)
+                sqlite3_clear_bindings(hStmt)
+                defer {
+                    sqlite3_reset(hStmt)
+                    sqlite3_clear_bindings(hStmt)
+                }
+                if bindText(hStmt, index: 1, value: hPrefix),
+                   bindText(hStmt, index: 2, value: hPrefix + "\u{FFFF}") {
+                    while sqlite3_step(hStmt) == SQLITE_ROW {
+                        if let wordPtr = sqlite3_column_text(hStmt, 0) {
+                            let word = String(cString: wordPtr)
+                            let freq = Int(sqlite3_column_int(hStmt, 1))
+                            let key = word.lowercased(with: Self.casingLocale)
+                            if scored[key] == nil {
+                                ordered.append(word)
+                                scored[key] = freq * 2 + 120
+                            }
                         }
                     }
                 }

@@ -189,7 +189,7 @@ public final class SwipeTypingState: ObservableObject {
 
     public func beginPotentialSwipe(startChar: String, pointInKeyboard: CGPoint) {
         let norm = startChar.lowercased(with: Self.casingLocale)
-        guard isSwipeEnabled, norm.first?.isLetter == true else {
+        guard isSwipeEnabled, norm.first?.isLetter == true || norm == "\u{02BC}" else {
             reset(clearTrailImmediately: true)
             return
         }
@@ -336,7 +336,7 @@ public final class SwipeTypingState: ObservableObject {
 private extension Gestures.KeyboardButtonGestures {
 
     var characterKeyString: String? {
-        if case .character(let ch) = action, ch.first?.isLetter == true {
+        if case .character(let ch) = action, ch.first?.isLetter == true || ch == "\u{02BC}" {
             return ch
         }
         return nil
@@ -414,6 +414,13 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleDrag(in geo: GeometryProxy, value: DragGesture.Value) {
         lastDragValue = value
+        if action == .backspace {
+            let dx = value.location.x - value.startLocation.x
+            let dy = value.location.y - value.startLocation.y
+            if dx <= -28.0 && abs(dx) > abs(dy) * 1.5 {
+                shouldApplyReleaseAction = false
+            }
+        }
         if let ch = characterKeyString, SwipeTypingState.shared.isSwipeEnabled {
             let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
             SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
@@ -437,6 +444,13 @@ private extension Gestures.KeyboardButtonGestures {
     }
 
     func handleGestureEnded(in geo: GeometryProxy) {
+        if action == .backspace, let drag = lastDragValue {
+            let dx = drag.location.x - drag.startLocation.x
+            let dy = drag.location.y - drag.startLocation.y
+            if dx <= -28.0 && abs(dx) > abs(dy) * 1.5 {
+                NotificationCenter.default.post(name: Notification.Name("crh.key.backspaceSlideLeft"), object: nil)
+            }
+        }
         if SwipeTypingState.shared.isSwiping {
             _ = SwipeTypingState.shared.endSwipe()
         } else {
@@ -483,6 +497,10 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleRepeat(in geo: GeometryProxy) {
         guard !SwipeTypingState.shared.isSwiping else { return }
+        if action == .backspace, let drag = lastDragValue {
+            let dx = drag.location.x - drag.startLocation.x
+            if dx <= -14.0 { return }
+        }
         repeatAction?()
     }
 

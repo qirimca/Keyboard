@@ -29,9 +29,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         var actions = super.actions(for: inputs, context: context)
         if context.keyboardType.isAlphabetic && actions.count >= 3 {
             let isCyrillic = context.locale.identifier.contains("Cyrl")
+            let isUkrainianCyr = isCyrillic && KeyboardPreferences.ukrainianCyrillicLayoutEnabled
             for row in 0...2 {
-                // Keep .characterMargin in row 1 for Cyrillic (11 keys) so 'ф' is centered between 'й' and 'ц'
-                let keepMargins = isCyrillic && row == 1
+                // Keep .characterMargin in row 1 for 11-key Cyrillic (ФЫВА) so 'ф' is centered between 'й' and 'ц'
+                let keepMargins = isCyrillic && !isUkrainianCyr && row == 1
                 actions[row].removeAll { action in
                     switch action {
                     case .characterMargin: return !keepMargins
@@ -94,10 +95,8 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             result.append(action)
         }
         // Always include .nextKeyboard in floating mode so users can switch keyboards in all host apps (e.g. Gmail, Home-button iPads).
+        // On Face ID iPhones where the system Globe button sits on the bottom chin bar, include the Emoji (.emojis) button to match native iOS.
         let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
-        if shouldIncludeGlobe {
-            result.append(.nextKeyboard)
-        }
 
         #if os(iOS) || os(tvOS) || os(visionOS)
         let proxy = context.textDocumentProxy
@@ -116,6 +115,12 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         let isWebSearch: Bool = {
             return effectiveType == .webSearch
         }()
+
+        if shouldIncludeGlobe {
+            result.append(.nextKeyboard)
+        } else if !isURL {
+            result.append(.keyboardType(.emojis))
+        }
         
         if isURL {
             // Native iOS URL mode has NO spacebar — only `.`, `/`, and `.com` between switcher and Go!
@@ -133,6 +138,11 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             result.append(.space)
         }
         #else
+        if shouldIncludeGlobe {
+            result.append(.nextKeyboard)
+        } else {
+            result.append(.keyboardType(.emojis))
+        }
         result.append(.space)
         #endif
         
@@ -154,7 +164,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             return .percentage(0.21)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
-        return .percentage(isPortrait ? 0.125 : 0.11)
+        return .percentage(isPortrait ? 0.118 : 0.11)
     }
     
     override func itemSizeWidth(
@@ -169,7 +179,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 return .percentage(0.13)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
-            return .percentage(isPortrait ? 0.105 : 0.09)
+            return .percentage(isPortrait ? 0.118 : 0.095)
         case .keyboardType(let type):
             // Row 2 contains the #+= (symbolic) or 123 (numeric) switcher button
             if row != 3 {
@@ -180,15 +190,15 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {
-                return .percentage(isPortrait ? 0.105 : 0.09)
+                return .percentage(isPortrait ? 0.118 : 0.095)
             }
-            return .percentage(isPortrait ? 0.125 : 0.11)
+            return .percentage(isPortrait ? 0.118 : 0.11)
         case .primary:
             if context.isKeyboardFloating {
                 return .percentage(0.21)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
-            return .percentage(isPortrait ? 0.235 : 0.195)
+            return .percentage(isPortrait ? 0.242 : 0.195)
         case .space:
             return .available
         case .custom(let name) where name == "url_domain":
@@ -228,11 +238,12 @@ extension InputSet {
         ])
     }
 
-    /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `и -> ı`, `е -> e`, `є -> ye`, `г/гʼ -> ğ`, `ґ -> g`, `кʼ -> q`, `нʼ -> ñ`.
+    /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `ї -> yi`, `и -> ı`, `е -> e`, `є -> ye`, `г/гʼ -> ğ`, `ґ -> g`, `кʼ -> q`, `нʼ -> ñ`.
+    /// Row 0 has 12 keys (`йцукенгшщзхї`) and Row 1 has 12 keys (`фівапролджєʼ`).
     static var crimeanTatarUkrainianCyrillic: InputSet {
         .init(rows: [
-            .init(lowercased: "йцукенгшщзхʼ", uppercased: "ЙЦУКЕНГШЩЗХʼ"),
-            .init(lowercased: "фівапролджє", uppercased: "ФІВАПРОЛДЖЄ"),
+            .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
+            .init(lowercased: "фівапролджє\u{02BC}", uppercased: "ФІВАПРОЛДЖЄ\u{02BC}"),
             .init(lowercased: "ячсмитьбюґ,", uppercased: "ЯЧСМИТЬБЮҐ,")
         ])
     }
@@ -346,9 +357,10 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
             phone.symbolicInputSet = isCyrillic ? .crimeanTatarPhoneSymbolic : .crimeanTatarPhoneLatinSymbolic
         }
         if let pad = base.iPadProvider as? BaseKeyboardLayoutProvider {
+            let is11KeyRow1Cyr = isCyrillic && !KeyboardPreferences.ukrainianCyrillicLayoutEnabled
             pad.alphabeticInputSet = inputSet
-            pad.numericInputSet = isCyrillic ? .crimeanTatarPadCyrillicNumeric : .crimeanTatarPadNumeric
-            pad.symbolicInputSet = isCyrillic ? .crimeanTatarPadCyrillicSymbolic : .crimeanTatarPadSymbolic
+            pad.numericInputSet = is11KeyRow1Cyr ? .crimeanTatarPadCyrillicNumeric : .crimeanTatarPadNumeric
+            pad.symbolicInputSet = is11KeyRow1Cyr ? .crimeanTatarPadCyrillicSymbolic : .crimeanTatarPadSymbolic
         }
         let provider = context.isKeyboardFloating || context.deviceType == .phone ? base.iPhoneProvider : base.iPadProvider
         let layout = provider.keyboardLayout(for: context)

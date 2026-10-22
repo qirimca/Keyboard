@@ -56,6 +56,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             if let controller = self.controller {
                 guard controller.isViewLoaded, controller.view.window != nil else { return nil }
             }
+            guard DemoStyleProvider.shouldShowTopToolbar(for: self.keyboardContext) else { return nil }
             return captureQuerySnapshot(fallbackText: text)
         }
         guard let snapshot else { return [] }
@@ -71,6 +72,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 
     /// Synchronous suggestions for the current document state; used on the async path and directly on Space.
     func suggestionsNow(for text: String) -> [Autocomplete.Suggestion] {
+        guard DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext) else { return [] }
         let snapshot = captureQuerySnapshot(fallbackText: text)
         return computeSuggestions(for: snapshot)
     }

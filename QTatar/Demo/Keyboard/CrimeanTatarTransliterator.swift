@@ -30,11 +30,26 @@ struct CrimeanTatarTransliterator {
         case fallback
     }
 
+    private struct IndexedException {
+        let index: Int
+        let search: String
+        let replacement: String
+    }
+
     private struct Engine {
         let runRegex: NSRegularExpression
         let exceptions: [(search: String, replacement: String)]
+        let exceptionsByDigraph: [UInt64: [IndexedException]]
+        let exceptionsBySingleScalar: [UnicodeScalar: [IndexedException]]
+        let wholeWordMap: [String: String]
+        let wholeWordRuleMap: [String: String]
         let steps: [Step]
         let fallback: [Unicode.Scalar: String]
+    }
+
+    @inline(__always)
+    private static func digraphKey(_ s1: UnicodeScalar, _ s2: UnicodeScalar) -> UInt64 {
+        (UInt64(s1.value) << 32) | UInt64(s2.value)
     }
 
     private static let engine: Engine = {
@@ -43,7 +58,16 @@ struct CrimeanTatarTransliterator {
         #else
         let bundle = Bundle.main
         #endif
-        let empty = Engine(runRegex: try! NSRegularExpression(pattern: "(?!)"), exceptions: [], steps: [], fallback: [:])
+        let empty = Engine(
+            runRegex: try! NSRegularExpression(pattern: "(?!)"),
+            exceptions: [],
+            exceptionsByDigraph: [:],
+            exceptionsBySingleScalar: [:],
+            wholeWordMap: [:],
+            wholeWordRuleMap: [:],
+            steps: [],
+            fallback: [:]
+        )
         guard let url = bundle.url(forResource: "TransliterationRules", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let dataset = try? JSONDecoder().decode(Dataset.self, from: data),
@@ -51,10 +75,30 @@ struct CrimeanTatarTransliterator {
             assertionFailure("Missing bundled transliteration rules")
             return empty
         }
+        let cyrlScalars = Set(dataset.lettersCyrl.unicodeScalars)
+        let parsedExceptions: [(search: String, replacement: String)] = dataset.exceptions.compactMap {
+            guard $0.count == 2, !$0[0].isEmpty else { return nil }
+            return ($0[0], $0[1])
+        }
+        var byDigraph: [UInt64: [IndexedException]] = [:]
+        var bySingle: [UnicodeScalar: [IndexedException]] = [:]
+        for (idx, exc) in parsedExceptions.enumerated() {
+            let scalars = Array(exc.search.unicodeScalars)
+            let item = IndexedException(index: idx, search: exc.search, replacement: exc.replacement)
+            if scalars.count >= 2 {
+                byDigraph[digraphKey(scalars[0], scalars[1]), default: []].append(item)
+            } else if let first = scalars.first {
+                bySingle[first, default: []].append(item)
+            }
+        }
+
+        var wholeWordRuleMap: [String: String] = [:]
         var steps: [Step] = []
+        var canHoistWholeWordRules = true
         for rule in dataset.rules {
             guard let pattern = rule.first ?? nil else { continue }
             if pattern == "all_other_letters" {
+                canHoistWholeWordRules = false
                 steps.append(.fallback)
                 continue
             }
@@ -62,16 +106,56 @@ struct CrimeanTatarTransliterator {
                 assertionFailure("Invalid transliteration rule: \(pattern)")
                 continue
             }
-            let replacement = rule.count > 1 ? (rule[1] ?? "") : ""
-            steps.append(.regex(regex, normalize(replacement, groups: regex.numberOfCaptureGroups)))
+            let rawReplacement = rule.count > 1 ? (rule[1] ?? "") : ""
+            let normalizedReplacement = normalize(rawReplacement, groups: regex.numberOfCaptureGroups)
+
+            if canHoistWholeWordRules, pattern.hasPrefix("^"), pattern.hasSuffix("$") {
+                let inner = String(pattern.dropFirst().dropLast())
+                if !inner.isEmpty,
+                   inner.unicodeScalars.allSatisfy({ cyrlScalars.contains($0) }),
+                   !normalizedReplacement.contains("$"),
+                   !normalizedReplacement.contains("\\"),
+                   !normalizedReplacement.unicodeScalars.contains(where: { cyrlScalars.contains($0) }) {
+                    if wholeWordRuleMap[inner] == nil {
+                        wholeWordRuleMap[inner] = normalizedReplacement
+                    }
+                    continue
+                }
+                // Literal hyphenated words (e.g. ^ком-кок$) cannot match a pure-Cyrillic run
+                if inner.unicodeScalars.allSatisfy({ cyrlScalars.contains($0) || $0 == "-" }),
+                   inner.contains("-") {
+                    continue
+                }
+            }
+            canHoistWholeWordRules = false
+            steps.append(.regex(regex, normalizedReplacement))
         }
         var fallback: [Unicode.Scalar: String] = [:]
         for pair in dataset.fallback where pair.count == 2 {
             if let scalar = pair[0].unicodeScalars.first { fallback[scalar] = pair[1] }
         }
+
+        var wholeWordMap: [String: String] = [:]
+        for exc in parsedExceptions {
+            if exc.search.unicodeScalars.allSatisfy({ cyrlScalars.contains($0) }),
+               !exc.replacement.unicodeScalars.contains(where: { cyrlScalars.contains($0) }) {
+                var resolved = exc.search
+                for prior in parsedExceptions {
+                    resolved = resolved.replacingOccurrences(of: prior.search, with: prior.replacement, options: .literal)
+                }
+                if !resolved.unicodeScalars.contains(where: { cyrlScalars.contains($0) }) {
+                    wholeWordMap[exc.search] = resolved
+                }
+            }
+        }
+
         return Engine(
             runRegex: runRegex,
-            exceptions: dataset.exceptions.compactMap { $0.count == 2 ? ($0[0], $0[1]) : nil },
+            exceptions: parsedExceptions,
+            exceptionsByDigraph: byDigraph,
+            exceptionsBySingleScalar: bySingle,
+            wholeWordMap: wholeWordMap,
+            wholeWordRuleMap: wholeWordRuleMap,
             steps: steps,
             fallback: fallback
         )
@@ -328,9 +412,39 @@ struct CrimeanTatarTransliterator {
     }
 
     static func transliterate(_ source: String, ukrainianLayout: Bool = false) -> String {
+        guard !source.isEmpty else { return "" }
         var text = normalizeUkrainianCyrillic(source, ukrainianLayout: ukrainianLayout)
-        for exception in engine.exceptions where !exception.search.isEmpty {
-            text = text.replacingOccurrences(of: exception.search, with: exception.replacement, options: .literal)
+        if let exact = engine.wholeWordMap[text] {
+            return exact
+        }
+
+        let scalars = Array(text.unicodeScalars)
+        if !scalars.isEmpty {
+            var matchedExceptions: [IndexedException] = []
+            var seenIndices = Set<Int>()
+            for s in scalars {
+                if let list = engine.exceptionsBySingleScalar[s] {
+                    for item in list where seenIndices.insert(item.index).inserted {
+                        matchedExceptions.append(item)
+                    }
+                }
+            }
+            if scalars.count >= 2 {
+                for idx in 0..<(scalars.count - 1) {
+                    let key = digraphKey(scalars[idx], scalars[idx + 1])
+                    if let list = engine.exceptionsByDigraph[key] {
+                        for item in list where seenIndices.insert(item.index).inserted {
+                            matchedExceptions.append(item)
+                        }
+                    }
+                }
+            }
+            if !matchedExceptions.isEmpty {
+                matchedExceptions.sort { $0.index < $1.index }
+                for exception in matchedExceptions {
+                    text = text.replacingOccurrences(of: exception.search, with: exception.replacement, options: .literal)
+                }
+            }
         }
 
         let ns = text as NSString
@@ -345,25 +459,42 @@ struct CrimeanTatarTransliterator {
         gaps.append(ns.substring(from: last))
 
         if !runs.isEmpty {
-            var joined = runs.joined(separator: "\n")
-            for step in engine.steps {
-                switch step {
-                case .regex(let regex, let template):
-                    joined = regex.stringByReplacingMatches(
-                        in: joined,
-                        range: NSRange(location: 0, length: (joined as NSString).length),
-                        withTemplate: template
-                    )
-                case .fallback:
-                    var mapped = String.UnicodeScalarView()
-                    for scalar in joined.unicodeScalars {
-                        if let value = engine.fallback[scalar] { mapped.append(contentsOf: value.unicodeScalars) } else { mapped.append(scalar) }
-                    }
-                    joined = String(mapped)
+            var unmappedIndices: [Int] = []
+            var unmappedRuns: [String] = []
+            for (idx, run) in runs.enumerated() {
+                if let mapped = engine.wholeWordRuleMap[run] {
+                    runs[idx] = mapped
+                } else {
+                    unmappedIndices.append(idx)
+                    unmappedRuns.append(run)
                 }
             }
-            let converted = joined.components(separatedBy: "\n")
-            if converted.count == runs.count { runs = converted }
+
+            if !unmappedRuns.isEmpty {
+                var joined = unmappedRuns.joined(separator: "\n")
+                for step in engine.steps {
+                    switch step {
+                    case .regex(let regex, let template):
+                        joined = regex.stringByReplacingMatches(
+                            in: joined,
+                            range: NSRange(location: 0, length: (joined as NSString).length),
+                            withTemplate: template
+                        )
+                    case .fallback:
+                        var mapped = String.UnicodeScalarView()
+                        for scalar in joined.unicodeScalars {
+                            if let value = engine.fallback[scalar] { mapped.append(contentsOf: value.unicodeScalars) } else { mapped.append(scalar) }
+                        }
+                        joined = String(mapped)
+                    }
+                }
+                let converted = joined.components(separatedBy: "\n")
+                if converted.count == unmappedIndices.count {
+                    for (offset, runIdx) in unmappedIndices.enumerated() {
+                        runs[runIdx] = converted[offset]
+                    }
+                }
+            }
         }
 
         var output = ""

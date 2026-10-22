@@ -205,6 +205,15 @@ SEED_SYNCOPE_CORRECTIONS: dict[str, str] = {
     "ozbekistan": "özbekistan",
     "cüyrüq": "cüyrük",
     "cuyrüq": "cüyrük",
+    "salam": "selâm",
+    "yangı": "yañı",
+    "yangi": "yañı",
+    "menga": "maña",
+    "manga": "maña",
+    "sanga": "saña",
+    "kitab": "kitap",
+    "mekteb": "mektep",
+    "cevab": "cevap",
 }
 
 
@@ -215,6 +224,28 @@ def crh_lower(text: str) -> str:
         .lower()
         .strip()
     )
+
+
+_SKELETON_TRANSLATION = str.maketrans(
+    {
+        "q": "k",
+        "ğ": "g",
+        "ş": "s",
+        "ç": "c",
+        "ñ": "n",
+        "ı": "i",
+        "î": "i",
+        "ö": "o",
+        "ü": "u",
+        "û": "u",
+        "â": "a",
+    }
+)
+
+
+def crh_skeleton(text: str) -> str:
+    return crh_lower(text).translate(_SKELETON_TRANSLATION)
+
 
 
 def is_clean_token(token: str) -> bool:
@@ -566,6 +597,9 @@ CLEAN_RESTORED_WORDS: dict[str, int] = {
     "yahşılaştırıñız": 35,
     "tüzetiñiz": 40,
     "dembel": 25,
+    "selâm": 18000,
+    "meraba": 8000,
+    "sabah": 650,
 }
 
 OCR_RESCUE_MAP: dict[str, str] = {
@@ -711,12 +745,20 @@ def update_words_and_typos(
                 updated_words += 1
 
     cursor.execute("DROP TABLE IF EXISTS words")
-    cursor.execute('CREATE TABLE "words" ("word" TEXT, "freq" INTEGER)')
-    cursor.executemany(
-        "INSERT INTO words(word, freq) VALUES (?, ?)",
-        list(existing.items()),
+    cursor.execute(
+        'CREATE TABLE "words" ('
+        '"word" TEXT NOT NULL, '
+        '"freq" INTEGER NOT NULL, '
+        '"skeleton" TEXT NOT NULL, '
+        'PRIMARY KEY ("word", "freq" DESC)'
+        ') WITHOUT ROWID'
     )
-    cursor.execute("CREATE INDEX idx_words_word_freq ON words(word, freq DESC)")
+    cursor.executemany(
+        "INSERT INTO words(word, freq, skeleton) VALUES (?, ?, ?)",
+        [(w, f, crh_skeleton(w)) for w, f in existing.items()],
+    )
+    cursor.execute("DROP INDEX IF EXISTS idx_words_word_freq")
+    cursor.execute("CREATE INDEX idx_words_skeleton_freq ON words(skeleton, freq DESC)")
     cursor.execute("DROP INDEX IF EXISTS idx_words_freq")
     cursor.execute(
         "CREATE INDEX idx_words_first_last_freq "
@@ -730,7 +772,7 @@ def update_words_and_typos(
         CREATE TABLE typo_corrections (
             typo TEXT PRIMARY KEY,
             correction TEXT NOT NULL
-        )
+        ) WITHOUT ROWID
         """
     )
     cursor.executemany(
@@ -755,11 +797,11 @@ def write_bigrams(
             word1 TEXT NOT NULL,
             word2 TEXT NOT NULL,
             freq INTEGER NOT NULL,
-            PRIMARY KEY (word1, word2)
-        )
+            PRIMARY KEY (word1, freq DESC, word2)
+        ) WITHOUT ROWID
         """
     )
-    cursor.execute("CREATE INDEX idx_bigrams_word1 ON bigrams(word1, freq DESC)")
+    cursor.execute("DROP INDEX IF EXISTS idx_bigrams_word1")
     items = [
         (left, right, freq)
         for (left, right), freq in bigrams.items()
@@ -785,11 +827,11 @@ def write_trigrams(
             word2 TEXT NOT NULL,
             word3 TEXT NOT NULL,
             freq INTEGER NOT NULL,
-            PRIMARY KEY (word1, word2, word3)
-        )
+            PRIMARY KEY (word1, word2, freq DESC, word3)
+        ) WITHOUT ROWID
         """
     )
-    cursor.execute("CREATE INDEX idx_trigrams_context ON trigrams(word1, word2, freq DESC)")
+    cursor.execute("DROP INDEX IF EXISTS idx_trigrams_context")
     cursor.executemany(
         "INSERT INTO trigrams(word1, word2, word3, freq) VALUES (?, ?, ?, ?)",
         [

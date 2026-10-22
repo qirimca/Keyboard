@@ -918,6 +918,7 @@ struct NativeAutocompleteToolbar: View {
     }
 
     private var shouldShowGreetingBanner: Bool {
+        guard DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext) else { return false }
         guard !greetingState.isDismissedForCurrentSession else { return false }
         let suggestions = autocompleteContext.suggestions
         guard suggestions.isEmpty else { return false }

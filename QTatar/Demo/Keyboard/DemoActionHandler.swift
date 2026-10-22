@@ -203,13 +203,14 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             contextWords: contextWords,
             trailPoints: trailPoints,
             timestamps: timestamps,
-            keyFrames: keyFrames
+            keyFrames: keyFrames,
+            limit: 4
         )
         if isAllCaps {
             suggestions = suggestions.map {
                 Autocomplete.Suggestion(
                     text: $0.text.uppercased(with: Self.casingLocale),
-                    isAutocorrect: $0.isAutocorrect
+                    isAutocorrect: false
                 )
             }
         }
@@ -232,18 +233,102 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         KeyboardUsageStats.recordManualWordCompleted()
         lastCompletedTypedWord = best
         lastSwipedWordInsertion = textToInsert
+        hasActivePostSwipeSuggestions = true
         typedWordBuffer = ""
         if keyboardContext.keyboardType == .alphabetic(.uppercased) {
             keyboardController?.setKeyboardType(.alphabetic(.lowercased))
         }
-        autocompleteContext.suggestions = suggestions
+
+        // Do not repeat the already-inserted top-1 word in Slot 0; offer alternative swipe candidates + next-word continuations.
+        var toolbarSuggestions: [Autocomplete.Suggestion] = suggestions.dropFirst().map {
+            Autocomplete.Suggestion(
+                text: $0.text,
+                isAutocorrect: false,
+                additionalInfo: ["replaceSwipedWord": true]
+            )
+        }
+        if toolbarSuggestions.count < 3 {
+            let continuations = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+                contextWords: contextWords + [best],
+                shouldCapitalize: false
+            )
+            for cont in continuations where toolbarSuggestions.count < 3 {
+                if !toolbarSuggestions.contains(where: { $0.text.caseInsensitiveCompare(cont.text) == .orderedSame })
+                    && cont.text.caseInsensitiveCompare(best) != .orderedSame {
+                    let formattedCont = isAllCaps
+                        ? Autocomplete.Suggestion(text: cont.text.uppercased(with: Self.casingLocale), isAutocorrect: false)
+                        : cont
+                    toolbarSuggestions.append(formattedCont)
+                }
+            }
+        }
+
+        autocompleteContext.suggestions = toolbarSuggestions
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
-            self?.autocompleteContext.suggestions = suggestions
+            guard let self, self.lastSwipedWordInsertion == textToInsert else { return }
+            self.autocompleteContext.suggestions = toolbarSuggestions
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
             guard let self, self.lastSwipedWordInsertion == textToInsert else { return }
-            self.autocompleteContext.suggestions = suggestions
+            self.autocompleteContext.suggestions = toolbarSuggestions
         }
+    }
+
+    func handleBackspaceSlideLeft() {
+        guard !didConsumeBackspacePress else {
+            didConsumeBackspacePress = false
+            return
+        }
+        let proxy = keyboardContext.textDocumentProxy
+        let before = proxy.documentContextBeforeInput ?? ""
+        guard !before.isEmpty else { return }
+
+        var chars = Array(before)
+        var deleteCount = 0
+        while let last = chars.last, last.isWhitespace && last != "\n" {
+            chars.removeLast()
+            deleteCount += 1
+        }
+        while let last = chars.last, !last.isWhitespace {
+            chars.removeLast()
+            deleteCount += 1
+        }
+        guard deleteCount > 0 else { return }
+
+        let deletedString = String(before.suffix(deleteCount))
+        let remainingBefore = String(before.dropLast(deleteCount))
+        resetComposition()
+        lastAutoCorrection = nil
+        lastSwipedWordInsertion = nil
+        hasActivePostSwipeSuggestions = false
+        typedWordBuffer = ""
+
+        if feedbackConfiguration.isHapticFeedbackEnabled {
+            HapticFeedback.lightImpact.trigger()
+        }
+        for _ in 0..<deleteCount {
+            proxy.deleteBackward()
+        }
+        TextHistoryManager.shared.recordDelete(deletedString)
+
+        if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
+            GreetingBannerState.shared.prepareForAppearance()
+        } else {
+            GreetingBannerState.shared.dismissForTyping()
+        }
+        if SystemKeyboardSettings.isAutoCapitalizationEnabled,
+           proxy.autocapitalizationType != UITextAutocapitalizationType.none,
+           keyboardContext.keyboardType == .alphabetic(.lowercased),
+           remainingBefore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || remainingBefore.hasSuffix(". ")
+            || remainingBefore.hasSuffix("! ")
+            || remainingBefore.hasSuffix("? ")
+            || remainingBefore.hasSuffix("\n") {
+            keyboardController?.setKeyboardType(.alphabetic(.uppercased))
+        } else {
+            tryChangeKeyboardType(after: .release, on: .backspace)
+        }
+        keyboardController?.performAutocomplete()
     }
 
     private func apply(_ edit: CrimeanTatarTransliterator.Edit) {
@@ -289,6 +374,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var lastCompletedTypedWord: String?
     private var lastAutoCorrection: (original: String, corrected: String)?
     private var lastSwipedWordInsertion: String?
+    private(set) var hasActivePostSwipeSuggestions = false
+    private var suppressAutocorrectForCurrentSpaceRelease = false
     private var suppressedAutocorrectWord: String?
 
     private func resolveCompletedWord(in proxy: UITextDocumentProxy) -> (word: String?, prevWord: String?) {
@@ -316,8 +403,14 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         before gesture: Gestures.KeyboardGesture,
         on action: KeyboardAction
     ) {
-        if gesture == .release, action == .space,
-           KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
+        if gesture == .release, action == .space {
+            if suppressAutocorrectForCurrentSpaceRelease {
+                suppressAutocorrectForCurrentSpaceRelease = false
+                return
+            }
+            guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled else {
+                return
+            }
             let proxy = keyboardContext.textDocumentProxy
             let isAutocorrectAllowed = proxy.autocorrectionType != .no && SystemKeyboardSettings.isAutoCorrectionEnabled
             autocompleteContext.isAutocorrectEnabled = isAutocorrectAllowed
@@ -384,19 +477,53 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     return
                 }
             }
+            return
         }
         super.tryApplyAutocorrectSuggestion(before: gesture, on: action)
     }
 
 
     override func handle(_ suggestion: Autocomplete.Suggestion) {
+        let previousSwipedInsertion = lastSwipedWordInsertion
         resetComposition()
         lastAutoCorrection = nil
         lastSwipedWordInsertion = nil
+        hasActivePostSwipeSuggestions = false
         suppressedAutocorrectWord = nil
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
+        if suggestion.additionalInfo["replaceSwipedWord"] as? Bool == true,
+           let swipedInserted = previousSwipedInsertion {
+            let beforeText = proxy.documentContextBeforeInput ?? ""
+            let hasTrailingSpace = beforeText.hasSuffix(swipedInserted + " ")
+            let deleteCount = hasTrailingSpace
+                ? (swipedInserted.count + 1)
+                : min(swipedInserted.count, beforeText.count)
+            for _ in 0..<deleteCount {
+                proxy.deleteBackward()
+            }
+            let leadingSpace = swipedInserted.hasPrefix(" ") ? " " : ""
+            let replacement = suggestion.text
+            let newInsertion = leadingSpace + replacement
+            KeyboardUsageStats.markInjectedText(replacement)
+            KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(replacement.count, 2))
+            proxy.insertText(newInsertion)
+            proxy.tryInsertSpaceAfterAutocomplete()
+            TextHistoryManager.shared.recordReplace(oldText: swipedInserted, newText: newInsertion + " ")
+            lastCompletedTypedWord = replacement
+            typedWordBuffer = ""
+            let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true)
+            SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                replacement,
+                previousWord: prevWord,
+                proxy: proxy,
+                explicitlyConfirmed: true
+            )
+            autocompleteContext.suggestions = []
+            keyboardController?.performAutocomplete()
+            return
+        }
         let mathAllowed: Bool = {
             guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
             if #available(iOS 18.0, *) {
@@ -563,6 +690,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
         if action == .backspace, gesture == .press {
             didConsumeBackspacePress = false
+            hasActivePostSwipeSuggestions = false
         }
         if action == .backspace, gesture == .press,
            let swipedInsertion = lastSwipedWordInsertion {
@@ -638,6 +766,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
         var pendingSpaceWord: (word: String, prevWord: String?)?
         if gesture == .release {
+            suppressAutocorrectForCurrentSpaceRelease = (action == .space && (lastSwipedWordInsertion != nil || hasActivePostSwipeSuggestions))
+            hasActivePostSwipeSuggestions = false
             SpaceBarState.shared.fadeToResting()
             let proxy = keyboardContext.textDocumentProxy
             switch action {
@@ -879,5 +1009,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if action.isShiftAction || action == .capsLock {
             keyboardController?.performAutocomplete()
         }
+    }
+
+    override func tryEndSentence(after gesture: Gestures.KeyboardGesture, on action: KeyboardAction) {
+        guard keyboardBehavior.shouldEndSentence(after: gesture, on: action) else { return }
+        keyboardContext.textDocumentProxy.endSentence()
+        TextHistoryManager.shared.recordReplace(oldText: "  ", newText: ". ")
     }
 }

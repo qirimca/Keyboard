@@ -3,3 +3,15 @@
 "Name" = "Ім’я";
 "Enabled" = "Увімкнено";
 "none given" = "Не вказано";
+"settings.cyrillic" = "Кирилична клавіатура";
+"settings.ukrainianCyrillic" = "Українська розкладка";
+"settings.suggestions" = "Підказки слів";
+"settings.wordLearning" = "Навчання слів";
+"settings.stats" = "Статистика та рівні набору";
+"settings.footer" = "Автовиправлення, математичні підказки та розумна пунктуація налаштовуються в Параметрах iOS → Загальні → Клавіатура.";
+"Kirill klaviaturası" = "Кирилична клавіатура";
+"Ukraina tizilişi" = "Українська розкладка";
+"Söz teklifleri" = "Підказки слів";
+"Sözlerni ögrenüv" = "Навчання слів";
+"Statistika ve yazuv seviyeleri" = "Статистика та рівні набору";
+"Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura." = "Автовиправлення, математичні підказки та розумна пунктуація налаштовуються в Параметрах iOS → Загальні → Клавіатура.";

@@ -2,9 +2,70 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>ApplicationGroupContainerIdentifier</key>
+	<string>group.crh.key.keyboardplus</string>
 	<key>StringsTable</key>
 	<string>Root</string>
 	<key>PreferenceSpecifiers</key>
-	<array/>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>Title</key>
+			<string>QırımKey</string>
+			<key>FooterText</key>
+			<string>Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura.</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Kirill klaviaturası</string>
+			<key>Key</key>
+			<string>crh.key.cyrillicEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Ukraina tizilişi</string>
+			<key>Key</key>
+			<string>crh.key.ukrainianCyrillicLayout</string>
+			<key>DefaultValue</key>
+			<false/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Söz teklifleri</string>
+			<key>Key</key>
+			<string>crh.key.suggestionsEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Sözlerni ögrenüv</string>
+			<key>Key</key>
+			<string>crh.key.wordLearningEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Statistika ve yazuv seviyeleri</string>
+			<key>Key</key>
+			<string>crh.key.statsEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+	</array>
 </dict>
 </plist>

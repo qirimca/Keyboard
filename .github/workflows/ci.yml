@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-build:
+    name: Swift Package Tests & Simulator Build
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Repository Hygiene (Symlinks, Plists, No Hardcoded Paths)
+        run: |
+          broken_links=$(find . -type l ! -exec test -e {} \; -print)
+          if [ -n "$broken_links" ]; then
+            echo "Broken symlinks found: $broken_links"
+            exit 1
+          fi
+          find QTatar -name "*.plist" -exec plutil -lint {} +
+          if grep -rn "/Users/" QTatar/Demo QTatar/Sources QTatar/Scripts --exclude="*.pyc"; then
+            echo "Hardcoded /Users/ path found in source files"
+            exit 1
+          fi
+
+      - name: Run Transliteration & Autocomplete Swift Package Tests
+        run: swift test --package-path QTatar/Demo/Tests/Transliteration --scratch-path /tmp/qtatar-spm-build
+
+      - name: Build QTatar App & Keyboard Extension for iOS Simulator
+        run: |
+          xcodebuild \
+            -project QTatar/Demo/QTatar.xcodeproj \
+            -scheme QTatar \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            build

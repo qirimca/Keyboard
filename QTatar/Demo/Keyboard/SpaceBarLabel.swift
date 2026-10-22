@@ -398,7 +398,7 @@ struct SpaceBarLabel: View {
     }
 
     private var cornerFontSize: CGFloat {
-        isCompact ? 10.5 : 11.5
+        isCompact ? 11.5 : 12.0
     }
 
     var body: some View {
@@ -418,11 +418,11 @@ struct SpaceBarLabel: View {
 
             // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state
             Text(languageCode)
-                .font(.system(size: cornerFontSize, weight: .regular).width(.condensed))
-                .foregroundStyle(primaryColor.opacity(0.55))
+                .font(.system(size: cornerFontSize, weight: .semibold, design: .rounded))
+                .foregroundStyle(primaryColor.opacity(0.60))
                 .lineLimit(1)
-                .padding(.trailing, isCompact ? 4.5 : 5.5)
-                .padding(.bottom, isCompact ? 3.5 : 5.0)
+                .padding(.trailing, isCompact ? 8.5 : 9.5)
+                .padding(.bottom, isCompact ? 4.5 : 5.5)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
         }

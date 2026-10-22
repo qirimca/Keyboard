@@ -104,9 +104,25 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             || UIScreen.main.traitCollection.userInterfaceStyle == .dark
     }
 
+    static func shouldShowTopToolbar(for context: KeyboardContext) -> Bool {
+        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled else {
+            return false
+        }
+        if context.textDocumentProxy.isSecureTextEntry == true {
+            return false
+        }
+        let kbType = effectiveProxyKeyboardType(for: context)
+        switch kbType {
+        case .default, .asciiCapable, .twitter, .namePhonePad:
+            return true
+        default:
+            return false
+        }
+    }
+
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
         var style = super.autocompleteToolbarStyle
-        guard KeyboardPreferences.suggestionsEnabled else {
+        guard Self.shouldShowTopToolbar(for: keyboardContext) else {
             style.height = 0
             return style
         }
@@ -472,8 +488,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":
             return .system(size: isDockedPad ? (isPortrait ? 17.5 : 18) : 14, weight: .regular)
-        case .keyboardType:
-            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 17.5 : 18) : 15.5), weight: .regular)
+        case .keyboardType(let type):
+            if type == .emojis {
+                if isDockedPad {
+                    return .system(size: isPortrait ? 19 : 21, weight: .regular)
+                }
+                return .system(size: isFloating ? 16.5 : 19, weight: .regular)
+            }
+            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 17.5 : 18) : 15.0), weight: .regular)
         case .shift, .capsLock, .backspace:
             if isDockedPad {
                 return .system(size: isPortrait ? 19 : 21, weight: .regular)

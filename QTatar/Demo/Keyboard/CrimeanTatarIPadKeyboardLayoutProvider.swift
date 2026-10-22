@@ -153,9 +153,10 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         guard case .character(let char) = action, !char.isEmpty else { return nil }
 
         let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let is11KeyRow1Cyr = isCyrillic && !KeyboardPreferences.ukrainianCyrillicLayoutEnabled
         let alphaRows = (isCyrillic ? InputSet.crimeanTatarCyrillic : InputSet.crimeanTatar).rows
-        let numRows = (isCyrillic ? InputSet.crimeanTatarPadCyrillicNumeric : InputSet.crimeanTatarPadNumeric).rows
-        let symRows = (isCyrillic ? InputSet.crimeanTatarPadCyrillicSymbolic : InputSet.crimeanTatarPadSymbolic).rows
+        let numRows = (is11KeyRow1Cyr ? InputSet.crimeanTatarPadCyrillicNumeric : InputSet.crimeanTatarPadNumeric).rows
+        let symRows = (is11KeyRow1Cyr ? InputSet.crimeanTatarPadCyrillicSymbolic : InputSet.crimeanTatarPadSymbolic).rows
 
         if context.keyboardType.isAlphabetic {
             for r in 0..<min(alphaRows.count, numRows.count) {
@@ -255,6 +256,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
+        if !(isURLContext(context) && context.keyboardType.isAlphabetic) {
+            result.append(.keyboardType(.emojis))
+        }
         if isURLContext(context) && context.keyboardType.isAlphabetic {
             result += [.character(":"), .character("/"), .character("_"), .character("-"), .custom(named: "url_domain")]
         } else {
@@ -303,25 +307,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> Alignment {
-        // On iPadOS 26+, native iPad system keys align symbols/labels to the outer corners.
-        guard #available(iOS 26.0, *) else {
-            return .center
-        }
-        switch action {
-        case .tab, .capsLock, .nextKeyboard:
-            return .bottomLeading
-        case .custom(let name) where name == "toggle_script" || name == "undo" || name == "redo":
-            return .bottomLeading
-        case .backspace, .primary, .dismissKeyboard:
-            return .bottomTrailing
-        case .shift, .keyboardType:
-            if row == 2 {
-                return index == 0 ? .bottomLeading : .bottomTrailing
-            }
-            return index < 2 ? .bottomLeading : .bottomTrailing
-        default:
-            return .center
-        }
+        return .center
     }
     
     override func itemSizeWidth(
@@ -331,6 +317,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
         let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let is11KeyRow1Cyr = isCyrillic && !KeyboardPreferences.ukrainianCyrillicLayoutEnabled
         if isSplitMode(context) {
             let gap = Self.splitGapFraction(for: context)
             let half = Self.splitHalfFraction(for: context)
@@ -347,7 +334,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             }
             if row == 1 {
                 if index == 0 {
-                    return .percentage(isCyrillic ? (side + pitch) : side)
+                    return .percentage(is11KeyRow1Cyr ? (side + pitch) : side)
                 }
                 if case .primary = action {
                     return .percentage(side)
@@ -408,8 +395,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
         if row == 1 {
             if index == 0 {
-                // Latin (12 keys): left control key ends half a key before 'â'; Cyrillic (11 keys): ends half a key before 'ф'.
-                return .percentage(isCyrillic ? Self.tabFraction + pitch / 2 : Self.tabFraction - pitch / 2)
+                // 12-key Row 1 (Latin & Ukrainian ФІВА): left control key ends half a key before first letter;
+                // 11-key Row 1 (Standard Cyrillic ФЫВА): ends half a key before 'ф'.
+                return .percentage(is11KeyRow1Cyr ? Self.tabFraction + pitch / 2 : Self.tabFraction - pitch / 2)
             }
             if case .primary = action { return .available }
             return .percentage(pitch)
@@ -428,7 +416,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
         if action == .space || action == .custom(named: "url_domain") { return .available }
         if case .character = action { return isURLContext(context) ? .percentage(0.115) : .percentage(0.07) }
-        if action == .nextKeyboard || action == .dismissKeyboard { return .percentage(0.085) }
+        if action == .nextKeyboard || action == .dismissKeyboard || action == .keyboardType(.emojis) {
+            return .percentage(0.085)
+        }
         return .percentage(0.10)
     }
     
