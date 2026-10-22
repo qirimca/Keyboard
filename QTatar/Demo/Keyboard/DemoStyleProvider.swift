@@ -155,8 +155,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
             config.rowHeight = isPortrait ? 55 : 42
             config.buttonInsets = isPortrait
-                ? EdgeInsets(top: 5.0, leading: 2.5, bottom: 5.0, trailing: 2.5)
-                : EdgeInsets(top: 3.5, leading: 2.5, bottom: 3.5, trailing: 2.5)
+                ? EdgeInsets(top: 5.5, leading: 3.0, bottom: 5.5, trailing: 3.0)
+                : EdgeInsets(top: 3.5, leading: 3.0, bottom: 3.5, trailing: 3.0)
             config.buttonCornerRadius = 6.5
         } else if isPad {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait

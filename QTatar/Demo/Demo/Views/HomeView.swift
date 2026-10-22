@@ -2649,8 +2649,8 @@ private struct InteractiveSettingsIconBadge: View {
 
     private static var iconJumpTransition: AnyTransition {
         .asymmetric(
-            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
-            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+            insertion: .scale(scale: 0.45).combined(with: .offset(y: -10)).combined(with: .opacity),
+            removal: .scale(scale: 0.45).combined(with: .offset(y: 10)).combined(with: .opacity)
         )
     }
 
@@ -2886,8 +2886,8 @@ private struct TransliterationKeycapBadge: View {
 
     private static var glyphTransition: AnyTransition {
         .asymmetric(
-            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
-            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+            insertion: .scale(scale: 0.45).combined(with: .offset(y: -10)).combined(with: .opacity),
+            removal: .scale(scale: 0.45).combined(with: .offset(y: 10)).combined(with: .opacity)
         )
     }
 
@@ -3042,8 +3042,8 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
 
     private static var capsuleTransition: AnyTransition {
         .asymmetric(
-            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
-            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+            insertion: .scale(scale: 0.45).combined(with: .offset(y: -10)).combined(with: .opacity),
+            removal: .scale(scale: 0.45).combined(with: .offset(y: 10)).combined(with: .opacity)
         )
     }
 
@@ -3057,14 +3057,14 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + stepDelay) {
                 guard animationsAllowed else { return }
                 withAnimation(Self.livelySpring) {
-                    jumpingIndices.insert(idx)
+                    _ = jumpingIndices.insert(idx)
                 }
             }
             let releaseDelay = stepDelay + 0.24
             DispatchQueue.main.asyncAfter(deadline: .now() + releaseDelay) {
                 guard animationsAllowed else { return }
                 withAnimation(Self.livelySpring) {
-                    jumpingIndices.remove(idx)
+                    _ = jumpingIndices.remove(idx)
                 }
             }
         }

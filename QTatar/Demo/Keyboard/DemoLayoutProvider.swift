@@ -60,7 +60,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 // Native iPad floating keyboard button insets tuned for 12-column layout (49pt row - 7pt vertical insets = 42pt key cap)
                 return EdgeInsets(top: 3.5, leading: 1.8, bottom: 3.5, trailing: 1.8)
             }
-            return super.itemInsets(for: action, row: row, index: index, context: context)
+            let isPortrait = context.interfaceOrientation.isPortrait
+            return isPortrait
+                ? EdgeInsets(top: 5.5, leading: 3.0, bottom: 5.5, trailing: 3.0)
+                : EdgeInsets(top: 3.5, leading: 3.0, bottom: 3.5, trailing: 3.0)
         }
     }
     

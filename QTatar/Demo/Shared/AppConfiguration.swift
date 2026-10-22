@@ -413,10 +413,11 @@ enum KeyboardUsageStats {
         }
         var db: OpaquePointer?
         guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
-            if let db { sqlite3_close(db) }
+            if let db { sqlite3_close_v2(db) }
             return stored
         }
-        defer { sqlite3_close(db) }
+        sqlite3_busy_timeout(db, 150)
+        defer { sqlite3_close_v2(db) }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
@@ -459,10 +460,11 @@ enum KeyboardUsageStats {
         guard FileManager.default.fileExists(atPath: dbURL.path) else { return }
         var db: OpaquePointer?
         if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
+            sqlite3_busy_timeout(db, 150)
             sqlite3_exec(db, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)
         }
         if let db {
-            sqlite3_close(db)
+            sqlite3_close_v2(db)
         }
     }
 

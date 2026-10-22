@@ -787,8 +787,11 @@ private let parityCases: [(String, String)] = {
     )
     #expect(singleTsMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "sen")
 
-    // Verify Jetsam / 0xdead10cc lifecycle helpers execute without error
+    // Verify Jetsam / 0xdead10cc lifecycle helpers execute without error, including clearUserLexicon while suspended
     SuggestionsDataBaseManager.shared.releaseMemory()
+    SuggestionsDataBaseManager.shared.suspendAccess()
+    SuggestionsDataBaseManager.shared.clearUserLexicon()
+    SuggestionsDataBaseManager.shared.resumeAccess()
     SuggestionsDataBaseManager.shared.clearUserLexicon()
     let postReleaseMatches = SuggestionsDataBaseManager.shared.matchSwipePath(
         keySequence: ["b", "i", "r"],

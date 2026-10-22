@@ -148,7 +148,7 @@ final class SuggestionsDataBaseManager {
         }
         databaseQueue.sync {
             if let db {
-                sqlite3_close(db)
+                sqlite3_close_v2(db)
                 self.db = nil
             }
             if let userDB {
@@ -203,8 +203,12 @@ final class SuggestionsDataBaseManager {
                 db = nil
             }
             guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
-                if let db, let errMsg = sqlite3_errmsg(db) {
-                    debugPrint("Failed to open SQLite database: \(String(cString: errMsg))")
+                if let failedDB = db {
+                    if let errMsg = sqlite3_errmsg(failedDB) {
+                        debugPrint("Failed to open SQLite database: \(String(cString: errMsg))")
+                    }
+                    sqlite3_close_v2(failedDB)
+                    db = nil
                 } else {
                     debugPrint("Failed to open SQLite database at \(dbURL.path)")
                 }
@@ -235,9 +239,24 @@ final class SuggestionsDataBaseManager {
         let userDBURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
 
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
-        guard sqlite3_open_v2(userDBURL.path, &userDB, flags, nil) == SQLITE_OK else {
-            userDB = nil
-            return
+        if sqlite3_open_v2(userDBURL.path, &userDB, flags, nil) != SQLITE_OK {
+            if let failedDB = userDB {
+                sqlite3_close_v2(failedDB)
+                userDB = nil
+            }
+            if containerDir != fallbackDir {
+                try? fm.createDirectory(at: fallbackDir, withIntermediateDirectories: true)
+                let fallbackDBURL = fallbackDir.appendingPathComponent("user_lexicon.sqlite")
+                if sqlite3_open_v2(fallbackDBURL.path, &userDB, flags, nil) != SQLITE_OK {
+                    if let failedFallbackDB = userDB {
+                        sqlite3_close_v2(failedFallbackDB)
+                        userDB = nil
+                    }
+                    return
+                }
+            } else {
+                return
+            }
         }
         sqlite3_busy_timeout(userDB, 150)
         let schema = """
