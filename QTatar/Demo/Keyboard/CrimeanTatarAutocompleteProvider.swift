@@ -235,10 +235,10 @@ private extension CrimeanTatarAutocompleteProvider {
 
     static func completedContextWords(before proxy: UITextDocumentProxy) -> [String] {
         guard let before = proxy.documentContextBeforeInput else { return [] }
-        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
         return before
             .components(separatedBy: delimiters)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }
     }
 

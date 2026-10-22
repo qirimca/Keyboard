@@ -580,6 +580,53 @@ final class QirimKeyUITests: XCTestCase {
         }
         XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "sandbox.speedBadge").firstMatch.exists, "Speed badge must not appear when sandbox text field is empty")
 
+        // Backspace Undo Autocorrect: pressing Backspace right after Space autocorrects 'qirim' -> 'qırım ' restores 'qirim'.
+        typeLetters("qirim")
+        tap("space")
+        expectText("qırım ")
+        tap("backspace")
+        expectText("qirim")
+        capture("Backspace undo autocorrect qırım to qirim")
+        clear()
+
+        // Question particle attachment (§ 67 п. 3.1): 'yaptıñ mı' + Space -> 'yaptıñmı '
+        typeLetters("yaptıñ")
+        tap("space")
+        typeLetters("mı")
+        tap("space")
+        expectText("yaptıñmı ")
+        capture("Question particle yaptıñ mı to yaptıñmı")
+        clear()
+
+        // Hyphenated compound completion (§ 63): 'gece-' + Space -> 'gece-kündüz ' and 'ana baba' + Space -> 'ana-baba '
+        typeLetters("gece")
+        if key("numeric").exists { tap("numeric") }
+        if key("character.-").waitForExistence(timeout: 2) {
+            tap("character.-")
+        }
+        if key("alphabetic").exists { tap("alphabetic") }
+        tap("space")
+        expectText("gece-kündüz ")
+        capture("Hyphenated word gece- to gece-kündüz")
+        clear()
+
+        typeLetters("ana")
+        tap("space")
+        typeLetters("baba")
+        tap("space")
+        expectText("ana-baba ")
+        capture("Space-separated compound ana baba to ana-baba")
+        clear()
+
+        // Pronoun + personal verb agreement: 'men yaptı' + Space -> 'men yaptım '
+        typeLetters("men")
+        tap("space")
+        typeLetters("yaptı")
+        tap("space")
+        expectText("men yaptım ")
+        capture("Pronoun verb agreement men yaptı to men yaptım")
+        clear()
+
         // Verify top Basic Statistics bar exists and can be expanded & collapsed.
         let statsToggle = app.buttons["stats.expandToggle"].exists
             ? app.buttons["stats.expandToggle"]

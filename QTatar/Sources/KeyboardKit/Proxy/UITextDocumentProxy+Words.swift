@@ -38,6 +38,9 @@ public extension UITextDocumentProxy {
     var isCursorAtNewWord: Bool {
         guard let pre = documentContextBeforeInput else { return true }
         let lastCharacter = String(pre.suffix(1))
+        if lastCharacter == "-", pre.dropLast().last?.isLetter == true {
+            return false
+        }
         return pre.isEmpty || lastCharacter.isWordDelimiter
     }
 
@@ -48,6 +51,9 @@ public extension UITextDocumentProxy {
         if postCount > 0 { return false }
         guard let pre = currentWordPreCursorPart else { return false }
         let lastCharacter = String(pre.suffix(1))
+        if lastCharacter == "-", pre.dropLast().last?.isLetter == true {
+            return true
+        }
         return !wordDelimiters.contains(lastCharacter)
     }
 

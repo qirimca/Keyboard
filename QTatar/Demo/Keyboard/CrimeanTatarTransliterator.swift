@@ -96,8 +96,40 @@ struct CrimeanTatarTransliterator {
         return result + ns.substring(from: last)
     }
 
-    static func transliterate(_ source: String) -> String {
-        var text = source
+    static func normalizeUkrainianCyrillic(_ source: String, ukrainianLayout: Bool) -> String {
+        var out = String.UnicodeScalarView()
+        out.reserveCapacity(source.unicodeScalars.count)
+        for scalar in source.unicodeScalars {
+            switch scalar {
+            case "і":
+                out.append("и")
+            case "І":
+                out.append("И")
+            case "и" where ukrainianLayout:
+                out.append("ы")
+            case "И" where ukrainianLayout:
+                out.append("Ы")
+            case "є":
+                out.append("э")
+            case "Є":
+                out.append("Э")
+            case "ґ":
+                out.append("г")
+            case "Ґ":
+                out.append("Г")
+            case "ї":
+                out.append(contentsOf: "йи".unicodeScalars)
+            case "Ї":
+                out.append(contentsOf: "Йи".unicodeScalars)
+            default:
+                out.append(scalar)
+            }
+        }
+        return String(out)
+    }
+
+    static func transliterate(_ source: String, ukrainianLayout: Bool = false) -> String {
+        var text = normalizeUkrainianCyrillic(source, ukrainianLayout: ukrainianLayout)
         for exception in engine.exceptions where !exception.search.isEmpty {
             text = text.replacingOccurrences(of: exception.search, with: exception.replacement, options: .literal)
         }
@@ -149,6 +181,7 @@ struct CrimeanTatarTransliterator {
         let insertion: String
     }
 
+    var ukrainianLayout: Bool = false
     private(set) var source = ""
     private var output = ""
     private var expectedContext: String?
@@ -184,7 +217,7 @@ struct CrimeanTatarTransliterator {
     }
 
     private mutating func replacement(context: String) -> Edit {
-        let newOutput = Self.transliterate(source)
+        let newOutput = Self.transliterate(source, ukrainianLayout: ukrainianLayout)
         let common = zip(output, newOutput).prefix(while: { $0 == $1 }).count
         let edit = Edit(deleteCount: output.count - common, insertion: String(newOutput.dropFirst(common)))
         expectedContext = String(context.dropLast(edit.deleteCount)) + edit.insertion

@@ -181,10 +181,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             || keyboardContext.keyboardType == .alphabetic(.capsLocked)
         let isAllCaps = keyboardContext.keyboardType == .alphabetic(.capsLocked)
         let shouldCap = isUpper || (SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence)
-        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
         let contextWords = before
             .components(separatedBy: delimiters)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }
 
         var suggestions = SuggestionsDataBaseManager.shared.matchSwipePath(
@@ -206,6 +206,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         resetComposition()
+        lastAutoCorrection = nil
+        suppressedAutocorrectWord = nil
 
         let needsLeadingSpace: Bool = {
             guard let lastChar = before.last else { return false }
@@ -242,10 +244,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     private static func previousCompletedWord(in proxy: UITextDocumentProxy, excludingCurrentWord: Bool) -> String? {
         guard let before = proxy.documentContextBeforeInput else { return nil }
-        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.joined())
+        let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
         let tokens = before
             .components(separatedBy: delimiters)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }
         if excludingCurrentWord {
             return tokens.count >= 2 ? tokens[tokens.count - 2] : nil
@@ -268,6 +270,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var didLearnWordDuringSpaceRelease = false
     private var typedWordBuffer: String = ""
     private var lastCompletedTypedWord: String?
+    private var lastAutoCorrection: (original: String, corrected: String)?
+    private var suppressedAutocorrectWord: String?
 
     private func resolveCompletedWord(in proxy: UITextDocumentProxy) -> (word: String?, prevWord: String?) {
         let proxyWord = Self.currentWordBeforeCursor(in: proxy)
@@ -322,6 +326,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                let word = proxy.currentWord,
                !word.isEmpty,
                let provider = (keyboardController as? KeyboardViewController)?.services.autocompleteProvider as? CrimeanTatarAutocompleteProvider {
+                if let suppressed = suppressedAutocorrectWord,
+                   suppressed.caseInsensitiveCompare(word) == .orderedSame {
+                    suppressedAutocorrectWord = nil
+                    return
+                }
                 let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true) ?? lastCompletedTypedWord
                 let existing = autocompleteContext.suggestions
                 let suggestions: [Autocomplete.Suggestion]
@@ -334,9 +343,16 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 }
                 if let suggestion = suggestions.first(where: { $0.isAutocorrect }),
                    suggestion.text != word {
-                    for _ in 0..<word.count { proxy.deleteBackward() }
+                    let replaceCount = (suggestion.additionalInfo["replaceCharCount"] as? Int) ?? word.count
+                    let beforeText = proxy.documentContextBeforeInput ?? ""
+                    let deleteCount = min(replaceCount, max(beforeText.count, word.count))
+                    let oldText = deleteCount <= beforeText.count
+                        ? String(beforeText.suffix(deleteCount))
+                        : word
+                    for _ in 0..<deleteCount { proxy.deleteBackward() }
                     proxy.insertText(suggestion.text)
-                    TextHistoryManager.shared.recordReplace(oldText: word, newText: suggestion.text)
+                    TextHistoryManager.shared.recordReplace(oldText: oldText, newText: suggestion.text)
+                    lastAutoCorrection = (original: oldText, corrected: suggestion.text)
                     didLearnWordDuringSpaceRelease = true
                     lastCompletedTypedWord = suggestion.text
                     typedWordBuffer = ""
@@ -356,6 +372,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     override func handle(_ suggestion: Autocomplete.Suggestion) {
         resetComposition()
+        lastAutoCorrection = nil
+        suppressedAutocorrectWord = nil
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
@@ -405,6 +423,26 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             typedWordBuffer = ""
             handle(.release, on: .character(""))
+            return
+        }
+        if let replaceCount = suggestion.additionalInfo["replaceCharCount"] as? Int, replaceCount > 0 {
+            let beforeText = proxy.documentContextBeforeInput ?? ""
+            let deleteCount = min(replaceCount, beforeText.count)
+            let oldText = String(beforeText.suffix(deleteCount))
+            for _ in 0..<deleteCount {
+                proxy.deleteBackward()
+            }
+            let replacement = suggestion.text
+            KeyboardUsageStats.markInjectedText(replacement)
+            KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(replacement.count, 2))
+            proxy.insertText(replacement)
+            proxy.tryInsertSpaceAfterAutocomplete()
+            TextHistoryManager.shared.recordReplace(oldText: oldText, newText: replacement)
+            lastAutoCorrection = (original: oldText, corrected: replacement)
+            lastCompletedTypedWord = replacement
+            typedWordBuffer = ""
+            autocompleteContext.suggestions = []
+            keyboardController?.performAutocomplete()
             return
         }
         let currentWord = proxy.currentWord ?? typedWordBuffer
@@ -501,6 +539,29 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return
         }
+        if action == .backspace, gesture == .press,
+           let autoFix = lastAutoCorrection {
+            let proxy = keyboardContext.textDocumentProxy
+            let before = proxy.documentContextBeforeInput ?? ""
+            if before.hasSuffix(autoFix.corrected + " ") {
+                lastAutoCorrection = nil
+                suppressedAutocorrectWord = autoFix.original
+                triggerFeedback(for: gesture, on: action)
+                resetComposition()
+                GreetingBannerState.shared.dismissForTyping()
+                let deleteLen = autoFix.corrected.count + 1
+                for _ in 0..<deleteLen {
+                    proxy.deleteBackward()
+                }
+                proxy.insertText(autoFix.original)
+                TextHistoryManager.shared.recordReplace(oldText: autoFix.corrected + " ", newText: autoFix.original)
+                typedWordBuffer = autoFix.original
+                keyboardController?.performAutocomplete()
+                return
+            } else {
+                lastAutoCorrection = nil
+            }
+        }
         var pendingSpaceWord: (word: String, prevWord: String?)?
         if gesture == .release {
             SpaceBarState.shared.fadeToResting()
@@ -508,6 +569,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             switch action {
             case .character(let ch), .characterMargin(let ch):
                 guard !ch.isEmpty else { break }
+                lastAutoCorrection = nil
+                suppressedAutocorrectWord = nil
                 GreetingBannerState.shared.dismissForTyping()
                 SpaceBarState.shared.recordKeystroke()
                 KeyboardUsageStats.recordCharacterTyped(count: ch.count, keystrokes: 1)
@@ -537,6 +600,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     typedWordBuffer = ""
                 }
             case .space:
+                lastAutoCorrection = nil
                 didLearnWordDuringSpaceRelease = false
                 GreetingBannerState.shared.dismissForTyping()
                 KeyboardUsageStats.recordCharacterTyped(count: 1)
@@ -553,6 +617,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     typedWordBuffer = ""
                 }
             case .primary:
+                lastAutoCorrection = nil
+                suppressedAutocorrectWord = nil
                 GreetingBannerState.shared.dismissForTyping()
                 let before = proxy.documentContextBeforeInput ?? ""
                 let hasWordBefore = !typedWordBuffer.isEmpty
@@ -640,6 +706,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     }
                     if gesture == .release {
                         didInstantiateTransliterator = true
+                        transliterator.ukrainianLayout = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
                         let context: String? = hasSelection ? nil : (proxy.documentContextBeforeInput ?? "")
                         apply(transliterator.append(character, context: context, documentID: proxy.safeDocumentIdentifier))
                         tryChangeKeyboardType(after: gesture, on: action)
@@ -651,9 +718,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             if action == .backspace, gesture == .press || gesture == .repeatPress {
                 didInstantiateTransliterator = true
+                transliterator.ukrainianLayout = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
                 let context: String? = hasSelection ? nil : (proxy.documentContextBeforeInput ?? "")
                 if let edit = transliterator.backspace(context: context,
-                                                      documentID: proxy.safeDocumentIdentifier) {
+                                                       documentID: proxy.safeDocumentIdentifier) {
                     apply(edit)
                     return
                 }

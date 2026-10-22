@@ -14,16 +14,19 @@ enum KeyboardPreferences {
     static let suggestionsKey = "crh.key.suggestionsEnabled"
     static let wordLearningKey = "crh.key.wordLearningEnabled"
     static let cyrillicKey = "crh.key.cyrillicEnabled"
+    static let ukrainianCyrillicLayoutKey = "crh.key.ukrainianCyrillicLayout"
     static let statsEnabledKey = "crh.key.statsEnabled"
     static let splitKeyboardKey = "crh.key.splitKeyboardEnabled"
     static let languageKey = "crh.key.interfaceLanguage"
     static let splitModeChangedNotification = "crh.key.splitKeyboardModeDidChange"
+    static let ukrainianCyrillicLayoutChangedNotification = "crh.key.ukrainianCyrillicLayoutDidChange"
     /// Created once: `UserDefaults(suiteName:)` is expensive and used by the style provider for every key.
     static let defaults: UserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard
 
     private static var cachedSuggestions: Bool?
     private static var cachedWordLearning: Bool?
     private static var cachedCyrillic: Bool?
+    private static var cachedUkrainianCyrillicLayout: Bool?
     private static var cachedStatsEnabled: Bool?
     private static var cachedSplitKeyboard: Bool?
 
@@ -31,6 +34,7 @@ enum KeyboardPreferences {
         cachedSuggestions = defaults.object(forKey: suggestionsKey) as? Bool ?? true
         cachedWordLearning = defaults.object(forKey: wordLearningKey) as? Bool ?? true
         cachedCyrillic = defaults.object(forKey: cyrillicKey) as? Bool ?? true
+        cachedUkrainianCyrillicLayout = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
         cachedStatsEnabled = defaults.object(forKey: statsEnabledKey) as? Bool ?? true
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
     }
@@ -46,6 +50,13 @@ enum KeyboardPreferences {
         if let cached = cachedWordLearning { return cached }
         let val = defaults.object(forKey: wordLearningKey) as? Bool ?? true
         cachedWordLearning = val
+        return val
+    }
+
+    static var ukrainianCyrillicLayoutEnabled: Bool {
+        if let cached = cachedUkrainianCyrillicLayout { return cached }
+        let val = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
+        cachedUkrainianCyrillicLayout = val
         return val
     }
 
@@ -82,6 +93,19 @@ enum KeyboardPreferences {
     static func setCyrillicEnabled(_ enabled: Bool) {
         cachedCyrillic = enabled
         defaults.set(enabled, forKey: cyrillicKey)
+    }
+
+    static func setUkrainianCyrillicLayoutEnabled(_ enabled: Bool) {
+        cachedUkrainianCyrillicLayout = enabled
+        defaults.set(enabled, forKey: ukrainianCyrillicLayoutKey)
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
     }
 
     static func setSplitKeyboardEnabled(_ enabled: Bool) {

@@ -34,13 +34,29 @@ SEED_TRIGRAMS: dict[tuple[str, str, str], int] = {
     ("men", "de", "öyle"): 180,
     ("o", "da", "öyle"): 170,
     ("ve", "soñra", "bu"): 160,
+    ("qırım", "musulman", "icra"): 350,
+    ("musulman", "icra", "komiteti"): 320,
+    ("ğafur", "ğulam", "adına"): 280,
+    ("qırım", "muhtar", "cumhuriyeti"): 340,
+    ("ukrayina", "nazirler", "kabineti"): 300,
 }
 
 SEED_BIGRAMS: dict[tuple[str, str], int] = {
     ("ve", "soñra"): 160,
+    ("qırım", "musulman"): 360,
+    ("musulman", "icra"): 330,
+    ("ğafur", "ğulam"): 300,
+    ("ğulam", "adına"): 280,
+    ("qırım", "muhtar"): 350,
+    ("muhtar", "cumhuriyeti"): 340,
+    ("ukrayina", "nazirler"): 310,
+    ("nazirler", "kabineti"): 300,
+    ("ismail", "gasprinskiy"): 320,
+    ("noman", "çelebicihan"): 280,
+    ("bekir", "çobanzade"): 260,
 }
 
-# Essential reduplicated / paired hyphenated words from grammar.xml (NOUN_DOUBLING) & corpora_lugat_found.csv
+# Essential reduplicated / paired hyphenated words from Orthography 2024/2025 (§ 63) & corpora_lugat_found.csv
 SEED_HYPHENATED_WORDS: dict[str, int] = {
     "yavaş-yavaş": 250,
     "tez-tez": 220,
@@ -48,7 +64,7 @@ SEED_HYPHENATED_WORDS: dict[str, int] = {
     "bir-eki": 175,
     "sağ-selâmet": 140,
     "aman-aman": 135,
-    "gece-kündüz": 135,
+    "gece-kündüz": 185,
     "alel-acele": 120,
     "ana-baba": 180,
     "bala-çağa": 165,
@@ -58,9 +74,25 @@ SEED_HYPHENATED_WORDS: dict[str, int] = {
     "alış-veriş": 150,
     "ara-sıra": 145,
     "çalğı-çağana": 110,
+    "kün-künden": 130,
+    "yıl-yıldan": 125,
+    "adım-adım": 120,
+    "birer-birer": 120,
+    "ekişer-ekişer": 110,
+    "az-maz": 130,
+    "az-çoq": 125,
+    "er-keç": 130,
+    "alıp-berici": 115,
+    "kelip-ketici": 115,
+    "sorap-soramağan": 105,
+    "uzun-uzadıya": 115,
+    "qara-qura": 105,
+    "eğri-büğri": 110,
+    " ufaq-tüfek": 115,
+    "ufaq-tüfek": 120,
 }
 
-# Syncope / middle vowel elision corrections from grammar.xml (MIDDLE_VOWEL_EXCLUSIOON)
+# Syncope / middle vowel elision corrections (§ 11, § 38) + compound y-restorations + loanword norms (§ 39 п. 4)
 SEED_SYNCOPE_CORRECTIONS: dict[str, str] = {
     "ağızı": "ağzı",
     "ağızım": "ağzım",
@@ -95,6 +127,64 @@ SEED_SYNCOPE_CORRECTIONS: dict[str, str] = {
     "burunı": "burnu",
     "burunım": "burnum",
     "burunıñ": "burnuñ",
+    "boyunı": "boynu",
+    "boyunım": "boynum",
+    "boyunıñ": "boynuñ",
+    "qarını": "qarnı",
+    "qarınım": "qarnım",
+    "qarınıñ": "qarnıñ",
+    "köküsi": "köksü",
+    "köküsüm": "köksüm",
+    "ufuqı": "ufqu",
+    "aqılı": "aqlı",
+    "aqılım": "aqlım",
+    "aqılıñ": "aqlıñ",
+    "sabırı": "sabrı",
+    "sabırım": "sabrım",
+    "nehiri": "nehri",
+    "deviri": "devri",
+    "qavimi": "qavmi",
+    "asırı": "asrı",
+    "zehini": "zehni",
+    "zehinim": "zehnim",
+    "zehiniñ": "zehniñ",
+    "göñülü": "göñlü",
+    "göñülüm": "göñlüm",
+    "göñülüñ": "göñlüñ",
+    "bağırı": "bağrı",
+    "qoyunı": "qoynu",
+    "kompyuter": "kompüter",
+    "kompyüter": "kompüter",
+    # Inverted missing-ъ compound words from lat_diff.csv
+    "alânaq": "alyanaq",
+    "alânaqlı": "alyanaqlı",
+    "beşikâpıcı": "beşikyapıcı",
+    "qolâzma": "qolyazma",
+    "arslanürek": "arslanyürek",
+    "alevürek": "alevyürek",
+    # Dual-column errors in lat_diff.csv
+    "devürek": "devyürek",
+    "devyurek": "devyürek",
+    "devürekli": "devyürekli",
+    "devyurekli": "devyürekli",
+    "devüreklik": "devyüreklik",
+    "devyureklik": "devyüreklik",
+    "büyütyuv": "büyütüv",
+    "buyutüv": "büyütüv",
+    "kultyüste": "kültüste",
+    "kultüste": "kültüste",
+    "mesüliet": "mesuliyet",
+    "mesuliet": "mesuliyet",
+    "mesülietli": "mesuliyetli",
+    "mesulietli": "mesuliyetli",
+    "mesülietsiz": "mesuliyetsiz",
+    "mesulietsiz": "mesuliyetsiz",
+    "mesülietsizlik": "mesuliyetsizlik",
+    "mesulietsizlik": "mesuliyetsizlik",
+    "özbekstan": "özbekistan",
+    "ozbekistan": "özbekistan",
+    "cüyrüq": "cüyrük",
+    "cuyrüq": "cüyrük",
 }
 
 
@@ -353,6 +443,112 @@ def ingest_corpora_lugat(
         print(f"Ingested {count} verified wordforms from corpora_lugat_found.csv", flush=True)
 
 
+CYRILLIC_HOMOGLYPH_MAP = str.maketrans({
+    "\u0445": "x",  # Cyrillic х -> Latin x
+    "\u0430": "a",  # Cyrillic а -> Latin a
+    "\u0435": "e",  # Cyrillic е -> Latin e
+    "\u043e": "o",  # Cyrillic о -> Latin o
+    "\u0440": "p",  # Cyrillic р -> Latin p
+    "\u0441": "c",  # Cyrillic с -> Latin c
+    "\u0456": "i",  # Ukrainian і -> Latin i
+})
+
+TRUNCATED_LAT_DIFF_ALTS: set[str] = {
+    "guzellerden-g",
+    "i\u0445tisaslaştırm",
+    "i\u0445tisaslaştı",
+    "ixtisaslaştırm",
+    "ixtisaslaştı",
+    "ihtisaslaştırm",
+    "ihtisaslaştı",
+    "içtimaiy-tari\u0445",
+    "içtimaiy-tarix",
+    "mukemmelleşti",
+    "mukemmelleştir",
+    "murekkepleşti",
+    "murekkepleştir",
+    "yaş-yavq",
+}
+
+BAD_STD_WORDS: set[str] = {
+    "alânaq",
+    "alânaqlı",
+    "beşikâpıcı",
+    "qolâzma",
+    "arslanürek",
+    "alevürek",
+    "devürek",
+    "devyurek",
+    "devürekli",
+    "devyurekli",
+    "devüreklik",
+    "devyureklik",
+    "büyütyuv",
+    "buyutüv",
+    "kultyüste",
+    "kultüste",
+    "mesüliet",
+    "mesuliet",
+    "mesülietli",
+    "mesulietli",
+    "mesülietsiz",
+    "mesulietsiz",
+    "mesülietsizlik",
+    "mesulietsizlik",
+    "özbekstan",
+    "ozbekistan",
+    "cüyrüq",
+    "cuyrüq",
+    "kompyuter",
+    "kompyüter",
+}
+
+CLEAN_RESTORED_WORDS: dict[str, int] = {
+    "alyanaq": 60,
+    "alyanaqlı": 45,
+    "beşikyapıcı": 40,
+    "qolyazma": 120,
+    "arslanyürek": 50,
+    "alevyürek": 45,
+    "devyürek": 45,
+    "devyürekli": 40,
+    "devyüreklik": 35,
+    "büyütüv": 55,
+    "kültüste": 40,
+    "mesuliyet": 180,
+    "mesuliyetli": 140,
+    "mesuliyetsiz": 80,
+    "mesuliyetsizlik": 75,
+    "özbekistan": 220,
+    "cüyrük": 65,
+    "kompüter": 200,
+}
+
+OCR_RESCUE_MAP: dict[str, str] = {
+    "іşte": "işte",
+    "defіn": "defin",
+    "körünіş": "körüniş",
+    "körünіşleri": "körünişleri",
+    "tіlki": "tilki",
+    "kіm": "kim",
+    "lâtіf": "lâtif",
+    "materіal": "material",
+    "şekilnіñ": "şekilniñ",
+    "іcatçınıñ": "icatçınıñ",
+    "іz": "iz",
+    "petlі": "petli",
+    "şevkєt": "şevket",
+    "іstidatlı": "istidatlı",
+    "bakşі": "bakşi",
+    "filigrannіñ": "filigrannıñ",
+    "akіmova": "akimova",
+    "çepurіna": "çepurina",
+    "nіkolskiy": "nikolskiy",
+    "tіl": "til",
+    "bіr": "bir",
+}
+
+
 def ingest_lat_diff(
     nkkm_dir: Path,
 ) -> dict[str, str]:
@@ -365,10 +561,32 @@ def ingest_lat_diff(
             for row in reader:
                 if len(row) >= 2 and "," in row[1]:
                     std_raw, alt_raw = row[1].split(",", 1)
-                    std = crh_lower(std_raw)
-                    alt = crh_lower(alt_raw)
-                    if std and alt and std != alt and " " not in alt and " " not in std:
-                        corrections[alt] = std
+                    std = crh_lower(std_raw).replace("\u0445", "h").translate(CYRILLIC_HOMOGLYPH_MAP)
+                    alt_orig = crh_lower(alt_raw)
+                    alt_norm = alt_orig.translate(CYRILLIC_HOMOGLYPH_MAP)
+                    if (
+                        not std
+                        or not alt_norm
+                        or std == alt_norm
+                        or " " in alt_norm
+                        or " " in std
+                        or alt_orig in TRUNCATED_LAT_DIFF_ALTS
+                        or alt_norm in TRUNCATED_LAT_DIFF_ALTS
+                        or std in BAD_STD_WORDS
+                        or alt_norm in SEED_SYNCOPE_CORRECTIONS
+                        or not is_clean_token(std)
+                        or not is_clean_token(alt_norm)
+                    ):
+                        continue
+                    corrections[alt_norm] = std
+                    if "x" in alt_norm:
+                        ascii_alt = (
+                            alt_norm.replace("â", "a")
+                            .replace("î", "i")
+                            .replace("û", "u")
+                        )
+                        if ascii_alt != alt_norm and ascii_alt not in corrections:
+                            corrections[ascii_alt] = std
         print(f"Ingested {len(corrections)} orthographic corrections from lat_diff.csv & grammar.xml", flush=True)
     return corrections
 
@@ -398,19 +616,26 @@ def update_words_and_typos(
     typo_corrections: dict[str, str],
 ) -> None:
     cursor = conn.cursor()
-    ocr_contaminants = set("іїєґІЇЄҐ")
     existing: dict[str, int] = {}
+    rescued_ocr = 0
     for w_raw, f_raw in cursor.execute("SELECT word, freq FROM words"):
         if not w_raw:
             continue
         w = crh_lower(w_raw)
+        freq = int(f_raw or 0)
+        if w in OCR_RESCUE_MAP:
+            clean_w = OCR_RESCUE_MAP[w]
+            existing[clean_w] = existing.get(clean_w, 0) + max(freq, 1)
+            rescued_ocr += 1
+            continue
         if (
             "." in w
             or "oırım" in w
-            or any(ch in ocr_contaminants or ("\u0400" <= ch <= "\u04ff") for ch in w)
+            or " " in w
+            or w in BAD_STD_WORDS
+            or not is_clean_token(w)
         ):
             continue
-        freq = int(f_raw or 0)
         if freq > existing.get(w, -1):
             existing[w] = freq
 
@@ -418,9 +643,20 @@ def update_words_and_typos(
     updated_words = 0
 
     for w, freq in SEED_HYPHENATED_WORDS.items():
-        unigram_boosts[w] = max(unigram_boosts[w], freq)
+        clean_w = w.strip()
+        if is_clean_token(clean_w):
+            unigram_boosts[clean_w] = max(unigram_boosts[clean_w], freq)
+
+    for w, freq in CLEAN_RESTORED_WORDS.items():
+        if is_clean_token(w):
+            unigram_boosts[w] = max(unigram_boosts[w], freq)
+
+    for w in BAD_STD_WORDS:
+        existing.pop(w, None)
 
     for w, boost in unigram_boosts.items():
+        if w in BAD_STD_WORDS or not is_clean_token(w):
+            continue
         if w not in existing:
             if boost >= 2 or "-" in w:
                 existing[w] = boost
@@ -429,11 +665,6 @@ def update_words_and_typos(
             if boost > existing[w]:
                 existing[w] = boost
                 updated_words += 1
-
-    for phrase, freq in phrases_to_add.items():
-        if phrase not in existing:
-            existing[phrase] = freq
-            added_words += 1
 
     cursor.execute("DROP TABLE IF EXISTS words")
     cursor.execute('CREATE TABLE "words" ("word" TEXT, "freq" INTEGER)')
@@ -458,7 +689,7 @@ def update_words_and_typos(
         list(typo_corrections.items()),
     )
     print(
-        f"Updated words table (+{added_words} new words, {updated_words} freq updates, {len(existing)} total) and {len(typo_corrections)} typo_corrections",
+        f"Updated words table (+{added_words} new words, {updated_words} freq updates, {rescued_ocr} rescued OCR words, {len(existing)} total clean words) and {len(typo_corrections)} typo_corrections",
         flush=True,
     )
 
@@ -531,6 +762,20 @@ def build_ngrams(
     ).fetchall()
 
     bigrams, trigrams = collect_ngrams_from_phrases(phrases)
+    try:
+        for w1, w2, f in cursor.execute("SELECT word1, word2, freq FROM bigrams"):
+            c1, c2 = crh_lower(w1), crh_lower(w2)
+            if is_clean_token(c1) and is_clean_token(c2):
+                bigrams[(c1, c2)] = max(bigrams[(c1, c2)], int(f or 0))
+    except sqlite3.OperationalError:
+        pass
+    try:
+        for w1, w2, w3, f in cursor.execute("SELECT word1, word2, word3, freq FROM trigrams"):
+            c1, c2, c3 = crh_lower(w1), crh_lower(w2), crh_lower(w3)
+            if is_clean_token(c1) and is_clean_token(c2) and is_clean_token(c3):
+                trigrams[(c1, c2, c3)] = max(trigrams[(c1, c2, c3)], int(f or 0))
+    except sqlite3.OperationalError:
+        pass
     unigram_boosts: collections.Counter[str] = collections.Counter()
     phrases_to_add: collections.Counter[str] = collections.Counter()
 

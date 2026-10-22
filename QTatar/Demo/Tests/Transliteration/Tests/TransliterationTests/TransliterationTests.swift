@@ -540,4 +540,58 @@ private let parityCases: [(String, String)] = {
     #expect(mismatches.isEmpty, "Mismatches: \(mismatches)")
 }
 
+@Test func ukrainianCyrillicLayoutTransliterationAndBackspace() {
+    let cases: [(String, String)] = [
+        ("і", "i"),
+        ("І", "İ"),
+        ("и", "ı"),
+        ("И", "I"),
+        ("є", "e"),
+        ("Є", "E"),
+        ("ґ", "g"),
+        ("Ґ", "G"),
+        ("гъ", "ğ"),
+        ("Гъ", "Ğ"),
+        ("ГЪ", "Ğ"),
+        ("ґъ", "ğ"),
+        ("Ґъ", "Ğ"),
+        ("ҐЪ", "Ğ"),
+        ("къирим", "qırım"),
+        ("Къирим", "Qırım"),
+        ("КЪИРИМ", "QIRIM"),
+        ("тілі", "tili"),
+        ("Тілі", "Tili"),
+        ("ґузель", "güzel"),
+        ("гъаєт", "ğaet"),
+        ("ґъаєт", "ğaet"),
+        ("джаним", "canım"),
+        ("селям", "selâm"),
+        ("буґунь", "bugün"),
+        ("міллетнінъ", "milletniñ"),
+        ("яхши", "yahşı")
+    ]
+    for (source, expected) in cases {
+        #expect(CrimeanTatarTransliterator.transliterate(source, ukrainianLayout: true) == expected)
+        var engine = CrimeanTatarTransliterator()
+        engine.ukrainianLayout = true
+        let id = UUID()
+        var document = ""
+        var states = [document]
+        for ch in source {
+            let edit = engine.append(String(ch), context: document, documentID: id)
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            states.append(document)
+        }
+        #expect(document == expected)
+        for prev in states.dropLast().reversed() {
+            guard let edit = engine.backspace(context: document, documentID: id) else {
+                Issue.record("Backspace failed on \(source)")
+                break
+            }
+            document = String(document.dropLast(edit.deleteCount)) + edit.insertion
+            #expect(document == prev)
+        }
+    }
+}
+
 

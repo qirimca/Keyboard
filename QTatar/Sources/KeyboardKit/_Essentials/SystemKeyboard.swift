@@ -317,7 +317,7 @@ private extension SystemKeyboard {
                     rowHeight: rowHeight
                 )
             }
-            .id(keyboardContext.locale.identifier)
+            .id(keyboardContext.locale.identifier + itemRow.map { String(describing: $0.action) }.joined())
         }
         .frame(height: rowHeight)
     }
@@ -403,20 +403,67 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
+    private let tailDuration: TimeInterval = 0.20
 
     var body: some View {
-        let points = swipeState.activeTrailPoints
-        if points.count >= 2 {
-            Path { path in
-                path.move(to: points[0])
-                for pt in points.dropFirst() {
-                    path.addLine(to: pt)
+        if !swipeState.activeTrailSamples.isEmpty {
+            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: swipeState.activeTrailSamples.isEmpty)) { timeline in
+                let _ = timeline.date
+                Canvas { context, _ in
+                    let now = ProcessInfo.processInfo.systemUptime
+                    let live = swipeState.activeTrailSamples.filter { now - $0.timestamp <= tailDuration }
+                    guard live.count >= 2 else { return }
+
+                    for i in 1..<live.count {
+                        let prev = live[i - 1]
+                        let curr = live[i]
+                        let age = max(0, now - curr.timestamp)
+                        let timeProgress = max(0, min(1, 1.0 - (age / tailDuration)))
+                        let indexProgress = Double(i) / Double(max(live.count - 1, 1))
+                        let fade = timeProgress * (0.25 + 0.75 * indexProgress)
+                        guard fade > 0.01 else { continue }
+
+                        let outerWidth = CGFloat(1.2 + 8.2 * pow(fade, 1.25))
+                        let outerAlpha = (isDark ? 0.54 : 0.44) * pow(fade, 1.30)
+                        let outerColor = (isDark ? Color.white : Color(red: 0.36, green: 0.38, blue: 0.43)).opacity(outerAlpha)
+
+                        var seg = Path()
+                        seg.move(to: prev.point)
+                        seg.addLine(to: curr.point)
+                        context.stroke(
+                            seg,
+                            with: .color(outerColor),
+                            style: StrokeStyle(lineWidth: outerWidth, lineCap: .round, lineJoin: .round)
+                        )
+
+                        let coreWidth = max(0.8, outerWidth * 0.52)
+                        let coreAlpha = (isDark ? 0.72 : 0.58) * pow(fade, 1.45)
+                        let coreColor = (isDark ? Color.white : Color(white: 0.96)).opacity(coreAlpha)
+                        context.stroke(
+                            seg,
+                            with: .color(coreColor),
+                            style: StrokeStyle(lineWidth: coreWidth, lineCap: .round, lineJoin: .round)
+                        )
+                    }
+
+                    if let head = live.last {
+                        let headAge = max(0, now - head.timestamp)
+                        let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
+                        if headFade > 0.05 {
+                            let radius = CGFloat(4.6 * pow(headFade, 0.9))
+                            let headRect = CGRect(
+                                x: head.point.x - radius,
+                                y: head.point.y - radius,
+                                width: radius * 2,
+                                height: radius * 2
+                            )
+                            let headAlpha = (isDark ? 0.74 : 0.56) * headFade
+                            let headColor = (isDark ? Color.white : Color(red: 0.40, green: 0.42, blue: 0.47)).opacity(headAlpha)
+                            context.fill(Path(ellipseIn: headRect), with: .color(headColor))
+                        }
+                    }
                 }
             }
-            .stroke(
-                (isDark ? Color.white : Color(white: 0.25)).opacity(0.46),
-                style: StrokeStyle(lineWidth: 6.5, lineCap: .round, lineJoin: .round)
-            )
             .allowsHitTesting(false)
             .accessibilityHidden(true)
         }

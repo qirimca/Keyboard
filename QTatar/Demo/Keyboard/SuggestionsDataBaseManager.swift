@@ -523,7 +523,14 @@ final class SuggestionsDataBaseManager {
             let lastContext = contextWords.last ?? ""
             let isAllCaps = lastContext.count > 1 && lastContext == lastContext.uppercased(with: Self.casingLocale)
             return candidates.prefix(3).map {
-                Autocomplete.Suggestion(text: formatWord($0, capitalize: shouldCapitalize, isAllCaps: isAllCaps))
+                Autocomplete.Suggestion(
+                    text: formatWord(
+                        $0,
+                        capitalize: shouldCapitalize,
+                        isAllCaps: isAllCaps,
+                        contextWords: contextWords
+                    )
+                )
             }
         }
     }
@@ -544,7 +551,10 @@ final class SuggestionsDataBaseManager {
 
             let effectiveQuery: String = {
                 if text.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) }) {
-                    let transliterated = CrimeanTatarTransliterator.transliterate(text)
+                    let transliterated = CrimeanTatarTransliterator.transliterate(
+                        text,
+                        ukrainianLayout: KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+                    )
                     return transliterated.isEmpty ? text : transliterated
                 }
                 return text
@@ -553,8 +563,62 @@ final class SuggestionsDataBaseManager {
             let isAllCaps = effectiveQuery.count > 1 && effectiveQuery == effectiveQuery.uppercased(with: Self.casingLocale)
             var matches = fetchWordsStartingWith(prefix: effectiveQuery, limit: 12)
             let queryLower = effectiveQuery.lowercased(with: Self.casingLocale)
+            let prevWordRaw = contextWords.last
+            let prevLower = prevWordRaw?.lowercased(with: Self.casingLocale)
 
-            if let prevWord = contextWords.last?.lowercased(with: Self.casingLocale), !prevWord.isEmpty {
+            // Contextual multi-token replacements (question particle -mı/-mi and space-separated hyphenated words)
+            if let prevRaw = prevWordRaw, let prevLower, prevLower.count >= 2 {
+                if ["mı", "mi", "mu", "mü"].contains(queryLower),
+                   !["ve", "da", "de", "ki", "ya", "hem", "amma", "lâkin"].contains(prevLower),
+                   !prevLower.hasSuffix("mı"), !prevLower.hasSuffix("mi") {
+                    let isBack = lastVowelIsBack(in: prevLower) ?? true
+                    let particle = isBack ? "mı" : "mi"
+                    let joinedSuffix = isAllCaps ? particle.uppercased(with: Self.casingLocale) : particle
+                    let joinedWord = prevRaw + joinedSuffix
+                    let replaceCount = prevRaw.count + 1 + text.count
+                    var particleResult: [Autocomplete.Suggestion] = [
+                        .init(text: text, isUnknown: true),
+                        .init(
+                            text: joinedWord,
+                            title: joinedWord,
+                            isAutocorrect: true,
+                            additionalInfo: ["replaceCharCount": replaceCount]
+                        )
+                    ]
+                    if let thirdMatch = matches.first(where: { $0.lowercased(with: Self.casingLocale) != queryLower }) {
+                        particleResult.append(.init(text: formatWord(thirdMatch, capitalize: shouldCapitalize, isAllCaps: isAllCaps)))
+                    }
+                    return particleResult
+                }
+
+                if !queryLower.contains("-"), queryLower.count >= 2, prevLower != "bir" {
+                    let hyphenPrefix = "\(prevLower)-\(queryLower)"
+                    let hyphenMatches = fetchWordsStartingWith(prefix: hyphenPrefix, limit: 1)
+                    if let matchedHyphen = hyphenMatches.first {
+                        let mhLower = matchedHyphen.lowercased(with: Self.casingLocale)
+                        if mhLower == hyphenPrefix || (queryLower.count >= 3 && mhLower.hasPrefix(hyphenPrefix)) {
+                            let capFirst = prevRaw.first?.isUppercase == true || shouldCapitalize
+                            let formattedHyphen = formatWord(matchedHyphen, capitalize: capFirst, isAllCaps: isAllCaps)
+                            let replaceCount = prevRaw.count + 1 + text.count
+                            var hyphenResult: [Autocomplete.Suggestion] = [
+                                .init(text: text, isUnknown: true),
+                                .init(
+                                    text: formattedHyphen,
+                                    title: formattedHyphen,
+                                    isAutocorrect: true,
+                                    additionalInfo: ["replaceCharCount": replaceCount]
+                                )
+                            ]
+                            if let thirdMatch = matches.first {
+                                hyphenResult.append(.init(text: formatWord(thirdMatch, capitalize: shouldCapitalize, isAllCaps: isAllCaps)))
+                            }
+                            return hyphenResult
+                        }
+                    }
+                }
+            }
+
+            if let prevWord = prevLower, !prevWord.isEmpty {
                 var bigramMap: [String: Int] = [:]
                 for (w2, f) in fetchUserBigrams(after: prevWord, limit: 8) {
                     bigramMap[w2.lowercased(with: Self.casingLocale)] = f * 2500
@@ -563,6 +627,7 @@ final class SuggestionsDataBaseManager {
                     let k = w2.lowercased(with: Self.casingLocale)
                     bigramMap[k] = max(bigramMap[k] ?? 0, f * 20)
                 }
+                applyGrammaticalReranking(lastWord: prevWord, into: &bigramMap)
                 if !bigramMap.isEmpty {
                     matches.sort { lhs, rhs in
                         let lKey = lhs.lowercased(with: Self.casingLocale)
@@ -579,25 +644,27 @@ final class SuggestionsDataBaseManager {
             matches = Array(matches.prefix(8))
 
             let isKnownWord = matches.first.map { $0.lowercased(with: Self.casingLocale) == queryLower } ?? false
-            let explicitFix = typoCorrectionFromDB(for: queryLower) ?? harmonyOrGrammarCorrection(for: queryLower)
+            let explicitFix = typoCorrectionFromDB(for: queryLower)
+                ?? pronounVerbAgreementCorrection(for: queryLower, previousWord: prevLower)
+                ?? (!isKnownWord ? harmonyOrGrammarCorrection(for: queryLower) : nil)
 
             var result: [Autocomplete.Suggestion] = []
 
             if let explicitFix, explicitFix != queryLower {
                 result.append(.init(text: text, isUnknown: true))
                 result.append(.init(
-                    text: formatWord(explicitFix, capitalize: shouldCapitalize, isAllCaps: isAllCaps),
+                    text: formatWord(explicitFix, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords),
                     isAutocorrect: true
                 ))
             } else if isKnownWord, let known = matches.first {
                 // A valid word is not replaced, except for a casing fix (shift state / sentence start)
                 // or when its diacritic form in the bundled dictionary is overwhelmingly more common (qirim → qırım).
-                let knownFormatted = formatWord(known, capitalize: shouldCapitalize, isAllCaps: isAllCaps)
+                let knownFormatted = formatWord(known, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords)
                 let baseFreq = bundledFrequency(of: queryLower)
                 if let dominant = diacriticCorrection(for: queryLower, over: baseFreq > 0 ? baseFreq : nil) {
                     result.append(.init(text: text, isUnknown: true))
                     result.append(.init(
-                        text: formatWord(dominant, capitalize: shouldCapitalize, isAllCaps: isAllCaps),
+                        text: formatWord(dominant, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords),
                         isAutocorrect: true
                     ))
                 } else if text != knownFormatted {
@@ -623,7 +690,7 @@ final class SuggestionsDataBaseManager {
                 result.append(.init(text: text, isUnknown: true))
                 if let correction {
                     result.append(.init(
-                        text: formatWord(correction, capitalize: shouldCapitalize, isAllCaps: isAllCaps),
+                        text: formatWord(correction, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords),
                         isAutocorrect: true
                     ))
                 }
@@ -633,7 +700,7 @@ final class SuggestionsDataBaseManager {
             var usedKeys = used
             for match in matches {
                 guard result.count < 3 else { break }
-                let formatted = formatWord(match, capitalize: shouldCapitalize, isAllCaps: isAllCaps)
+                let formatted = formatWord(match, capitalize: shouldCapitalize, isAllCaps: isAllCaps, contextWords: contextWords)
                 let key = formatted.lowercased(with: Self.casingLocale)
                 guard !usedKeys.contains(key) else { continue }
                 usedKeys.insert(key)
@@ -652,13 +719,17 @@ final class SuggestionsDataBaseManager {
     ]
 
     private static let cyrillicToLatinSwipeMap: [Character: [Character]] = [
-        "а": ["a"], "б": ["b"], "в": ["v"], "г": ["g", "ğ"], "д": ["d"],
-        "е": ["e"], "ё": ["y", "o"], "ж": ["j", "c"], "з": ["z"], "и": ["i"],
-        "й": ["y"], "к": ["q", "k"], "л": ["l"], "м": ["m"], "н": ["n"],
-        "о": ["o"], "п": ["p"], "р": ["r"], "с": ["s"], "т": ["t"],
+        "а": ["a"], "б": ["b"], "в": ["v"], "г": ["g", "ğ"], "ґ": ["g", "ğ"], "д": ["d"],
+        "е": ["e"], "є": ["e"], "ё": ["o"], "ж": ["j", "c"], "з": ["z"], "и": ["i"],
+        "і": ["i"], "ї": ["y", "i"], "й": ["y"], "к": ["q", "k"], "л": ["l"], "м": ["m"],
+        "н": ["n"], "о": ["o"], "п": ["p"], "р": ["r"], "с": ["s"], "т": ["t"],
         "у": ["u"], "ф": ["f"], "х": ["h"], "ц": ["s", "t"], "ч": ["c"],
-        "ш": ["s"], "щ": ["s"], "ы": ["i"], "э": ["e"], "ю": ["y", "u"],
-        "я": ["y", "a"]
+        "ш": ["s"], "щ": ["s"], "ы": ["i"], "э": ["e"], "ю": ["u"],
+        "я": ["a"]
+    ]
+
+    private static let cyrillicVowelOrSign: Set<Character> = [
+        "а", "е", "є", "ё", "и", "і", "ї", "о", "у", "ы", "э", "ю", "я", "ъ", "ь"
     ]
 
     private static let qwertyNeighbors: [Character: Set<Character>] = [
@@ -705,16 +776,42 @@ final class SuggestionsDataBaseManager {
             ensureDB()
             var basePath: [Character] = []
             var startCandidates: [Character] = []
+            var endCandidates = Set<Character>()
+            let lowerKeys: [Character] = keySequence.compactMap {
+                $0.lowercased(with: Self.casingLocale).first
+            }
 
-            for raw in keySequence {
-                let lower = raw.lowercased(with: Self.casingLocale)
-                guard let ch = lower.first else { continue }
+            if isCyrillic, lowerKeys.first == "д", lowerKeys.prefix(3).contains("ж") {
+                startCandidates.append("c")
+            }
+
+            var prevCyrChar: Character?
+            for (idx, ch) in lowerKeys.enumerated() {
                 if isCyrillic {
-                    if ch == "ъ" || ch == "ь" { continue }
-                    if let mapped = Self.cyrillicToLatinSwipeMap[ch] {
+                    if ch == "ъ" || ch == "ь" {
+                        prevCyrChar = ch
+                        continue
+                    }
+                    if ch == "д", idx == 0, lowerKeys.dropFirst().prefix(2).contains("ж") {
+                        prevCyrChar = ch
+                        continue
+                    }
+                    var mapped = Self.cyrillicToLatinSwipeMap[ch] ?? []
+                    let isWordStartOrAfterVowel = basePath.isEmpty || (prevCyrChar.map { Self.cyrillicVowelOrSign.contains($0) } ?? false)
+                    if isWordStartOrAfterVowel {
+                        if ch == "ё" { mapped = ["y", "o"] }
+                        else if ch == "ю" { mapped = ["y", "u"] }
+                        else if ch == "я" { mapped = ["y", "a"] }
+                    }
+                    if !mapped.isEmpty {
                         if startCandidates.isEmpty {
                             startCandidates = mapped
+                        } else if basePath.isEmpty {
+                            for m in mapped where !startCandidates.contains(m) {
+                                startCandidates.append(m)
+                            }
                         }
+                        endCandidates = Set(mapped.map { Self.normalizeBaseChar($0) })
                         for m in mapped {
                             let b = Self.normalizeBaseChar(m)
                             if basePath.last != b {
@@ -722,11 +819,13 @@ final class SuggestionsDataBaseManager {
                             }
                         }
                     }
+                    prevCyrChar = ch
                 } else if ch.isLetter {
                     let b = Self.normalizeBaseChar(ch)
                     if startCandidates.isEmpty {
                         startCandidates = [ch, b]
                     }
+                    endCandidates = [b]
                     if basePath.last != b {
                         basePath.append(b)
                     }
@@ -735,6 +834,9 @@ final class SuggestionsDataBaseManager {
 
             guard basePath.count >= 2, let firstBase = basePath.first, let lastBase = basePath.last else {
                 return []
+            }
+            if endCandidates.isEmpty {
+                endCandidates.insert(lastBase)
             }
 
             var prefixes = Set<String>()
@@ -752,7 +854,10 @@ final class SuggestionsDataBaseManager {
 
             let minLen = max(2, min(4, basePath.count - 1))
             let maxLen = min(22, basePath.count + 5)
-            let lastNeighbors = Self.qwertyNeighbors[lastBase] ?? []
+            var lastNeighbors = Set<Character>()
+            for ec in endCandidates {
+                lastNeighbors.formUnion(Self.qwertyNeighbors[ec] ?? [])
+            }
 
             var bigramBoosts: [String: Int] = [:]
             if let prev = contextWords.last?.lowercased(with: Self.casingLocale), !prev.isEmpty {
@@ -763,6 +868,7 @@ final class SuggestionsDataBaseManager {
                     let k = w2.lowercased(with: Self.casingLocale)
                     bigramBoosts[k] = max(bigramBoosts[k] ?? 0, freq * 20)
                 }
+                applyGrammaticalReranking(lastWord: prev, into: &bigramBoosts)
             }
 
             var candidatePool: [(word: String, freq: Int)] = []
@@ -801,7 +907,7 @@ final class SuggestionsDataBaseManager {
                 }
                 guard wordBase.count >= 2, let wordLast = wordBase.last else { continue }
 
-                let exactLast = (wordLast == lastBase)
+                let exactLast = endCandidates.contains(wordLast)
                 let neighborLast = !exactLast && lastNeighbors.contains(wordLast)
                 guard exactLast || neighborLast else { continue }
 
@@ -864,7 +970,7 @@ final class SuggestionsDataBaseManager {
                     + Double(max(0, basePath.count - wordBase.count)) * 0.02
                 let endBonus = exactLast ? 2.5 : 0.4
                 let contextFreq = bigramBoosts[lower] ?? 0
-                let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.0) * 1.35
+                let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.35) * 1.35
                 let totalScore = (coverageRatio * 6.0) + matchedKeyBonus + endBonus + freqScore - lengthPenalty - shortWordDetourPenalty
                 scoredCandidates.append((word, totalScore))
             }
@@ -878,7 +984,7 @@ final class SuggestionsDataBaseManager {
 
             return scoredCandidates.prefix(3).enumerated().map { idx, item in
                 Autocomplete.Suggestion(
-                    text: formatWord(item.word, capitalize: shouldCapitalize),
+                    text: formatWord(item.word, capitalize: shouldCapitalize, contextWords: contextWords),
                     isAutocorrect: idx == 0
                 )
             }
@@ -927,9 +1033,22 @@ final class SuggestionsDataBaseManager {
         "a": ["â"], "c": ["ç"], "g": ["ğ"], "i": ["ı"], "n": ["ñ"],
         "o": ["ö"], "s": ["ş"], "u": ["ü", "û"]
     ]
-    private static let backVowels: Set<Character> = ["a", "ı", "o", "u"]
-    private static let frontVowels: Set<Character> = ["e", "i", "ö", "ü", "â", "î", "û"]
+    private static let backVowels: Set<Character> = ["a", "ı", "o", "u", "â", "û"]
+    private static let frontVowels: Set<Character> = ["e", "i", "ö", "ü", "î"]
     private static let voicelessConsonants: Set<Character> = ["p", "f", "k", "ç", "t", "ş", "s", "h", "q"]
+    private static let frontHarmonyLoanStems: Set<String> = [
+        "teatr", "qalb", "vals", "harf", "iştirak", "kontrol", "misal",
+        "rol", "bahar", "lager", "parol", "ansambl", "festival",
+        "sentâbr", "oktâbr", "noyabr", "dekabr", "kemal", "hal", "emal"
+    ]
+    private static let nonVoicingStems: Set<String> = [
+        "halq", "sepet", "ağaç", "bulut", "oyun", "torun", "huquq",
+        "ittifaq", "ahlâq", "şarq", "garb", "millet", "devlet", "saat",
+        "sanat", "sıfat", "edebiyat", "malümat", "tabiat", "cemaat", "hayat"
+    ]
+    private static let voicingMonosyllabicPStems: Set<String> = [
+        "cep", "tüp", "qap", "köp"
+    ]
 
     /// Instant lookup in `typo_corrections` table populated from NKKM `lat_diff.csv` and `grammar.xml` syncope rules.
     private func typoCorrectionFromDB(for queryLower: String) -> String? {
@@ -946,6 +1065,37 @@ final class SuggestionsDataBaseManager {
         return String(cString: ptr)
     }
 
+    /// Pronoun + personal verb agreement (e.g., `men yaptı -> men yaptım`, `sen yaptı -> sen yaptıñ`, `biz yaptı -> biz yaptıq`, `siz yaptı -> siz yaptıñız`).
+    private func pronounVerbAgreementCorrection(for queryLower: String, previousWord: String?) -> String? {
+        guard let prev = previousWord,
+              ["men", "sen", "biz", "siz"].contains(prev),
+              queryLower.count >= 4 else {
+            return nil
+        }
+        let nonVerbExcluded: Set<String> = ["altı", "yedi", "endı", "indi", "yahşı", "kibi", "vaqtı", "ağzı"]
+        if nonVerbExcluded.contains(queryLower) { return nil }
+
+        for pastSuffix in ["dı", "di", "tı", "ti"] where queryLower.hasSuffix(pastSuffix) {
+            let stem = String(queryLower.dropLast(2))
+            guard stem.count >= 2 else { break }
+            let isBack = pastSuffix.contains("ı")
+            let candidate: String
+            switch prev {
+            case "men": candidate = queryLower + "m"
+            case "sen": candidate = queryLower + "ñ"
+            case "biz": candidate = queryLower + (isBack ? "q" : "k")
+            case "siz": candidate = queryLower + (isBack ? "ñız" : "ñiz")
+            default: return nil
+            }
+            let inf = stem + (isBack ? "maq" : "mek")
+            if frequency(of: candidate) > 0 || bundledFrequency(of: inf) > 0 {
+                return candidate
+            }
+            break
+        }
+        return nil
+    }
+
     /// Applies official Crimean Tatar morphological & phonological rules from NKKM `Language Tools/grammar.xml`
     /// and online `community.languagetool.org/rule/list?lang=crh` (`LanguageTool 6.8-SNAPSHOT`):
     /// 0. `TOPONOMY_TYPOS` (`Qrım*` -> `Qırım*`)
@@ -960,6 +1110,19 @@ final class SuggestionsDataBaseManager {
         // 0. TOPONOMY_TYPOS (Qrım* -> Qırım*)
         if queryLower.hasPrefix("qrım") {
             return "qırım" + String(queryLower.dropFirst(4))
+        }
+
+        // Dictionary protection: never overwrite a word already verified in the bundled dictionary (freq >= 2)
+        if bundledFrequency(of: queryLower) >= 2 {
+            return nil
+        }
+
+        // 0b. Attached rounded question particle (-mu / -mü -> -mı / -mi, § 2 п. 1, § 67 п. 3.1)
+        if queryLower.count >= 5 && (queryLower.hasSuffix("mu") || queryLower.hasSuffix("mü")) {
+            let stem = String(queryLower.dropLast(2))
+            if let isBack = lastVowelIsBack(in: stem), frequency(of: stem) >= 5 {
+                return stem + (isBack ? "mı" : "mi")
+            }
         }
 
         // 1. Plural suffix vowel harmony (-lar <-> -ler)
@@ -1057,7 +1220,10 @@ final class SuggestionsDataBaseManager {
         for possSuffix in missvocalizationSuffixes {
             if queryLower.hasSuffix(possSuffix) {
                 let stem = String(queryLower.dropLast(possSuffix.count))
-                guard stem.count >= 3, let stemLast = stem.last else { continue }
+                guard stem.count >= 3, !Self.nonVoicingStems.contains(stem), let stemLast = stem.last else { continue }
+                if stemLast == "p" && stem.count == 3 && !Self.voicingMonosyllabicPStems.contains(stem) {
+                    continue
+                }
                 let voicedChar: Character? = {
                     switch stemLast {
                     case "q": return "ğ"
@@ -1080,6 +1246,9 @@ final class SuggestionsDataBaseManager {
     }
 
     private func lastVowelIsBack(in stem: String) -> Bool? {
+        if Self.frontHarmonyLoanStems.contains(stem) {
+            return false
+        }
         for ch in stem.reversed() {
             if Self.backVowels.contains(ch) { return true }
             if Self.frontVowels.contains(ch) { return false }
@@ -1087,11 +1256,14 @@ final class SuggestionsDataBaseManager {
         return nil
     }
 
-    /// A completion is auto-applied only if it adds at most two letters to a word of 3+ letters.
+    /// A completion is auto-applied only if it adds at most two letters to a word of 3+ letters,
+    /// or completes a hyphenated word stem (e.g. `gece-` -> `gece-kündüz`).
     private func shortCompletion(for queryLower: String, in matches: [String]) -> String? {
         guard queryLower.count >= 3, let best = matches.first else { return nil }
         let bestLower = best.lowercased(with: Self.casingLocale)
-        guard bestLower.hasPrefix(queryLower), bestLower.count - queryLower.count <= 2 else { return nil }
+        guard bestLower.hasPrefix(queryLower) else { return nil }
+        let maxExtra = queryLower.contains("-") ? 12 : 2
+        guard bestLower.count - queryLower.count <= maxExtra else { return nil }
         return best
     }
 
@@ -1185,9 +1357,76 @@ final class SuggestionsDataBaseManager {
         return best
     }
 
-    private func formatWord(_ word: String, capitalize: Bool, isAllCaps: Bool = false) -> String {
+    private static let properCollocationSecondWord: [String: [String: String]] = [
+        "qırım": [
+            "musulman": "Musulman",
+            "muhtar": "Muhtar",
+            "hanlığı": "Hanlığı",
+            "yarımadası": "Yarımadası",
+            "devlet": "Devlet"
+        ],
+        "ukrayina": [
+            "nazirler": "Nazirler",
+            "cumhuriyeti": "Cumhuriyeti"
+        ],
+        "ğafur": [
+            "ğulam": "Ğulam"
+        ],
+        "ismail": [
+            "gasprinskiy": "Gasprinskiy"
+        ],
+        "noman": [
+            "çelebicihan": "Çelebicihan"
+        ],
+        "bekir": [
+            "çobanzade": "Çobanzade"
+        ]
+    ]
+
+    private static let properCollocationThirdWord: [String: [String: String]] = [
+        "qırım musulman": [
+            "icra": "İcra",
+            "komiteti": "Komiteti"
+        ],
+        "musulman icra": [
+            "komiteti": "Komiteti"
+        ],
+        "qırım muhtar": [
+            "cumhuriyeti": "Cumhuriyeti"
+        ],
+        "ukrayina nazirler": [
+            "kabineti": "Kabineti"
+        ]
+    ]
+
+    private func properNounCasing(for wordLower: String, contextWords: [String]) -> String? {
+        guard !contextWords.isEmpty else { return nil }
+        let normalizedContext = contextWords.map { $0.lowercased(with: Self.casingLocale) }
+        if normalizedContext.count >= 2 {
+            let lastTwo = "\(normalizedContext[normalizedContext.count - 2]) \(normalizedContext[normalizedContext.count - 1])"
+            if let match = Self.properCollocationThirdWord[lastTwo]?[wordLower] {
+                return match
+            }
+        }
+        if let lastOne = normalizedContext.last,
+           let match = Self.properCollocationSecondWord[lastOne]?[wordLower] {
+            return match
+        }
+        return nil
+    }
+
+    private func formatWord(
+        _ word: String,
+        capitalize: Bool,
+        isAllCaps: Bool = false,
+        contextWords: [String] = []
+    ) -> String {
         if isAllCaps {
             return word.uppercased(with: Self.casingLocale)
+        }
+        let lower = word.lowercased(with: Self.casingLocale)
+        if let proper = properNounCasing(for: lower, contextWords: contextWords) {
+            return proper
         }
         if capitalize {
             guard let first = word.first else { return word }
@@ -1195,7 +1434,7 @@ final class SuggestionsDataBaseManager {
             let rest = String(word.dropFirst()).lowercased(with: Self.casingLocale)
             return firstChar + rest
         }
-        return word.lowercased(with: Self.casingLocale)
+        return lower
     }
 
     private func rankNextWordCandidates(contextWords: [String]) -> [String] {

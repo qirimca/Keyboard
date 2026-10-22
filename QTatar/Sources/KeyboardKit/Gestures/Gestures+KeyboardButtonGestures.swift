@@ -98,9 +98,14 @@ private extension View {
     }
 }
 
+private struct KeyFramePayload: Equatable {
+    let character: String
+    let frame: CGRect
+}
+
 private struct KeyFramePreferenceKey: PreferenceKey {
-    static var defaultValue: CGRect = .zero
-    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+    static var defaultValue: KeyFramePayload = .init(character: "", frame: .zero)
+    static func reduce(value: inout KeyFramePayload, nextValue: () -> KeyFramePayload) {
         value = nextValue()
     }
 }
@@ -110,11 +115,17 @@ public final class SwipeTypingState: ObservableObject {
     public static let shared = SwipeTypingState()
     public static let didCompleteSwipeNotification = Notification.Name("crh.key.didCompleteSwipePath")
     public static let coordinateSpaceName = "SystemKeyboardZStack"
+    private static let casingLocale = Locale(identifier: "tr")
+
+    public struct TrailSample: Equatable {
+        public let point: CGPoint
+        public let timestamp: TimeInterval
+    }
 
     public var isFormFactorEligible: Bool = false {
         didSet {
             if !isFormFactorEligible && (isSwiping || !visitedKeys.isEmpty) {
-                reset()
+                reset(clearTrailImmediately: true)
             }
         }
     }
@@ -122,7 +133,7 @@ public final class SwipeTypingState: ObservableObject {
     public var isSlideToTypeSettingEnabled: Bool = true {
         didSet {
             if !isSlideToTypeSettingEnabled && (isSwiping || !visitedKeys.isEmpty) {
-                reset()
+                reset(clearTrailImmediately: true)
             }
         }
     }
@@ -132,75 +143,93 @@ public final class SwipeTypingState: ObservableObject {
     }
 
     @Published public private(set) var activeTrailPoints: [CGPoint] = []
+    @Published public private(set) var activeTrailSamples: [TrailSample] = []
     public private(set) var isSwiping: Bool = false
+    public private(set) var totalDragDistance: CGFloat = 0
 
     private var keyFrames: [String: CGRect] = [:]
     private var visitedKeys: [String] = []
-    private var pendingPoints: [CGPoint] = []
+    private var pendingSamples: [TrailSample] = []
     private var lastPoint: CGPoint?
-    private var totalDistance: CGFloat = 0
+    private var swipeGeneration: Int = 0
 
     private init() {}
 
     public func registerKeyFrame(character: String, frame: CGRect) {
-        guard !character.isEmpty, frame.width > 4, frame.height > 4 else { return }
-        keyFrames[character] = frame
+        let norm = character.lowercased(with: Self.casingLocale)
+        guard !norm.isEmpty, frame.width > 4, frame.height > 4 else { return }
+        let staleKeys = keyFrames.compactMap { existingChar, existingRect -> String? in
+            guard existingChar != norm else { return nil }
+            let dist = hypot(existingRect.midX - frame.midX, existingRect.midY - frame.midY)
+            return dist < 8.0 ? existingChar : nil
+        }
+        for stale in staleKeys {
+            keyFrames.removeValue(forKey: stale)
+        }
+        keyFrames[norm] = frame
     }
 
     public func beginPotentialSwipe(startChar: String, pointInKeyboard: CGPoint) {
-        guard isSwipeEnabled, startChar.first?.isLetter == true else {
-            reset()
+        let norm = startChar.lowercased(with: Self.casingLocale)
+        guard isSwipeEnabled, norm.first?.isLetter == true else {
+            reset(clearTrailImmediately: true)
             return
         }
-        visitedKeys = [startChar]
-        pendingPoints = [pointInKeyboard]
+        swipeGeneration &+= 1
+        let now = ProcessInfo.processInfo.systemUptime
+        visitedKeys = [norm]
+        pendingSamples = [TrailSample(point: pointInKeyboard, timestamp: now)]
         lastPoint = pointInKeyboard
-        totalDistance = 0
+        totalDragDistance = 0
         isSwiping = false
     }
 
     public func updateDrag(pointInKeyboard: CGPoint, isActionCalloutActive: Bool) -> Bool {
         guard isSwipeEnabled, !isActionCalloutActive, !visitedKeys.isEmpty else {
             if isSwiping || !visitedKeys.isEmpty {
-                reset()
+                reset(clearTrailImmediately: true)
             }
             return false
         }
 
+        let now = ProcessInfo.processInfo.systemUptime
         if let prev = lastPoint {
             let step = hypot(pointInKeyboard.x - prev.x, pointInKeyboard.y - prev.y)
-            if step >= 2.0 {
-                totalDistance += step
+            if step >= 1.5 {
+                totalDragDistance += step
                 lastPoint = pointInKeyboard
-                pendingPoints.append(pointInKeyboard)
-                if pendingPoints.count > 40 {
-                    pendingPoints.removeFirst(pendingPoints.count - 40)
-                }
+                pendingSamples.append(TrailSample(point: pointInKeyboard, timestamp: now))
             }
         } else {
             lastPoint = pointInKeyboard
-            pendingPoints.append(pointInKeyboard)
+            pendingSamples.append(TrailSample(point: pointInKeyboard, timestamp: now))
+        }
+        pendingSamples.removeAll { now - $0.timestamp > 0.24 }
+        if pendingSamples.count > 48 {
+            pendingSamples.removeFirst(pendingSamples.count - 48)
         }
 
         if let hitChar = hitTestCharacter(at: pointInKeyboard), visitedKeys.last != hitChar {
             visitedKeys.append(hitChar)
         }
 
-        if !isSwiping && totalDistance >= 36.0 && visitedKeys.count >= 2 {
+        if !isSwiping && ((totalDragDistance >= 20.0 && visitedKeys.count >= 2) || totalDragDistance >= 42.0) {
             isSwiping = true
         }
 
         if isSwiping {
-            activeTrailPoints = Array(pendingPoints.suffix(28))
+            activeTrailSamples = pendingSamples
+            activeTrailPoints = pendingSamples.map(\.point)
         }
         return isSwiping
     }
 
     @discardableResult
     public func endSwipe() -> [String]? {
-        defer { reset() }
-        guard isSwiping, visitedKeys.count >= 2 else { return nil }
+        let wasSwiping = isSwiping
         let seq = visitedKeys
+        reset(clearTrailImmediately: !wasSwiping)
+        guard wasSwiping, seq.count >= 2 else { return nil }
         NotificationCenter.default.post(
             name: Self.didCompleteSwipeNotification,
             object: nil,
@@ -209,14 +238,22 @@ public final class SwipeTypingState: ObservableObject {
         return seq
     }
 
-    public func reset() {
+    public func reset(clearTrailImmediately: Bool = false) {
         visitedKeys.removeAll(keepingCapacity: true)
-        pendingPoints.removeAll(keepingCapacity: true)
+        pendingSamples.removeAll(keepingCapacity: true)
         lastPoint = nil
-        totalDistance = 0
+        totalDragDistance = 0
         isSwiping = false
-        if !activeTrailPoints.isEmpty {
-            activeTrailPoints = []
+        if clearTrailImmediately {
+            if !activeTrailPoints.isEmpty { activeTrailPoints = [] }
+            if !activeTrailSamples.isEmpty { activeTrailSamples = [] }
+        } else if !activeTrailSamples.isEmpty {
+            let gen = swipeGeneration
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.21) { [weak self] in
+                guard let self, self.swipeGeneration == gen, !self.isSwiping else { return }
+                if !self.activeTrailPoints.isEmpty { self.activeTrailPoints = [] }
+                if !self.activeTrailSamples.isEmpty { self.activeTrailSamples = [] }
+            }
         }
     }
 
@@ -230,7 +267,16 @@ public final class SwipeTypingState: ObservableObject {
         for (ch, rect) in keyFrames where rect.contains(point) {
             return ch
         }
-        return nil
+        var bestChar: String?
+        var bestDist: CGFloat = 22.0
+        for (ch, rect) in keyFrames {
+            let d = hypot(rect.midX - point.x, rect.midY - point.y)
+            if d < bestDist {
+                bestDist = d
+                bestChar = ch
+            }
+        }
+        return bestChar
     }
 }
 
@@ -249,15 +295,23 @@ private extension Gestures.KeyboardButtonGestures {
     func button(for geo: GeometryProxy) -> some View {
         let base: AnyView = isInScrollView ? AnyView(scrollButton(for: geo)) : AnyView(gestureButton(for: geo))
         if let ch = characterKeyString {
+            let currentFrame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+            let _ = SwipeTypingState.shared.registerKeyFrame(character: ch, frame: currentFrame)
             base
                 .background(
                     Color.clear.preference(
                         key: KeyFramePreferenceKey.self,
-                        value: geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+                        value: KeyFramePayload(character: ch, frame: currentFrame)
                     )
                 )
-                .onPreferenceChange(KeyFramePreferenceKey.self) { frame in
-                    SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
+                .onPreferenceChange(KeyFramePreferenceKey.self) { payload in
+                    SwipeTypingState.shared.registerKeyFrame(character: payload.character, frame: payload.frame)
+                }
+                .onAppear {
+                    SwipeTypingState.shared.registerKeyFrame(
+                        character: ch,
+                        frame: geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+                    )
                 }
         } else {
             base
@@ -314,9 +368,13 @@ private extension Gestures.KeyboardButtonGestures {
                 y: frame.origin.y + value.location.y
             )
             let calloutActive = calloutContext?.actionContext.isActive ?? false
-            if SwipeTypingState.shared.updateDrag(pointInKeyboard: globalPoint, isActionCalloutActive: calloutActive) {
-                shouldApplyReleaseAction = false
+            let isSwipingNow = SwipeTypingState.shared.updateDrag(pointInKeyboard: globalPoint, isActionCalloutActive: calloutActive)
+            if SwipeTypingState.shared.totalDragDistance >= 14.0 || isSwipingNow {
                 calloutContext?.inputContext.reset()
+                calloutContext?.actionContext.reset()
+            }
+            if isSwipingNow {
+                shouldApplyReleaseAction = false
                 return
             }
         }
@@ -328,7 +386,7 @@ private extension Gestures.KeyboardButtonGestures {
         if SwipeTypingState.shared.isSwiping {
             _ = SwipeTypingState.shared.endSwipe()
         } else {
-            SwipeTypingState.shared.reset()
+            SwipeTypingState.shared.reset(clearTrailImmediately: true)
         }
         endActionCallout()
         calloutContext?.inputContext.resetWithDelay()

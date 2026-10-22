@@ -212,10 +212,25 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
 
 extension InputSet {
     static var crimeanTatarCyrillic: InputSet {
+        KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+            ? .crimeanTatarUkrainianCyrillic
+            : .crimeanTatarStandardCyrillic
+    }
+
+    static var crimeanTatarStandardCyrillic: InputSet {
         .init(rows: [
             .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
             .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
             .init(lowercased: "ячсмитьбюё,", uppercased: "ЯЧСМИТЬБЮЁ,")
+        ])
+    }
+
+    /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `и -> ı`, `є -> e`, `ґ -> g`, `гъ/ґъ -> ğ`, preserving `ъ`.
+    static var crimeanTatarUkrainianCyrillic: InputSet {
+        .init(rows: [
+            .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
+            .init(lowercased: "фівапролджє", uppercased: "ФІВАПРОЛДЖЄ"),
+            .init(lowercased: "ячсмитьбюґ,", uppercased: "ЯЧСМИТЬБЮҐ,")
         ])
     }
 

@@ -40,6 +40,11 @@ public extension String {
         var reversed = String(self.reversed())
         var result = ""
         while let char = reversed.popLast() {
+            if char == "-" {
+                guard !result.isEmpty, reversed.last?.isLetter == true else { return result }
+                result.append(char)
+                continue
+            }
             guard shouldIncludeCharacterInCurrentWord(char) else { return result }
             result.append(char)
         }
@@ -51,6 +56,11 @@ public extension String {
         var string = self
         var result = ""
         while let char = string.popLast() {
+            if char == "-" {
+                guard string.last?.isLetter == true else { return result }
+                result.insert(char, at: result.startIndex)
+                continue
+            }
             guard shouldIncludeCharacterInCurrentWord(char) else { return result }
             result.insert(char, at: result.startIndex)
         }
