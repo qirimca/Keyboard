@@ -509,8 +509,7 @@ enum KeyboardUsageStats {
     }
 }
 
-/// Vector Taraq Tamğa badge that snaps the 9×5 emblem to exact pixel-aligned coordinates so the header,
-/// footer, and about logos have 100% left-right and top-bottom symmetry at every scale.
+/// App icon badge (`Image("logo")` / `qirim_logo.png`) adapted to the active Light/Dark app theme.
 struct TaraqTamgaLogoBadge: View {
     var size: CGFloat = 28
     var cornerRadius: CGFloat = 7
@@ -518,7 +517,7 @@ struct TaraqTamgaLogoBadge: View {
 
     private var backgroundColor: Color {
         colorScheme == .dark
-            ? Color(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 10.0 / 255.0)
+            ? Color(red: 18.0 / 255.0, green: 20.0 / 255.0, blue: 24.0 / 255.0)
             : Color(red: 248.0 / 255.0, green: 245.0 / 255.0, blue: 236.0 / 255.0)
     }
 
@@ -528,25 +527,45 @@ struct TaraqTamgaLogoBadge: View {
             : Color(red: 26.0 / 255.0, green: 26.0 / 255.0, blue: 26.0 / 255.0)
     }
 
-    /// Snaps the 9:5 unit scale to a half-point multiple so 9×unit and 5×unit land on integer pixels on @2x/@3x displays.
     private var unitSize: CGFloat {
         let rawUnit = (size * 0.68) / 9.0
         return max((rawUnit * 2.0).rounded() / 2.0, 1.5)
     }
 
     var body: some View {
-        let unit = unitSize
-        ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(backgroundColor)
-            SharedTaraqTamgaShape()
-                .fill(foregroundColor)
-                .frame(width: unit * 9.0, height: unit * 5.0)
+        Group {
+            if let uiImage = UIImage(named: "logo") {
+                if colorScheme == .dark {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .antialiased(true)
+                        .scaledToFit()
+                        .colorInvert()
+                        .hueRotation(.degrees(180))
+                } else {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .interpolation(.high)
+                        .antialiased(true)
+                        .scaledToFit()
+                }
+            } else {
+                let unit = unitSize
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(backgroundColor)
+                    SharedTaraqTamgaShape()
+                        .fill(foregroundColor)
+                        .frame(width: unit * 9.0, height: unit * 5.0)
+                }
+            }
         }
         .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.14), lineWidth: 0.75)
+                .strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.14), lineWidth: 0.75)
         )
     }
 }

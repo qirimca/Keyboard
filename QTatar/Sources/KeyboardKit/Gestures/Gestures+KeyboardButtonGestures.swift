@@ -471,7 +471,7 @@ private extension Gestures.KeyboardButtonGestures {
         if let drag = lastDragValue {
             let dx = drag.location.x - drag.startLocation.x
             let dy = drag.location.y - drag.startLocation.y
-            if dy >= 12 && dy > abs(dx) {
+            if action != .dismissKeyboard && dy >= 12 && dy > abs(dx) {
                 return
             }
             if SwipeTypingState.shared.isSwipeEnabled && hypot(dx, dy) > 24 {

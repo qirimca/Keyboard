@@ -162,6 +162,7 @@ struct HomeView: View {
     @State private var cachedIsFullAccessEnabled = false
     @State private var cachedIsRtl = false
     @State private var viewportSize = CGSize.zero
+    @State private var containerSize = CGSize.zero
     @State private var isWritingFieldFocused = false
     @State private var didInitializeThemeFromSystem = false
     @Environment(\.scenePhase) private var scenePhase
@@ -181,88 +182,95 @@ struct HomeView: View {
                 .onTapGesture {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-            GeometryReader { geometry in
-                ScrollViewReader { scroll in
-                    ScrollView(.vertical, showsIndicators: false) {
-                        let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: geometry.size)
-                        let layout = twoColumns
-                            ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
-                            : AnyLayout(VStackLayout(spacing: geometry.size.height < 360 ? 10 : 14))
-                        layout {
-                            // Child 0: Status indicators (only shown when setup has issues / is incomplete)
-                            if !areAllIndicatorsEnabled {
-                                statusIndicatorsSection
-                                    .id("statusIndicators")
-                            }
+            ScrollViewReader { scroll in
+                let effectiveContainerSize = containerSize.width > 0 ? containerSize : viewportSize
+                let isCompactContainerHeight = effectiveContainerSize.height > 0 && effectiveContainerSize.height < 360
+                ScrollView(.vertical, showsIndicators: false) {
+                    let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
+                    let layout = twoColumns
+                        ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
+                        : AnyLayout(VStackLayout(spacing: isCompactContainerHeight ? 10 : 14))
+                    layout {
+                        // Child 0: Status indicators (only shown when setup has issues / is incomplete)
+                        if !areAllIndicatorsEnabled {
+                            statusIndicatorsSection
+                                .id("statusIndicators")
+                        }
 
-                            // Child 1: Top Basic Statistics (expandable) + Keyboard settings (left column in 2-col, below status indicators in 1-col)
-                            VStack(alignment: .leading, spacing: geometry.size.height < 360 ? 10 : 14) {
-                                if statsEnabled {
-                                    statisticsAndAchievementsSection
-                                        .id("statsSection")
-                                }
-                                keyboardSettingsSection
+                        // Child 1: Top Basic Statistics (expandable) + Keyboard settings (left column in 2-col, below status indicators in 1-col)
+                        VStack(alignment: .leading, spacing: isCompactContainerHeight ? 10 : 14) {
+                            if statsEnabled {
+                                statisticsAndAchievementsSection
+                                    .id("statsSection")
                             }
+                            keyboardSettingsSection
+                        }
 
-                            // Child 2: Try Keyboard + Writing Area (right column in 2-col, below settings in 1-col)
-                            testingAndWritingSection
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
-                        .padding(.top, Device.iPhone ? 12 : 16)
-                        .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
+                        // Child 2: Try Keyboard + Writing Area (right column in 2-col, below settings in 1-col)
+                        testingAndWritingSection
                     }
-                    .onChange(of: isStatsExpanded) { _, expanded in
-                        if expanded {
-                            refreshStatsFromAppGroup(syncSQLite: true)
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                scroll.scrollTo("statsSection", anchor: .top)
-                            }
-                        }
-                    }
-                    .onChange(of: geometry.size.height < 420) { _, isCompactHeight in
-                        if isCompactHeight && Self.usesTwoColumns(viewportSize, containerSize: geometry.size) {
-                            if isWritingFieldFocused {
-                                scroll.scrollTo("writingArea", anchor: .bottom)
-                            } else if !areAllIndicatorsEnabled {
-                                scroll.scrollTo("statusIndicators", anchor: .top)
-                            }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
+                    .padding(.top, Device.iPhone ? 12 : 16)
+                    .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
+                }
+                .onChange(of: isStatsExpanded) { _, expanded in
+                    if expanded {
+                        refreshStatsFromAppGroup(syncSQLite: true)
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            scroll.scrollTo("statsSection", anchor: .top)
                         }
                     }
-                    .onChange(of: isWritingFieldFocused) { _, focused in
-                        syncSandboxFocusToAppGroup(focused)
-                    }
-                    .onChange(of: text) { _, _ in
+                }
+                .onChange(of: effectiveContainerSize.height > 0 && effectiveContainerSize.height < 420) { _, isCompactHeight in
+                    if isCompactHeight && Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize) {
                         if isWritingFieldFocused {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            scroll.scrollTo("writingArea", anchor: .bottom)
+                        } else if !areAllIndicatorsEnabled {
+                            scroll.scrollTo("statusIndicators", anchor: .top)
+                        }
+                    }
+                }
+                .onChange(of: isWritingFieldFocused) { _, focused in
+                    syncSandboxFocusToAppGroup(focused)
+                }
+                .onChange(of: text) { _, _ in
+                    if isWritingFieldFocused {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            scroll.scrollTo("writingArea", anchor: .bottom)
+                        }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                    if isWritingFieldFocused && !isStatsExpanded {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            scroll.scrollTo("writingArea", anchor: .bottom)
+                        }
+                    }
+                }
+                .onChange(of: isTestingExpanded) { _, expanded in
+                    if expanded {
+                        shouldAutoFocusSandbox = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
                                 scroll.scrollTo("writingArea", anchor: .bottom)
                             }
                         }
-                    }
-                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                        if isWritingFieldFocused && !isStatsExpanded {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                scroll.scrollTo("writingArea", anchor: .bottom)
-                            }
-                        }
-                    }
-                    .onChange(of: isTestingExpanded) { _, expanded in
-                        if expanded {
-                            shouldAutoFocusSandbox = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    scroll.scrollTo("writingArea", anchor: .bottom)
-                                }
-                            }
-                        } else {
-                            shouldAutoFocusSandbox = false
-                            clearThemeOverride()
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                        }
+                    } else {
+                        shouldAutoFocusSandbox = false
+                        clearThemeOverride()
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                GeometryReader { geometry in
+                    Color.clear
+                        .onAppear { containerSize = geometry.size }
+                        .onChange(of: geometry.size) { _, size in containerSize = size }
+                }
+            }
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: language)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: cyrillicEnabled)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: statsEnabled)
@@ -796,38 +804,103 @@ struct HomeView: View {
     }
 
     private static func invokeHostSetFloating(_ floating: Bool) {
-        var alreadyMatching = false
-        var didInvokeImpl = false
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
-            let isFloatingSel = NSSelectorFromString("isFloating")
-            if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
-                typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
-                let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
-                alreadyMatching = (checkFn(implClass, isFloatingSel) == floating)
+        if floating {
+            invokeHostSetSplit(false)
+        }
+        func applyFloating(_ targetFloating: Bool) {
+            var alreadyMatching = false
+            var didInvokeImpl = false
+            if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+                let isFloatingSel = NSSelectorFromString("isFloating")
+                if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
+                    typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
+                    let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
+                    alreadyMatching = (checkFn(implClass, isFloatingSel) == targetFloating)
+                }
+                if !alreadyMatching {
+                    let implSel = NSSelectorFromString("setFloating:")
+                    if let method = class_getClassMethod(implClass, implSel) {
+                        typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
+                        let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
+                        fn(implClass, implSel, targetFloating)
+                        didInvokeImpl = true
+                    }
+                }
             }
-            if !alreadyMatching {
-                let implSel = NSSelectorFromString("setFloating:")
-                if let method = class_getClassMethod(implClass, implSel) {
-                    typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                    let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
-                    fn(implClass, implSel, floating)
-                    didInvokeImpl = true
+            if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+                let sharedSel = NSSelectorFromString("sharedInstance")
+                if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
+                    typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
+                    let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
+                    if let hostInstance = sharedFn(hostClass, sharedSel) {
+                        let hostSel = NSSelectorFromString("setFloating:onCompletion:")
+                        if hostInstance.responds(to: hostSel),
+                           let method = class_getInstanceMethod(type(of: hostInstance), hostSel) {
+                            typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
+                            let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
+                            fn(hostInstance, hostSel, targetFloating, nil)
+                        }
+                    }
                 }
             }
         }
-        if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
-            let hostSel = NSSelectorFromString("setFloating:onCompletion:")
-            if let method = class_getClassMethod(hostClass, hostSel) {
-                typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
-                let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
-                fn(hostClass, hostSel, floating, nil)
+        applyFloating(floating)
+        updateHostSplitBackdropMask()
+        if floating {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                applyFloating(true)
+            }
+            for delay in [0.15, 0.35] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    clampFloatingKeyboardToScreenBounds()
+                }
             }
         }
-        updateHostSplitBackdropMask()
     }
 
     private static func clampFloatingKeyboardToScreenBounds() {
-        // System floating platter positioning is managed natively by UIKit.
+        guard Device.iPad else { return }
+        let screenBounds = UIScreen.main.bounds
+        let margin: CGFloat = 12
+        var windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
+            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
+            if let method = class_getClassMethod(effectsClass, sharedSel) {
+                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
+                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
+                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
+                    windows.append(win)
+                }
+            }
+        }
+        func clampView(_ view: UIView) {
+            let className = NSStringFromClass(type(of: view))
+            if className.contains("UIInputSetHostView") {
+                let f = view.frame
+                if f.width > 200 && f.width < 420 && f.height > 150 && f.height < 420 {
+                    var clampedX = f.origin.x
+                    var clampedY = f.origin.y
+                    if f.minX < margin { clampedX = margin }
+                    if f.maxX > screenBounds.width - margin { clampedX = max(margin, screenBounds.width - f.width - margin) }
+                    if f.minY < margin { clampedY = margin }
+                    if f.maxY > screenBounds.height - margin { clampedY = max(margin, screenBounds.height - f.height - margin) }
+                    if abs(clampedX - f.origin.x) > 0.5 || abs(clampedY - f.origin.y) > 0.5 {
+                        view.frame.origin = CGPoint(x: clampedX, y: clampedY)
+                    }
+                }
+            }
+            for sub in view.subviews {
+                clampView(sub)
+            }
+        }
+        for win in windows {
+            let winName = NSStringFromClass(type(of: win))
+            if winName.contains("RemoteKeyboard") || winName.contains("TextEffects") {
+                clampView(win)
+            }
+        }
     }
 
     private func refreshCyrillicStatus() {

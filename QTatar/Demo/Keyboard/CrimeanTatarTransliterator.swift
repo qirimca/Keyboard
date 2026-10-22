@@ -176,10 +176,31 @@ struct CrimeanTatarTransliterator {
                 out.append("и")
             case "І":
                 out.append("И")
-            case "и":
-                out.append("ы")
-            case "И":
-                out.append("Ы")
+            case "и", "И":
+                let isUpper = scalar == "И"
+                let prevScalar: UnicodeScalar? = i > 0 ? scalars[i - 1] : nil
+                let isAfterSibilant = prevScalar == "ж" || prevScalar == "Ж"
+                    || prevScalar == "ч" || prevScalar == "Ч"
+                    || prevScalar == "ш" || prevScalar == "Ш"
+                    || prevScalar == "щ" || prevScalar == "Щ"
+                let isSoftSibilantCluster: Bool = {
+                    guard isAfterSibilant else { return false }
+                    if i + 2 < n,
+                       Self.cyrillicConsonants.contains(scalars[i + 1]),
+                       (scalars[i + 2] == "ь" || scalars[i + 2] == "Ь") {
+                        return true
+                    }
+                    let frontScalars: Set<UnicodeScalar> = ["е", "Е", "є", "Є", "і", "І", "ї", "Ї", "ь", "Ь"]
+                    let backScalars: Set<UnicodeScalar> = ["а", "А", "о", "О", "у", "У", "ы", "Ы", "я", "Я", "ю", "Ю"]
+                    let hasFront = scalars.contains(where: { frontScalars.contains($0) })
+                    let hasBack = scalars.contains(where: { backScalars.contains($0) })
+                    return hasFront && !hasBack
+                }()
+                if isSoftSibilantCluster {
+                    out.append(isUpper ? "И" : "и")
+                } else {
+                    out.append(isUpper ? "Ы" : "ы")
+                }
             case "е":
                 let prev2: UnicodeScalar? = i >= 2 ? scalars[i - 2] : nil
                 let isDigraph = prev2 == "к" || prev2 == "К" || prev2 == "н" || prev2 == "Н" || prev2 == "г" || prev2 == "Г"

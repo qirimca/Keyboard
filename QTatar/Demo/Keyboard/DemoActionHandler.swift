@@ -118,6 +118,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private lazy var transliterator = CrimeanTatarTransliterator()
     private var didInstantiateTransliterator = false
     private var activeFlickSymbol: (action: KeyboardAction, symbol: String)?
+    private var didConsumeBackspacePress = false
 
     func resetComposition() {
         lastCompletedTypedWord = nil
@@ -537,7 +538,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return
         }
-        if action == .custom(named: "merge_keyboard") {
+        if action == .custom(named: "merge_keyboard") || action == .custom(named: "dock_keyboard") {
             if gesture == .release {
                 triggerFeedback(for: .press, on: action)
                 (keyboardController as? KeyboardViewController)?.setSplitKeyboardMode(false)
@@ -552,20 +553,28 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return
         }
+        if action == .backspace, gesture == .press {
+            didConsumeBackspacePress = false
+        }
         if action == .backspace, gesture == .press,
            let swipedInsertion = lastSwipedWordInsertion {
             lastSwipedWordInsertion = nil
             let proxy = keyboardContext.textDocumentProxy
             let before = proxy.documentContextBeforeInput ?? ""
             if before.hasSuffix(swipedInsertion) {
+                didConsumeBackspacePress = true
                 triggerFeedback(for: gesture, on: action)
                 resetComposition()
-                GreetingBannerState.shared.dismissForTyping()
                 for _ in 0..<swipedInsertion.count {
                     proxy.deleteBackward()
                 }
                 TextHistoryManager.shared.recordDelete(swipedInsertion)
                 typedWordBuffer = ""
+                if (proxy.documentContextBeforeInput ?? "").isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
+                    GreetingBannerState.shared.prepareForAppearance()
+                } else {
+                    GreetingBannerState.shared.dismissForTyping()
+                }
                 keyboardController?.performAutocomplete()
                 return
             }
@@ -575,6 +584,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             let proxy = keyboardContext.textDocumentProxy
             let before = proxy.documentContextBeforeInput ?? ""
             if before.hasSuffix(autoFix.corrected + " ") {
+                didConsumeBackspacePress = true
                 lastAutoCorrection = nil
                 suppressedAutocorrectWord = autoFix.original
                 triggerFeedback(for: gesture, on: action)
@@ -592,6 +602,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             } else {
                 lastAutoCorrection = nil
             }
+        }
+        if action == .backspace, gesture == .release, didConsumeBackspacePress {
+            didConsumeBackspacePress = false
+            SpaceBarState.shared.fadeToResting()
+            return
         }
         var pendingSpaceWord: (word: String, prevWord: String?)?
         if gesture == .release {
@@ -672,9 +687,13 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     typedWordBuffer = ""
                 }
             case .backspace:
-                GreetingBannerState.shared.dismissForTyping()
                 if !typedWordBuffer.isEmpty {
                     typedWordBuffer.removeLast()
+                }
+                if (proxy.documentContextBeforeInput ?? "").isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
+                    GreetingBannerState.shared.prepareForAppearance()
+                } else {
+                    GreetingBannerState.shared.dismissForTyping()
                 }
             default:
                 break

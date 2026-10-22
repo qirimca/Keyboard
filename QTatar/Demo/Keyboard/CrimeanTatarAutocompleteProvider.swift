@@ -104,6 +104,9 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             keyboardContext: keyboardContext
         )
         let isEmpty = query.isEmpty ? Self.isDocumentEmpty(proxy) : false
+        if isEmpty && GreetingBannerState.shared.isDismissedForCurrentSession {
+            GreetingBannerState.shared.prepareForAppearance()
+        }
         let rawContextWords = !isEmpty ? Self.completedContextWords(before: proxy) : []
         let contextWords = query.isEmpty ? rawContextWords : Array(rawContextWords.dropLast())
         let autocorrectAllowed = context.isAutocorrectEnabled

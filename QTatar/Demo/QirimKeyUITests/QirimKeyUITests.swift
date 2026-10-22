@@ -1219,9 +1219,11 @@ final class QirimKeyUITests: XCTestCase {
     func testRound2UkrainianLayoutAndSwipeComet() throws {
         try launch()
 
-        // 1. Verify Swipe-to-Type on iPhone and single Backspace whole-word deletion
+        // 1. Verify Swipe-to-Type on iPhone, single Backspace whole-word deletion, and greeting banner restoration
         try selectScript(cyrillic: false)
         clear()
+        let greetingBanner = app.descendants(matching: .any).matching(identifier: "autocomplete.greetingBanner").firstMatch
+        XCTAssertTrue(greetingBanner.waitForExistence(timeout: 2.5), "Greeting banner must be visible when field is empty")
         if UIDevice.current.userInterfaceIdiom == .phone {
             let sKey = letterElement("s")
             let mKey = letterElement("m")
@@ -1235,11 +1237,12 @@ final class QirimKeyUITests: XCTestCase {
                 capture("iPhone Swipe to Type result")
                 tap("backspace")
                 expectText("")
+                XCTAssertTrue(greetingBanner.waitForExistence(timeout: 2.5), "Greeting banner must reappear after single Backspace deletes swiped word")
                 capture("iPhone Swipe Backspace whole word deleted")
             }
         }
 
-        // 2. Verify "Sen ne " next-word predictions offer 2nd-person verbs and never repeat "sen"
+        // 2. Verify "Sen ne " next-word predictions offer 2nd-person verbs and never repeat "sen", plus "qırım" -> "Qırım" proper noun capitalization
         clear()
         typeLetters("sen")
         tap("space")
@@ -1253,7 +1256,12 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertFalse(slotLabels.contains(where: { $0.lowercased() == "sen" }), "Next-word suggestions after 'Sen ne ' must never suggest 'sen' (got: \(slotLabels))")
         XCTAssertTrue(slotLabels.contains(where: { $0.hasSuffix("sıñ") || $0.hasSuffix("siñ") }), "Next-word suggestions after 'Sen ne ' must suggest 2nd-person verbs ending in -sıñ/-siñ (got: \(slotLabels))")
         capture("Next word suggestions after Sen ne")
+
+        typeLetters("qırım")
+        tap("space")
+        expectText("Sen ne Qırım ")
         clear()
+        XCTAssertTrue(greetingBanner.waitForExistence(timeout: 2.5), "Greeting banner must reappear after clearing sandbox field")
 
         // 3. Switch interface language to Ukrainian ('uk'), enable Ukrainian Cyrillic layout ('ФІВА'), and verify Phase 8 transliteration
         let ukLangBtn = app.buttons["settings.lang.uk"]
@@ -1296,6 +1304,7 @@ final class QirimKeyUITests: XCTestCase {
         capture("Ukrainian Cyrillic FIVA layout")
 
         for (source, expected) in [
+            ("\u{02BC}", "\u{02BC}"),
             ("дембель", "dembel"),
             ("ервін", "ervin"),
             ("екі", "eki"),
@@ -1307,7 +1316,9 @@ final class QirimKeyUITests: XCTestCase {
             ("н\u{02BC}е", "ñe"),
             ("г\u{02BC}аєт", "ğayet"),
             ("к\u{02BC}ирим", "qırım"),
-            ("міллетнін\u{02BC}", "milletniñ")
+            ("міллетнін\u{02BC}", "milletniñ"),
+            ("єшиль", "yeşil"),
+            ("д\u{02BC}\u{02BC}ар", "d\u{02BC}ar")
         ] {
             clear()
             typeLetters(source)

@@ -89,6 +89,15 @@ public extension CalloutContext.ActionContext {
         handleSelectedAction()
         reset()
     }
+
+    /// Explicitly select an action index and trigger it immediately.
+    func selectAndTrigger(index: Int) {
+        if isIndexValid(index) {
+            selectedIndex = index
+        }
+        handleSelectedAction()
+        reset()
+    }
     
     /// Handle the currently selected action, if any.
     func handleSelectedAction() {
@@ -130,31 +139,47 @@ public extension CalloutContext.ActionContext {
         guard let value = dragTranslation, buttonFrame != .zero, !actions.isEmpty else { return }
         if shouldReset(for: value) { return reset() }
         if Self.isMenuCalloutActions(actions) {
+            guard actions.count > 1 else {
+                self.selectedIndex = 0
+                return
+            }
             let standardStyle = Callouts.ActionCalloutStyle.standard
-            let singleRowHeight: CGFloat = 44 + 2 * standardStyle.verticalTextPadding
+            let singleRowHeight: CGFloat = 42 + 2 * standardStyle.verticalTextPadding
             let bubbleBottomLocalY: CGFloat = standardStyle.verticalOffset - standardStyle.callout.buttonInset.height
             let localY: CGFloat = location?.y ?? (buttonFrame.height * 0.5 + value.height)
             let distanceAboveBubbleBottom = bubbleBottomLocalY - localY
 
             let currentIndex = isIndexValid(self.selectedIndex) ? self.selectedIndex : 0
             var newIndex = currentIndex
-            let upwardHysteresis: CGFloat = 2
-            let downwardHysteresis: CGFloat = 8
 
-            while newIndex < actions.count - 1 {
-                let divider = CGFloat(newIndex + 1) * singleRowHeight
-                if distanceAboveBubbleBottom >= divider + upwardHysteresis {
-                    newIndex += 1
+            if actions.count == 2 {
+                if currentIndex == 0 {
+                    if localY <= -28 {
+                        newIndex = 1
+                    }
                 } else {
-                    break
+                    if localY > -20 {
+                        newIndex = 0
+                    }
                 }
-            }
-            while newIndex > 0 {
-                let divider = CGFloat(newIndex) * singleRowHeight
-                if distanceAboveBubbleBottom < divider - downwardHysteresis {
-                    newIndex -= 1
-                } else {
-                    break
+            } else {
+                let upwardHysteresis: CGFloat = 2
+                let downwardHysteresis: CGFloat = 8
+                while newIndex < actions.count - 1 {
+                    let divider = CGFloat(newIndex + 1) * singleRowHeight
+                    if distanceAboveBubbleBottom >= divider + upwardHysteresis {
+                        newIndex += 1
+                    } else {
+                        break
+                    }
+                }
+                while newIndex > 0 {
+                    let divider = CGFloat(newIndex) * singleRowHeight
+                    if distanceAboveBubbleBottom < divider - downwardHysteresis {
+                        newIndex -= 1
+                    } else {
+                        break
+                    }
                 }
             }
 
@@ -202,7 +227,7 @@ private extension CalloutContext.ActionContext {
     static func isMenuCalloutActions(_ actions: [KeyboardAction]) -> Bool {
         actions.contains {
             if case .custom(let name) = $0 {
-                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard"
+                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard" || name == "dock_keyboard"
             }
             return false
         }
@@ -227,7 +252,10 @@ private extension CalloutContext.ActionContext {
     }
     
     func shouldReset(for dragTranslation: CGSize) -> Bool {
-        dragTranslation.height > buttonFrame.height
+        if Self.isMenuCalloutActions(actions) {
+            return dragTranslation.height > buttonFrame.height * 1.5
+        }
+        return dragTranslation.height > buttonFrame.height
     }
     
     func shouldUpdateSelection(for dragTranslation: CGSize) -> Bool {

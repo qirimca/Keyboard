@@ -99,7 +99,7 @@ private extension Callouts.ActionCallout {
     var isFloatingMenuCallout: Bool {
         calloutActions.contains {
             if case .custom(let name) = $0 {
-                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard"
+                return name == "floating_keyboard" || name == "split_keyboard" || name == "merge_keyboard" || name == "dock_keyboard"
             }
             return false
         }
@@ -139,6 +139,12 @@ private extension Callouts.ActionCallout {
                         .foregroundColor(isSelected(item.offset) ? style.selectedForegroundColor : style.callout.textColor)
                         .cornerRadius(cornerRadius)
                         .padding(.vertical, style.verticalTextPadding)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                calloutContext.selectAndTrigger(index: item.offset)
+                            }
+                        )
                     if rowIdx < reversedItems.count - 1 {
                         Color.secondary.opacity(0.28)
                             .frame(width: max(calloutButtonSize.width - 16, 40), height: 0.5)
@@ -192,7 +198,7 @@ private extension Callouts.ActionCallout {
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("callout.split_keyboard")
-        case .custom(let name) where name == "merge_keyboard":
+        case .custom(let name) where name == "merge_keyboard" || name == "dock_keyboard":
             Text(mergeKeyboardTitle)
                 .font(.system(size: 16, weight: .medium))
                 .lineLimit(1)
@@ -205,16 +211,13 @@ private extension Callouts.ActionCallout {
 
     private var resolvedInterfaceLanguage: String {
         let suite = UserDefaults(suiteName: "group.crh.key.keyboardplus")
-        return suite?.string(forKey: "crh.key.interfaceLanguage")
+        let lang = suite?.string(forKey: "crh.key.interfaceLanguage")
             ?? suite?.string(forKey: "crh.key.language")
-            ?? Locale.preferredLanguages.first
             ?? "crh"
+        return lang.lowercased()
     }
 
     var floatingKeyboardTitle: String {
-        if keyboardContext.locale.identifier.contains("Cyrl") {
-            return "Юзюджи"
-        }
         let preferred = resolvedInterfaceLanguage
         if preferred.hasPrefix("uk") {
             return "Плаваюча"
@@ -225,9 +228,6 @@ private extension Callouts.ActionCallout {
     }
 
     var splitKeyboardTitle: String {
-        if keyboardContext.locale.identifier.contains("Cyrl") {
-            return "Болюнген"
-        }
         let preferred = resolvedInterfaceLanguage
         if preferred.hasPrefix("uk") {
             return "Розділити"
@@ -238,9 +238,6 @@ private extension Callouts.ActionCallout {
     }
 
     var mergeKeyboardTitle: String {
-        if keyboardContext.locale.identifier.contains("Cyrl") {
-            return "Бирлештир"
-        }
         let preferred = resolvedInterfaceLanguage
         if preferred.hasPrefix("uk") {
             return "Об’єднати"

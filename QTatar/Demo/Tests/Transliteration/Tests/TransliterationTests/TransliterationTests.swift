@@ -624,7 +624,11 @@ private let parityCases: [(String, String)] = {
         ("аʼ", "aʼ"),
         ("ʼ", "ʼ"),
         ("пʼʼ", "pʼ"),
-        ("кʼʼ", "qʼ")
+        ("кʼʼ", "qʼ"),
+        ("єшіль", "yeşil"),
+        ("єшиль", "yeşil"),
+        ("Єшиль", "Yeşil"),
+        ("ЄШИЛЬ", "YEŞİL")
     ]
     for (source, expected) in cases {
         #expect(CrimeanTatarTransliterator.transliterate(source, ukrainianLayout: true) == expected)
@@ -686,6 +690,131 @@ private let parityCases: [(String, String)] = {
     #expect(wordFrequency("aytasıñ") > 0, "aytasıñ must exist in qırım_tatar.db")
     #expect(wordFrequency("yapasıñ") > 0, "yapasıñ must exist in qırım_tatar.db")
     #expect(wordFrequency("deysiñ") > 0, "deysiñ must exist in qırım_tatar.db")
+
+    // Verify swipe candidate pool & scoring on qırım_tatar.db ranks "maşalla" #1 over "maşina" for realistic Cyrillic "машалла" swipe trajectories
+    let cyrToLat: [Character: [Character]] = [
+        "а": ["a"], "в": ["v"], "е": ["e"], "і": ["i"], "к": ["q", "k"], "л": ["l"],
+        "м": ["m"], "н": ["n"], "о": ["o"], "п": ["p"], "р": ["r"], "с": ["s"],
+        "ш": ["s"], "щ": ["s"]
+    ]
+    let cyrNeighbors: [Character: Set<Character>] = [
+        "a": ["v", "p", "u", "q", "k", "c", "s", "m"],
+        "i": ["f", "v", "y", "s", "t", "m", "p", "r"],
+        "l": ["o", "d", "s", "b", "u"],
+        "m": ["s", "i", "a", "p"],
+        "n": ["e", "g", "p", "r"],
+        "s": ["c", "m", "v", "a", "g", "z", "o", "l", "d", "y", "u"]
+    ]
+    let baseVowels: Set<Character> = ["a", "e", "i", "o", "u"]
+    let baseMap: [Character: Character] = ["ş": "s", "ı": "i", "ñ": "n", "ğ": "g", "ç": "c", "ö": "o", "ü": "u", "â": "a", "î": "i", "û": "u"]
+
+    func topSwipeMatch(for keys: [Character]) -> String? {
+        var basePath: [Character] = []
+        for ch in keys {
+            for m in cyrToLat[ch] ?? [] {
+                let b = baseMap[m] ?? m
+                if basePath.last != b { basePath.append(b) }
+            }
+        }
+        guard let firstBase = basePath.first, let lastBase = basePath.last else { return nil }
+        let minLen = basePath.count >= 8 ? 3 : 2
+        let maxLen = min(22, basePath.count + 5)
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        let sql = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND freq >= 3 AND length(word) BETWEEN ?3 AND ?4 ORDER BY freq DESC LIMIT 320;"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        let lo = String(firstBase)
+        let hi = String(UnicodeScalar(firstBase.unicodeScalars.first!.value + 1)!)
+        _ = lo.withCString { sqlite3_bind_text(stmt, 1, $0, -1, transient) }
+        _ = hi.withCString { sqlite3_bind_text(stmt, 2, $0, -1, transient) }
+        sqlite3_bind_int(stmt, 3, Int32(minLen))
+        sqlite3_bind_int(stmt, 4, Int32(maxLen))
+        var candidates: [(String, Int)] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let cStr = sqlite3_column_text(stmt, 0) {
+                candidates.append((String(cString: cStr), Int(sqlite3_column_int(stmt, 1))))
+            }
+        }
+        let rawKeySet = Set(keys)
+        let innerUpperBound = max(1, basePath.count - 1)
+        var bestWord: String?
+        var bestScore = -Double.infinity
+        for (word, freq) in candidates {
+            let lower = word.lowercased()
+            var wordBase: [Character] = []
+            for ch in lower where ch != "-" {
+                let b = baseMap[ch] ?? ch
+                if wordBase.last != b { wordBase.append(b) }
+            }
+            guard wordBase.count >= 2, let wordLast = wordBase.last, wordLast == lastBase else { continue }
+            var pathIdx = 0, exactHits = 0, neighborHits = 0, misses = 0, repeatedVowelMisses = 0
+            var matchedVowels = Set<Character>()
+            for (i, targetChar) in wordBase.enumerated() {
+                if i == 0 {
+                    exactHits += 1
+                    if baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
+                    pathIdx = 1
+                    continue
+                }
+                if i == wordBase.count - 1 {
+                    exactHits += 1
+                    continue
+                }
+                var searchLimit = innerUpperBound
+                if baseVowels.contains(targetChar), i + 1 < wordBase.count - 1 {
+                    let nextChar = wordBase[i + 1]
+                    if !baseVowels.contains(nextChar),
+                       let nextPos = basePath[pathIdx..<innerUpperBound].lastIndex(of: nextChar),
+                       !basePath[pathIdx..<nextPos].contains(targetChar) {
+                        searchLimit = nextPos
+                    }
+                }
+                var foundExact = false
+                for sIdx in pathIdx..<searchLimit where basePath[sIdx] == targetChar {
+                    foundExact = true; pathIdx = sIdx + 1; exactHits += 1
+                    if baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
+                    break
+                }
+                if !foundExact {
+                    let nSet = cyrNeighbors[targetChar] ?? []
+                    var foundN = false
+                    for nIdx in pathIdx..<searchLimit where nSet.contains(basePath[nIdx]) {
+                        foundN = true; pathIdx = nIdx + 1; neighborHits += 1; break
+                    }
+                    if !foundN {
+                        misses += 1
+                        if (baseVowels.contains(targetChar) && (matchedVowels.contains(targetChar) || wordLast == targetChar))
+                            || (wordBase.count >= 5 && (targetChar == wordBase.first || targetChar == wordLast)) {
+                            repeatedVowelMisses += 1
+                        }
+                    }
+                }
+            }
+            let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
+            guard misses <= maxAllowedMisses else { continue }
+            var specificBonus = 0.0
+            if rawKeySet.contains("ш") || rawKeySet.contains("щ") {
+                if lower.contains("ş") { specificBonus += 1.8 }
+                else if lower.contains("s") && !rawKeySet.contains("с") { specificBonus -= 1.2 }
+            }
+            let regularMisses = max(0, misses - repeatedVowelMisses)
+            let missPenalty = Double(regularMisses) * 1.65 + Double(repeatedVowelMisses) * 0.35
+            let coverageRatio = (Double(exactHits) + Double(neighborHits) * 0.65 - missPenalty) / Double(wordBase.count)
+            let matchedKeyBonus = min(Double(exactHits) * 0.95 + Double(neighborHits) * 0.40, 7.5)
+            let allExactBonus = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
+            let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55 + Double(max(0, basePath.count - wordBase.count)) * 0.02
+            let freqScore = log10(Double(max(1, freq)) + 1.35) * 1.35
+            let score = (coverageRatio * 6.0) + matchedKeyBonus + allExactBonus + 2.5 + freqScore + specificBonus - lengthPenalty
+            if score > bestScore { bestScore = score; bestWord = word }
+        }
+        return bestWord
+    }
+
+    #expect(topSwipeMatch(for: ["м", "а", "в", "п", "о", "ш", "щ", "о", "п", "а", "в", "а", "п", "о", "л", "о", "п", "а"]) == "maşalla")
+    #expect(topSwipeMatch(for: ["м", "а", "ш", "л", "а", "л", "а"]) == "maşalla")
+    #expect(topSwipeMatch(for: ["м", "а", "ш", "а", "л", "а"]) == "maşalla")
+    #expect(topSwipeMatch(for: ["с", "в", "а", "п", "е", "н"]) == "sen")
 }
 
 

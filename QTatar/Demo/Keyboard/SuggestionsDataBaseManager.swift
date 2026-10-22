@@ -770,6 +770,34 @@ final class SuggestionsDataBaseManager {
         "m": ["j", "k", "n"]
     ]
 
+    /// Physical key adjacency on Cyrillic (`ЙЦУКЕН` / `ФІВА`) layouts projected to normalized Latin base characters.
+    private static let cyrillicBaseNeighbors: [Character: Set<Character>] = [
+        "a": ["v", "p", "u", "q", "k", "c", "s", "m"],
+        "b": ["t", "u", "o", "l", "d"],
+        "c": ["a", "s", "v", "f", "i", "d", "l", "e", "z", "h"],
+        "d": ["l", "j", "c", "s", "z", "b", "u"],
+        "e": ["q", "k", "n", "p", "r", "j", "c", "h"],
+        "f": ["i", "y", "c"],
+        "g": ["n", "s", "r", "o", "a", "f"],
+        "h": ["z", "d", "j", "c", "e"],
+        "i": ["f", "v", "y", "s", "t", "m", "p", "r"],
+        "j": ["d", "e", "z", "h", "u"],
+        "k": ["u", "e", "v", "a", "p"],
+        "l": ["o", "d", "s", "b", "u"],
+        "m": ["s", "i", "a", "p"],
+        "n": ["e", "g", "p", "r"],
+        "o": ["r", "l", "g", "s", "t", "b"],
+        "p": ["a", "r", "k", "q", "e", "m", "i"],
+        "q": ["u", "e", "v", "a", "p"],
+        "r": ["p", "o", "e", "n", "g", "i", "t"],
+        "s": ["c", "m", "v", "a", "g", "z", "o", "l", "d", "y", "u"],
+        "t": ["i", "b", "r", "o", "y", "u", "v"],
+        "u": ["s", "t", "q", "k", "v", "a", "b", "d", "j"],
+        "v": ["i", "a", "u", "q", "k", "c", "s"],
+        "y": ["s", "t", "f", "i"],
+        "z": ["s", "h", "l", "d", "j", "c"]
+    ]
+
     private static func normalizeBaseChar(_ ch: Character) -> Character {
         baseCharacterMap[ch] ?? ch
     }
@@ -863,11 +891,12 @@ final class SuggestionsDataBaseManager {
                 prefixes.insert(String(variant))
             }
 
-            let minLen = max(2, min(4, basePath.count - 1))
+            let minLen = basePath.count >= 8 ? 3 : 2
             let maxLen = min(22, basePath.count + 5)
+            let neighborMap = isCyrillic ? Self.cyrillicBaseNeighbors : Self.qwertyNeighbors
             var lastNeighbors = Set<Character>()
             for ec in endCandidates {
-                lastNeighbors.formUnion(Self.qwertyNeighbors[ec] ?? [])
+                lastNeighbors.formUnion(neighborMap[ec] ?? [])
             }
 
             var bigramBoosts: [String: Int] = [:]
@@ -943,12 +972,12 @@ final class SuggestionsDataBaseManager {
                         continue
                     }
                     // If targetChar is a vowel and the next char in wordBase is a consonant that appears earlier in basePath,
-                    // do not let this vowel search jump past the next consonant's position.
+                    // do not let this vowel search jump past the next consonant's last occurrence in the path.
                     var searchLimit = innerUpperBound
                     if Self.baseVowels.contains(targetChar), i + 1 < wordBase.count - 1 {
                         let nextChar = wordBase[i + 1]
                         if !Self.baseVowels.contains(nextChar) {
-                            if let nextPos = basePath[pathIdx..<innerUpperBound].firstIndex(of: nextChar),
+                            if let nextPos = basePath[pathIdx..<innerUpperBound].lastIndex(of: nextChar),
                                !basePath[pathIdx..<nextPos].contains(targetChar) {
                                 searchLimit = nextPos
                             }
@@ -968,7 +997,7 @@ final class SuggestionsDataBaseManager {
                         searchIdx += 1
                     }
                     if !foundExact {
-                        let targetNeighbors = Self.qwertyNeighbors[targetChar] ?? []
+                        let targetNeighbors = neighborMap[targetChar] ?? []
                         var foundNeighbor = false
                         var nIdx = pathIdx
                         while nIdx < searchLimit {
@@ -1018,13 +1047,14 @@ final class SuggestionsDataBaseManager {
                 let coverage = Double(exactHits) + Double(neighborHits) * 0.65 - missPenalty
                 let coverageRatio = coverage / Double(max(1, wordBase.count))
                 let matchedKeyBonus = min(Double(exactHits) * 0.95 + Double(neighborHits) * 0.40, 7.5)
+                let allExactBonus: Double = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
                 let shortWordDetourPenalty: Double = (basePath.count >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
                 let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55
                     + Double(max(0, basePath.count - wordBase.count)) * 0.02
                 let endBonus = exactLast ? 2.5 : 0.4
                 let contextFreq = bigramBoosts[lower] ?? 0
                 let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.35) * 1.35
-                let totalScore = (coverageRatio * 6.0) + matchedKeyBonus + endBonus + freqScore + specificCharBonus - lengthPenalty - shortWordDetourPenalty
+                let totalScore = (coverageRatio * 6.0) + matchedKeyBonus + allExactBonus + endBonus + freqScore + specificCharBonus - lengthPenalty - shortWordDetourPenalty
                 scoredCandidates.append((word, totalScore))
             }
 
