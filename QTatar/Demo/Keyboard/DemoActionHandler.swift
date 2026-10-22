@@ -120,6 +120,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var activeFlickSymbol: (action: KeyboardAction, symbol: String)?
 
     func resetComposition() {
+        lastCompletedTypedWord = nil
         guard didInstantiateTransliterator else { return }
         transliterator.reset()
     }
@@ -168,7 +169,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     }
 
     func handleSwipePath(_ keys: [String]) {
-        guard (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating),
+        let controllerWidth = (keyboardController as? UIViewController)?.view.bounds.width ?? 0
+        let isPadFloatingWidth = keyboardContext.deviceType == .pad && controllerWidth > 0 && controllerWidth < 420
+        guard (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating || isPadFloatingWidth),
               !keyboardContext.isKeyboardSplit,
               SystemKeyboardSettings.isSlideToTypeEnabled,
               keys.count >= 2 else {
@@ -219,6 +222,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         KeyboardUsageStats.recordCharacterTyped(count: best.count, keystrokes: keys.count)
         KeyboardUsageStats.recordManualWordCompleted()
         lastCompletedTypedWord = best
+        lastSwipedWordInsertion = textToInsert
         typedWordBuffer = ""
         if keyboardContext.keyboardType == .alphabetic(.uppercased) {
             keyboardController?.setKeyboardType(.alphabetic(.lowercased))
@@ -226,6 +230,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         autocompleteContext.suggestions = suggestions
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
             self?.autocompleteContext.suggestions = suggestions
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            guard let self, self.lastSwipedWordInsertion == textToInsert else { return }
+            self.autocompleteContext.suggestions = suggestions
         }
     }
 
@@ -271,6 +279,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var typedWordBuffer: String = ""
     private var lastCompletedTypedWord: String?
     private var lastAutoCorrection: (original: String, corrected: String)?
+    private var lastSwipedWordInsertion: String?
     private var suppressedAutocorrectWord: String?
 
     private func resolveCompletedWord(in proxy: UITextDocumentProxy) -> (word: String?, prevWord: String?) {
@@ -285,7 +294,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return proxyWord
         }()
-        let prevWord = proxyPrev ?? lastCompletedTypedWord
+        let beforeTrimmed = (proxy.documentContextBeforeInput ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let prevWord = proxyPrev ?? (beforeTrimmed.isEmpty ? lastCompletedTypedWord : nil)
         return (word, prevWord)
     }
 
@@ -373,6 +383,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     override func handle(_ suggestion: Autocomplete.Suggestion) {
         resetComposition()
         lastAutoCorrection = nil
+        lastSwipedWordInsertion = nil
         suppressedAutocorrectWord = nil
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
@@ -446,7 +457,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             return
         }
         let currentWord = proxy.currentWord ?? typedWordBuffer
-        let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty) ?? lastCompletedTypedWord
+        let beforeTrimmed = (proxy.documentContextBeforeInput ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: !currentWord.isEmpty)
+            ?? (beforeTrimmed.isEmpty ? lastCompletedTypedWord : nil)
         let replacement = suggestion.text
         let savedChars = max(replacement.count - currentWord.count + 1, 2)
         KeyboardUsageStats.markInjectedText(replacement)
@@ -540,6 +553,24 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             return
         }
         if action == .backspace, gesture == .press,
+           let swipedInsertion = lastSwipedWordInsertion {
+            lastSwipedWordInsertion = nil
+            let proxy = keyboardContext.textDocumentProxy
+            let before = proxy.documentContextBeforeInput ?? ""
+            if before.hasSuffix(swipedInsertion) {
+                triggerFeedback(for: gesture, on: action)
+                resetComposition()
+                GreetingBannerState.shared.dismissForTyping()
+                for _ in 0..<swipedInsertion.count {
+                    proxy.deleteBackward()
+                }
+                TextHistoryManager.shared.recordDelete(swipedInsertion)
+                typedWordBuffer = ""
+                keyboardController?.performAutocomplete()
+                return
+            }
+        }
+        if action == .backspace, gesture == .press,
            let autoFix = lastAutoCorrection {
             let proxy = keyboardContext.textDocumentProxy
             let before = proxy.documentContextBeforeInput ?? ""
@@ -570,6 +601,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             case .character(let ch), .characterMargin(let ch):
                 guard !ch.isEmpty else { break }
                 lastAutoCorrection = nil
+                lastSwipedWordInsertion = nil
                 suppressedAutocorrectWord = nil
                 GreetingBannerState.shared.dismissForTyping()
                 SpaceBarState.shared.recordKeystroke()
@@ -594,13 +626,14 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     }
                 } else if ch.contains(where: { $0.isLetter || $0.isNumber }) {
                     typedWordBuffer.append(ch)
-                } else if (ch == "'" || ch == "’" || ch == "-") && !typedWordBuffer.isEmpty {
+                } else if (ch == "'" || ch == "’" || ch == "\u{02BC}" || ch == "-") && !typedWordBuffer.isEmpty {
                     typedWordBuffer.append(ch)
                 } else {
                     typedWordBuffer = ""
                 }
             case .space:
                 lastAutoCorrection = nil
+                lastSwipedWordInsertion = nil
                 didLearnWordDuringSpaceRelease = false
                 GreetingBannerState.shared.dismissForTyping()
                 KeyboardUsageStats.recordCharacterTyped(count: 1)
@@ -618,6 +651,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 }
             case .primary:
                 lastAutoCorrection = nil
+                lastSwipedWordInsertion = nil
                 suppressedAutocorrectWord = nil
                 GreetingBannerState.shared.dismissForTyping()
                 let before = proxy.documentContextBeforeInput ?? ""
@@ -697,9 +731,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             let hasSelection = !(proxy.selectedText ?? "").isEmpty
             switch action {
             case .character(let character), .characterMargin(let character):
+                let isUkrainianApostrophe = character == "\u{02BC}"
+                    || ((character == "'" || character == "’") && KeyboardPreferences.ukrainianCyrillicLayoutEnabled && !transliterator.source.isEmpty)
                 if !character.isEmpty,
                    character.unicodeScalars.contains(where: { (0x0400...0x04FF).contains($0.value) })
-                    || character.allSatisfy({ $0.isNumber || $0 == "-" }) {
+                    || character.allSatisfy({ $0.isNumber || $0 == "-" })
+                    || isUkrainianApostrophe {
                     if gesture == .press {
                         triggerFeedback(for: gesture, on: action)
                         return

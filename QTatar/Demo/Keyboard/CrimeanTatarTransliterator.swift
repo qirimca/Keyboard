@@ -96,34 +96,212 @@ struct CrimeanTatarTransliterator {
         return result + ns.substring(from: last)
     }
 
+    private static let cyrillicConsonants: Set<UnicodeScalar> = [
+        "б", "в", "г", "ґ", "д", "ж", "з", "й", "к", "л", "м", "н", "п", "р", "с", "т", "ф", "х", "ц", "ч", "ш", "щ",
+        "Б", "В", "Г", "Ґ", "Д", "Ж", "З", "Й", "К", "Л", "М", "Н", "П", "Р", "С", "Т", "Ф", "Х", "Ц", "Ч", "Ш", "Щ"
+    ]
+
     static func normalizeUkrainianCyrillic(_ source: String, ukrainianLayout: Bool) -> String {
+        let scalars = Array(source.unicodeScalars)
+        let n = scalars.count
         var out = String.UnicodeScalarView()
-        out.reserveCapacity(source.unicodeScalars.count)
-        for scalar in source.unicodeScalars {
+        out.reserveCapacity(n + 4)
+
+        func isApostrophe(_ s: UnicodeScalar) -> Bool {
+            s == "\u{02BC}" || s == "'" || s == "’"
+        }
+        func isHardSign(_ s: UnicodeScalar) -> Bool {
+            s == "ъ" || s == "Ъ"
+        }
+        func isCyrillicLetter(_ s: UnicodeScalar) -> Bool {
+            (0x0400...0x04FF).contains(s.value)
+        }
+        func isUpperCyrillic(_ s: UnicodeScalar) -> Bool {
+            isCyrillicLetter(s) && Character(s).isUppercase
+        }
+        func isAllCapsAt(_ idx: Int) -> Bool {
+            if idx + 1 < n {
+                let next = scalars[idx + 1]
+                if isApostrophe(next) || isHardSign(next) {
+                    if isHardSign(next) && Character(next).isUppercase { return true }
+                    if idx + 2 < n && isCyrillicLetter(scalars[idx + 2]) {
+                        return isUpperCyrillic(scalars[idx + 2])
+                    }
+                } else if isCyrillicLetter(next) {
+                    return isUpperCyrillic(next)
+                }
+            }
+            if idx > 0 {
+                let prev = scalars[idx - 1]
+                if isCyrillicLetter(prev) {
+                    return isUpperCyrillic(prev)
+                }
+                if (isApostrophe(prev) || isHardSign(prev)) && idx >= 2 && isCyrillicLetter(scalars[idx - 2]) {
+                    return isUpperCyrillic(scalars[idx - 2])
+                }
+            }
+            return false
+        }
+
+        var i = 0
+        while i < n {
+            let scalar = scalars[i]
+            if !ukrainianLayout {
+                switch scalar {
+                case "і":
+                    out.append("и")
+                case "І":
+                    out.append("И")
+                case "є":
+                    out.append("э")
+                case "Є":
+                    out.append("Э")
+                case "ґ":
+                    out.append("г")
+                case "Ґ":
+                    out.append("Г")
+                case "ї":
+                    out.append(contentsOf: "йи".unicodeScalars)
+                case "Ї":
+                    out.append(contentsOf: (isAllCapsAt(i) ? "ЙИ" : "Йи").unicodeScalars)
+                default:
+                    out.append(scalar)
+                }
+                i += 1
+                continue
+            }
+
             switch scalar {
             case "і":
                 out.append("и")
             case "І":
                 out.append("И")
-            case "и" where ukrainianLayout:
+            case "и":
                 out.append("ы")
-            case "И" where ukrainianLayout:
+            case "И":
                 out.append("Ы")
+            case "е":
+                let prev2: UnicodeScalar? = i >= 2 ? scalars[i - 2] : nil
+                let isDigraph = prev2 == "к" || prev2 == "К" || prev2 == "н" || prev2 == "Н" || prev2 == "г" || prev2 == "Г"
+                let afterConsonantApostrophe = i >= 2
+                    && isApostrophe(scalars[i - 1])
+                    && Self.cyrillicConsonants.contains(scalars[i - 2])
+                    && !isDigraph
+                out.append(afterConsonantApostrophe ? "е" : "э")
+            case "Е":
+                let prev2: UnicodeScalar? = i >= 2 ? scalars[i - 2] : nil
+                let isDigraph = prev2 == "к" || prev2 == "К" || prev2 == "н" || prev2 == "Н" || prev2 == "г" || prev2 == "Г"
+                let afterConsonantApostrophe = i >= 2
+                    && isApostrophe(scalars[i - 1])
+                    && Self.cyrillicConsonants.contains(scalars[i - 2])
+                    && !isDigraph
+                if afterConsonantApostrophe {
+                    let hasNextCyr = (i + 1 < n) && isCyrillicLetter(scalars[i + 1])
+                    if hasNextCyr {
+                        out.append("Е")
+                    } else {
+                        out.append(contentsOf: (isAllCapsAt(i) ? "ЙЭ" : "Йэ").unicodeScalars)
+                    }
+                } else {
+                    out.append("Э")
+                }
             case "є":
-                out.append("э")
+                let prevScalar: UnicodeScalar? = i > 0 ? scalars[i - 1] : nil
+                if let prev = prevScalar, Self.cyrillicConsonants.contains(prev) {
+                    let isAfterGe = prev == "ґ" || prev == "Ґ"
+                    out.append(contentsOf: (isAfterGe ? "ье" : "ъе").unicodeScalars)
+                } else {
+                    out.append("е")
+                }
             case "Є":
-                out.append("Э")
+                let prevScalar: UnicodeScalar? = i > 0 ? scalars[i - 1] : nil
+                let allCaps = isAllCapsAt(i)
+                let hasNextCyr = (i + 1 < n) && isCyrillicLetter(scalars[i + 1])
+                if !hasNextCyr {
+                    out.append(contentsOf: (allCaps ? "ЙЭ" : "Йэ").unicodeScalars)
+                } else if let prev = prevScalar, Self.cyrillicConsonants.contains(prev) {
+                    let isAfterGe = prev == "ґ" || prev == "Ґ"
+                    let sign: UnicodeScalar = isAfterGe ? (allCaps ? "Ь" : "ь") : (allCaps ? "Ъ" : "ъ")
+                    out.append(sign)
+                    out.append("Е")
+                } else {
+                    out.append("Е")
+                }
+            case "ї":
+                out.append(contentsOf: "йи".unicodeScalars)
+            case "Ї":
+                out.append(contentsOf: (isAllCapsAt(i) ? "ЙИ" : "Йи").unicodeScalars)
+            case "г":
+                if i + 1 < n && (isApostrophe(scalars[i + 1]) || isHardSign(scalars[i + 1])) {
+                    i += 1
+                }
+                out.append(contentsOf: "гъ".unicodeScalars)
+            case "Г":
+                let allCaps = isAllCapsAt(i)
+                if i + 1 < n && (isApostrophe(scalars[i + 1]) || isHardSign(scalars[i + 1])) {
+                    i += 1
+                }
+                out.append(contentsOf: (allCaps ? "ГЪ" : "Гъ").unicodeScalars)
             case "ґ":
                 out.append("г")
             case "Ґ":
                 out.append("Г")
-            case "ї":
-                out.append(contentsOf: "йи".unicodeScalars)
-            case "Ї":
-                out.append(contentsOf: "Йи".unicodeScalars)
+            case "к":
+                if i + 1 < n && isApostrophe(scalars[i + 1]) {
+                    i += 1
+                    out.append(contentsOf: "къ".unicodeScalars)
+                } else {
+                    out.append("к")
+                }
+            case "К":
+                if i + 1 < n && isApostrophe(scalars[i + 1]) {
+                    let allCaps = isAllCapsAt(i)
+                    i += 1
+                    out.append(contentsOf: (allCaps ? "КЪ" : "Къ").unicodeScalars)
+                } else {
+                    out.append("К")
+                }
+            case "н":
+                if i + 1 < n && isApostrophe(scalars[i + 1]) {
+                    i += 1
+                    out.append(contentsOf: "нъ".unicodeScalars)
+                } else {
+                    out.append("н")
+                }
+            case "Н":
+                if i + 1 < n && isApostrophe(scalars[i + 1]) {
+                    let allCaps = isAllCapsAt(i)
+                    i += 1
+                    out.append(contentsOf: (allCaps ? "НЪ" : "Нъ").unicodeScalars)
+                } else {
+                    out.append("Н")
+                }
             default:
-                out.append(scalar)
+                if isApostrophe(scalar) {
+                    let prevScalar: UnicodeScalar? = i > 0 ? scalars[i - 1] : nil
+                    let prevIsConsonant = prevScalar.map { Self.cyrillicConsonants.contains($0) } ?? false
+                    if !prevIsConsonant {
+                        // Immediately output apostrophe when not after a consonant (e.g. after vowel, at word start, or second press 'ʼʼ')
+                        out.append(scalar)
+                    } else if i + 1 < n && isApostrophe(scalars[i + 1]) {
+                        // Double apostrophe after consonant ('пʼʼ') outputs a visible apostrophe
+                        i += 1
+                        out.append(scalars[i])
+                    } else {
+                        // After a consonant ('пʼєр', 'пʼер', 'ґʼе', 'ґʼє', 'обʼєкт'), act as hard-sign / soft-sign separator
+                        let isAfterGe = prevScalar == "ґ" || prevScalar == "Ґ"
+                        let allCaps = isAllCapsAt(i)
+                        if isAfterGe {
+                            out.append(allCaps ? "Ь" : "ь")
+                        } else {
+                            out.append(allCaps ? "Ъ" : "ъ")
+                        }
+                    }
+                } else {
+                    out.append(scalar)
+                }
             }
+            i += 1
         }
         return String(out)
     }

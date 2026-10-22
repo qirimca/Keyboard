@@ -145,7 +145,7 @@ struct HomeView: View {
         if let value = UserDefaults.standard.string(forKey: "qt_theme") {
             return value.lowercased().contains("dark") ? .dark : .ios26White
         }
-        return .ios26White
+        return UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .ios26White
     }()
 
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
@@ -208,7 +208,9 @@ struct HomeView: View {
                             testingAndWritingSection
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.bottom, shouldShowStartOverlay ? 76 : 12)
+                        .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
+                        .padding(.top, Device.iPhone ? 12 : 16)
+                        .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
                     }
                     .onChange(of: isStatsExpanded) { _, expanded in
                         if expanded {
@@ -254,14 +256,12 @@ struct HomeView: View {
                             }
                         } else {
                             shouldAutoFocusSandbox = false
+                            clearThemeOverride()
                             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                         }
                     }
                 }
             }
-            .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
-            .padding(.top, Device.iPhone ? 12 : 16)
-            .padding(.bottom, Device.iPhone ? 12 : 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: language)
             .animation(.spring(response: 0.32, dampingFraction: 0.86), value: cyrillicEnabled)
@@ -288,6 +288,7 @@ struct HomeView: View {
         })
         .animation(.easeInOut(duration: 0.25), value: shouldShowStartOverlay)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbar {
             NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
                 navigationPath.append(DemoRoute.onboarding)
@@ -297,12 +298,8 @@ struct HomeView: View {
             }
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    Image("logo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 28, height: 28)
-                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+                    TaraqTamgaLogoBadge(size: 28, cornerRadius: 7)
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.28 : 0.06), radius: 3, x: 0, y: 1)
                     Text("QırımKey")
                         .font(InterfaceFont.font("GeneralSans-Semibold", size: Device.iPad ? 22 : 19))
                         .foregroundStyle(Color(.label))
@@ -482,6 +479,8 @@ struct HomeView: View {
                 keyboardState.refresh()
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             } else if newPhase == .inactive {
+                shouldAutoFocusSandbox = false
+                clearThemeOverride()
                 refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
             } else {
                 shouldAutoFocusSandbox = false
@@ -693,13 +692,11 @@ struct HomeView: View {
             }
         }
         if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
-            for selName in ["isSplit", "rivenPreference"] {
-                let sel = NSSelectorFromString(selName)
-                if let method = class_getClassMethod(implClass, sel) {
-                    typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                    let fn = unsafeBitCast(method_getImplementation(method), to: BoolFn.self)
-                    if fn(implClass, sel) { return true }
-                }
+            let sel = NSSelectorFromString("isSplit")
+            if let method = class_getClassMethod(implClass, sel) {
+                typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                let fn = unsafeBitCast(method_getImplementation(method), to: BoolFn.self)
+                if fn(implClass, sel) { return true }
             }
         }
         var windows = UIApplication.shared.connectedScenes
@@ -768,10 +765,7 @@ struct HomeView: View {
     }
 
     private static func syncHostSystemSplitStateIfNeeded() {
-        guard Device.iPad, hostDeviceSupportsSplitKeyboard() else { return }
-        if let systemSplit = queryHostSystemIsSplit(), systemSplit, !KeyboardPreferences.splitKeyboardEnabled {
-            KeyboardPreferences.setSplitKeyboardEnabled(true)
-        }
+        // Split state is managed directly by the keyboard extension via `⌄⌨` callout and pinch gesture.
     }
 
     static func openKeyboardSettings() {
@@ -797,88 +791,13 @@ struct HomeView: View {
         tryNext(0)
     }
 
-    /// Masks the full-width `UIKBInputBackdropView` in the host app's `UITextEffectsWindow` and `UIRemoteKeyboardWindow`
-    /// when Split keyboard mode is active so the middle gap is 100% transparent without any blur while keeping the left and right islands blurred.
     private static func updateHostSplitBackdropMask() {
-        guard Device.iPad else { return }
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        KeyboardPreferences.refreshCachedPreferences()
-        let isSplitActive = KeyboardPreferences.splitKeyboardEnabled && hostDeviceSupportsSplitKeyboard()
-        var windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-        let allWinSel = NSSelectorFromString("_allWindowsIncludingInternalWindows:onlyVisibleWindows:")
-        if let method = class_getClassMethod(UIWindow.self, allWinSel) {
-            typealias AllWinFn = @convention(c) (AnyObject, Selector, Bool, Bool) -> NSArray?
-            let fn = unsafeBitCast(method_getImplementation(method), to: AllWinFn.self)
-            if let allWins = fn(UIWindow.self, allWinSel, true, false) as? [UIWindow] {
-                for win in allWins where !windows.contains(win) {
-                    windows.append(win)
-                }
-            }
-        }
-        for (clsName, selName) in [
-            ("UITextEffectsWindow", "sharedTextEffectsWindow"),
-            ("UIRemoteKeyboardWindow", "remoteKeyboardWindowForScreen:create:")
-        ] {
-            if let cls: AnyClass = NSClassFromString(clsName) {
-                let sel = NSSelectorFromString(selName)
-                if selName == "sharedTextEffectsWindow", let method = class_getClassMethod(cls, sel) {
-                    typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
-                    let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
-                    if let win = fn(cls, sel), !windows.contains(win) {
-                        windows.append(win)
-                    }
-                } else if selName == "remoteKeyboardWindowForScreen:create:", let method = class_getClassMethod(cls, sel) {
-                    typealias RemoteWinFn = @convention(c) (AnyObject, Selector, UIScreen, Bool) -> UIWindow?
-                    let fn = unsafeBitCast(method_getImplementation(method), to: RemoteWinFn.self)
-                    if let win = fn(cls, sel, UIScreen.main, false), !windows.contains(win) {
-                        windows.append(win)
-                    }
-                }
-            }
-        }
-        func processBackdrop(_ view: UIView, in window: UIWindow) {
-            let typeName = String(describing: type(of: view))
-            let isBackdropView = typeName.contains("Backdrop")
-                || typeName.contains("VisualEffect")
-                || typeName.contains("Platter")
-                || typeName.contains("Shadow")
-                || typeName.contains("Background")
-            let frameInWin = view.superview?.convert(view.frame, to: window) ?? view.frame
-            if isBackdropView && frameInWin.width >= window.bounds.width * 0.70 && frameInWin.height >= 24 {
-                if view.alpha == 0 { view.alpha = 1 }
-                if view.isHidden { view.isHidden = false }
-                if isSplitActive {
-                    let b = view.bounds
-                    let isPortrait = window.bounds.height >= window.bounds.width
-                    let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
-                    let maxHalfWidth: CGFloat = isPortrait ? 276 : 320
-                    let islandW = min(max((b.width * (1.0 - minGapFraction)) / 2.0, 1), maxHalfWidth)
-                    let path = UIBezierPath()
-                    path.append(UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: islandW, height: b.height), cornerRadius: 14))
-                    path.append(UIBezierPath(roundedRect: CGRect(x: max(0, b.width - islandW), y: 0, width: islandW, height: b.height), cornerRadius: 14))
-                    let maskLayer = (view.layer.mask as? CAShapeLayer) ?? CAShapeLayer()
-                    maskLayer.path = path.cgPath
-                    view.layer.mask = maskLayer
-                } else if view.layer.mask != nil {
-                    view.layer.mask = nil
-                }
-            }
-            for sub in view.subviews {
-                processBackdrop(sub, in: window)
-            }
-        }
-        for window in windows {
-            let winName = String(describing: type(of: window))
-            if winName.contains("TextEffects") || winName.contains("RemoteKeyboard") || winName.contains("Input") {
-                processBackdrop(window, in: window)
-            }
-        }
+        // Do not alter or unhide system keyboard backdrop/platter views.
     }
 
     private static func invokeHostSetFloating(_ floating: Bool) {
         var alreadyMatching = false
+        var didInvokeImpl = false
         if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
             let isFloatingSel = NSSelectorFromString("isFloating")
             if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
@@ -892,10 +811,11 @@ struct HomeView: View {
                     typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
                     let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
                     fn(implClass, implSel, floating)
+                    didInvokeImpl = true
                 }
             }
         }
-        if !alreadyMatching, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
             let hostSel = NSSelectorFromString("setFloating:onCompletion:")
             if let method = class_getClassMethod(hostClass, hostSel) {
                 typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
@@ -903,69 +823,11 @@ struct HomeView: View {
                 fn(hostClass, hostSel, floating, nil)
             }
         }
-        if floating {
-            clampFloatingKeyboardToScreenBounds()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                clampFloatingKeyboardToScreenBounds()
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                clampFloatingKeyboardToScreenBounds()
-            }
-        }
         updateHostSplitBackdropMask()
     }
 
     private static func clampFloatingKeyboardToScreenBounds() {
-        let screenBounds = UIScreen.main.bounds
-        guard screenBounds.width > 500 else { return }
-        let safeRect = screenBounds.insetBy(dx: 16, dy: 24)
-        var windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
-            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
-            if let method = class_getClassMethod(effectsClass, sharedSel) {
-                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
-                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
-                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
-                    windows.append(win)
-                }
-            }
-        }
-        func clampRecursively(_ view: UIView, in window: UIWindow) {
-            let typeName = String(describing: type(of: view))
-            let frameInWin = view.superview?.convert(view.frame, to: window) ?? view.frame
-            if (typeName.contains("UIInputSetHostView") || typeName.contains("UIKBInputBackdropView") || typeName.contains("Floating"))
-                && frameInWin.width >= 240 && frameInWin.width <= 420
-                && frameInWin.height >= 160 && frameInWin.height <= 360 {
-                var targetX = frameInWin.origin.x
-                var targetY = frameInWin.origin.y
-                if targetX < safeRect.minX {
-                    targetX = safeRect.minX
-                } else if targetX + frameInWin.width > safeRect.maxX {
-                    targetX = safeRect.maxX - frameInWin.width
-                }
-                if targetY < safeRect.minY {
-                    targetY = safeRect.minY
-                } else if targetY + frameInWin.height > safeRect.maxY {
-                    targetY = safeRect.maxY - frameInWin.height
-                }
-                if abs(targetX - frameInWin.origin.x) > 0.5 || abs(targetY - frameInWin.origin.y) > 0.5,
-                   let superview = view.superview {
-                    let clampedInSuper = window.convert(
-                        CGRect(x: targetX, y: targetY, width: frameInWin.width, height: frameInWin.height),
-                        to: superview
-                    )
-                    view.frame = clampedInSuper
-                }
-            }
-            for sub in view.subviews {
-                clampRecursively(sub, in: window)
-            }
-        }
-        for window in windows {
-            clampRecursively(window, in: window)
-        }
+        // System floating platter positioning is managed natively by UIKit.
     }
 
     private func refreshCyrillicStatus() {
@@ -1090,11 +952,13 @@ struct HomeView: View {
                 suggestionsEnabled = true
                 wordLearningEnabled = true
                 cyrillicEnabled = true
+                ukrainianCyrillicLayout = false
                 statsEnabled = true
                 KeyboardPreferences.defaults.set("crh", forKey: KeyboardPreferences.languageKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
                 KeyboardPreferences.defaults.set(startSplit, forKey: KeyboardPreferences.splitKeyboardKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
                 KeyboardPreferences.defaults.set(args.contains("-qt_cyrillic_added"), forKey: "crh.key.cyrillicExtensionSeen")
@@ -1227,10 +1091,11 @@ private extension HomeView {
         return KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: "Interface")
     }
 
-    func settingsIconBadge(_ systemName: String, color: Color) -> some View {
-        ZStack {
+    func settingsIconBadge(_ systemName: String, color: Color, isEnabled: Bool = true) -> some View {
+        let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        return ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(color.gradient)
+                .fill(effectiveColor.gradient)
                 .frame(width: 28, height: 28)
             Image(systemName: systemName)
                 .font(.system(size: 13.5, weight: .semibold))
@@ -1238,10 +1103,11 @@ private extension HomeView {
         }
     }
 
-    func cyrillicKeycapIconBadge(color: Color) -> some View {
-        ZStack {
+    func cyrillicKeycapIconBadge(color: Color, isEnabled: Bool = true) -> some View {
+        let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        return ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(color.gradient)
+                .fill(effectiveColor.gradient)
                 .frame(width: 28, height: 28)
             RoundedRectangle(cornerRadius: 4.5, style: .continuous)
                 .strokeBorder(.white.opacity(0.45), lineWidth: 1)
@@ -1252,10 +1118,41 @@ private extension HomeView {
         }
     }
 
-    func walnutBrainIconBadge(color: Color) -> some View {
+    func ukrainianKeycapIconBadge(isEnabled: Bool) -> some View {
         ZStack {
+            if isEnabled {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.0, green: 0.42, blue: 0.85),
+                                Color(red: 0.96, green: 0.78, blue: 0.04)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 28, height: 28)
+            } else {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color(.systemGray2).gradient)
+                    .frame(width: 28, height: 28)
+            }
+            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+                .strokeBorder(.white.opacity(0.55), lineWidth: 1)
+                .frame(width: 21, height: 19)
+            Text("К\u{02BC}")
+                .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(isEnabled ? 0.25 : 0), radius: 1, x: 0, y: 0.5)
+        }
+    }
+
+    func walnutBrainIconBadge(color: Color, isEnabled: Bool = true) -> some View {
+        let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        return ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(color.gradient)
+                .fill(effectiveColor.gradient)
                 .frame(width: 28, height: 28)
             WalnutBrainIcon(color: .white, size: 16.5)
         }
@@ -1371,67 +1268,100 @@ private extension HomeView {
             Divider().padding(.leading, 54)
 
             // Cyrillic row: iPad has an in-place script key (абв/abc) toggle;
-            // iPhone has no in-keyboard script key and shows a tappable status indicator row instead.
+            // iPhone has no in-keyboard script key and shows a status row with a "Додати" button when missing, or a static "✓ Додано" badge when added.
             if Device.iPad {
-                HStack(spacing: 12) {
-                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84))
-                    interfaceLabel("settings.cyrillic")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                        .foregroundStyle(primaryInk)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
-                    Toggle("", isOn: $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .accessibilityIdentifier("settings.cyrillic.toggle")
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-            } else {
-                Button {
-                    if !isCyrillicKeyboardAdded {
-                        showCyrillicGuideAlert = true
-                    } else {
-                        Self.openKeyboardSettings()
-                    }
-                } label: {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 12) {
-                        cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84))
+                        cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: cyrillicEnabled)
                         interfaceLabel("settings.cyrillic")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
+                        Toggle("", isOn: $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .accessibilityIdentifier("settings.cyrillic.toggle")
+                    }
+
+                    if cyrillicEnabled && !isCyrillicKeyboardAdded {
+                        HStack(alignment: .center, spacing: 8) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(brandBlue)
+                            StableLocalizedText(
+                                key: "settings.cyrillic.ipadFloatingNote",
+                                font: InterfaceFont.font("GeneralSans-Regular", size: 12),
+                                color: secondaryInk
+                            )
+                            Spacer(minLength: 6)
+                            Button {
+                                Self.openKeyboardSettings()
+                            } label: {
+                                interfaceLabel("settings.cyrillicAddAction")
+                                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 12))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(brandBlue, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("settings.cyrillic.addButton")
+                        }
+                        .padding(.leading, 40)
+                        .padding(.top, 2)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            } else {
+                HStack(spacing: 12) {
+                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: isCyrillicKeyboardAdded)
+                    interfaceLabel("settings.cyrillic")
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                        .foregroundStyle(primaryInk)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    if isCyrillicKeyboardAdded {
                         HStack(spacing: 5) {
-                            Image(systemName: isCyrillicKeyboardAdded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(isCyrillicKeyboardAdded ? appleGreen : .orange)
-                            interfaceLabel(isCyrillicKeyboardAdded ? "settings.cyrillicStatusAdded" : "settings.cyrillicStatusMissing")
+                                .foregroundStyle(appleGreen)
+                            interfaceLabel("settings.cyrillicStatusAdded")
                                 .font(InterfaceFont.font("GeneralSans-Semibold", size: 13))
-                                .foregroundStyle(isCyrillicKeyboardAdded ? appleGreen : .orange)
+                                .foregroundStyle(appleGreen)
                                 .lineLimit(1)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(secondaryInk.opacity(0.6))
                         }
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(
-                            (isCyrillicKeyboardAdded ? appleGreen : Color.orange).opacity(0.12),
+                            appleGreen.opacity(0.12),
                             in: Capsule()
                         )
+                    } else {
+                        Button {
+                            Self.openKeyboardSettings()
+                        } label: {
+                            interfaceLabel("settings.cyrillicAddAction")
+                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(brandBlue, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("settings.cyrillic.addButton")
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("settings.cyrillic.statusRow")
             }
 
-            if (cyrillicEnabled || !Device.iPad) && cyrillicStatus == .missing {
+            if !Device.iPad && cyrillicStatus == .missing {
                 Button {
                     showCyrillicGuideAlert = true
                 } label: {
@@ -1454,16 +1384,23 @@ private extension HomeView {
                 .accessibilityIdentifier("settings.cyrillicWarning")
             }
 
-            if (cyrillicEnabled || !Device.iPad) && (language == "uk" || ukrainianCyrillicLayout || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true) {
+            if (cyrillicEnabled || !Device.iPad) && (language == "uk" || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true) {
                 Divider().padding(.leading, 54)
 
                 HStack(spacing: 12) {
-                    settingsIconBadge("keyboard.badge.ellipsis", color: Color(red: 0.20, green: 0.48, blue: 0.88))
-                    interfaceLabel("settings.ukrainianCyrillic")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                        .foregroundStyle(primaryInk)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                    ukrainianKeycapIconBadge(isEnabled: ukrainianCyrillicLayout)
+                    VStack(alignment: .leading, spacing: 2) {
+                        interfaceLabel("settings.ukrainianCyrillic")
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                            .foregroundStyle(primaryInk)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        interfaceLabel("settings.ukrainianCyrillic.desc")
+                            .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                            .foregroundStyle(secondaryInk)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Spacer(minLength: 8)
                     Toggle("", isOn: $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)))
                         .labelsHidden()
@@ -1478,7 +1415,7 @@ private extension HomeView {
 
             // Autocomplete suggestions toggle
             HStack(spacing: 12) {
-                settingsIconBadge("sparkles", color: appleGreen)
+                settingsIconBadge("sparkles", color: appleGreen, isEnabled: suggestionsEnabled)
                 interfaceLabel("settings.suggestions")
                     .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                     .foregroundStyle(primaryInk)
@@ -1497,7 +1434,7 @@ private extension HomeView {
 
             // Personalized word & bigram learning toggle
             HStack(spacing: 12) {
-                walnutBrainIconBadge(color: Color(red: 0.96, green: 0.58, blue: 0.04))
+                walnutBrainIconBadge(color: Color(red: 0.96, green: 0.58, blue: 0.04), isEnabled: wordLearningEnabled)
                 interfaceLabel("settings.wordLearning")
                     .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                     .foregroundStyle(primaryInk)
@@ -1516,7 +1453,7 @@ private extension HomeView {
 
             // Typing statistics & progression levels toggle
             HStack(spacing: 12) {
-                settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92))
+                settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92), isEnabled: statsEnabled)
                 interfaceLabel("settings.stats")
                     .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                     .foregroundStyle(primaryInk)
@@ -1721,7 +1658,7 @@ private extension HomeView {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .opacity(text.isEmpty ? 0.3 : 1)
+                .opacity(text.isEmpty ? 0 : 1)
                 .disabled(text.isEmpty)
                 .accessibilityIdentifier("sandbox.clear")
             }
@@ -2882,6 +2819,20 @@ private struct SandboxTextView: UIViewRepresentable {
 
         func textViewDidEndEditing(_ textView: UITextView) {
             guard !isReloadingTraits else { return }
+            let defaults = KeyboardPreferences.defaults
+            defaults.removeObject(forKey: "crh.key.test.isDark")
+            defaults.removeObject(forKey: "crh.key.test.fieldMode")
+            defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
+            defaults.set(false, forKey: "crh.key.test.sandboxFocused")
+            defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                nil,
+                nil,
+                true
+            )
             if parent.isFocused {
                 parent.isFocused = false
             }

@@ -55,6 +55,7 @@ private extension DemoCalloutActionProvider {
         switch char {
         case ",": return ["."]
         case ".": return [","]
+        case "\u{02BC}": return ["\u{02BC}", "ъ", "ь"]
         default: return nil
         }
     }

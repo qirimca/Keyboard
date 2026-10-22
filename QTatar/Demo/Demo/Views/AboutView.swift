@@ -64,11 +64,7 @@ private extension AboutView {
     
     var headerSection: some View {
         VStack(spacing: 12) {
-            Image("logo")
-                .resizable()
-                .scaledToFit()
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .frame(height: 84)
+            TaraqTamgaLogoBadge(size: 84, cornerRadius: 20)
             Text(About.about_first_key.localized)
                 .titleText()
                 .multilineTextAlignment(.center)

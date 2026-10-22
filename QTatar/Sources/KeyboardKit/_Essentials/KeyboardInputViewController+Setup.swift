@@ -23,10 +23,16 @@ extension KeyboardInputViewController {
         let view = view.keyboardState(from: self)
         let host = KeyboardHostingController(rootView: view)
         host.add(to: self)
+        #if os(iOS)
+        self.hasDictationKey = true
+        #endif
     }
     
     /// Setup the controller when it has loaded.
     func setupController() {
+        #if os(iOS)
+        self.hasDictationKey = true
+        #endif
         setupInitialWidth()
         setupLocaleObservation()
     }

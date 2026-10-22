@@ -12,11 +12,7 @@ struct FooterView: View {
 
     var body: some View {
         VStack(alignment: .center, spacing: 10) {
-            Image("logo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+            TaraqTamgaLogoBadge(size: 36, cornerRadius: 12)
                 .saturation(0)
                 .layoutPriority(0)
 

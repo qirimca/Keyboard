@@ -215,7 +215,7 @@ public extension KeyboardContext {
     /// Whether or not to use a dark color scheme.
     var hasDarkColorScheme: Bool {
         #if os(iOS) || os(tvOS) || os(visionOS)
-        colorScheme == .dark
+        colorScheme == .dark || keyboardAppearance == .dark
         #else
         false
         #endif
@@ -419,42 +419,48 @@ extension KeyboardContext {
         sync(with: controller)
     }
 
-    /// Perform an immediate sync to check if the iPad keyboard is in floating mode (`width <= 360`).
+    /// Perform an immediate sync to check if the iPad keyboard is in floating mode (`width < 420`).
     public func syncIsFloating(
         with controller: KeyboardInputViewController,
         targetWidth: CGFloat? = nil
     ) {
         let resolvedWidth: CGFloat = {
             if let targetWidth, targetWidth > 0 { return targetWidth }
-            if controller.view.bounds.width > 0 { return controller.view.bounds.width }
-            return controller.view.frame.width
+            var minW = controller.view.bounds.width > 0 ? controller.view.bounds.width : controller.view.frame.width
+            var cur = controller.view.superview
+            while let node = cur {
+                let w = node.bounds.width
+                if w > 0 && w < minW {
+                    minW = w
+                }
+                cur = node.superview
+            }
+            return minW
         }()
         let isPadDevice = controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad
         guard isPadDevice, resolvedWidth > 0 else {
             if isKeyboardFloating { isKeyboardFloating = false }
             return
         }
-        if targetWidth == nil && controller.view.window == nil && resolvedWidth > 360 {
+        if targetWidth == nil && controller.view.window == nil && resolvedWidth >= 420 {
             return
         }
+        let wasFloating = isKeyboardFloating
+        let isFloating = resolvedWidth < 420
+        if isKeyboardFloating != isFloating {
+            isKeyboardFloating = isFloating
+            if isFloating && isKeyboardSplit {
+                isKeyboardSplit = false
+            }
+            renderVersion &+= 1
+        }
         #if os(iOS)
-        let screenWidth = controller.screenSize.width > 0 ? controller.screenSize.width : UIScreen.main.bounds.width
-        let isIntermediateWidth = resolvedWidth > 360 && screenWidth > 0 && resolvedWidth < screenWidth - 16
-        if targetWidth == nil && controller.view.window != nil && (isIntermediateWidth || Self.hasActiveSystemFloatingGesture(in: controller.view)) {
+        if Self.hasActiveSystemFloatingGesture(in: controller.view) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak controller] in
                 guard let self, let controller else { return }
                 self.syncIsFloating(with: controller)
             }
-            return
         }
-        #endif
-        let wasFloating = isKeyboardFloating
-        let isFloating = resolvedWidth <= 360
-        if isKeyboardFloating != isFloating {
-            isKeyboardFloating = isFloating
-            renderVersion &+= 1
-        }
-        #if os(iOS)
         if !isFloating && controller.preferredContentSize != .zero {
             controller.preferredContentSize = .zero
         }
@@ -514,23 +520,15 @@ extension KeyboardContext {
                 }
                 let valSel = NSSelectorFromString("valueForPreferenceKey:")
                 if tiCtrl.responds(to: valSel) {
-                    for key in ["RivenKeyboard", "UIKeyboardPersistentSplitLock"] {
-                        if let num = tiCtrl.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? NSNumber,
-                           num.boolValue {
-                            return true
-                        }
+                    if let num = tiCtrl.perform(valSel, with: "UIKeyboardPersistentSplitLock" as NSString)?.takeUnretainedValue() as? NSNumber,
+                       num.boolValue {
+                        return true
                     }
                     if let prog = tiCtrl.perform(valSel, with: "UIKeyboardPersistentSplitProgress" as NSString)?.takeUnretainedValue() as? NSNumber,
                        prog.doubleValue > 0.5 {
                         return true
                     }
                 }
-            }
-        }
-        for domain in ["com.apple.keyboard.preferences", "com.apple.Preferences", ".GlobalPreferences"] {
-            if let val = CFPreferencesCopyAppValue("RivenKeyboard" as CFString, domain as CFString) as? NSNumber,
-               val.boolValue {
-                return true
             }
         }
         if let rootVC = controller.view.window?.rootViewController {
@@ -570,36 +568,25 @@ extension KeyboardContext {
             }
         }
         if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
-            for selName in ["isSplit", "rivenPreference"] {
-                let sel = NSSelectorFromString(selName)
-                if let method = class_getClassMethod(implClass, sel) {
-                    typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                    let fn = unsafeBitCast(method_getImplementation(method), to: ClassBoolFn.self)
-                    if fn(implClass, sel) {
-                        return true
-                    }
+            let isSplitSel = NSSelectorFromString("isSplit")
+            if let method = class_getClassMethod(implClass, isSplitSel) {
+                typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                let fn = unsafeBitCast(method_getImplementation(method), to: ClassBoolFn.self)
+                if fn(implClass, isSplitSel) {
+                    return true
                 }
             }
             let activeSel = NSSelectorFromString("activeInstance")
             if implClass.responds(to: activeSel),
                let active = (implClass as AnyObject).perform(activeSel)?.takeUnretainedValue() {
-                for selName in ["isSplit", "rivenPreference"] {
-                    let sel = NSSelectorFromString(selName)
-                    if active.responds(to: sel),
-                       let method = class_getInstanceMethod(type(of: active), sel) {
-                        typealias InstBoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                        let fn = unsafeBitCast(method_getImplementation(method), to: InstBoolFn.self)
-                        if fn(active, sel) {
-                            return true
-                        }
+                if active.responds(to: isSplitSel),
+                   let method = class_getInstanceMethod(type(of: active), isSplitSel) {
+                    typealias InstBoolFn = @convention(c) (AnyObject, Selector) -> Bool
+                    let fn = unsafeBitCast(method_getImplementation(method), to: InstBoolFn.self)
+                    if fn(active, isSplitSel) {
+                        return true
                     }
                 }
-            }
-            let isSplitSel = NSSelectorFromString("isSplit")
-            if let method = class_getClassMethod(implClass, isSplitSel) {
-                typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                let fn = unsafeBitCast(method_getImplementation(method), to: ClassBoolFn.self)
-                return fn(implClass, isSplitSel)
             }
         }
         return nil

@@ -107,7 +107,7 @@ private extension Callouts.ActionCallout {
     var calloutButtonSize: CGSize {
         let frameSize = buttonFrame.size
         if isFloatingMenuCallout {
-            return CGSize(width: max(frameSize.width * 1.8, 156), height: max(frameSize.height, 44))
+            return CGSize(width: max(frameSize.width * 1.8, 156), height: 44)
         }
         let widthScale = (calloutActions.count == 1) ? 1.2 : 1
         let buttonSize = CGSize(width: frameSize.width * widthScale, height: frameSize.height)

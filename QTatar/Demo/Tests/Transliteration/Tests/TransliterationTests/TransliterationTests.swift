@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 import Testing
 @testable import Transliteration
 
@@ -546,29 +547,84 @@ private let parityCases: [(String, String)] = {
         ("І", "İ"),
         ("и", "ı"),
         ("И", "I"),
-        ("є", "e"),
-        ("Є", "E"),
+        ("е", "e"),
+        ("Е", "E"),
+        ("є", "ye"),
+        ("Є", "Ye"),
+        ("єр", "yer"),
+        ("Єр", "Yer"),
+        ("ЄР", "YER"),
+        ("єді", "yedi"),
+        ("аєт", "ayet"),
         ("ґ", "g"),
         ("Ґ", "G"),
+        ("ґє", "gye"),
+        ("Ґє", "Gye"),
+        ("ҐЄ", "GYE"),
+        ("ґʼе", "gye"),
+        ("Ґʼе", "Gye"),
+        ("ҐʼЕ", "GYE"),
+        ("г", "ğ"),
+        ("Г", "Ğ"),
+        ("гʼ", "ğ"),
+        ("Гʼ", "Ğ"),
         ("гъ", "ğ"),
         ("Гъ", "Ğ"),
         ("ГЪ", "Ğ"),
-        ("ґъ", "ğ"),
-        ("Ґъ", "Ğ"),
-        ("ҐЪ", "Ğ"),
+        ("ге", "ğe"),
+        ("Ге", "Ğe"),
+        ("ГЕ", "ĞE"),
+        ("гʼе", "ğe"),
+        ("Гʼе", "Ğe"),
+        ("кʼ", "q"),
+        ("Кʼ", "Q"),
+        ("кʼе", "qe"),
+        ("Кʼе", "Qe"),
+        ("КʼЕ", "QE"),
+        ("нʼ", "ñ"),
+        ("Нʼ", "Ñ"),
+        ("нʼе", "ñe"),
+        ("Нʼе", "Ñe"),
+        ("НʼЕ", "ÑE"),
+        ("ервін", "ervin"),
+        ("Ервін", "Ervin"),
+        ("ЕРВІН", "ERVİN"),
+        ("ел", "el"),
+        ("мен", "men"),
+        ("кʼирим", "qırım"),
+        ("Кʼирим", "Qırım"),
+        ("КʼИРИМ", "QIRIM"),
         ("къирим", "qırım"),
         ("Къирим", "Qırım"),
         ("КЪИРИМ", "QIRIM"),
         ("тілі", "tili"),
         ("Тілі", "Tili"),
         ("ґузель", "güzel"),
-        ("гъаєт", "ğaet"),
-        ("ґъаєт", "ğaet"),
+        ("гаєт", "ğayet"),
+        ("гʼаєт", "ğayet"),
+        ("гъаєт", "ğayet"),
         ("джаним", "canım"),
         ("селям", "selâm"),
         ("буґунь", "bugün"),
+        ("міллетнінʼ", "milletniñ"),
         ("міллетнінъ", "milletniñ"),
-        ("яхши", "yahşı")
+        ("яхши", "yahşı"),
+        ("дембель", "dembel"),
+        ("Дембель", "Dembel"),
+        ("ДЕМБЕЛЬ", "DEMBEL"),
+        ("пʼєр", "pyer"),
+        ("Пʼєр", "Pyer"),
+        ("ПʼЄР", "PYER"),
+        ("пʼер", "pyer"),
+        ("Пʼер", "Pyer"),
+        ("ПʼЕР", "PYER"),
+        ("ґʼє", "gye"),
+        ("Ґʼє", "Gye"),
+        ("ҐʼЄ", "GYE"),
+        ("аʼ", "aʼ"),
+        ("ʼ", "ʼ"),
+        ("пʼʼ", "pʼ"),
+        ("кʼʼ", "qʼ")
     ]
     for (source, expected) in cases {
         #expect(CrimeanTatarTransliterator.transliterate(source, ukrainianLayout: true) == expected)
@@ -593,5 +649,44 @@ private let parityCases: [(String, String)] = {
         }
     }
 }
+
+@Test func phase8SwipeProperNounsAndSenNeVerification() throws {
+    // 1. Verify Cyrillic swipe path "машала" / "машла" transliterates to "maşala" / "maşla" and matches "maşalla" in qırım_tatar.db
+    let cyrSwipeFull = CrimeanTatarTransliterator.transliterate(["м", "а", "ш", "а", "л", "а"].joined())
+    let cyrSwipeFast = CrimeanTatarTransliterator.transliterate(["м", "а", "ш", "л", "а"].joined())
+    #expect(cyrSwipeFull == "maşala")
+    #expect(cyrSwipeFast == "maşla")
+
+    let testFileURL = URL(fileURLWithPath: #filePath)
+    let dbURL = testFileURL
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("Keyboard/qırım_tatar.db")
+    #expect(FileManager.default.fileExists(atPath: dbURL.path))
+
+    var db: OpaquePointer?
+    #expect(sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK)
+    defer { sqlite3_close(db) }
+
+    func wordFrequency(_ word: String) -> Int {
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "SELECT freq FROM words WHERE word = ?1 LIMIT 1;", -1, &stmt, nil) == SQLITE_OK else { return 0 }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        _ = word.withCString { sqlite3_bind_text(stmt, 1, $0, -1, transient) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+        return Int(sqlite3_column_int(stmt, 0))
+    }
+
+    #expect(wordFrequency("maşalla") > 50, "maşalla must exist with high frequency in qırım_tatar.db")
+    #expect(wordFrequency("qırım") > 1000, "qırım must exist in qırım_tatar.db")
+    #expect(wordFrequency("aytasıñ") > 0, "aytasıñ must exist in qırım_tatar.db")
+    #expect(wordFrequency("yapasıñ") > 0, "yapasıñ must exist in qırım_tatar.db")
+    #expect(wordFrequency("deysiñ") > 0, "deysiñ must exist in qırım_tatar.db")
+}
+
 
 

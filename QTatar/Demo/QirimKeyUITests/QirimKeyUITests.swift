@@ -65,18 +65,20 @@ final class QirimKeyUITests: XCTestCase {
                 Thread.sleep(forTimeInterval: 0.8)
             }
         }
-        for _ in 1...6 {
+        for step in 1...6 {
             if firstKey.exists || key("numeric").exists || key("alphabetic").exists || key("space").exists {
                 break
             }
             if abcBtn.exists && abcBtn.isHittable {
                 abcBtn.tap()
             } else if nextKeyboard.exists && nextKeyboard.isHittable {
-                nextKeyboard.tap()
+                for _ in 0..<step where nextKeyboard.exists && nextKeyboard.isHittable {
+                    nextKeyboard.tap()
+                }
             } else {
                 break
             }
-            if firstKey.waitForExistence(timeout: 2.5) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
+            if firstKey.waitForExistence(timeout: 2.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
                 break
             }
         }
@@ -185,7 +187,7 @@ final class QirimKeyUITests: XCTestCase {
 
     private func clear() {
         let button = app.buttons["sandbox.clear"]
-        if button.exists { button.tap() }
+        if button.exists && button.isEnabled && button.isHittable { button.tap() }
         expectText("")
     }
 
@@ -506,7 +508,7 @@ final class QirimKeyUITests: XCTestCase {
         let dismissKey = key("dismiss")
         if dismissKey.exists && app.frame.width >= 750 {
             let start = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let calloutOption = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.1))
+            let calloutOption = dismissKey.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -0.35))
             start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.15)
             Thread.sleep(forTimeInterval: 0.8)
             capture("iPad floating keyboard via dismiss long press")
@@ -565,15 +567,32 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(afterEdgeTap.hasSuffix(" ") && afterEdgeTap.count >= 3, "Tapping near the horizontal edge of autocomplete.slot.0 must trigger suggestion insertion (got: '\(afterEdgeTap)')")
         clear()
 
-        // Typed without diacritics: Space restores the dictionary spelling (single word and multi-word sentence).
+        // Typed without diacritics: Space restores the dictionary spelling and auto-capitalizes unambiguous proper nouns (Qırım).
         typeLetters("qirim")
         let speedBadge = app.descendants(matching: .any).matching(identifier: "sandbox.speedBadge").firstMatch
         XCTAssertTrue(speedBadge.exists, "Speed badge must appear with CPM while typing the first word")
         XCTAssertFalse(speedBadge.label.contains("söz/daq"), "While typing the first word (<8 chars, no space), speed badge must show only CPM, not WPM (got: '\(speedBadge.label)')")
         tap("space")
-        expectText("qırım ")
+        expectText("Qırım ")
         XCTAssertTrue(speedBadge.label.contains("söz/daq"), "After completing the first word with Space, speed badge must show WPM · CPM (got: '\(speedBadge.label)')")
-        capture("qirim to qırım")
+        capture("qirim to Qırım")
+        clear()
+
+        // Mid-sentence unambiguous proper noun auto-capitalization (qırımda -> Qırımda, krım -> Qırım)
+        typeLetters("men")
+        tap("space")
+        typeLetters("qirimda")
+        tap("space")
+        expectText("men Qırımda ")
+        capture("Mid-sentence men Qırımda")
+        clear()
+
+        typeLetters("men")
+        tap("space")
+        typeLetters("krım")
+        tap("space")
+        expectText("men Qırım ")
+        capture("Mid-sentence men krım to men Qırım")
         clear()
 
         typeLetters("selam")
@@ -603,13 +622,13 @@ final class QirimKeyUITests: XCTestCase {
         }
         XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "sandbox.speedBadge").firstMatch.exists, "Speed badge must not appear when sandbox text field is empty")
 
-        // Backspace Undo Autocorrect: pressing Backspace right after Space autocorrects 'qirim' -> 'qırım ' restores 'qirim'.
+        // Backspace Undo Autocorrect: pressing Backspace right after Space autocorrects 'qirim' -> 'Qırım ' restores 'qirim'.
         typeLetters("qirim")
         tap("space")
-        expectText("qırım ")
+        expectText("Qırım ")
         tap("backspace")
         expectText("qirim")
-        capture("Backspace undo autocorrect qırım to qirim")
+        capture("Backspace undo autocorrect Qırım to qirim")
         clear()
 
         // Question particle attachment (§ 67 п. 3.1): 'yaptıñ mı' + Space -> 'yaptıñmı '
@@ -853,7 +872,7 @@ final class QirimKeyUITests: XCTestCase {
             let dismiss = key("dismiss")
             XCTAssertTrue(dismiss.waitForExistence(timeout: 2), "Dismiss key must exist on iPad keyboard")
             let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.1))
+            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -0.35))
             start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.15)
             Thread.sleep(forTimeInterval: 0.8)
             XCTAssertFalse(leftCluster.exists, "Non-split iPad model must never enter Split Keyboard mode")
@@ -878,7 +897,7 @@ final class QirimKeyUITests: XCTestCase {
             let dismiss = key("dismiss")
             XCTAssertTrue(dismiss.waitForExistence(timeout: 2), "Dismiss key must exist on iPad keyboard")
             let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -2.1))
+            let calloutOption = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -1.5))
             start.press(forDuration: 0.55, thenDragTo: calloutOption, withVelocity: .default, thenHoldForDuration: 0.2)
             Thread.sleep(forTimeInterval: 0.45)
         }
@@ -1200,7 +1219,7 @@ final class QirimKeyUITests: XCTestCase {
     func testRound2UkrainianLayoutAndSwipeComet() throws {
         try launch()
 
-        // 1. Verify Swipe-to-Type on iPhone
+        // 1. Verify Swipe-to-Type on iPhone and single Backspace whole-word deletion
         try selectScript(cyrillic: false)
         clear()
         if UIDevice.current.userInterfaceIdiom == .phone {
@@ -1214,11 +1233,29 @@ final class QirimKeyUITests: XCTestCase {
                 let swipedText = (field.value as? String) ?? ""
                 XCTAssertFalse(swipedText.isEmpty, "Swiping across keys on iPhone must insert predicted word (got: '\(swipedText)')")
                 capture("iPhone Swipe to Type result")
-                clear()
+                tap("backspace")
+                expectText("")
+                capture("iPhone Swipe Backspace whole word deleted")
             }
         }
 
-        // 2. Switch interface language to Ukrainian ('uk'), enable Ukrainian Cyrillic layout ('ФІВА'), and verify transliteration
+        // 2. Verify "Sen ne " next-word predictions offer 2nd-person verbs and never repeat "sen"
+        clear()
+        typeLetters("sen")
+        tap("space")
+        typeLetters("ne")
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.35)
+        let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        let slot2 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.2").firstMatch
+        let slotLabels = [slot0, slot1, slot2].compactMap { $0.exists ? $0.label.trimmingCharacters(in: .whitespacesAndNewlines) : nil }
+        XCTAssertFalse(slotLabels.contains(where: { $0.lowercased() == "sen" }), "Next-word suggestions after 'Sen ne ' must never suggest 'sen' (got: \(slotLabels))")
+        XCTAssertTrue(slotLabels.contains(where: { $0.hasSuffix("sıñ") || $0.hasSuffix("siñ") }), "Next-word suggestions after 'Sen ne ' must suggest 2nd-person verbs ending in -sıñ/-siñ (got: \(slotLabels))")
+        capture("Next word suggestions after Sen ne")
+        clear()
+
+        // 3. Switch interface language to Ukrainian ('uk'), enable Ukrainian Cyrillic layout ('ФІВА'), and verify Phase 8 transliteration
         let ukLangBtn = app.buttons["settings.lang.uk"]
         if ukLangBtn.waitForExistence(timeout: 2) {
             ukLangBtn.tap()
@@ -1228,6 +1265,10 @@ final class QirimKeyUITests: XCTestCase {
             ? app.switches["settings.ukrainianCyrillic.toggle"]
             : app.descendants(matching: .any).matching(identifier: "settings.ukrainianCyrillic.toggle").firstMatch
         XCTAssertTrue(ukCyrSwitch.waitForExistence(timeout: 2), "Ukrainian Cyrillic layout toggle must appear when Ukrainian interface language is active")
+        if ((ukCyrSwitch.value as? String) ?? "0") == "1" {
+            tapSwitch(ukCyrSwitch)
+            Thread.sleep(forTimeInterval: 0.35)
+        }
         if ((ukCyrSwitch.value as? String) ?? "0") == "0" {
             tapSwitch(ukCyrSwitch)
             Thread.sleep(forTimeInterval: 0.45)
@@ -1251,17 +1292,28 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(waitForLetter("і", timeout: 3), "Ukrainian Cyrillic layout (ФІВА) must include key 'і'")
         XCTAssertTrue(hasLetter("є"), "Ukrainian Cyrillic layout (ФІВА) must include key 'є'")
         XCTAssertTrue(hasLetter("ґ"), "Ukrainian Cyrillic layout (ФІВА) must include key 'ґ'")
-        XCTAssertTrue(hasLetter("ъ"), "Ukrainian Cyrillic layout (ФІВА) must preserve hard sign 'ъ'")
+        XCTAssertTrue(hasLetter("\u{02BC}"), "Ukrainian Cyrillic layout (ФІВА) must have apostrophe 'ʼ' in place of 'ъ'")
         capture("Ukrainian Cyrillic FIVA layout")
 
-        clear()
-        typeLetters("фікір")
-        expectText("fikir")
-        capture("Ukrainian Cyrillic fikir transliteration")
-        clear()
-        typeLetters("ґъам")
-        expectText("ğam")
-        capture("Ukrainian Cyrillic ğam transliteration")
+        for (source, expected) in [
+            ("дембель", "dembel"),
+            ("ервін", "ervin"),
+            ("екі", "eki"),
+            ("єр", "yer"),
+            ("п\u{02BC}єр", "pyer"),
+            ("п\u{02BC}ер", "pyer"),
+            ("ґ\u{02BC}е", "gye"),
+            ("к\u{02BC}е", "qe"),
+            ("н\u{02BC}е", "ñe"),
+            ("г\u{02BC}аєт", "ğayet"),
+            ("к\u{02BC}ирим", "qırım"),
+            ("міллетнін\u{02BC}", "milletniñ")
+        ] {
+            clear()
+            typeLetters(source)
+            expectText(expected)
+        }
+        capture("Ukrainian Cyrillic Phase 8 transliteration verified")
         clear()
     }
 }

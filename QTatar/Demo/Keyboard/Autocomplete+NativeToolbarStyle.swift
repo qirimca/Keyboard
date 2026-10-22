@@ -930,6 +930,10 @@ struct NativeAutocompleteToolbar: View {
         DemoStyleProvider.effectiveIsDark(for: keyboardContext)
     }
 
+    private var primaryColor: Color {
+        isDark ? .white : .black
+    }
+
     @ViewBuilder
     private func suggestionSlotButton(index: Int, suggestion: Autocomplete.Suggestion?, width: CGFloat) -> some View {
         Button {
@@ -938,7 +942,7 @@ struct NativeAutocompleteToolbar: View {
             }
         } label: {
             ZStack {
-                Color.primary.opacity(0.001)
+                primaryColor.opacity(0.001)
 
                 if let suggestion {
                     let isMathUnknown = suggestion.additionalInfo["mathAction"] != nil
@@ -949,7 +953,7 @@ struct NativeAutocompleteToolbar: View {
                     if suggestion.isAutocorrect {
                         Text(displayTitle)
                             .font(isFloating ? .subheadline.weight(.regular) : .system(size: 17, weight: .regular))
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(primaryColor)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                             .padding(.horizontal, isFloating ? 8 : 14)
@@ -967,7 +971,7 @@ struct NativeAutocompleteToolbar: View {
                     } else {
                         Text(displayTitle)
                             .font(isFloating ? .subheadline : .system(size: 17, weight: .regular))
-                            .foregroundStyle(Color.primary)
+                            .foregroundStyle(primaryColor)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                             .padding(.horizontal, isFloating ? 6 : 12)
@@ -1027,7 +1031,7 @@ struct NativeAutocompleteToolbar: View {
                                     suggestion: s0,
                                     width: leftSlotWidth
                                 )
-                                Color.secondary.opacity(hideLeftDivider ? 0.0 : 0.28)
+                                primaryColor.opacity(hideLeftDivider ? 0.0 : 0.22)
                                     .frame(width: 0.5, height: 22)
                                 suggestionSlotButton(
                                     index: 1,
@@ -1061,7 +1065,7 @@ struct NativeAutocompleteToolbar: View {
                                 )
 
                                 if index < slotCount - 1 {
-                                    Color.secondary.opacity(hideDivider ? 0.0 : 0.28)
+                                    primaryColor.opacity(hideDivider ? 0.0 : 0.22)
                                         .frame(width: 0.5, height: isFloating ? 16 : 24)
                                 }
                             }
@@ -1075,6 +1079,7 @@ struct NativeAutocompleteToolbar: View {
         }
         .frame(height: height)
         .frame(maxWidth: .infinity)
+        .environment(\.colorScheme, isDark ? .dark : .light)
     }
 
     private struct FullSlotButtonStyle: ButtonStyle {
@@ -1104,13 +1109,12 @@ struct NativeAutocompleteToolbar: View {
             insertCurrentPhrase(phrase)
         } label: {
             HStack(spacing: 5) {
-                TaraqTamgaShape()
-                    .fill(Color.primary.opacity(0.65))
+                BreathingTamgaView(isDark: isDark, minOpacity: 0.45, maxOpacity: 0.85)
                     .frame(width: 12.5, height: 7.0)
 
                 Text(phrase.bannerCRH)
                     .font(.system(size: 12.0, weight: .medium))
-                    .foregroundStyle(Color.primary.opacity(0.88))
+                    .foregroundStyle(primaryColor.opacity(0.88))
                     .lineLimit(2)
                     .minimumScaleFactor(0.55)
                     .multilineTextAlignment(.center)
@@ -1121,7 +1125,7 @@ struct NativeAutocompleteToolbar: View {
             .frame(maxWidth: max(clusterWidth - 12, 120))
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
+                    .fill(primaryColor.opacity(0.08))
             )
         }
         .buttonStyle(.plain)
@@ -1139,19 +1143,19 @@ struct NativeAutocompleteToolbar: View {
                     HStack(spacing: 5) {
                         Text(attributionText)
                             .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(Color.secondary.opacity(0.9))
+                            .foregroundStyle(primaryColor.opacity(0.65))
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
 
                         Image(systemName: "arrow.up.left.circle.fill")
                             .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(Color.secondary.opacity(0.75))
+                            .foregroundStyle(primaryColor.opacity(0.55))
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(Color.primary.opacity(0.06))
+                            .fill(primaryColor.opacity(0.06))
                     )
                 }
                 .buttonStyle(.plain)
@@ -1161,9 +1165,9 @@ struct NativeAutocompleteToolbar: View {
                 } label: {
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 13.0, weight: .medium))
-                        .foregroundStyle(Color.secondary.opacity(0.8))
+                        .foregroundStyle(primaryColor.opacity(0.58))
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.primary.opacity(0.06)))
+                        .background(Circle().fill(primaryColor.opacity(0.06)))
                 }
                 .buttonStyle(.plain)
             }
@@ -1173,9 +1177,9 @@ struct NativeAutocompleteToolbar: View {
             } label: {
                 Image(systemName: "sparkles")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.secondary.opacity(0.8))
+                    .foregroundStyle(primaryColor.opacity(0.62))
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                    .background(Circle().fill(primaryColor.opacity(0.06)))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("autocomplete.greetingNext")
@@ -1195,13 +1199,12 @@ struct NativeAutocompleteToolbar: View {
                 insertCurrentPhrase(phrase)
             } label: {
                 HStack(spacing: 6) {
-                    TaraqTamgaShape()
-                        .fill(Color.primary.opacity(0.65))
+                    BreathingTamgaView(isDark: isDark, minOpacity: 0.45, maxOpacity: 0.85)
                         .frame(width: 13.5, height: 7.5)
 
                     Text(phrase.bannerCRH)
                         .font(.system(size: isFloating ? 12.5 : 14.0, weight: .medium))
-                        .foregroundStyle(Color.primary.opacity(0.88))
+                        .foregroundStyle(primaryColor.opacity(0.88))
                         .lineLimit(2)
                         .minimumScaleFactor(0.68)
                         .multilineTextAlignment(.center)
@@ -1209,13 +1212,13 @@ struct NativeAutocompleteToolbar: View {
 
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 12.0, weight: .medium))
-                        .foregroundStyle(Color.secondary.opacity(0.75))
+                        .foregroundStyle(primaryColor.opacity(0.58))
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, isDockedPad ? 4.0 : 4.5)
                 .background(
                     Capsule(style: .continuous)
-                        .fill(Color.primary.opacity(0.08))
+                        .fill(primaryColor.opacity(0.08))
                 )
             }
             .buttonStyle(.plain)
@@ -1226,9 +1229,9 @@ struct NativeAutocompleteToolbar: View {
             } label: {
                 Image(systemName: "sparkles")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.secondary.opacity(0.8))
+                    .foregroundStyle(primaryColor.opacity(0.62))
                     .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.primary.opacity(0.06)))
+                    .background(Circle().fill(primaryColor.opacity(0.06)))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("autocomplete.greetingNext")

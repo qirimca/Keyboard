@@ -126,19 +126,42 @@ public extension CalloutContext.ActionContext {
     }
     
     /// Update the selected action for a drag gesture.
-    func updateSelection(with dragTranslation: CGSize?) {
+    func updateSelection(with dragTranslation: CGSize?, location: CGPoint? = nil) {
         guard let value = dragTranslation, buttonFrame != .zero, !actions.isEmpty else { return }
         if shouldReset(for: value) { return reset() }
         if Self.isMenuCalloutActions(actions) {
-            let rowStep = max(buttonFrame.height * 0.78, 38)
-            let verticalOffset = Int(max(0, -value.height - (rowStep * 0.6)) / rowStep)
-            let horizontalOffset = Int(max(0, -value.width - (buttonFrame.width * 0.45)) / max(buttonFrame.width * 0.75, 48))
-            let offset = max(verticalOffset, horizontalOffset)
-            let clampedIndex = min(max(offset, 0), actions.count - 1)
-            if self.selectedIndex != clampedIndex {
+            let standardStyle = Callouts.ActionCalloutStyle.standard
+            let singleRowHeight: CGFloat = 44 + 2 * standardStyle.verticalTextPadding
+            let bubbleBottomLocalY: CGFloat = standardStyle.verticalOffset - standardStyle.callout.buttonInset.height
+            let localY: CGFloat = location?.y ?? (buttonFrame.height * 0.5 + value.height)
+            let distanceAboveBubbleBottom = bubbleBottomLocalY - localY
+
+            let currentIndex = isIndexValid(self.selectedIndex) ? self.selectedIndex : 0
+            var newIndex = currentIndex
+            let upwardHysteresis: CGFloat = 2
+            let downwardHysteresis: CGFloat = 8
+
+            while newIndex < actions.count - 1 {
+                let divider = CGFloat(newIndex + 1) * singleRowHeight
+                if distanceAboveBubbleBottom >= divider + upwardHysteresis {
+                    newIndex += 1
+                } else {
+                    break
+                }
+            }
+            while newIndex > 0 {
+                let divider = CGFloat(newIndex) * singleRowHeight
+                if distanceAboveBubbleBottom < divider - downwardHysteresis {
+                    newIndex -= 1
+                } else {
+                    break
+                }
+            }
+
+            if self.selectedIndex != newIndex {
                 triggerHapticFeedbackForSelectionChange()
             }
-            self.selectedIndex = clampedIndex
+            self.selectedIndex = newIndex
             return
         }
         guard shouldUpdateSelection(for: value) else { return }

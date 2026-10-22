@@ -22,29 +22,28 @@ final class SpaceBarState: ObservableObject {
 
     private var dismissTimer: Timer?
 
-    private var isUITesting: Bool {
-        KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
-    }
-
     func prepareForAppearance() {
-        dismissTimer?.invalidate()
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             isShowingFullName = true
         }
+        scheduleCollapseTimer()
     }
 
     func triggerSwitchAnimation() {
-        dismissTimer?.invalidate()
         if !isShowingFullName {
             isShowingFullName = true
         }
-        guard !isUITesting else { return }
-        let timer = Timer(timeInterval: 1.8, repeats: false) { [weak self] _ in
+        scheduleCollapseTimer()
+    }
+
+    private func scheduleCollapseTimer() {
+        dismissTimer?.invalidate()
+        let timer = Timer(timeInterval: 1.5, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.isShowingFullName else { return }
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     self.isShowingFullName = false
                 }
             }
@@ -56,18 +55,13 @@ final class SpaceBarState: ObservableObject {
     func fadeToResting() {
         guard isShowingFullName else { return }
         dismissTimer?.invalidate()
-        if isUITesting {
+        withAnimation(.easeInOut(duration: 0.35)) {
             isShowingFullName = false
-        } else {
-            withAnimation(.easeInOut(duration: 0.35)) {
-                isShowingFullName = false
-            }
         }
     }
 
     /// Records a character keystroke so the spacebar Tamğa smoothly quickens its breathing rate.
     func recordKeystroke() {
-        guard !isUITesting else { return }
         keystrokeSubject.send(())
     }
 }
@@ -118,27 +112,31 @@ struct TaraqTamgaShape: Shape {
 
 /// CoreAnimation-driven Taraq Tamğa view that breathes continuously at rest and smoothly accelerates/decelerates
 /// its breathing rate in response to character typing without phase jumps or blocking XCUITest idling.
-private struct BreathingTamgaView: UIViewRepresentable {
+struct BreathingTamgaView: UIViewRepresentable {
     let isDark: Bool
+    var minOpacity: Float = 0.25
+    var maxOpacity: Float = 0.52
 
     func makeUIView(context: Context) -> BreathingTamgaUIView {
         let view = BreathingTamgaUIView()
-        view.updateAppearance(isDark: isDark)
+        view.updateAppearance(isDark: isDark, minOpacity: minOpacity, maxOpacity: maxOpacity)
         return view
     }
 
     func updateUIView(_ uiView: BreathingTamgaUIView, context: Context) {
-        uiView.updateAppearance(isDark: isDark)
+        uiView.updateAppearance(isDark: isDark, minOpacity: minOpacity, maxOpacity: maxOpacity)
     }
 }
 
-private final class BreathingTamgaUIView: UIView {
+final class BreathingTamgaUIView: UIView {
     private let shapeLayer = CAShapeLayer()
     private var cancellable: AnyCancellable?
     private var exertionTimer: Timer?
     private var currentExertion: CGFloat = 0
     private var targetExertion: CGFloat = 0
     private var isDark: Bool = false
+    private var minOpacity: Float = 0.25
+    private var maxOpacity: Float = 0.52
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -165,7 +163,6 @@ private final class BreathingTamgaUIView: UIView {
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             startContinuousBreathIfNeeded()
         } else {
             exertionTimer?.invalidate()
@@ -183,26 +180,26 @@ private final class BreathingTamgaUIView: UIView {
         startContinuousBreathIfNeeded()
     }
 
-    func updateAppearance(isDark: Bool) {
+    func updateAppearance(isDark: Bool, minOpacity: Float = 0.25, maxOpacity: Float = 0.52) {
+        let rangeChanged = abs(self.minOpacity - minOpacity) > 0.01 || abs(self.maxOpacity - maxOpacity) > 0.01
         self.isDark = isDark
-        let baseColor = isDark ? UIColor.white : UIColor.label
+        self.minOpacity = minOpacity
+        self.maxOpacity = maxOpacity
+        let baseColor = isDark ? UIColor.white : UIColor.black
         shapeLayer.fillColor = baseColor.cgColor
+        if rangeChanged {
+            shapeLayer.removeAnimation(forKey: "continuousBreath")
+        }
         startContinuousBreathIfNeeded()
     }
 
     private func startContinuousBreathIfNeeded() {
-        shapeLayer.opacity = 0.36
-        guard !KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") else {
-            exertionTimer?.invalidate()
-            exertionTimer = nil
-            shapeLayer.removeAnimation(forKey: "continuousBreath")
-            return
-        }
+        shapeLayer.opacity = (minOpacity + maxOpacity) * 0.5
         guard window != nil, shapeLayer.animation(forKey: "continuousBreath") == nil else { return }
 
         let opacityAnim = CABasicAnimation(keyPath: "opacity")
-        opacityAnim.fromValue = 0.25
-        opacityAnim.toValue = 0.52
+        opacityAnim.fromValue = minOpacity
+        opacityAnim.toValue = maxOpacity
         opacityAnim.duration = 2.2
         opacityAnim.autoreverses = true
         opacityAnim.repeatCount = .infinity
@@ -267,14 +264,15 @@ private final class BreathingTamgaUIView: UIView {
 }
 
 /// Native-style space bar label:
-/// Displays the full language name ("Qırımtatarca" / "Къырымтатарджа") centered when the keyboard appears
+/// Displays the full language name ("Qırımtatarca" / "Къырымтатарджа" / "Кʼиримтатарджа") centered when the keyboard appears
 /// or switches script, then smoothly fades into the centered breathing Taraq Tamğa emblem and the 2-letter
-/// abbreviation ("QT" / "КЪ") in the bottom-trailing corner.
+/// abbreviation ("QT" / "КЪ" / "Кʼ") in the bottom-trailing corner.
 struct SpaceBarLabel: View {
 
     let fullName: String
     let languageCode: String
     let isCompact: Bool
+    var isDarkOverride: Bool? = nil
     @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject private var spaceBarState = SpaceBarState.shared
@@ -282,11 +280,17 @@ struct SpaceBarLabel: View {
     init(
         fullName: String = "Qırımtatarca",
         languageCode: String = "QT",
-        isCompact: Bool = UIDevice.current.userInterfaceIdiom != .pad
+        isCompact: Bool = UIDevice.current.userInterfaceIdiom != .pad,
+        isDarkOverride: Bool? = nil
     ) {
         self.fullName = fullName
         self.languageCode = languageCode
         self.isCompact = isCompact
+        self.isDarkOverride = isDarkOverride
+    }
+
+    private var effectiveIsDark: Bool {
+        isDarkOverride ?? (colorScheme == .dark)
     }
 
     private var centerFontSize: CGFloat {
@@ -298,23 +302,24 @@ struct SpaceBarLabel: View {
     }
 
     var body: some View {
+        let primaryColor = effectiveIsDark ? Color.white : Color.black
         ZStack {
             // Centered full localized language name when appearing / switching script
             Text(fullName)
                 .font(.system(size: centerFontSize, weight: .regular, design: .default))
-                .foregroundStyle(Color.primary.opacity(0.65))
+                .foregroundStyle(primaryColor.opacity(0.65))
                 .lineLimit(1)
                 .opacity(spaceBarState.isShowingFullName ? 1 : 0)
 
             // Centered breathing & typing-responsive Taraq Tamğa emblem in resting state (exact 9:5 aspect ratio)
-            BreathingTamgaView(isDark: colorScheme == .dark)
+            BreathingTamgaView(isDark: effectiveIsDark)
                 .frame(width: isCompact ? 18.0 : 22.5, height: isCompact ? 10.0 : 12.5)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
 
-            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ") in resting state
+            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state
             Text(languageCode)
                 .font(.system(size: cornerFontSize, weight: .regular).width(.condensed))
-                .foregroundStyle(Color.secondary.opacity(0.85))
+                .foregroundStyle(primaryColor.opacity(0.55))
                 .lineLimit(1)
                 .padding(.trailing, isCompact ? 4.5 : 5.5)
                 .padding(.bottom, isCompact ? 3.5 : 5.0)

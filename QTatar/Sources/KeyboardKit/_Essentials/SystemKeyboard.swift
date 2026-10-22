@@ -199,14 +199,6 @@ public struct SystemKeyboard<
 
     public var body: some View {
         StandardKeyboardStyleProvider.iPadProRenderingModeActive = layout.ipadProLayout
-        #if os(iOS) || os(macOS) || os(watchOS)
-        let swipeEligible = (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating)
-            && !keyboardContext.isKeyboardSplit
-            && keyboardContext.keyboardType.isAlphabetic
-        if SwipeTypingState.shared.isFormFactorEligible != swipeEligible {
-            SwipeTypingState.shared.isFormFactorEligible = swipeEligible
-        }
-        #endif
         return geoContent
             .autocorrectionDisabled(with: autocompleteContext)
             .opacity(shouldShowEmojiKeyboard ? 0 : 1)
@@ -246,9 +238,22 @@ private extension SystemKeyboard {
         let height = layout.itemRows.indices.reduce(CGFloat.zero) { $0 + rowHeight(forRowAt: $1) }
             + insets.top + insets.bottom + toolbarHeight()
         return GeometryReader { geometry in
+            let _ = updateSwipeEligibility(for: geometry.size)
             bodyContent(for: geometry.size)
         }
         .frame(height: height)
+    }
+
+    func updateSwipeEligibility(for size: CGSize) {
+        #if os(iOS) || os(macOS) || os(watchOS)
+        let isCompactFloatingPad = keyboardContext.deviceType == .pad && size.width > 0 && size.width < 420
+        let swipeEligible = (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating || isCompactFloatingPad)
+            && !keyboardContext.isKeyboardSplit
+            && keyboardContext.keyboardType.isAlphabetic
+        if SwipeTypingState.shared.isFormFactorEligible != swipeEligible {
+            SwipeTypingState.shared.isFormFactorEligible = swipeEligible
+        }
+        #endif
     }
     
     func bodyContent(for geo: GeometryProxy) -> some View {
@@ -403,7 +408,7 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
-    private let tailDuration: TimeInterval = 0.20
+    private let tailDuration: TimeInterval = 0.36
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
@@ -420,11 +425,11 @@ private struct SwipeTrailOverlay: View {
                         let age = max(0, now - curr.timestamp)
                         let timeProgress = max(0, min(1, 1.0 - (age / tailDuration)))
                         let indexProgress = Double(i) / Double(max(live.count - 1, 1))
-                        let fade = timeProgress * (0.25 + 0.75 * indexProgress)
+                        let fade = timeProgress * (0.20 + 0.80 * indexProgress)
                         guard fade > 0.01 else { continue }
 
-                        let outerWidth = CGFloat(1.2 + 8.2 * pow(fade, 1.25))
-                        let outerAlpha = (isDark ? 0.54 : 0.44) * pow(fade, 1.30)
+                        let outerWidth = CGFloat(1.8 + 11.2 * pow(fade, 1.15))
+                        let outerAlpha = (isDark ? 0.62 : 0.50) * pow(fade, 1.18)
                         let outerColor = (isDark ? Color.white : Color(red: 0.36, green: 0.38, blue: 0.43)).opacity(outerAlpha)
 
                         var seg = Path()
@@ -436,8 +441,8 @@ private struct SwipeTrailOverlay: View {
                             style: StrokeStyle(lineWidth: outerWidth, lineCap: .round, lineJoin: .round)
                         )
 
-                        let coreWidth = max(0.8, outerWidth * 0.52)
-                        let coreAlpha = (isDark ? 0.72 : 0.58) * pow(fade, 1.45)
+                        let coreWidth = max(1.1, outerWidth * 0.56)
+                        let coreAlpha = (isDark ? 0.82 : 0.68) * pow(fade, 1.28)
                         let coreColor = (isDark ? Color.white : Color(white: 0.96)).opacity(coreAlpha)
                         context.stroke(
                             seg,
@@ -450,14 +455,14 @@ private struct SwipeTrailOverlay: View {
                         let headAge = max(0, now - head.timestamp)
                         let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
                         if headFade > 0.05 {
-                            let radius = CGFloat(4.6 * pow(headFade, 0.9))
+                            let radius = CGFloat(5.8 * pow(headFade, 0.85))
                             let headRect = CGRect(
                                 x: head.point.x - radius,
                                 y: head.point.y - radius,
                                 width: radius * 2,
                                 height: radius * 2
                             )
-                            let headAlpha = (isDark ? 0.74 : 0.56) * headFade
+                            let headAlpha = (isDark ? 0.84 : 0.66) * headFade
                             let headColor = (isDark ? Color.white : Color(red: 0.40, green: 0.42, blue: 0.47)).opacity(headAlpha)
                             context.fill(Path(ellipseIn: headRect), with: .color(headColor))
                         }

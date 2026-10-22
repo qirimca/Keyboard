@@ -155,13 +155,30 @@ public final class SwipeTypingState: ObservableObject {
 
     private init() {}
 
+    private static func isCyrillicCharacter(_ s: String) -> Bool {
+        guard let scalar = s.unicodeScalars.first else { return false }
+        return (0x0400...0x04FF).contains(scalar.value) || scalar.value == 0x02BC
+    }
+
+    public func clearKeyFrames() {
+        keyFrames.removeAll(keepingCapacity: true)
+    }
+
     public func registerKeyFrame(character: String, frame: CGRect) {
         let norm = character.lowercased(with: Self.casingLocale)
         guard !norm.isEmpty, frame.width > 4, frame.height > 4 else { return }
+        let isCyr = Self.isCyrillicCharacter(norm)
+        let overlapTestRect = frame.insetBy(dx: max(2, frame.width * 0.18), dy: max(2, frame.height * 0.18))
         let staleKeys = keyFrames.compactMap { existingChar, existingRect -> String? in
             guard existingChar != norm else { return nil }
+            if Self.isCyrillicCharacter(existingChar) != isCyr {
+                return existingChar
+            }
+            if existingRect.intersects(overlapTestRect) {
+                return existingChar
+            }
             let dist = hypot(existingRect.midX - frame.midX, existingRect.midY - frame.midY)
-            return dist < 8.0 ? existingChar : nil
+            return dist < 12.0 ? existingChar : nil
         }
         for stale in staleKeys {
             keyFrames.removeValue(forKey: stale)
@@ -205,9 +222,9 @@ public final class SwipeTypingState: ObservableObject {
             lastPoint = pointInKeyboard
             pendingSamples.append(TrailSample(point: pointInKeyboard, timestamp: now))
         }
-        pendingSamples.removeAll { now - $0.timestamp > 0.24 }
-        if pendingSamples.count > 48 {
-            pendingSamples.removeFirst(pendingSamples.count - 48)
+        pendingSamples.removeAll { now - $0.timestamp > 0.38 }
+        if pendingSamples.count > 56 {
+            pendingSamples.removeFirst(pendingSamples.count - 56)
         }
 
         if let prev = previousPoint {
@@ -263,7 +280,7 @@ public final class SwipeTypingState: ObservableObject {
             if !activeTrailSamples.isEmpty { activeTrailSamples = [] }
         } else if !activeTrailSamples.isEmpty {
             let gen = swipeGeneration
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.21) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.37) { [weak self] in
                 guard let self, self.swipeGeneration == gen, !self.isSwiping else { return }
                 if !self.activeTrailPoints.isEmpty { self.activeTrailPoints = [] }
                 if !self.activeTrailSamples.isEmpty { self.activeTrailSamples = [] }
@@ -320,6 +337,9 @@ private extension Gestures.KeyboardButtonGestures {
                 )
                 .onPreferenceChange(KeyFramePreferenceKey.self) { payload in
                     SwipeTypingState.shared.registerKeyFrame(character: payload.character, frame: payload.frame)
+                }
+                .onChange(of: currentFrame) { newFrame in
+                    SwipeTypingState.shared.registerKeyFrame(character: ch, frame: newFrame)
                 }
                 .onAppear {
                     SwipeTypingState.shared.registerKeyFrame(
@@ -392,7 +412,7 @@ private extension Gestures.KeyboardButtonGestures {
                 return
             }
         }
-        calloutContext?.actionContext.updateSelection(with: value.translation)
+        calloutContext?.actionContext.updateSelection(with: value.translation, location: value.location)
         dragAction?(value.startLocation, value.location)
     }
 
@@ -462,14 +482,14 @@ private extension Gestures.KeyboardButtonGestures {
         context.updateInputs(for: action, in: geo)
         guard context.isActive else { return }
         if let drag = lastDragValue {
-            context.updateSelection(with: drag.translation)
+            context.updateSelection(with: drag.translation, location: drag.location)
         }
         calloutContext?.inputContext.reset()
     }
 
     func endActionCallout() {
         if let drag = lastDragValue, let context = calloutContext?.actionContext, context.isActive {
-            context.updateSelection(with: drag.translation)
+            context.updateSelection(with: drag.translation, location: drag.location)
         }
         calloutContext?.actionContext.endDragGesture()
     }

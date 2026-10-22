@@ -28,10 +28,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return false
         }
         let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
-        let recentlyToggled = ts > 0 && (Date().timeIntervalSince1970 - ts) < 2.5
+        let recentlyToggled = ts > 0 && (Date().timeIntervalSince1970 - ts) < 1.8
         if context.hostApplicationBundleId == nil && !recentlyToggled {
             let appearance = context.textDocumentProxy.keyboardAppearance ?? .default
-            if appearance == .default {
+            guard KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil else {
+                return false
+            }
+            let expectedAppearance: UIKeyboardAppearance = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark") ? .dark : .light
+            if appearance != expectedAppearance {
                 return false
             }
         }

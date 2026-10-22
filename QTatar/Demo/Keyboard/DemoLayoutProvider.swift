@@ -225,10 +225,10 @@ extension InputSet {
         ])
     }
 
-    /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `и -> ı`, `є -> e`, `ґ -> g`, `гъ/ґъ -> ğ`, preserving `ъ`.
+    /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `и -> ı`, `е -> e`, `є -> ye`, `г/гʼ -> ğ`, `ґ -> g`, `кʼ -> q`, `нʼ -> ñ`.
     static var crimeanTatarUkrainianCyrillic: InputSet {
         .init(rows: [
-            .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
+            .init(lowercased: "йцукенгшщзхʼ", uppercased: "ЙЦУКЕНГШЩЗХʼ"),
             .init(lowercased: "фівапролджє", uppercased: "ФІВАПРОЛДЖЄ"),
             .init(lowercased: "ячсмитьбюґ,", uppercased: "ЯЧСМИТЬБЮҐ,")
         ])

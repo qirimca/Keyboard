@@ -84,5 +84,6 @@
 "settings.cyrillicPromoDesc" = "You use a Cyrillic language. Add the “Къырымтатарджа” keyboard in iOS Settings to type in Cyrillic as well.";
 "settings.cyrillicAddAction" = "Add in Settings";
 "settings.cyrillicGuideTitle" = "How to Add the Cyrillic Keyboard";
-"settings.ukrainianCyrillic" = "Ukrainian Cyrillic layout (ФІВА)";
-"settings.ukrainianCyrillic.desc" = "і → i, и → ı, є → e, ґ → g, гъ/ґъ → ğ (preserving ъ)";
+"settings.ukrainianCyrillic" = "Ukrainian layout";
+"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
+"settings.cyrillic.ipadFloatingNote" = "Separate keyboard in iOS Settings is only needed for floating mode";
