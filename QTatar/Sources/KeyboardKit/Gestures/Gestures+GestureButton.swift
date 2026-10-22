@@ -101,6 +101,9 @@ public extension Gestures {
         @State
         private var isPressed = false
         
+        @GestureState
+        private var isGestureActive = false
+        
         @State
         private var isRemoved = false
         
@@ -117,6 +120,15 @@ public extension Gestures {
             label(isPressed)
                 .overlay(gestureView)
                 .onChange(of: isPressed) { isPressedBinding.wrappedValue = $0 }
+                .onChange(of: isGestureActive) { active in
+                    if !active && isPressed {
+                        isPressed = false
+                        longPressDate = Date()
+                        repeatDate = Date()
+                        repeatTimer.stop()
+                        endAction?()
+                    }
+                }
                 .onDisappear { isRemoved = true }
                 .accessibilityAddTraits(.isButton)
         }
@@ -129,16 +141,11 @@ private extension Gestures.GestureButton {
         GeometryReader { geo in
             Color.clear
                 .contentShape(Rectangle())
-                ._onButtonGesture(
-                    pressing: { pressing in
-                        if pressing {
-                            tryHandlePressInstant()
-                        }
-                    },
-                    perform: {}
-                )
                 .highPriorityGesture(
                     DragGesture(minimumDistance: 0)
+                        .updating($isGestureActive) { _, state, _ in
+                            state = true
+                        }
                         .onChanged { value in
                             tryHandlePress(value)
                             dragAction?(value)

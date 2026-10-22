@@ -953,16 +953,18 @@ final class SuggestionsDataBaseManager {
                         }
                         if !foundNeighbor {
                             misses += 1
-                            if misses > 1 || wordBase.count <= 3 {
+                            let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
+                            if misses > maxAllowedMisses {
                                 break
                             }
                         }
                     }
                 }
 
-                guard misses <= (wordBase.count >= 5 ? 1 : 0) else { continue }
+                let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
+                guard misses <= maxAllowedMisses else { continue }
 
-                let coverage = Double(exactHits) + Double(neighborHits) * 0.65 - Double(misses) * 1.5
+                let coverage = Double(exactHits) + Double(neighborHits) * 0.65 - Double(misses) * 1.65
                 let coverageRatio = coverage / Double(max(1, wordBase.count))
                 let matchedKeyBonus = min(Double(exactHits) * 0.95 + Double(neighborHits) * 0.40, 7.5)
                 let shortWordDetourPenalty: Double = (basePath.count >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
@@ -1899,7 +1901,30 @@ final class SuggestionsDataBaseManager {
                 if scored[key] == nil {
                     ordered.append(word)
                 }
-                scored[key, default: 0] += freq
+                let boost = (!lowercasePrefix.contains("-") && key.hasPrefix(lowercasePrefix + "-")) ? (freq * 2 + 120) : freq
+                scored[key, default: 0] += boost
+            }
+        }
+
+        if lowercasePrefix.count >= 3 && !lowercasePrefix.contains("-") {
+            var hStmt: OpaquePointer?
+            let hPrefix = lowercasePrefix + "-"
+            let hQuery = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND instr(word, ' ') = 0 ORDER BY freq DESC LIMIT 2;"
+            defer { sqlite3_finalize(hStmt) }
+            if sqlite3_prepare_v2(db, hQuery, -1, &hStmt, nil) == SQLITE_OK,
+               bindText(hStmt, index: 1, value: hPrefix),
+               bindText(hStmt, index: 2, value: hPrefix + "\u{FFFF}") {
+                while sqlite3_step(hStmt) == SQLITE_ROW {
+                    if let wordPtr = sqlite3_column_text(hStmt, 0) {
+                        let word = String(cString: wordPtr)
+                        let freq = Int(sqlite3_column_int(hStmt, 1))
+                        let key = word.lowercased(with: Self.casingLocale)
+                        if scored[key] == nil {
+                            ordered.append(word)
+                            scored[key] = freq * 2 + 120
+                        }
+                    }
+                }
             }
         }
 

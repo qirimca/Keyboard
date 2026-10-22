@@ -193,7 +193,8 @@ public final class SwipeTypingState: ObservableObject {
         }
 
         let now = ProcessInfo.processInfo.systemUptime
-        if let prev = lastPoint {
+        let previousPoint = lastPoint
+        if let prev = previousPoint {
             let step = hypot(pointInKeyboard.x - prev.x, pointInKeyboard.y - prev.y)
             if step >= 1.5 {
                 totalDragDistance += step
@@ -209,7 +210,20 @@ public final class SwipeTypingState: ObservableObject {
             pendingSamples.removeFirst(pendingSamples.count - 48)
         }
 
-        if let hitChar = hitTestCharacter(at: pointInKeyboard), visitedKeys.last != hitChar {
+        if let prev = previousPoint {
+            let step = hypot(pointInKeyboard.x - prev.x, pointInKeyboard.y - prev.y)
+            let subdivisions = max(1, min(8, Int(ceil(step / 10.0))))
+            for i in 1...subdivisions {
+                let t = CGFloat(i) / CGFloat(subdivisions)
+                let interp = CGPoint(
+                    x: prev.x + (pointInKeyboard.x - prev.x) * t,
+                    y: prev.y + (pointInKeyboard.y - prev.y) * t
+                )
+                if let hitChar = hitTestCharacter(at: interp), visitedKeys.last != hitChar {
+                    visitedKeys.append(hitChar)
+                }
+            }
+        } else if let hitChar = hitTestCharacter(at: pointInKeyboard), visitedKeys.last != hitChar {
             visitedKeys.append(hitChar)
         }
 
