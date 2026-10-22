@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Update build timestamp in BuildInfo.swift
+# Only update build timestamp in Release builds (or when explicitly requested) so Debug/test builds keep git clean
+if [ "${CONFIGURATION:-Debug}" != "Release" ] && [ "${FORCE_BUILD_TIMESTAMP:-0}" != "1" ]; then
+    exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DATE=$(date '+%Y-%m-%d %H:%M')
 BUILD_FILE="$SCRIPT_DIR/Demo/Demo/BuildInfo.swift"

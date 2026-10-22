@@ -358,11 +358,11 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
 private extension KeyboardLayout {
     
     func applyNativeRowInsets(for context: KeyboardContext) {
-        guard !context.isKeyboardFloating else { return }
+        guard !context.isKeyboardFloating && context.deviceType != .phone else { return }
         let bottomIndex = bottomRowIndex
         guard bottomIndex >= 0 else { return }
         
-        // Pad bottom-row buttons with standard insets
+        // Pad bottom-row buttons with standard insets on docked iPad
         for index in itemRows[bottomIndex].indices {
             var item = itemRows[bottomIndex][index]
             var insets = item.edgeInsets

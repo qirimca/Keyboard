@@ -83,9 +83,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     static func effectiveIsDark(for context: KeyboardContext) -> Bool {
         if isSandboxOverrideActive(for: context),
            KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
-            return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
+            let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
+            let isUITesting = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+            if isUITesting || (ts > 0 && (Date().timeIntervalSince1970 - ts) < 60.0) {
+                return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
+            }
         }
-        return context.hasDarkColorScheme || context.keyboardAppearance == .dark
+        if context.keyboardAppearance == .dark {
+            return true
+        }
+        return context.hasDarkColorScheme
     }
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
@@ -111,7 +118,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if isPad {
             return keyboardContext.interfaceOrientation.isPortrait ? 7.0 : 8.0
         }
-        return 5.5
+        return 6.5
     }
     
     override var keyboardEdgeInsets: EdgeInsets {
@@ -141,7 +148,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             config.buttonInsets = isPortrait
                 ? EdgeInsets(top: 5.0, leading: 2.5, bottom: 5.0, trailing: 2.5)
                 : EdgeInsets(top: 3.5, leading: 2.5, bottom: 3.5, trailing: 2.5)
-            config.buttonCornerRadius = 5.5
+            config.buttonCornerRadius = 6.5
         } else if isPad {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
             config.rowHeight = isPortrait ? 58 : 75
@@ -180,23 +187,19 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return .init(top: 2, leading: 2, bottom: 2, trailing: 2)
         }
         if isPad {
-            if #available(iOS 27.0, *) {
-                return .init(top: 9, leading: 11, bottom: 9, trailing: 11)
-            } else {
-                return .init(top: 5, leading: 6, bottom: 5, trailing: 6)
-            }
+            return .init(top: 5, leading: 6, bottom: 5, trailing: 6)
         }
         return super.buttonContentInsets(for: action)
     }
     
     override func buttonImageScaleFactor(for action: KeyboardAction) -> CGFloat {
         if keyboardContext.isKeyboardFloating {
-            return 0.92
+            return 0.90
         }
         if keyboardContext.deviceType == .phone {
             switch action {
             case .shift, .capsLock, .backspace:
-                return 0.95
+                return 0.85
             default:
                 return 1.0
             }
@@ -452,35 +455,26 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         case .custom(let name) where name == "url_domain":
             return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":
-            return .system(size: isDockedPad ? (isPortrait ? 16 : 18) : 14, weight: .regular)
+            return .system(size: isDockedPad ? (isPortrait ? 17.5 : 18) : 14, weight: .regular)
         case .keyboardType:
-            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 16 : 18) : 15.5), weight: .regular)
+            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 17.5 : 18) : 15.5), weight: .regular)
+        case .shift, .capsLock, .backspace:
+            if isDockedPad {
+                return .system(size: isPortrait ? 19 : 21, weight: .regular)
+            }
+            return .system(size: 16.5, weight: .regular)
         default:
             if buttonImage(for: action) != nil {
                 if isDockedPad {
                     return .system(size: isPortrait ? 19 : 21, weight: .regular)
                 }
-                return .system(size: isFloating ? 17 : 19, weight: .regular)
+                return .system(size: isFloating ? 16.5 : 19, weight: .regular)
             }
             return super.buttonFont(for: action)
         }
     }
     
     override func buttonShadowStyle(for action: KeyboardAction) -> Keyboard.ButtonShadowStyle {
-        if keyboardContext.isSpaceDragGestureActive || isPad || keyboardContext.isKeyboardFloating { return .noShadow }
-        switch action {
-        case .characterMargin, .emoji, .none:
-            return .noShadow
-        default:
-            let isDark = Self.effectiveIsDark(for: keyboardContext)
-            let shadowColor = isDark 
-                ? Color.black.opacity(0.45) 
-                : Color.black.opacity(0.25)
-            
-            return .init(
-                color: shadowColor,
-                size: 1
-            )
-        }
+        .noShadow
     }
 }

@@ -709,8 +709,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
         }
         applyPreferences(syncDisk: true)
-        lastRenderSignature = currentRenderSignature
         super.viewWillAppear(animated)
+        refreshProxyState(forceRender: true)
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
         SpaceBarState.shared.prepareForAppearance()
@@ -719,12 +719,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        if state.keyboardContext.traitCollection != traitCollection {
-            state.keyboardContext.traitCollection = traitCollection
-        }
-        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
-            refreshProxyState(forceRender: true)
-        }
+        refreshProxyState(forceRender: previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle)
     }
 
     /// Many events in one key press ask for new suggestions (text change, shift change, our own edits).
@@ -832,22 +827,23 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if context.isAutoCapitalizationEnabled != targetCapitalize {
             context.isAutoCapitalizationEnabled = targetCapitalize
         }
+        if overrideUserInterfaceStyle != .unspecified {
+            overrideUserInterfaceStyle = .unspecified
+        }
+        let baseTraits = UITraitCollection(traitsFrom: [
+            traitCollection,
+            UITraitCollection(userInterfaceStyle: traitCollection.userInterfaceStyle == .dark ? .dark : .light)
+        ])
+        if context.traitCollection != baseTraits {
+            context.traitCollection = baseTraits
+        }
         let effectiveDark = DemoStyleProvider.effectiveIsDark(for: context)
-        let targetInterfaceStyle: UIUserInterfaceStyle
-        if isSandboxActive {
-            targetInterfaceStyle = effectiveDark ? .dark : .light
-        } else if textDocumentProxy.keyboardAppearance == .dark {
-            targetInterfaceStyle = .dark
-        } else if textDocumentProxy.keyboardAppearance == .light {
-            targetInterfaceStyle = .light
-        } else {
-            targetInterfaceStyle = .unspecified
-        }
-        if overrideUserInterfaceStyle != targetInterfaceStyle {
-            overrideUserInterfaceStyle = targetInterfaceStyle
-        }
-        if context.traitCollection != traitCollection {
-            context.traitCollection = traitCollection
+        let resolvedTraits = UITraitCollection(traitsFrom: [
+            traitCollection,
+            UITraitCollection(userInterfaceStyle: effectiveDark ? .dark : .light)
+        ])
+        if context.traitCollection != resolvedTraits {
+            context.traitCollection = resolvedTraits
         }
         syncPreferredKeyboardTypeWithProxy()
         // Re-render only when a trait the UI depends on changed (field traits, empty <-> non-empty for the Return key).

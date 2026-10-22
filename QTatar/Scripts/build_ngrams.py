@@ -6,16 +6,33 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import os
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = Path(__file__).resolve().parents[1] / "Demo" / "Keyboard" / "qırım_tatar.db"
-NKKM_DIR = Path(
-    "$HOME/Library/CloudStorage/GoogleDrive-131195550+ebeva@users.noreply.github.com/Shared drives/books/НККМ/Lemmatization"
-)
+
+
+def _load_lemma_dir() -> Path:
+    env_val = os.environ.get("QIRIMKEY_LEMMA_DIR", "").strip()
+    if env_val:
+        return Path(env_val)
+    env_file = REPO_ROOT / ".env.local"
+    if env_file.exists():
+        for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if line.startswith("QIRIMKEY_LEMMA_DIR="):
+                val = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if val:
+                    return Path(val)
+    return REPO_ROOT / "Data" / "Lemmatization"
+
+
+NKKM_DIR = _load_lemma_dir()
 
 TOKEN_SPLIT_PATTERN = re.compile(r"[^\wğüşıöçñâîûĞÜŞİÖÇÑÂÎÛıİ-]+", re.UNICODE)
 VALID_WORD_RE = re.compile(
@@ -697,7 +714,12 @@ def update_words_and_typos(
         list(existing.items()),
     )
     cursor.execute("CREATE INDEX idx_words_word_freq ON words(word, freq DESC)")
-    cursor.execute("CREATE INDEX idx_words_freq ON words(freq DESC)")
+    cursor.execute("DROP INDEX IF EXISTS idx_words_freq")
+    cursor.execute(
+        "CREATE INDEX idx_words_first_last_freq "
+        "ON words(substr(word, 1, 1), substr(word, -1, 1), freq DESC) "
+        "WHERE instr(word, ' ') = 0 AND freq >= 2"
+    )
 
     cursor.execute("DROP TABLE IF EXISTS typo_corrections")
     cursor.execute(

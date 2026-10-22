@@ -172,7 +172,7 @@ final class SuggestionsDataBaseManager {
         }
 
         sqlite3_exec(db, "PRAGMA cache_size = -2000;", nil, nil, nil)
-        sqlite3_exec(db, "PRAGMA mmap_size = 16777216;", nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA mmap_size = 25165824;", nil, nil, nil)
         sqlite3_exec(db, "PRAGMA temp_store = MEMORY;", nil, nil, nil)
         debugPrint("Successfully opened SQLite database (readonly, optimized) at \(dbURL.path)")
     }
@@ -913,6 +913,10 @@ final class SuggestionsDataBaseManager {
         }
     }
 
+    private static let cyrillicRow0ColIndex: [Character: Int] = [
+        "й": 0, "ц": 1, "у": 2, "к": 3, "е": 4, "н": 5, "г": 6, "ш": 7, "щ": 8, "з": 9, "х": 10
+    ]
+
     /// Strips Row-0 transit keys (`е, н, г, ш, щ, з, х`) crossed when swiping from `к/г/н` to `ъ/ʼ` at `(Row 0, Col 11)`
     /// and records explicit digraph diacritics (`q`, `ğ`, `ñ`) so `endCandidates` and `rawKeySet` are never polluted.
     private static func cleanCyrillicSwipeSequence(
@@ -923,38 +927,100 @@ final class SuggestionsDataBaseManager {
         var explicitDiacritics = Set<Character>()
         var softEndBases = Set<Character>()
 
+        func recordTrigger(_ trigger: Character, isWordEnd: Bool) {
+            if trigger == "к" {
+                explicitDiacritics.insert("q")
+                if isWordEnd { softEndBases.formUnion(["q", "k"]) }
+            } else if trigger == "г" {
+                explicitDiacritics.insert("ğ")
+                if isWordEnd { softEndBases.insert("g") }
+            } else if trigger == "н" {
+                explicitDiacritics.insert("ñ")
+                if isWordEnd { softEndBases.insert("n") }
+            }
+        }
+
         for (idx, ch) in rawKeys.enumerated() where cyrillicSignChars.contains(ch) {
             removedIndices.insert(idx)
-            var tIdx: Int? = nil
+            var corridorStart = idx
             var scan = idx - 1
             while scan >= 0 {
                 let c = rawKeys[scan]
-                if cyrillicDigraphTriggers.contains(c) {
-                    tIdx = scan
-                }
                 if cyrillicRow0RightCorridor.contains(c) || cyrillicSignChars.contains(c) {
+                    corridorStart = scan
                     scan -= 1
                 } else {
                     break
                 }
             }
-            if let triggerPos = tIdx {
-                let trigger = rawKeys[triggerPos]
-                if trigger == "к" { explicitDiacritics.insert("q") }
-                else if trigger == "г" { explicitDiacritics.insert("ğ") }
-                else if trigger == "н" { explicitDiacritics.insert("ñ") }
-                if triggerPos + 1 < idx {
-                    for k in (triggerPos + 1)..<idx {
-                        removedIndices.insert(k)
+
+            let isWordEnd = (idx == rawKeys.count - 1)
+            let triggerIndices = (corridorStart..<idx).filter { cyrillicDigraphTriggers.contains(rawKeys[$0]) }
+
+            if let firstTrig = triggerIndices.first {
+                if corridorStart == 0 && firstTrig == 0 {
+                    // Case 1: Word-initial `къ-`, `гъ-`, `нъ-` (`къар`, `къоя`, `къайдан`)
+                    recordTrigger(rawKeys[0], isWordEnd: isWordEnd)
+                    if idx > 1 {
+                        for k in 1..<idx { removedIndices.insert(k) }
+                    }
+                } else {
+                    // Check if the finger moved leftward inside the corridor to a turnaround trigger (e.g. `чокъ`: `о -> н -> е -> к -> е -> н -> г ... -> ъ`)
+                    let startCol = cyrillicRow0ColIndex[rawKeys[corridorStart]] ?? 99
+                    var minCol = startCol
+                    var minTriggerIdx: Int? = nil
+                    for tPos in triggerIndices {
+                        let cCol = cyrillicRow0ColIndex[rawKeys[tPos]] ?? 99
+                        if cCol < minCol {
+                            minCol = cCol
+                            minTriggerIdx = tPos
+                        }
+                    }
+
+                    if let turnIdx = minTriggerIdx {
+                        // Case 2: Leftward turnaround at `turnIdx` before sweeping right to `ъ`/`ʼ`
+                        recordTrigger(rawKeys[turnIdx], isWordEnd: isWordEnd)
+                        for k in corridorStart..<idx where k != turnIdx {
+                            removedIndices.insert(k)
+                        }
+                    } else if rawKeys[corridorStart] == "у" {
+                        // Case 3: Entered Row 0 from far-left (`ы`/`и` -> `у-к-е-н-г-ш-щ-з-х-ъ`, e.g. `онынъ`, `буларнынъ`)
+                        for tPos in triggerIndices {
+                            recordTrigger(rawKeys[tPos], isWordEnd: isWordEnd)
+                        }
+                        for k in corridorStart..<idx {
+                            let kc = rawKeys[k]
+                            if ["у", "е", "ш", "щ", "з", "х"].contains(kc) {
+                                removedIndices.insert(k)
+                            } else if kc == "г", k > corridorStart, rawKeys[corridorStart..<k].contains("н") {
+                                removedIndices.insert(k)
+                            }
+                        }
+                    } else if isWordEnd {
+                        // Case 4a: Word-final monotonic rightward sweep starting at trigger `firstTrig` (`алмакъ`, `сонъ`, `топракъ`, `байракъ`)
+                        recordTrigger(rawKeys[firstTrig], isWordEnd: true)
+                        for k in corridorStart..<idx where k != firstTrig {
+                            removedIndices.insert(k)
+                        }
+                    } else {
+                        // Case 4b: Word-interior digraph (`янгъын`): preserve triggers (`н`, `г`, `к`), strip non-trigger transit
+                        for tPos in triggerIndices {
+                            recordTrigger(rawKeys[tPos], isWordEnd: false)
+                        }
+                        for k in corridorStart..<idx where ["у", "е", "ш", "щ", "з", "х"].contains(rawKeys[k]) {
+                            removedIndices.insert(k)
+                        }
                     }
                 }
+
+                // Strip return transit keys after `ъ`/`ʼ` when returning left across Row 0 to the next vowel/consonant
                 var fwd = idx + 1
                 while fwd < rawKeys.count {
                     let fc = rawKeys[fwd]
                     if ["х", "з", "щ", "ш"].contains(fc) {
                         removedIndices.insert(fwd)
                         fwd += 1
-                    } else if cyrillicRow0ReturnTransit.contains(fc), fwd + 1 < rawKeys.count {
+                    } else if (cyrillicRow0ReturnTransit.contains(fc) || fc == "к" || fc == "у"), fwd + 1 < rawKeys.count {
                         removedIndices.insert(fwd)
                         fwd += 1
                     } else {
@@ -1094,15 +1160,21 @@ final class SuggestionsDataBaseManager {
                         else if ch == "е", !isUkrainianCyr { mapped = ["y", "e"] }
                     }
                     if !mapped.isEmpty {
+                        let isIotatedPair = isWordStartOrAfterVowel && ["ё", "ю", "я", "є", "ї", "е"].contains(ch) && mapped.count == 2
                         if startCandidates.isEmpty {
-                            startCandidates = mapped
+                            startCandidates = isIotatedPair ? [mapped[0]] : mapped
                         } else if basePath.isEmpty {
-                            for m in mapped where !startCandidates.contains(m) {
+                            for m in (isIotatedPair ? [mapped[0]] : mapped) where !startCandidates.contains(m) {
                                 startCandidates.append(m)
                             }
                         }
-                        endCandidates = Set(mapped.map { Self.normalizeBaseChar($0) }).union(softEndBases)
-                        for m in mapped {
+                        if isIotatedPair, let lastM = mapped.last {
+                            endCandidates = Set([Self.normalizeBaseChar(lastM)]).union(softEndBases)
+                        } else {
+                            endCandidates = Set(mapped.map { Self.normalizeBaseChar($0) }).union(softEndBases)
+                        }
+                        let pathChars = isIotatedPair ? mapped : [mapped[0]]
+                        for m in pathChars {
                             let b = Self.normalizeBaseChar(m)
                             if basePath.last != b {
                                 basePath.append(b)
@@ -1151,7 +1223,8 @@ final class SuggestionsDataBaseManager {
                         let angleDeg = Double(acos(cosTheta) * 180.0 / .pi)
                         pathTurnAngles[idx] = angleDeg
                         let isLocalPassThrough = (n1 <= 2.4 * keyWidth && n2 <= 2.4 * keyWidth)
-                        if angleDeg < 22.0 && isLocalPassThrough {
+                        let isShortWordPreFinalConsonant = (basePath.count <= 4 && idx == basePath.count - 2 && !Self.baseVowels.contains(basePath[idx]))
+                        if angleDeg < 22.0 && isLocalPassThrough && !isShortWordPreFinalConsonant {
                             isPathAnchor[idx] = false
                             pathKeyWeights[idx] = 0.20 + (angleDeg / 22.0) * 0.18
                         } else {
@@ -1172,8 +1245,9 @@ final class SuggestionsDataBaseManager {
                     }
                 }
             }
+            let hasCyrillicSignInRaw = isCyrillic && rawLowerKeys.contains(where: { Self.cyrillicSignChars.contains($0) })
             let effectiveSwipePoints: [CGPoint] = {
-                if !isCyrillic && trailPoints.count >= 2 {
+                if !hasCyrillicSignInRaw && trailPoints.count >= 2 {
                     return trailPoints
                 }
                 return basePathKeyPoints
@@ -1182,19 +1256,30 @@ final class SuggestionsDataBaseManager {
             let startTouchPoint: CGPoint? = effectiveSwipePoints.first ?? (lowerKeys.first.flatMap { keyCenters[$0] })
 
             var prefixes = Set<String>()
-            for sc in startCandidates {
-                let b = Self.normalizeBaseChar(sc)
-                prefixes.insert(String(b))
+            if !isCyrillic, let firstRaw = lowerKeys.first {
+                prefixes.insert(String(firstRaw))
+                let b = Self.normalizeBaseChar(firstRaw)
+                if firstRaw != "q" && firstRaw != "ş" {
+                    prefixes.insert(String(b))
+                }
                 for variant in Self.diacriticForms[b] ?? [] {
-                    // On 12-column Latin (`crh-Latn`), `k` and `q` are distinct physical keys 262 pt apart
-                    if !isCyrillic && b == "k" && variant == "q" { continue }
+                    // On 12-column Latin (`crh-Latn`), `k <-> q` and `s <-> ş` are distinct physical keys 8 columns apart
+                    if (firstRaw == "k" && variant == "q") || (firstRaw == "s" && variant == "ş") { continue }
+                    if firstRaw == "q" || firstRaw == "ş" { continue }
                     prefixes.insert(String(variant))
                 }
-            }
-            prefixes.insert(String(firstBase))
-            for variant in Self.diacriticForms[firstBase] ?? [] {
-                if !isCyrillic && firstBase == "k" && variant == "q" { continue }
-                prefixes.insert(String(variant))
+            } else {
+                for sc in startCandidates {
+                    let b = Self.normalizeBaseChar(sc)
+                    prefixes.insert(String(b))
+                    for variant in Self.diacriticForms[b] ?? [] {
+                        prefixes.insert(String(variant))
+                    }
+                }
+                prefixes.insert(String(firstBase))
+                for variant in Self.diacriticForms[firstBase] ?? [] {
+                    prefixes.insert(String(variant))
+                }
             }
 
             let minLen = 2
@@ -1248,7 +1333,7 @@ final class SuggestionsDataBaseManager {
             var scoredCandidates: [(word: String, score: Double)] = []
             for (word, freq) in candidatePool {
                 let lower = word.lowercased(with: Self.casingLocale)
-                guard !lower.contains(" "), let firstWordChar = lower.first else { continue }
+                guard !lower.contains(" "), !lower.isEmpty else { continue }
                 var wordBase: [Character] = []
                 var wordOrigChars: [Character] = []
                 var wordCharCenters: [CGPoint?] = []
@@ -1283,6 +1368,7 @@ final class SuggestionsDataBaseManager {
                 var matchedVowels = Set<Character>()
                 var startDistanceBonus: Double = 0.0
                 var matchedWordCenters: [CGPoint] = []
+                var hasMatchedTurnaround = false
 
                 for (i, targetChar) in wordBase.enumerated() {
                     if i == 0 {
@@ -1341,24 +1427,70 @@ final class SuggestionsDataBaseManager {
                     var foundExact = false
                     var searchIdx = pathIdx
                     while searchIdx < searchLimit {
-                        if basePath[searchIdx] == targetChar {
+                        let pb = basePath[searchIdx]
+                        let isCharMatch = (pb == targetChar) || (isCyrillic && ((pb == "q" && targetChar == "k") || (pb == "k" && targetChar == "q")))
+                        if isCharMatch {
+                            var chosenIdx = searchIdx
+                            // If this match is a collinear transit key, prefer a later anchor occurrence if subsequent consonants still fit after it
+                            if !isPathAnchor[searchIdx] && (searchIdx + 1) < searchLimit {
+                                let nextConsonant: Character? = {
+                                    for remIdx in (i + 1)..<(wordBase.count - 1) {
+                                        let rc = wordBase[remIdx]
+                                        if !Self.baseVowels.contains(rc) { return rc }
+                                    }
+                                    return nil
+                                }()
+                                for altIdx in (searchIdx + 1)..<searchLimit where isPathAnchor[altIdx] {
+                                    let altPb = basePath[altIdx]
+                                    let altMatch = (altPb == targetChar) || (isCyrillic && ((altPb == "q" && targetChar == "k") || (altPb == "k" && targetChar == "q")))
+                                    guard altMatch else { continue }
+                                    if let nc = nextConsonant {
+                                        if (altIdx + 1) < innerUpperBound, basePath[(altIdx + 1)..<innerUpperBound].contains(nc) {
+                                            chosenIdx = altIdx
+                                            break
+                                        }
+                                    } else {
+                                        chosenIdx = altIdx
+                                        break
+                                    }
+                                }
+                            }
                             foundExact = true
-                            pathIdx = searchIdx + 1
+                            pathIdx = chosenIdx + 1
                             exactHits += 1
                             if let cPt = wordCharCenters[i] { matchedWordCenters.append(cPt) }
+                            let isPostTurnReturnConsonant = hasMatchedTurnaround && i == wordBase.count - 2 && !Self.baseVowels.contains(targetChar)
                             let nearInteriorAnchor: Bool = {
-                                guard !isPathAnchor[searchIdx],
+                                if isPostTurnReturnConsonant { return true }
+                                guard !isPathAnchor[chosenIdx],
                                       wordOrigChars[i] != targetChar,
                                       let cPt = wordCharCenters[i] else { return false }
                                 return interiorAnchorPoints.contains { hypot($0.x - cPt.x, $0.y - cPt.y) <= 1.35 * keyWidth }
                             }()
-                            let w = nearInteriorAnchor ? max(0.85, pathKeyWeights[searchIdx]) : pathKeyWeights[searchIdx]
+                            let isDistantLatinDiacriticSubstitute: Bool = {
+                                guard !isCyrillic,
+                                      wordOrigChars[i] != targetChar,
+                                      !nearInteriorAnchor,
+                                      chosenIdx < basePathKeyPoints.count,
+                                      let cPt = wordCharCenters[i] else { return false }
+                                let pPt = basePathKeyPoints[chosenIdx]
+                                return hypot(pPt.x - cPt.x, pPt.y - cPt.y) > 2.5 * keyWidth
+                            }()
+                            let w: Double
+                            if isDistantLatinDiacriticSubstitute {
+                                w = min(0.25, pathKeyWeights[chosenIdx] * 0.45)
+                            } else if nearInteriorAnchor {
+                                w = max(0.85, pathKeyWeights[chosenIdx])
+                            } else {
+                                w = pathKeyWeights[chosenIdx]
+                            }
                             weightedExactHits += w
-                            if isPathAnchor[searchIdx] || nearInteriorAnchor {
+                            if !isDistantLatinDiacriticSubstitute && (isPathAnchor[chosenIdx] || nearInteriorAnchor) {
                                 matchedAnchors += 1
                             } else {
                                 transitOnlyHits += 1
                             }
+                            if pathTurnAngles[chosenIdx] >= 135.0 { hasMatchedTurnaround = true }
                             if Self.baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
                             break
                         }
@@ -1447,12 +1579,13 @@ final class SuggestionsDataBaseManager {
                 let coverageRatio = coverage / effectiveWordLen
                 let matchedKeyBonus = min(weightedExactHits * 0.95 + Double(neighborHits) * 0.35, 7.5)
                 let allExactBonus: Double = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
-                let anchorExactMatchBonus: Double = (matchedAnchors == anchorCount && wordBase.count == anchorCount && misses == 0) ? 2.1 : 0.0
+                let anchorExactMatchBonus: Double = (matchedAnchors >= anchorCount && regularMisses == 0 && neighborHits == 0 && (wordBase.count == anchorCount || exactHits == anchorCount)) ? 2.1 : 0.0
                 let unanchoredComplexityPenalty: Double = Double(max(0, transitOnlyHits)) * 0.55
                 let shortWordDetourPenalty: Double = (anchorCount >= 4 && wordBase.count <= 2) ? 2.5 : 0.0
+                let geminateShortWordPenalty: Double = (wordBase.count <= 3 && lower.count > wordBase.count) ? 0.35 : 0.0
                 let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55
                     + Double(max(0, basePath.count - wordBase.count)) * 0.02
-                let endBonus = exactLast ? 2.5 : 0.4
+                let endBonus = (wordLast == lastBase) ? 2.9 : (exactLast ? 2.2 : 0.4)
                 let contextFreq = bigramBoosts[lower] ?? 0
                 let freqScore = log10(Double(max(1, freq + contextFreq)) + 1.35) * 1.35
                 let totalScore = (coverageRatio * 6.0)
@@ -1466,6 +1599,7 @@ final class SuggestionsDataBaseManager {
                     - lengthPenalty
                     - unanchoredComplexityPenalty
                     - shortWordDetourPenalty
+                    - geminateShortWordPenalty
                     - missedTurnaroundPenalty
                 scoredCandidates.append((word, totalScore))
             }
@@ -1486,6 +1620,29 @@ final class SuggestionsDataBaseManager {
         }
     }
 
+    private static let surfaceEndVariantsByBase: [Character: [String]] = [
+        "a": ["a", "â"],
+        "c": ["c", "ç"],
+        "g": ["g", "ğ"],
+        "i": ["i", "ı", "î"],
+        "n": ["n", "ñ"],
+        "o": ["o", "ö"],
+        "s": ["s", "ş"],
+        "u": ["u", "ü", "û"]
+    ]
+
+    private static func expandSurfaceEndChars(_ baseChars: Set<Character>) -> [String] {
+        var out: [String] = []
+        var seen = Set<String>()
+        for b in baseChars {
+            let variants = surfaceEndVariantsByBase[b] ?? [String(b)]
+            for v in variants where seen.insert(v).inserted {
+                out.append(v)
+            }
+        }
+        return out
+    }
+
     private func fetchSwipeCandidatesStartingWith(
         prefix: String,
         minLen: Int,
@@ -1496,47 +1653,51 @@ final class SuggestionsDataBaseManager {
         neighborLimit: Int
     ) -> [(String, Int)] {
         guard let db else { return [] }
-        var results: [(String, Int)] = []
-        var exactCount = 0
-        var neighborCount = 0
         var stmt: OpaquePointer?
         let query = """
         SELECT word, freq FROM words
-        WHERE word >= ?1 AND word < ?2
+        WHERE substr(word, 1, 1) = ?1
+          AND substr(word, -1, 1) = ?2
           AND freq >= 2
           AND length(word) BETWEEN ?3 AND ?4
           AND instr(word, ' ') = 0
-        ORDER BY freq DESC;
+        ORDER BY freq DESC
+        LIMIT ?5;
         """
         defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK,
-              bindText(stmt, index: 1, value: prefix),
-              bindText(stmt, index: 2, value: prefix + "\u{FFFF}"),
-              sqlite3_bind_int(stmt, 3, Int32(minLen)) == SQLITE_OK,
-              sqlite3_bind_int(stmt, 4, Int32(maxLen)) == SQLITE_OK else {
+        guard sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK else {
             return []
         }
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            if let wordPtr = sqlite3_column_text(stmt, 0) {
-                let word = String(cString: wordPtr)
-                guard let lastCh = word.lowercased(with: Self.casingLocale).last else { continue }
-                let lastBase = Self.normalizeBaseChar(lastCh)
-                if exactEndBaseChars.contains(lastBase) {
-                    if exactCount < exactLimit {
-                        results.append((word, Int(sqlite3_column_int(stmt, 1))))
-                        exactCount += 1
-                    }
-                } else if neighborEndBaseChars.contains(lastBase) {
-                    if neighborCount < neighborLimit {
-                        results.append((word, Int(sqlite3_column_int(stmt, 1))))
-                        neighborCount += 1
-                    }
+
+        func fetchForEndSurfaces(_ endSurfaces: [String], totalLimit: Int) -> [(String, Int)] {
+            guard !endSurfaces.isEmpty, totalLimit > 0 else { return [] }
+            var pool: [(String, Int)] = []
+            for endSurf in endSurfaces {
+                sqlite3_reset(stmt)
+                sqlite3_clear_bindings(stmt)
+                guard bindText(stmt, index: 1, value: prefix),
+                      bindText(stmt, index: 2, value: endSurf),
+                      sqlite3_bind_int(stmt, 3, Int32(minLen)) == SQLITE_OK,
+                      sqlite3_bind_int(stmt, 4, Int32(maxLen)) == SQLITE_OK,
+                      sqlite3_bind_int(stmt, 5, Int32(totalLimit)) == SQLITE_OK else {
+                    continue
                 }
-                if exactCount >= exactLimit && neighborCount >= neighborLimit {
-                    break
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let wordPtr = sqlite3_column_text(stmt, 0) {
+                        pool.append((String(cString: wordPtr), Int(sqlite3_column_int(stmt, 1))))
+                    }
                 }
             }
+            if endSurfaces.count > 1 && pool.count > 1 {
+                pool.sort { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }
+            }
+            return pool.count > totalLimit ? Array(pool.prefix(totalLimit)) : pool
         }
+
+        let exactSurfaces = Self.expandSurfaceEndChars(exactEndBaseChars)
+        let neighborSurfaces = Self.expandSurfaceEndChars(neighborEndBaseChars)
+        var results = fetchForEndSurfaces(exactSurfaces, totalLimit: exactLimit)
+        results.append(contentsOf: fetchForEndSurfaces(neighborSurfaces, totalLimit: neighborLimit))
         return results
     }
 

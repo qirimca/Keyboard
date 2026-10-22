@@ -40,7 +40,7 @@ final class SpaceBarState: ObservableObject {
 
     private func scheduleCollapseTimer() {
         dismissTimer?.invalidate()
-        let timer = Timer(timeInterval: 1.5, repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: 3.0, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.isShowingFullName else { return }
                 withAnimation(.easeInOut(duration: 0.25)) {

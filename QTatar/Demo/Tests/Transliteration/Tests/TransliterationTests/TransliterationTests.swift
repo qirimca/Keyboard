@@ -809,6 +809,14 @@ private let parityCases: [(String, String)] = {
         return out
     }
 
+    let surfaceEndVariantsByBase: [Character: [String]] = [
+        "a": ["a", "â"], "c": ["c", "ç"], "g": ["g", "ğ"], "i": ["i", "ı", "î"],
+        "n": ["n", "ñ"], "o": ["o", "ö"], "s": ["s", "ş"], "u": ["u", "ü", "û"]
+    ]
+    let cyrRow0ColIndex: [Character: Int] = [
+        "й": 0, "ц": 1, "у": 2, "к": 3, "е": 4, "н": 5, "г": 6, "ш": 7, "щ": 8, "з": 9, "х": 10
+    ]
+
     func topSwipeMatch(for rawKeys: [Character], isCyrillic: Bool = true) -> String? {
         let centers = layoutCenters(isCyrillic: isCyrillic)
         let signChars: Set<Character> = ["ъ", "ь", "\u{02BC}", "'", "’"]
@@ -816,24 +824,72 @@ private let parityCases: [(String, String)] = {
         let triggers: Set<Character> = ["к", "г", "н"]
         var removed = Set<Int>()
         var explicitDia = Set<Character>()
+        var softEndBases = Set<Character>()
+
+        func recordTrigger(_ trigger: Character, isWordEnd: Bool) {
+            if trigger == "к" {
+                explicitDia.insert("q")
+                if isWordEnd { softEndBases.formUnion(["q", "k"]) }
+            } else if trigger == "г" {
+                explicitDia.insert("ğ")
+                if isWordEnd { softEndBases.insert("g") }
+            } else if trigger == "н" {
+                explicitDia.insert("ñ")
+                if isWordEnd { softEndBases.insert("n") }
+            }
+        }
+
         if isCyrillic {
             for (idx, ch) in rawKeys.enumerated() where signChars.contains(ch) {
                 removed.insert(idx)
+                var corridorStart = idx
                 var scan = idx - 1
-                var tPos: Int? = nil
                 while scan >= 0 {
-                    if triggers.contains(rawKeys[scan]) { tPos = scan }
-                    if row0Corridor.contains(rawKeys[scan]) || signChars.contains(rawKeys[scan]) { scan -= 1 } else { break }
+                    if row0Corridor.contains(rawKeys[scan]) || signChars.contains(rawKeys[scan]) {
+                        corridorStart = scan
+                        scan -= 1
+                    } else {
+                        break
+                    }
                 }
-                if let tp = tPos {
-                    let tr = rawKeys[tp]
-                    if tr == "к" { explicitDia.insert("q") }
-                    else if tr == "г" { explicitDia.insert("ğ") }
-                    else if tr == "н" { explicitDia.insert("ñ") }
-                    if tp + 1 < idx { for k in (tp + 1)..<idx { removed.insert(k) } }
+                let isWordEnd = (idx == rawKeys.count - 1)
+                let triggerIndices = (corridorStart..<idx).filter { triggers.contains(rawKeys[$0]) }
+                if let firstTrig = triggerIndices.first {
+                    if corridorStart == 0 && firstTrig == 0 {
+                        recordTrigger(rawKeys[0], isWordEnd: isWordEnd)
+                        if idx > 1 { for k in 1..<idx { removed.insert(k) } }
+                    } else {
+                        let startCol = cyrRow0ColIndex[rawKeys[corridorStart]] ?? 99
+                        var minCol = startCol
+                        var minTriggerIdx: Int? = nil
+                        for tPos in triggerIndices {
+                            let cCol = cyrRow0ColIndex[rawKeys[tPos]] ?? 99
+                            if cCol < minCol { minCol = cCol; minTriggerIdx = tPos }
+                        }
+                        if let turnIdx = minTriggerIdx {
+                            recordTrigger(rawKeys[turnIdx], isWordEnd: isWordEnd)
+                            for k in corridorStart..<idx where k != turnIdx { removed.insert(k) }
+                        } else if rawKeys[corridorStart] == "у" {
+                            for tPos in triggerIndices { recordTrigger(rawKeys[tPos], isWordEnd: isWordEnd) }
+                            for k in corridorStart..<idx {
+                                let kc = rawKeys[k]
+                                if ["у", "е", "ш", "щ", "з", "х"].contains(kc) { removed.insert(k) }
+                                else if kc == "г", k > corridorStart, rawKeys[corridorStart..<k].contains("н") { removed.insert(k) }
+                            }
+                        } else if isWordEnd {
+                            recordTrigger(rawKeys[firstTrig], isWordEnd: true)
+                            for k in corridorStart..<idx where k != firstTrig { removed.insert(k) }
+                        } else {
+                            for tPos in triggerIndices { recordTrigger(rawKeys[tPos], isWordEnd: false) }
+                            for k in corridorStart..<idx where ["у", "е", "ш", "щ", "з", "х"].contains(rawKeys[k]) { removed.insert(k) }
+                        }
+                    }
                     var fwd = idx + 1
-                    while fwd < rawKeys.count && ["х", "з", "щ", "ш", "г", "н", "е"].contains(rawKeys[fwd]) {
-                        removed.insert(fwd); fwd += 1
+                    while fwd < rawKeys.count {
+                        let fc = rawKeys[fwd]
+                        if ["х", "з", "щ", "ш"].contains(fc) { removed.insert(fwd); fwd += 1 }
+                        else if ["г", "н", "е", "к", "у"].contains(fc), fwd + 1 < rawKeys.count { removed.insert(fwd); fwd += 1 }
+                        else { break }
                     }
                 }
             }
@@ -845,7 +901,7 @@ private let parityCases: [(String, String)] = {
         var basePath: [Character] = []
         var basePts: [(x: Double, y: Double)] = []
         var startCandidates: [Character] = []
-        var endCandidates = Set<Character>()
+        var endCandidates = softEndBases
         var prevCyr: Character? = nil
         for (idx, ch) in keys.enumerated() {
             let pt = centers[ch]
@@ -853,19 +909,27 @@ private let parityCases: [(String, String)] = {
                 if ch == "ж", prevCyr == "д" { prevCyr = ch; continue }
                 var mapped = cyrToLat[ch] ?? []
                 if ch == "д", idx + 1 < keys.count, keys[idx + 1] == "ж" { mapped = ["c", "d"] }
-                let isStartOrAfterVowel = basePath.isEmpty || (prevCyr.map { ["а","е","є","ё","и","і","ї","о","у","ы","э","ю","я"].contains($0) } ?? false)
+                let isStartOrAfterVowel = basePath.isEmpty || (prevCyr.map { ["а","е","є","ё","и","і","ї","о","у","ы","э","ю","я","ъ","ь","\u{02BC}","'","’"].contains($0) } ?? false)
                 if isStartOrAfterVowel {
                     if ch == "я" { mapped = ["y", "a"] }
                     else if ch == "ю" { mapped = ["y", "u"] }
                     else if ch == "ё" { mapped = ["y", "o"] }
                 }
-                if startCandidates.isEmpty { startCandidates = mapped }
-                endCandidates = Set(mapped.map { baseMap[$0] ?? $0 })
-                for m in mapped {
-                    let b = baseMap[m] ?? m
-                    if basePath.last != b {
-                        basePath.append(b)
-                        if let pt { basePts.append(pt) }
+                if !mapped.isEmpty {
+                    let isIotatedPair = isStartOrAfterVowel && ["ё", "ю", "я", "є", "ї", "е"].contains(ch) && mapped.count == 2
+                    if startCandidates.isEmpty { startCandidates = isIotatedPair ? [mapped[0]] : mapped }
+                    if isIotatedPair, let lastM = mapped.last {
+                        endCandidates = Set([baseMap[lastM] ?? lastM]).union(softEndBases)
+                    } else {
+                        endCandidates = Set(mapped.map { baseMap[$0] ?? $0 }).union(softEndBases)
+                    }
+                    let pathChars = isIotatedPair ? mapped : [mapped[0]]
+                    for m in pathChars {
+                        let b = baseMap[m] ?? m
+                        if basePath.last != b {
+                            basePath.append(b)
+                            if let pt { basePts.append(pt) }
+                        }
                     }
                 }
                 prevCyr = ch
@@ -879,9 +943,11 @@ private let parityCases: [(String, String)] = {
                 }
             }
         }
-        guard let firstBase = basePath.first, basePath.count >= 2 else { return nil }
+        guard let firstBase = basePath.first, let lastBase = basePath.last, basePath.count >= 2 else { return nil }
+        if endCandidates.isEmpty { endCandidates.insert(lastBase) }
         var isAnchor = Array(repeating: true, count: basePath.count)
         var weights = Array(repeating: 1.0, count: basePath.count)
+        var turnAngles = Array(repeating: 180.0, count: basePath.count)
         if basePts.count == basePath.count && basePath.count >= 3 {
             for idx in 1..<(basePath.count - 1) {
                 let v1x = basePts[idx].x - basePts[idx - 1].x, v1y = basePts[idx].y - basePts[idx - 1].y
@@ -890,8 +956,16 @@ private let parityCases: [(String, String)] = {
                 if n1 > 1 && n2 > 1 {
                     let cosT = min(1.0, max(-1.0, (v1x * v2x + v1y * v2y) / (n1 * n2)))
                     let deg = acos(cosT) * 180.0 / .pi
-                    if deg < 22.0 { isAnchor[idx] = false; weights[idx] = 0.20 + (deg / 22.0) * 0.18 }
-                    else { isAnchor[idx] = true; weights[idx] = min(1.0, 0.70 + (deg - 22.0) / 90.0 * 0.30) }
+                    turnAngles[idx] = deg
+                    let isLocalPassThrough = (n1 <= 2.4 * 32.0 && n2 <= 2.4 * 32.0)
+                    let isShortWordPreFinalConsonant = (basePath.count <= 4 && idx == basePath.count - 2 && !baseVowels.contains(basePath[idx]))
+                    if deg < 22.0 && isLocalPassThrough && !isShortWordPreFinalConsonant {
+                        isAnchor[idx] = false
+                        weights[idx] = 0.20 + (deg / 22.0) * 0.18
+                    } else {
+                        isAnchor[idx] = true
+                        weights[idx] = min(1.0, 0.70 + (max(22.0, deg) - 22.0) / 90.0 * 0.30)
+                    }
                 }
             }
         }
@@ -918,40 +992,53 @@ private let parityCases: [(String, String)] = {
             prefixes.insert(String(v))
         }
 
+        func expandEndSurfaces(_ bases: Set<Character>) -> [String] {
+            var out: [String] = []
+            var seenSurf = Set<String>()
+            for b in bases {
+                for v in surfaceEndVariantsByBase[b] ?? [String(b)] where seenSurf.insert(v).inserted {
+                    out.append(v)
+                }
+            }
+            return out
+        }
+
         let maxLen = min(22, basePath.count + 5)
         var candidates: [(String, Int)] = []
         var seen = Set<String>()
         let casingLocale = Locale(identifier: "tr")
+        let exactSurfaces = expandEndSurfaces(endCandidates)
+        let neighborSurfaces = expandEndSurfaces(lastNeighbors)
+
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        let sql = "SELECT word, freq FROM words WHERE substr(word, 1, 1) = ?1 AND substr(word, -1, 1) = ?2 AND freq >= 2 AND length(word) BETWEEN 2 AND ?3 AND instr(word, ' ') = 0 ORDER BY freq DESC LIMIT ?4;"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
         for pfx in prefixes {
-            var stmt: OpaquePointer?
-            defer { sqlite3_finalize(stmt) }
-            let sql = "SELECT word, freq FROM words WHERE word >= ?1 AND word < ?2 AND freq >= 2 AND length(word) BETWEEN 2 AND ?3 AND instr(word, ' ') = 0 ORDER BY freq DESC;"
-            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { continue }
-            let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
-            _ = pfx.withCString { sqlite3_bind_text(stmt, 1, $0, -1, transient) }
-            let hi = pfx + "\u{FFFF}"
-            _ = hi.withCString { sqlite3_bind_text(stmt, 2, $0, -1, transient) }
-            sqlite3_bind_int(stmt, 3, Int32(maxLen))
-            var exactCount = 0
-            var neighborCount = 0
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let cStr = sqlite3_column_text(stmt, 0) {
-                    let w = String(cString: cStr)
-                    let wl = w.lowercased(with: casingLocale)
-                    if let lc = wl.last {
-                        let lb = baseMap[lc] ?? lc
-                        if endCandidates.contains(lb) {
-                            if exactCount < 320, seen.insert(wl).inserted {
-                                candidates.append((w, Int(sqlite3_column_int(stmt, 1))))
-                                exactCount += 1
-                            }
-                        } else if lastNeighbors.contains(lb) {
-                            if neighborCount < 140, seen.insert(wl).inserted {
-                                candidates.append((w, Int(sqlite3_column_int(stmt, 1))))
-                                neighborCount += 1
-                            }
+            for (surfaces, lim) in [(exactSurfaces, 320), (neighborSurfaces, 140)] {
+                var pool: [(String, Int)] = []
+                for endSurf in surfaces {
+                    sqlite3_reset(stmt)
+                    sqlite3_clear_bindings(stmt)
+                    _ = pfx.withCString { sqlite3_bind_text(stmt, 1, $0, -1, transient) }
+                    _ = endSurf.withCString { sqlite3_bind_text(stmt, 2, $0, -1, transient) }
+                    sqlite3_bind_int(stmt, 3, Int32(maxLen))
+                    sqlite3_bind_int(stmt, 4, Int32(lim))
+                    while sqlite3_step(stmt) == SQLITE_ROW {
+                        if let cStr = sqlite3_column_text(stmt, 0) {
+                            pool.append((String(cString: cStr), Int(sqlite3_column_int(stmt, 1))))
                         }
-                        if exactCount >= 320 && neighborCount >= 140 { break }
+                    }
+                }
+                if surfaces.count > 1 && pool.count > 1 {
+                    pool.sort { $0.1 != $1.1 ? $0.1 > $1.1 : $0.0 < $1.0 }
+                }
+                for item in pool.prefix(lim) {
+                    let wl = item.0.lowercased(with: casingLocale)
+                    if seen.insert(wl).inserted {
+                        candidates.append(item)
                     }
                 }
             }
@@ -963,26 +1050,29 @@ private let parityCases: [(String, String)] = {
         var bestScore = -Double.infinity
         for (word, freq) in candidates {
             let lower = word.lowercased(with: casingLocale)
-            guard let firstWordChar = lower.first else { continue }
+            guard !lower.isEmpty else { continue }
             var wordBase: [Character] = []
-            var wordPts: [(x: Double, y: Double)] = []
+            var wordCharPts: [(x: Double, y: Double)?] = []
             for ch in lower where ch != "-" {
                 let b = baseMap[ch] ?? ch
                 if wordBase.last != b {
                     wordBase.append(b)
-                    if let pt = wordCharCenter(ch, centers: centers, isCyrillic: isCyrillic) { wordPts.append(pt) }
+                    wordCharPts.append(wordCharCenter(ch, centers: centers, isCyrillic: isCyrillic))
                 }
             }
             guard wordBase.count >= 2, let wordLast = wordBase.last else { continue }
-            let exactLast = endCandidates.contains(wordLast)
+            let exactLast = (wordLast == lastBase) || endCandidates.contains(wordLast)
             let neighborLast = !exactLast && lastNeighbors.contains(wordLast)
             guard exactLast || neighborLast else { continue }
             var pathIdx = 0, exactHits = 0, neighborHits = 0, misses = 0, repeatedVowelMisses = 0
             var weightedExact = 0.0, matchedAnchors = 0, transitOnly = 0, startBonus = 0.0
             var matchedVowels = Set<Character>()
+            var matchedPts: [(x: Double, y: Double)] = []
+            var hasMatchedTurnaround = false
             for (i, targetChar) in wordBase.enumerated() {
                 if i == 0 {
-                    if let u1 = startPt, let k1 = wordCharCenter(firstWordChar, centers: centers, isCyrillic: isCyrillic) {
+                    if let cPt = wordCharPts[0] { matchedPts.append(cPt) }
+                    if let u1 = startPt, let k1 = wordCharPts[0] {
                         let d0 = hypot(u1.x - k1.x, u1.y - k1.y) / 32.0
                         if d0 <= 0.75 { exactHits += 1; weightedExact += 1.0; matchedAnchors += 1; startBonus = 1.65 }
                         else if d0 <= 1.75 { neighborHits += 1; weightedExact += 0.65; startBonus = 0.25 }
@@ -995,6 +1085,7 @@ private let parityCases: [(String, String)] = {
                     continue
                 }
                 if i == wordBase.count - 1 {
+                    if let cPt = wordCharPts[i] { matchedPts.append(cPt) }
                     if exactLast { exactHits += 1; weightedExact += 1.0; matchedAnchors += 1 }
                     else { neighborHits += 1 }
                     continue
@@ -1009,24 +1100,61 @@ private let parityCases: [(String, String)] = {
                     }
                 }
                 var foundExact = false
-                for sIdx in pathIdx..<searchLimit where basePath[sIdx] == targetChar {
-                    foundExact = true; pathIdx = sIdx + 1; exactHits += 1
-                    weightedExact += weights[sIdx]
-                    if isAnchor[sIdx] { matchedAnchors += 1 } else { transitOnly += 1 }
-                    if baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
-                    break
+                for sIdx in pathIdx..<searchLimit {
+                    let pb = basePath[sIdx]
+                    let isCharMatch = (pb == targetChar) || (isCyrillic && ((pb == "q" && targetChar == "k") || (pb == "k" && targetChar == "q")))
+                    if isCharMatch {
+                        var chosenIdx = sIdx
+                        if !isAnchor[sIdx] && (sIdx + 1) < searchLimit {
+                            let nextConsonant: Character? = {
+                                for remIdx in (i + 1)..<(wordBase.count - 1) {
+                                    let rc = wordBase[remIdx]
+                                    if !baseVowels.contains(rc) { return rc }
+                                }
+                                return nil
+                            }()
+                            for altIdx in (sIdx + 1)..<searchLimit where isAnchor[altIdx] {
+                                let altPb = basePath[altIdx]
+                                let altMatch = (altPb == targetChar) || (isCyrillic && ((altPb == "q" && targetChar == "k") || (altPb == "k" && targetChar == "q")))
+                                guard altMatch else { continue }
+                                if let nc = nextConsonant {
+                                    if (altIdx + 1) < innerUpperBound, basePath[(altIdx + 1)..<innerUpperBound].contains(nc) {
+                                        chosenIdx = altIdx
+                                        break
+                                    }
+                                } else {
+                                    chosenIdx = altIdx
+                                    break
+                                }
+                            }
+                        }
+                        foundExact = true; pathIdx = chosenIdx + 1; exactHits += 1
+                        if let cPt = wordCharPts[i] { matchedPts.append(cPt) }
+                        let isPostTurnReturnConsonant = hasMatchedTurnaround && i == wordBase.count - 2 && !baseVowels.contains(targetChar)
+                        let w = isPostTurnReturnConsonant ? max(0.85, weights[chosenIdx]) : weights[chosenIdx]
+                        weightedExact += w
+                        if isAnchor[chosenIdx] || isPostTurnReturnConsonant { matchedAnchors += 1 } else { transitOnly += 1 }
+                        if turnAngles[chosenIdx] >= 135.0 { hasMatchedTurnaround = true }
+                        if baseVowels.contains(targetChar) { matchedVowels.insert(targetChar) }
+                        break
+                    }
                 }
                 if !foundExact {
                     let nSet = neighborMap[targetChar] ?? []
                     var foundN = false
                     for nIdx in pathIdx..<searchLimit where nSet.contains(basePath[nIdx]) {
-                        foundN = true; pathIdx = nIdx + 1; neighborHits += 1; break
+                        foundN = true; pathIdx = nIdx + 1; neighborHits += 1
+                        if let cPt = wordCharPts[i] { matchedPts.append(cPt) }
+                        break
                     }
                     if !foundN {
                         misses += 1
-                        if (baseVowels.contains(targetChar) && (matchedVowels.contains(targetChar) || wordLast == targetChar))
-                            || (wordBase.count >= 5 && (targetChar == wordBase.first || targetChar == wordLast)) {
+                        let isRepVowelMiss = (baseVowels.contains(targetChar) && (matchedVowels.contains(targetChar) || wordLast == targetChar))
+                            || (wordBase.count >= 5 && (targetChar == wordBase.first || targetChar == wordLast))
+                        if isRepVowelMiss {
                             repeatedVowelMisses += 1
+                        } else if let cPt = wordCharPts[i] {
+                            matchedPts.append(cPt)
                         }
                     }
                 }
@@ -1042,10 +1170,15 @@ private let parityCases: [(String, String)] = {
                 if rawKeySet.contains("с") && lower.contains("s") { specificBonus += 0.8 }
                 if rawKeySet.contains("ч") && lower.contains("ç") { specificBonus += 1.6 }
                 for d in explicitDia where lower.contains(d) { specificBonus += 1.8 }
+            } else {
+                if rawKeySet.contains("ş") && lower.contains("ş") { specificBonus += 1.6 }
+                if rawKeySet.contains("ç") && lower.contains("ç") { specificBonus += 1.6 }
+                if rawKeySet.contains("ğ") && lower.contains("ğ") { specificBonus += 1.6 }
+                if rawKeySet.contains("ñ") && lower.contains("ñ") { specificBonus += 1.6 }
             }
             var geoBonus = 0.0
-            if resampledSwipe.count == 16 && wordPts.count >= 2 {
-                let rw = resample16(wordPts)
+            if resampledSwipe.count == 16 && matchedPts.count >= 2 {
+                let rw = resample16(matchedPts)
                 var ds = 0.0
                 for k in 0..<16 { ds += hypot(resampledSwipe[k].x - rw[k].x, resampledSwipe[k].y - rw[k].y) }
                 geoBonus = max(-2.6, (1.20 - (ds / 16.0) / 32.0) * 1.95)
@@ -1055,34 +1188,38 @@ private let parityCases: [(String, String)] = {
             let coverageRatio = (weightedExact + Double(neighborHits) * 0.55 - missPenalty) / max(2.0, Double(wordBase.count) - Double(repeatedVowelMisses) * 0.5)
             let matchedKeyBonus = min(weightedExact * 0.95 + Double(neighborHits) * 0.35, 7.5)
             let allExactBonus = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
-            let anchorBonus = (matchedAnchors == anchorCount && wordBase.count == anchorCount && misses == 0) ? 2.1 : 0.0
+            let anchorBonus = (matchedAnchors >= anchorCount && regularMisses == 0 && neighborHits == 0 && (wordBase.count == anchorCount || exactHits == anchorCount)) ? 2.1 : 0.0
             let unanchoredPenalty = Double(max(0, transitOnly)) * 0.55
+            let geminateShortPenalty = (wordBase.count <= 3 && lower.count > wordBase.count) ? 0.35 : 0.0
             let lengthPenalty = Double(max(0, wordBase.count - basePath.count)) * 0.55 + Double(max(0, basePath.count - wordBase.count)) * 0.02
-            let endBonus = exactLast ? 2.5 : 0.4
+            let endBonus = (wordLast == lastBase) ? 2.9 : (exactLast ? 2.2 : 0.4)
             let freqScore = log10(Double(max(1, freq)) + 1.35) * 1.35
-            let score = (coverageRatio * 6.0) + matchedKeyBonus + allExactBonus + anchorBonus + geoBonus + endBonus + freqScore + specificBonus - lengthPenalty - unanchoredPenalty
+            let score = (coverageRatio * 6.0) + matchedKeyBonus + allExactBonus + anchorBonus + geoBonus + endBonus + freqScore + specificBonus - lengthPenalty - unanchoredPenalty - geminateShortPenalty
             if score > bestScore { bestScore = score; bestWord = word }
         }
         return bestWord
     }
 
-    // 1. Cyrillic `машалла` & `сен` & `бор`
+    // 1. Cyrillic & Latin `maşalla` (including physical `ş` at Row 1, Col 10) & `sen` & `bor`
     #expect(topSwipeMatch(for: ["м", "а", "в", "п", "о", "ш", "щ", "о", "п", "а", "в", "а", "п", "о", "л", "о", "п", "а"], isCyrillic: true) == "maşalla")
     #expect(topSwipeMatch(for: ["м", "а", "ш", "л", "а", "л", "а"], isCyrillic: true) == "maşalla")
     #expect(topSwipeMatch(for: ["м", "а", "ш", "а", "л", "а"], isCyrillic: true) == "maşalla")
+    #expect(topSwipeMatch(for: ["m", "a", "s", "d", "f", "g", "h", "j", "k", "l", "ş", "l", "a"], isCyrillic: false) == "maşalla")
     #expect(topSwipeMatch(for: ["с", "в", "а", "п", "е", "н"], isCyrillic: true) == "sen")
     #expect(topSwipeMatch(for: ["б", "о", "р"], isCyrillic: true) == "bor")
 
-    // 2. Short high-frequency words with collinear transit keys (`bir`, `edi`, `men`)
+    // 2. Short high-frequency words with collinear transit keys & post-turnaround consonants (`bir`, `edi`, `men`, `alda`, `eli`)
     #expect(topSwipeMatch(for: ["b", "g", "y", "i", "u", "r"], isCyrillic: false) == "bir")
     #expect(topSwipeMatch(for: ["e", "d", "f", "g", "h", "j", "i"], isCyrillic: false) == "edi")
     #expect(topSwipeMatch(for: ["m", "j", "y", "t", "r", "e", "d", "f", "g", "b", "n"], isCyrillic: false) == "men")
+    #expect(topSwipeMatch(for: ["a", "l", "d", "a"], isCyrillic: false) == "alda")
+    #expect(topSwipeMatch(for: ["e", "l", "i"], isCyrillic: false) == "eli")
 
     // 3. Physical start-key distance check on 12-column Latin (`küç` vs `qılıç`, `soñ` vs `şunıñ`)
     #expect(topSwipeMatch(for: ["k", "u", "j", "v", "c"], isCyrillic: false) == "küç")
     #expect(topSwipeMatch(for: ["s", "o", "j", "n"], isCyrillic: false) == "soñ")
 
-    // 4. Cyrillic `ъ` / `ʼ` corridor cleaning & apostrophe skipping (`soñ`, `almaq`, `quçağında`)
+    // 4. Cyrillic `ъ` / `ʼ` corridor cleaning & apostrophe skipping (`soñ`, `almaq`, `quçağında`, `onıñ`, `çoq`, `bularnıñ`, `qar`, `qoya`, `qaydan`)
     #expect(topSwipeMatch(for: ["с", "о", "н", "г", "ш", "щ", "з", "х", "ъ"], isCyrillic: true) == "soñ")
     #expect(topSwipeMatch(for: ["с", "о", "н", "г", "ш", "щ", "з", "х", "ʼ"], isCyrillic: true) == "soñ")
     #expect(topSwipeMatch(for: ["с", "о", "н"], isCyrillic: true) == "soñ")
@@ -1090,6 +1227,12 @@ private let parityCases: [(String, String)] = {
     #expect(topSwipeMatch(for: ["а", "л", "м", "а", "к"], isCyrillic: true) == "almaq")
     #expect(topSwipeMatch(for: ["к", "у", "ч", "а", "г", "ы", "н", "д", "а"], isCyrillic: true) == "quçağında")
     #expect(topSwipeMatch(for: ["к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "г", "н", "е", "у", "ч", "а", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "ы", "н", "д", "а"], isCyrillic: true) == "quçağında")
+    #expect(topSwipeMatch(for: ["о", "н", "ы", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"], isCyrillic: true) == "onıñ")
+    #expect(topSwipeMatch(for: ["ч", "о", "н", "е", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"], isCyrillic: true) == "çoq")
+    #expect(topSwipeMatch(for: ["б", "у", "л", "а", "р", "н", "ы", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"], isCyrillic: true) == "bularnıñ")
+    #expect(topSwipeMatch(for: ["к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "г", "н", "е", "к", "а", "р"], isCyrillic: true) == "qar")
+    #expect(topSwipeMatch(for: ["к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "г", "н", "о", "я"], isCyrillic: true) == "qoya")
+    #expect(topSwipeMatch(for: ["к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "г", "н", "е", "к", "а", "й", "д", "а", "н"], isCyrillic: true) == "qaydan")
 
     // 5. DB cleanliness (absence of Turkish/dialect forms) & NotebookLM agglutinative words
     #expect(wordFrequency("yok") == 0)

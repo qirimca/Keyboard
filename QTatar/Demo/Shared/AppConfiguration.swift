@@ -515,21 +515,19 @@ struct TaraqTamgaLogoBadge: View {
     var cornerRadius: CGFloat = 7
     @Environment(\.colorScheme) private var colorScheme
 
-    private var backgroundColor: Color {
-        colorScheme == .dark
-            ? Color(red: 18.0 / 255.0, green: 20.0 / 255.0, blue: 24.0 / 255.0)
-            : Color(red: 248.0 / 255.0, green: 245.0 / 255.0, blue: 236.0 / 255.0)
-    }
-
-    private var foregroundColor: Color {
-        colorScheme == .dark
-            ? Color(red: 248.0 / 255.0, green: 245.0 / 255.0, blue: 236.0 / 255.0)
-            : Color(red: 26.0 / 255.0, green: 26.0 / 255.0, blue: 26.0 / 255.0)
+    private var lightGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 245.0 / 255.0, green: 229.0 / 255.0, blue: 219.0 / 255.0),
+                Color(red: 188.0 / 255.0, green: 191.0 / 255.0, blue: 223.0 / 255.0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     private var unitSize: CGFloat {
-        let rawUnit = (size * 0.68) / 9.0
-        return max((rawUnit * 2.0).rounded() / 2.0, 1.5)
+        (size * 0.6846) / 9.0
     }
 
     var body: some View {
@@ -552,12 +550,19 @@ struct TaraqTamgaLogoBadge: View {
                 }
             } else {
                 let unit = unitSize
-                ZStack {
+                let badge = ZStack {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(backgroundColor)
+                        .fill(lightGradient)
                     SharedTaraqTamgaShape()
-                        .fill(foregroundColor)
+                        .fill(Color.black)
                         .frame(width: unit * 9.0, height: unit * 5.0)
+                }
+                if colorScheme == .dark {
+                    badge
+                        .colorInvert()
+                        .hueRotation(.degrees(180))
+                } else {
+                    badge
                 }
             }
         }

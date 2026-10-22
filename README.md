@@ -1,32 +1,22 @@
-# QırımKey - The First Crimean Tatar Keyboard for iOS 📱
+# QırımKey — Crimean Tatar Keyboard for iOS & iPadOS 📱
 
 ![QırımKey Vision Board](assets/main_banner.png)
 
-**QırımKey** is the first keyboard designed specifically for the Crimean Tatar language on iOS. Built with the powerful [KeyboardKit](https://github.com/KeyboardKit), this app offers seamless language support, quick language switching, and customization options. The app supports both light and dark themes, integrates with iOS system settings, and unlocks professional-grade features using a license key.
+**QırımKey** is a native-grade iOS and iPadOS keyboard designed specifically for the Crimean Tatar language (`Qırımtatar tili`). It provides both **12-column Latin (`crh-Latn`)** and **Cyrillic (`ФЫВА` / Ukrainian-adapted `ФІВА`)** layouts, live Cyrillic-to-Latin transliteration (`Къ → Q`, `Кʼ → Q`), on-device N-gram autocomplete and autocorrection aligned with the official **2024/2025 Crimean Tatar Orthography** (ДЕСС № 1722/04-03/25), and **QırımKey Swipe v2** gesture typing.
 
-## Features  
+## Key Features
 
-- 🌙 **Dark and Light Themes**: Optimized for your device's appearance settings.  
-- 🌐 **Quick Language Switching**: Effortlessly switch between Crimean Tatar and other supported languages.  
-- 🔄 **Custom Keyboard Layouts**: Enhanced layouts tailored for Crimean Tatar, powered by `DemoLayoutProvider`.  
-- ✨ **Pro Features**: Includes `KeyboardKit Pro` autocomplete and advanced functionality.  
-- 🎛️ **Custom Menu Toolbar**: Features a custom `ToggleToolbar` with an intuitive menu.  
-- 🎤 **Dictation Integration**: Dictation button opens the app for advanced input (requires App Group configuration).  
+- 🔤 **Latin & Cyrillic Layouts**: Dedicated 12-column Crimean Tatar Latin layout (`q, ğ, ü, ş, ı, ö, ç, ñ`) plus optional Cyrillic (`ФЫВА`) and Ukrainian-adapted Cyrillic (`ФІВА`: `ґ → g · г → ğ · кʼ → q · нʼ → ñ`).
+- 🔄 **Live Cyrillic → Latin Transliteration**: Type on the Cyrillic layout while outputting standard Crimean Tatar Latin orthography in real time, with full single-step Backspace (`⌫`) restoration.
+- ⚡ **On-Device SQLite N-Gram Autocomplete & Orthography Engine**: Fast unigram/bigram/trigram suggestions, hyphenated compounds (`§ 63`, e.g. `gece-kündüz`, `alış-veriş`), question particle merging (`§ 67`, e.g. `yaptıñ mı → yaptıñmı`), and automatic capitalization of Crimean Tatar toponyms (`Qırım`, `Aqmescit`, `Bağçasaray`, `Çonğar`, `Or Qapı`).
+- 〰️ **QırımKey Swipe v2**: Continuous gesture typing on iPhone and iPad Floating keyboards using 16-point resampled SHARK2 trajectory matching, turning-angle anchor weighting ($\Delta\theta \ge 22^\circ$), and Cyrillic `ъ`/`ʼ` corridor cleaning.
+- 🌓 **Native iOS / iPadOS 26 & 27 Design**: Zero-shadow keycaps, adaptive Light/Dark Mode synchronization, iPad Docked/Floating/Split support, inline math evaluation (`=`), and culturally authentic Crimean Tatar proverbs.
 
-## Setup Instructions  
+## Local Development & Code Signing
 
-To use **QırımKey**:  
-1. Go to `Settings > General > Keyboards` and enable **QırımKey**.  
-2. Allow **Full Access** to unlock features like haptic feedback and advanced input.  
+1. Copy `.env.example` to `.env.local` and `QTatar/Demo/LocalSigning.xcconfig.example` to `QTatar/Demo/LocalSigning.xcconfig` (both local files are gitignored).
+2. Open `Keyboard.xcworkspace` or `QTatar/Demo/QTatar.xcodeproj` in Xcode and build the `Demo` scheme for iOS Simulator or your connected device.
 
-## Notes  
+## License
 
-- This keyboard demonstrates how to set up **KeyboardKit Pro** with a license key to unlock all locales and pro features.  
-- The dictation functionality requires an App Store-enabled App Group for sharing data between app targets and enabling dictation features.  
-- The project links **KeyboardKit Pro** only to the app target, following best practices for binary frameworks.
-
-## Built With  
-
-- [**KeyboardKit**](https://github.com/KeyboardKit)
-
-Feel free to explore, contribute, or provide feedback to help make Crimean Tatar typing accessible to everyone! 🌍  
+Released under the [MIT License](LICENSE). Built on top of the open-source [KeyboardKit](https://github.com/KeyboardKit/KeyboardKit) framework by Daniel Saidi.

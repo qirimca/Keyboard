@@ -898,7 +898,7 @@ struct NativeAutocompleteToolbar: View {
 
     @ObservedObject var autocompleteContext: AutocompleteContext
     @ObservedObject private var greetingState = GreetingBannerState.shared
-    let keyboardContext: KeyboardContext
+    @ObservedObject var keyboardContext: KeyboardContext
     let autocompleteAction: (Autocomplete.Suggestion) -> Void
 
     private var isFloating: Bool {

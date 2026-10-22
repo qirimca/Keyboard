@@ -147,6 +147,7 @@ struct HomeView: View {
         }
         return UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .ios26White
     }()
+    @State private var hasManualThemeOverride: Bool = (UserDefaults.standard.string(forKey: "qt_theme") != nil)
 
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
 
@@ -212,7 +213,7 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
                     .padding(.top, Device.iPhone ? 12 : 16)
-                    .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
+                    .padding(.bottom, shouldShowStartOverlay ? 76 : (isKeyboardVisible ? 28 : (Device.iPhone ? 16 : 24)))
                 }
                 .onChange(of: isStatsExpanded) { _, expanded in
                     if expanded {
@@ -233,6 +234,13 @@ struct HomeView: View {
                 }
                 .onChange(of: isWritingFieldFocused) { _, focused in
                     syncSandboxFocusToAppGroup(focused)
+                    if focused && !isStatsExpanded {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                            withAnimation(.easeInOut(duration: 0.22)) {
+                                scroll.scrollTo("writingArea", anchor: .bottom)
+                            }
+                        }
+                    }
                 }
                 .onChange(of: text) { _, _ in
                     if isWritingFieldFocused {
@@ -241,8 +249,22 @@ struct HomeView: View {
                         }
                     }
                 }
+                .onChange(of: ukrainianCyrillicLayout) { _, _ in
+                    if (isWritingFieldFocused || isKeyboardVisible) && !isStatsExpanded {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            scroll.scrollTo("writingArea", anchor: .bottom)
+                        }
+                    }
+                }
+                .onChange(of: cyrillicEnabled) { _, _ in
+                    if (isWritingFieldFocused || isKeyboardVisible) && !isStatsExpanded {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            scroll.scrollTo("writingArea", anchor: .bottom)
+                        }
+                    }
+                }
                 .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                    if isWritingFieldFocused && !isStatsExpanded {
+                    if (isWritingFieldFocused || isTestingExpanded) && !isStatsExpanded {
                         withAnimation(.easeInOut(duration: 0.25)) {
                             scroll.scrollTo("writingArea", anchor: .bottom)
                         }
@@ -387,10 +409,15 @@ struct HomeView: View {
             }
         }
         .onChange(of: colorScheme) { _, newScheme in
-            guard UIApplication.shared.applicationState == .active else { return }
             let args = ProcessInfo.processInfo.arguments
             if !args.contains("-qt_theme") {
+                hasManualThemeOverride = false
                 selectedThemeMode = .mode(isDark: newScheme == .dark)
+                if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox) {
+                    syncThemeToAppGroup(selectedThemeMode)
+                } else {
+                    clearThemeOverride()
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -956,7 +983,11 @@ struct HomeView: View {
         let defaults = KeyboardPreferences.defaults
         defaults.set(isActiveFocus, forKey: "crh.key.test.sandboxFocused")
         if isActiveFocus {
-            defaults.set(selectedThemeMode.isDark, forKey: "crh.key.test.isDark")
+            if hasManualThemeOverride {
+                defaults.set(selectedThemeMode.isDark, forKey: "crh.key.test.isDark")
+            } else {
+                defaults.removeObject(forKey: "crh.key.test.isDark")
+            }
             defaults.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
             defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
         } else {
@@ -973,7 +1004,11 @@ struct HomeView: View {
         guard UIApplication.shared.applicationState == .active else { return }
         let defaults = KeyboardPreferences.defaults
         if isWritingFieldFocused || shouldAutoFocusSandbox {
-            defaults.set(theme.isDark, forKey: "crh.key.test.isDark")
+            if hasManualThemeOverride {
+                defaults.set(theme.isDark, forKey: "crh.key.test.isDark")
+            } else {
+                defaults.removeObject(forKey: "crh.key.test.isDark")
+            }
             defaults.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
             defaults.set(true, forKey: "crh.key.test.sandboxFocused")
             defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
@@ -1001,6 +1036,7 @@ struct HomeView: View {
                 shouldAutoFocusSandbox = true
             }
             if let value = defaults.string(forKey: "qt_theme") {
+                hasManualThemeOverride = true
                 if value.lowercased().contains("dark") {
                     selectedThemeMode = .dark
                 } else {
@@ -1173,52 +1209,67 @@ private extension HomeView {
             Image(systemName: systemName)
                 .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(.white)
+                .contentTransition(.symbolEffect(.replace))
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: systemName)
+        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: isEnabled)
     }
 
     func cyrillicKeycapIconBadge(color: Color, isEnabled: Bool = true) -> some View {
-        let effectiveColor = isEnabled ? color : Color(.systemGray2)
-        return ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(effectiveColor.gradient)
-                .frame(width: 28, height: 28)
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                .strokeBorder(.white.opacity(0.45), lineWidth: 1)
-                .frame(width: 21, height: 19)
-            Text("Къ")
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-        }
+        TransliterationKeycapBadge(
+            sourceLabel: "Къ",
+            targetLabel: "Q",
+            isEnabled: isEnabled,
+            isUkrainianStyle: false,
+            accentColor: color
+        )
     }
 
     func ukrainianKeycapIconBadge(isEnabled: Bool) -> some View {
-        ZStack {
-            if isEnabled {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.0, green: 0.42, blue: 0.85),
-                                Color(red: 0.96, green: 0.78, blue: 0.04)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-                    .frame(width: 28, height: 28)
-            } else {
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color(.systemGray2).gradient)
-                    .frame(width: 28, height: 28)
+        TransliterationKeycapBadge(
+            sourceLabel: "К\u{02BC}",
+            targetLabel: "Q",
+            isEnabled: isEnabled,
+            isUkrainianStyle: true,
+            accentColor: brandBlue
+        )
+    }
+
+    func ukrainianTransliterationMiniCapsules(isEnabled: Bool) -> some View {
+        let pairs: [(src: String, dst: String)] = [
+            ("ґ", "g"),
+            ("г", "ğ"),
+            ("к\u{02BC}", "q"),
+            ("н\u{02BC}", "ñ")
+        ]
+        return HStack(spacing: 5) {
+            ForEach(pairs, id: \.src) { pair in
+                HStack(spacing: 2.5) {
+                    Text(pair.src)
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isEnabled ? primaryInk : secondaryInk)
+                    Text("→")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(secondaryInk.opacity(0.8))
+                    Text(pair.dst)
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(
+                    isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
+                    in: Capsule()
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isEnabled ? brandBlue.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 0.75)
+                )
             }
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                .strokeBorder(.white.opacity(0.55), lineWidth: 1)
-                .frame(width: 21, height: 19)
-            Text("К\u{02BC}")
-                .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(isEnabled ? 0.25 : 0), radius: 1, x: 0, y: 0.5)
         }
+        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: isEnabled)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(localizedInterfaceString("settings.ukrainianCyrillic.desc"))
     }
 
     func walnutBrainIconBadge(color: Color, isEnabled: Bool = true) -> some View {
@@ -1462,17 +1513,13 @@ private extension HomeView {
 
                 HStack(spacing: 12) {
                     ukrainianKeycapIconBadge(isEnabled: ukrainianCyrillicLayout)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 4) {
                         interfaceLabel("settings.ukrainianCyrillic")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        interfaceLabel("settings.ukrainianCyrillic.desc")
-                            .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
-                            .foregroundStyle(secondaryInk)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
+                        ukrainianTransliterationMiniCapsules(isEnabled: ukrainianCyrillicLayout)
                     }
                     Spacer(minLength: 8)
                     Toggle("", isOn: $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)))
@@ -1669,6 +1716,7 @@ private extension HomeView {
                         get: { selectedThemeMode.rawValue },
                         set: { newValue in
                             if let mode = KeyboardTestThemeMode(rawValue: newValue) {
+                                hasManualThemeOverride = true
                                 shouldAutoFocusSandbox = true
                                 selectedThemeMode = mode
                             }
@@ -1691,6 +1739,8 @@ private extension HomeView {
                 Image(systemName: selectedFieldMode.icon)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(brandBlue)
+                    .contentTransition(.symbolEffect(.replace))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.82), value: selectedFieldMode.icon)
                 Text(Home.home_writearea_key.localized)
                     .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
                     .foregroundStyle(secondaryInk)
@@ -1759,7 +1809,8 @@ private extension HomeView {
                     placeholder: Home.home_typing_key.localized,
                     fieldMode: selectedFieldMode,
                     themeMode: selectedThemeMode,
-                    preferencesToken: "\(cyrillicEnabled)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
+                    hasManualThemeOverride: hasManualThemeOverride,
+                    preferencesToken: "\(cyrillicEnabled)-\(ukrainianCyrillicLayout)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
                     fontSize: Device.iPad ? 16 : 15
                 )
                 .frame(height: Device.iPad ? 96 : 82)
@@ -2549,6 +2600,67 @@ private struct WalnutBrainIcon: View {
     }
 }
 
+/// Animated keycap badge for Cyrillic -> Latin transliteration row (`Къ ↔ Q` or `Кʼ ↔ Q`).
+private struct TransliterationKeycapBadge: View {
+    let sourceLabel: String
+    let targetLabel: String
+    let isEnabled: Bool
+    let isUkrainianStyle: Bool
+    let accentColor: Color
+
+    @State private var showTargetGlyph = false
+
+    var body: some View {
+        ZStack {
+            if isEnabled {
+                if isUkrainianStyle {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 0.0, green: 0.34, blue: 0.72),
+                                    Color(red: 1.0, green: 0.84, blue: 0.0)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(accentColor.gradient)
+                }
+            } else {
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color(.systemGray3).gradient)
+            }
+
+            Text(isEnabled && showTargetGlyph ? targetLabel : sourceLabel)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(isUkrainianStyle && isEnabled ? 0.35 : 0.0), radius: 1, x: 0, y: 0.5)
+                .contentTransition(.interpolate)
+                .id(isEnabled && showTargetGlyph ? targetLabel : sourceLabel)
+        }
+        .frame(width: 28, height: 28)
+        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: isEnabled)
+        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: showTargetGlyph)
+        .onChange(of: isEnabled) { _, newValue in
+            if newValue {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
+                    showTargetGlyph = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                        showTargetGlyph = false
+                    }
+                }
+            } else {
+                showTargetGlyph = false
+            }
+        }
+    }
+}
+
 /// A UIKit-backed UITextView that dynamically updates its keyboardType, returnKeyType,
 /// textContentType, and keyboardAppearance, reloading the responder input traits immediately
 /// when the user switches sandbox modes.
@@ -2564,6 +2676,7 @@ private struct SandboxTextView: UIViewRepresentable {
     let placeholder: String
     let fieldMode: KeyboardTestFieldMode
     let themeMode: KeyboardTestThemeMode
+    let hasManualThemeOverride: Bool
     let preferencesToken: String
     let fontSize: CGFloat
 
@@ -2631,7 +2744,8 @@ private struct SandboxTextView: UIViewRepresentable {
         context.coordinator.updateInlineMathPreview(for: uiView)
 
         let fieldOrThemeChanged = context.coordinator.lastFieldMode != fieldMode ||
-                                  context.coordinator.lastThemeMode != themeMode
+                                  context.coordinator.lastThemeMode != themeMode ||
+                                  context.coordinator.lastManualThemeOverride != hasManualThemeOverride
         let prefsChanged = context.coordinator.lastPreferencesToken != preferencesToken
 
         if fieldOrThemeChanged || prefsChanged {
@@ -2658,13 +2772,18 @@ private struct SandboxTextView: UIViewRepresentable {
     private func applyTraits(to textView: UITextView, coordinator: Coordinator) {
         coordinator.lastFieldMode = fieldMode
         coordinator.lastThemeMode = themeMode
+        coordinator.lastManualThemeOverride = hasManualThemeOverride
         coordinator.lastPreferencesToken = preferencesToken
 
         let isActiveSandbox = UIApplication.shared.applicationState == .active &&
             (textView.isFirstResponder || isFocused || autoFocusOnAppear)
         if isActiveSandbox {
             let defaults = KeyboardPreferences.defaults
-            defaults.set(themeMode.isDark, forKey: "crh.key.test.isDark")
+            if hasManualThemeOverride {
+                defaults.set(themeMode.isDark, forKey: "crh.key.test.isDark")
+            } else {
+                defaults.removeObject(forKey: "crh.key.test.isDark")
+            }
             defaults.set(fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
             defaults.set(true, forKey: "crh.key.test.sandboxFocused")
             defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
@@ -2678,7 +2797,7 @@ private struct SandboxTextView: UIViewRepresentable {
         textView.keyboardType = fieldMode.keyboardType
         textView.returnKeyType = fieldMode.returnKeyType
         textView.textContentType = fieldMode.textContentType
-        textView.keyboardAppearance = themeMode.keyboardAppearance
+        textView.keyboardAppearance = hasManualThemeOverride ? themeMode.keyboardAppearance : .default
         textView.enablesReturnKeyAutomatically = (fieldMode != .standard)
     }
 
@@ -2687,6 +2806,7 @@ private struct SandboxTextView: UIViewRepresentable {
         weak var textView: UITextView?
         var lastFieldMode: KeyboardTestFieldMode?
         var lastThemeMode: KeyboardTestThemeMode?
+        var lastManualThemeOverride: Bool?
         var lastPreferencesToken: String?
         var lastSyncedText: String
         var isReloadingTraits = false

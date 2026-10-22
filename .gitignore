@@ -71,5 +71,13 @@ Icon
 Archive/
 *.log
 
-# Local AI assistant chat exports (private, ~150 MB)
+# Local AI assistant chat exports, handoffs, & agent rules (private)
 QTatar/Demo/ШІ/
+**/Handoffs/
+.agents/
+AGENTS.md
+
+# Local environment & signing secrets
+.env.local
+**/LocalSigning.xcconfig
+
