@@ -277,6 +277,25 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         return result
     }
     
+    override func itemInsets(
+        for action: KeyboardAction,
+        row: Int,
+        index: Int,
+        context: KeyboardContext
+    ) -> EdgeInsets {
+        switch action {
+        case .characterMargin, .none:
+            return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+        default:
+            var insets = super.itemInsets(for: action, row: row, index: index, context: context)
+            if context.interfaceOrientation.isPortrait {
+                insets.top = 4.25
+                insets.bottom = 4.25
+            }
+            return insets
+        }
+    }
+
     override func itemAlignment(
         for action: KeyboardAction,
         in actions: KeyboardAction.Rows,
@@ -284,9 +303,8 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> Alignment {
-        // On iOS 27+, native iPad system keys align symbols/labels to the outer corners.
-        // On iOS 26 and earlier, native iPad system keys center their symbols/labels.
-        guard #available(iOS 27.0, *) else {
+        // On iPadOS 26+, native iPad system keys align symbols/labels to the outer corners.
+        guard #available(iOS 26.0, *) else {
             return .center
         }
         switch action {

@@ -57,8 +57,8 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
         default:
             if context.isKeyboardFloating {
-                // Native iPad floating keyboard button insets (43pt row - 9pt vertical insets = 34pt key cap)
-                return EdgeInsets(top: 4.5, leading: 2.5, bottom: 4.5, trailing: 2.5)
+                // Native iPad floating keyboard button insets tuned for 12-column layout (49pt row - 7pt vertical insets = 42pt key cap)
+                return EdgeInsets(top: 3.5, leading: 1.8, bottom: 3.5, trailing: 1.8)
             }
             return super.itemInsets(for: action, row: row, index: index, context: context)
         }
@@ -71,7 +71,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         context: KeyboardContext
     ) -> CGFloat {
         if context.isKeyboardFloating {
-            return 43
+            return 49
         }
         return context.interfaceOrientation.isPortrait ? 55 : 42
     }

@@ -269,7 +269,9 @@ public final class SwipeTypingState: ObservableObject {
     public func endSwipe() -> [String]? {
         let wasSwiping = isSwiping
         let seq = visitedKeys
-        let pts = fullSwipeSamples.map(\.point)
+        let samplesSnapshot = fullSwipeSamples
+        let pts = samplesSnapshot.map(\.point)
+        let timestamps = samplesSnapshot.map(\.timestamp)
         let framesSnapshot = keyFrames
         reset(clearTrailImmediately: !wasSwiping)
         guard wasSwiping, seq.count >= 2 else { return nil }
@@ -279,6 +281,7 @@ public final class SwipeTypingState: ObservableObject {
             userInfo: [
                 "keys": seq,
                 "points": pts,
+                "timestamps": timestamps,
                 "keyFrames": framesSnapshot
             ]
         )

@@ -45,6 +45,9 @@
 		B47DF72D247548198C7BD435 /* SpaceBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973BF2D3B1000007D41BC /* SpaceBarLabel.swift */; };
 		CD1CA3109F35472AA95DFC62 /* CrimeanTatarIPadKeyboardLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973D22D3B3000007D41BC /* CrimeanTatarIPadKeyboardLayoutProvider.swift */; };
 		DA7E71428C92429FAAB0CBC8 /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
+		E1A2B3C4D5E6478990123451 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
+		E1A2B3C4D5E6478990123452 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
+		E1A2B3C4D5E6478990123453 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -112,6 +115,8 @@
 		A9EAA6C727B1523C00BC9376 /* keyboardkit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = keyboardkit; path = ../; sourceTree = "<group>"; };
 		A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoLayoutProvider.swift; sourceTree = "<group>"; };
 		A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DemoActionHandler.swift; sourceTree = "<group>"; };
+		E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		E1A2B3C4D5E6478990123454 /* LocalSigning.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = LocalSigning.xcconfig.example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -188,6 +193,7 @@
 			isa = PBXGroup;
 			children = (
 				6AE973B42D3AFD6A007D41BC /* AppConfiguration.swift */,
+				E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -204,6 +210,7 @@
 			isa = PBXGroup;
 			children = (
 				41AFDC392BE8199F0009B3EB /* QTatar.entitlements */,
+				E1A2B3C4D5E6478990123454 /* LocalSigning.xcconfig.example */,
 				A907FB612788903F003F7EC7 /* Packages */,
 				6AE973B82D3AFD6A007D41BC /* Shared */,
 				A921152425D58A94003510D9 /* Demo */,
@@ -442,6 +449,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				98C898F7BF2C45A2A2B8C2B2 /* TransliterationRules.json in Resources */,
+				E1A2B3C4D5E6478990123453 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -457,6 +465,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A921152A25D58A96003510D9 /* Assets.xcassets in Resources */,
+				E1A2B3C4D5E6478990123451 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -466,6 +475,7 @@
 			files = (
 				6A0586DB1B5E4EB399A70906 /* TransliterationRules.json in Resources */,
 				41FD887A2CF772FA00506060 /* qırım_tatar.db in Resources */,
+				E1A2B3C4D5E6478990123452 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -594,11 +604,10 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -621,11 +630,10 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -648,7 +656,6 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -675,7 +682,6 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -696,6 +702,7 @@
 		};
 		A921152F25D58A96003510D9 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E1A2B3C4D5E6478990123454 /* LocalSigning.xcconfig.example */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APP_INTENTS_METADATA_EXTRACTION = NO;
@@ -747,7 +754,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2021-2023 Daniel Saidi. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -759,6 +766,7 @@
 		};
 		A921153025D58A96003510D9 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = E1A2B3C4D5E6478990123454 /* LocalSigning.xcconfig.example */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				APP_INTENTS_METADATA_EXTRACTION = NO;
@@ -804,7 +812,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2021-2023 Daniel Saidi. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
@@ -825,7 +833,6 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -860,7 +867,6 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -891,11 +897,10 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -918,11 +923,10 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

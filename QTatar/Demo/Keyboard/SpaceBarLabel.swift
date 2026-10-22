@@ -131,25 +131,45 @@ struct BreathingTamgaView: UIViewRepresentable {
 final class BreathingTamgaUIView: UIView {
     private let shapeLayer = CAShapeLayer()
     private var cancellable: AnyCancellable?
+    private var environmentObservers: [NSObjectProtocol] = []
     private var exertionTimer: Timer?
+    private var idleStopWorkItem: DispatchWorkItem?
     private var currentExertion: CGFloat = 0
     private var targetExertion: CGFloat = 0
     private var isDark: Bool = false
     private var minOpacity: Float = 0.25
     private var maxOpacity: Float = 0.52
 
+    private var shouldSuppressAnimation: Bool {
+        UIAccessibility.isReduceMotionEnabled
+            || ProcessInfo.processInfo.isLowPowerModeEnabled
+            || KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         backgroundColor = .clear
         layer.addSublayer(shapeLayer)
-        startContinuousBreathIfNeeded()
+        startContinuousBreathIfNeeded(scheduleIdleStop: true)
 
         cancellable = SpaceBarState.shared.keystrokeSubject
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
                 self?.registerCharacterExertion()
             }
+
+        let nc = NotificationCenter.default
+        environmentObservers.append(
+            nc.addObserver(forName: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshAnimationPolicy()
+            }
+        )
+        environmentObservers.append(
+            nc.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshAnimationPolicy()
+            }
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -158,15 +178,22 @@ final class BreathingTamgaUIView: UIView {
 
     deinit {
         exertionTimer?.invalidate()
+        idleStopWorkItem?.cancel()
+        for obs in environmentObservers {
+            NotificationCenter.default.removeObserver(obs)
+        }
     }
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window != nil {
-            startContinuousBreathIfNeeded()
+            startContinuousBreathIfNeeded(scheduleIdleStop: true)
         } else {
             exertionTimer?.invalidate()
             exertionTimer = nil
+            idleStopWorkItem?.cancel()
+            idleStopWorkItem = nil
+            shapeLayer.removeAnimation(forKey: "continuousBreath")
         }
     }
 
@@ -177,7 +204,6 @@ final class BreathingTamgaUIView: UIView {
         shapeLayer.frame = bounds
         shapeLayer.path = TaraqTamgaShape().path(in: bounds).cgPath
         CATransaction.commit()
-        startContinuousBreathIfNeeded()
     }
 
     func updateAppearance(isDark: Bool, minOpacity: Float = 0.25, maxOpacity: Float = 0.52) {
@@ -189,40 +215,79 @@ final class BreathingTamgaUIView: UIView {
         shapeLayer.fillColor = baseColor.cgColor
         if rangeChanged {
             shapeLayer.removeAnimation(forKey: "continuousBreath")
+            startContinuousBreathIfNeeded(scheduleIdleStop: true)
+        } else {
+            refreshAnimationPolicy()
         }
-        startContinuousBreathIfNeeded()
     }
 
-    private func startContinuousBreathIfNeeded() {
-        shapeLayer.opacity = (minOpacity + maxOpacity) * 0.5
-        guard window != nil, shapeLayer.animation(forKey: "continuousBreath") == nil else { return }
+    private func refreshAnimationPolicy() {
+        if shouldSuppressAnimation {
+            idleStopWorkItem?.cancel()
+            idleStopWorkItem = nil
+            exertionTimer?.invalidate()
+            exertionTimer = nil
+            shapeLayer.removeAnimation(forKey: "continuousBreath")
+            shapeLayer.opacity = (minOpacity + maxOpacity) * 0.5
+        }
+    }
 
-        let opacityAnim = CABasicAnimation(keyPath: "opacity")
-        opacityAnim.fromValue = minOpacity
-        opacityAnim.toValue = maxOpacity
-        opacityAnim.duration = 2.2
-        opacityAnim.autoreverses = true
-        opacityAnim.repeatCount = .infinity
-        opacityAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-
-        let scaleAnim = CABasicAnimation(keyPath: "transform.scale")
-        scaleAnim.fromValue = 0.975
-        scaleAnim.toValue = 1.045
-        scaleAnim.duration = 2.2
-        scaleAnim.autoreverses = true
-        scaleAnim.repeatCount = .infinity
-        scaleAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-
-        let group = CAAnimationGroup()
-        group.animations = [opacityAnim, scaleAnim]
-        group.duration = 4.4
-        group.repeatCount = .infinity
-        group.isRemovedOnCompletion = false
-
+    private func pauseAtRest() {
+        idleStopWorkItem?.cancel()
+        idleStopWorkItem = nil
+        shapeLayer.removeAnimation(forKey: "continuousBreath")
         shapeLayer.speed = 1.0
         shapeLayer.timeOffset = 0.0
         shapeLayer.beginTime = 0.0
-        shapeLayer.add(group, forKey: "continuousBreath")
+        shapeLayer.opacity = (minOpacity + maxOpacity) * 0.5
+    }
+
+    private func startContinuousBreathIfNeeded(scheduleIdleStop: Bool = false) {
+        shapeLayer.opacity = (minOpacity + maxOpacity) * 0.5
+        if shouldSuppressAnimation {
+            shapeLayer.removeAnimation(forKey: "continuousBreath")
+            return
+        }
+        guard window != nil else { return }
+
+        if shapeLayer.animation(forKey: "continuousBreath") == nil {
+            let opacityAnim = CABasicAnimation(keyPath: "opacity")
+            opacityAnim.fromValue = minOpacity
+            opacityAnim.toValue = maxOpacity
+            opacityAnim.duration = 2.2
+            opacityAnim.autoreverses = true
+            opacityAnim.repeatCount = .infinity
+            opacityAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+            let scaleAnim = CABasicAnimation(keyPath: "transform.scale")
+            scaleAnim.fromValue = 0.975
+            scaleAnim.toValue = 1.045
+            scaleAnim.duration = 2.2
+            scaleAnim.autoreverses = true
+            scaleAnim.repeatCount = .infinity
+            scaleAnim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+            let group = CAAnimationGroup()
+            group.animations = [opacityAnim, scaleAnim]
+            group.duration = 4.4
+            group.repeatCount = .infinity
+            group.isRemovedOnCompletion = false
+
+            shapeLayer.speed = 1.0
+            shapeLayer.timeOffset = 0.0
+            shapeLayer.beginTime = 0.0
+            shapeLayer.add(group, forKey: "continuousBreath")
+        }
+
+        if scheduleIdleStop && exertionTimer == nil {
+            idleStopWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                guard let self, self.exertionTimer == nil, self.currentExertion < 0.005 else { return }
+                self.pauseAtRest()
+            }
+            idleStopWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.4, execute: work)
+        }
     }
 
     private func updateBreathingSpeed(_ newSpeed: Float) {
@@ -235,8 +300,10 @@ final class BreathingTamgaUIView: UIView {
     }
 
     private func registerCharacterExertion() {
-        guard !KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") else { return }
-        startContinuousBreathIfNeeded()
+        guard !shouldSuppressAnimation else { return }
+        idleStopWorkItem?.cancel()
+        idleStopWorkItem = nil
+        startContinuousBreathIfNeeded(scheduleIdleStop: false)
         targetExertion = min(1.0, targetExertion + 0.14)
         guard exertionTimer == nil else { return }
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
@@ -253,9 +320,9 @@ final class BreathingTamgaUIView: UIView {
         if currentExertion < 0.005 && targetExertion < 0.005 {
             currentExertion = 0
             targetExertion = 0
-            updateBreathingSpeed(1.0)
             exertionTimer?.invalidate()
             exertionTimer = nil
+            pauseAtRest()
             return
         }
         let speed = 1.0 + Float(currentExertion) * 1.9

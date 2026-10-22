@@ -404,7 +404,7 @@ enum KeyboardUsageStats {
     static func syncLearnedWordsCountFromSQLite() -> Int {
         let defaults = KeyboardPreferences.defaults
         let stored = defaults.integer(forKey: learnedWordsKey)
-        guard let containerDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID) else {
+        guard let containerDir = AppConfiguration.appGroupContainerURL else {
             return stored
         }
         let dbURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
@@ -452,7 +452,7 @@ enum KeyboardUsageStats {
     }
 
     static func clearUserLexiconDatabaseInPlace() {
-        guard let containerDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID) else {
+        guard let containerDir = AppConfiguration.appGroupContainerURL else {
             return
         }
         let dbURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
@@ -509,7 +509,7 @@ enum KeyboardUsageStats {
     }
 }
 
-/// App icon badge (`Image("logo")` / `qirim_logo.png`) adapted to the active Light/Dark app theme.
+/// App icon badge (`Image("logo")` / `qirim_logo.png` & `qirim_logo_dark.png`) adapted natively to the active Light/Dark app theme.
 struct TaraqTamgaLogoBadge: View {
     var size: CGFloat = 28
     var cornerRadius: CGFloat = 7
@@ -518,51 +518,47 @@ struct TaraqTamgaLogoBadge: View {
     private var lightGradient: LinearGradient {
         LinearGradient(
             colors: [
-                Color(red: 245.0 / 255.0, green: 229.0 / 255.0, blue: 219.0 / 255.0),
-                Color(red: 188.0 / 255.0, green: 191.0 / 255.0, blue: 223.0 / 255.0)
+                Color(red: 247.0 / 255.0, green: 228.0 / 255.0, blue: 217.0 / 255.0),
+                Color(red: 187.0 / 255.0, green: 191.0 / 255.0, blue: 223.0 / 255.0)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
     }
 
+    private var darkGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(red: 15.0 / 255.0, green: 26.0 / 255.0, blue: 38.0 / 255.0),
+                Color(red: 21.0 / 255.0, green: 37.0 / 255.0, blue: 54.0 / 255.0)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private static let hasLogoAsset: Bool = (UIImage(named: "logo") != nil)
+
     private var unitSize: CGFloat {
-        (size * 0.6846) / 9.0
+        (size * (702.0 / 1024.0)) / 9.0
     }
 
     var body: some View {
         Group {
-            if let uiImage = UIImage(named: "logo") {
-                if colorScheme == .dark {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .interpolation(.high)
-                        .antialiased(true)
-                        .scaledToFit()
-                        .colorInvert()
-                        .hueRotation(.degrees(180))
-                } else {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .interpolation(.high)
-                        .antialiased(true)
-                        .scaledToFit()
-                }
+            if Self.hasLogoAsset {
+                Image("logo")
+                    .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
+                    .scaledToFit()
             } else {
                 let unit = unitSize
-                let badge = ZStack {
+                ZStack {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(Color.white)
+                        .fill(colorScheme == .dark ? darkGradient : lightGradient)
                     SharedTaraqTamgaShape()
-                        .fill(Color.black)
+                        .fill(colorScheme == .dark ? Color.white : Color.black)
                         .frame(width: unit * 9.0, height: unit * 5.0)
-                }
-                if colorScheme == .dark {
-                    badge
-                        .colorInvert()
-                        .hueRotation(.degrees(180))
-                } else {
-                    badge
                 }
             }
         }
@@ -627,6 +623,14 @@ enum AppConfiguration {
     static let keyboardBundleIdPattern = "crh.key.keyboard*"
     static let fallbackDocumentID = UUID()
     static var lastValidDocumentIdentifier: UUID?
+
+    static var appGroupContainerURL: URL? {
+        guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
+              FileManager.default.isWritableFile(atPath: url.path) else {
+            return nil
+        }
+        return url
+    }
 }
 
 extension UITextDocumentProxy {

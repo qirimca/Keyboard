@@ -746,6 +746,59 @@ private let parityCases: [(String, String)] = {
     #expect(wordFrequency("sazlamalar") >= 10)
 }
 
+@Test func phase11VelocityAnchorAndMemorySafetyVerification() throws {
+    let pts: [CGPoint] = [
+        CGPoint(x: 150, y: 120), // b
+        CGPoint(x: 350, y: 70),  // i
+        CGPoint(x: 280, y: 70),  // l (collinear dwell anchor)
+        CGPoint(x: 350, y: 70),  // i
+        CGPoint(x: 110, y: 20)   // r
+    ]
+    let dwellTimestamps: [TimeInterval] = [0.00, 0.04, 0.19, 0.23, 0.27]
+    let dwellMatches = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["b", "i", "l", "i", "r"],
+        isCyrillic: false,
+        shouldCapitalize: false,
+        contextWords: [],
+        trailPoints: pts,
+        timestamps: dwellTimestamps
+    )
+    #expect(!dwellMatches.isEmpty)
+    #expect(dwellMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "bilir")
+
+    // Edge cases: empty timestamps, single timestamp, identical timestamps (zero dt)
+    let zeroDtMatches = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["m", "e", "n"],
+        isCyrillic: false,
+        shouldCapitalize: false,
+        contextWords: [],
+        trailPoints: [CGPoint(x: 240, y: 120), CGPoint(x: 80, y: 20), CGPoint(x: 210, y: 120)],
+        timestamps: [1.0, 1.0, 1.0]
+    )
+    #expect(zeroDtMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "men")
+
+    let singleTsMatches = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["s", "e", "n"],
+        isCyrillic: false,
+        shouldCapitalize: false,
+        contextWords: [],
+        trailPoints: [CGPoint(x: 60, y: 70), CGPoint(x: 80, y: 20), CGPoint(x: 210, y: 120)],
+        timestamps: [0.5]
+    )
+    #expect(singleTsMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "sen")
+
+    // Verify Jetsam / 0xdead10cc lifecycle helpers execute without error
+    SuggestionsDataBaseManager.shared.releaseMemory()
+    SuggestionsDataBaseManager.shared.clearUserLexicon()
+    let postReleaseMatches = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["b", "i", "r"],
+        isCyrillic: false,
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(postReleaseMatches.first?.text.lowercased(with: Locale(identifier: "tr")) == "bir")
+}
+
 #if !canImport(UIKit)
 enum Autocomplete {
     struct Suggestion: Equatable {

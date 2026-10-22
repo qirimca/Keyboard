@@ -6,6 +6,7 @@
 //  Copyright © 2021-2024 Daniel Saidi. All rights reserved.
 //
 
+import Combine
 import SwiftUI
 import KeyboardKit
 import UIKit
@@ -131,8 +132,8 @@ struct HomeView: View {
     @State private var canSandboxRedo = false
     @State private var isStatsExpanded = false
     @State private var showResetStatsConfirmation = false
-
-    private static let statsPollTimer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
+    @State private var isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var iconAnimationEpoch = 0
 
     @State private var selectedFieldMode: KeyboardTestFieldMode = {
         if let value = UserDefaults.standard.string(forKey: "qt_field"),
@@ -168,8 +169,13 @@ struct HomeView: View {
     @State private var didInitializeThemeFromSystem = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum CyrillicStatus { case enabled, missing, unknown }
+
+    private var animationsAllowed: Bool {
+        !reduceMotion && !isLowPowerMode && !Self.isUITestingEnvironment
+    }
 
     private var shouldShowStartOverlay: Bool {
         !areAllIndicatorsEnabled && !isWritingFieldFocused && !isKeyboardVisible
@@ -218,7 +224,7 @@ struct HomeView: View {
                 .onChange(of: isStatsExpanded) { _, expanded in
                     if expanded {
                         refreshStatsFromAppGroup(syncSQLite: true)
-                        withAnimation(.easeInOut(duration: 0.25)) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                             scroll.scrollTo("statsSection", anchor: .top)
                         }
                     }
@@ -236,36 +242,39 @@ struct HomeView: View {
                     syncSandboxFocusToAppGroup(focused)
                     if focused && !isStatsExpanded {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                            withAnimation(.easeInOut(duration: 0.22)) {
+                            withAnimation(animationsAllowed ? .easeInOut(duration: 0.22) : nil) {
                                 scroll.scrollTo("writingArea", anchor: .bottom)
                             }
                         }
                     }
                 }
                 .onChange(of: text) { _, _ in
+                    if statsEnabled {
+                        refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
+                    }
                     if isWritingFieldFocused {
-                        withAnimation(.easeInOut(duration: 0.2)) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.2) : nil) {
                             scroll.scrollTo("writingArea", anchor: .bottom)
                         }
                     }
                 }
                 .onChange(of: ukrainianCyrillicLayout) { _, _ in
                     if (isWritingFieldFocused || isKeyboardVisible) && !isStatsExpanded {
-                        withAnimation(.easeInOut(duration: 0.22)) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.22) : nil) {
                             scroll.scrollTo("writingArea", anchor: .bottom)
                         }
                     }
                 }
                 .onChange(of: cyrillicEnabled) { _, _ in
                     if (isWritingFieldFocused || isKeyboardVisible) && !isStatsExpanded {
-                        withAnimation(.easeInOut(duration: 0.22)) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.22) : nil) {
                             scroll.scrollTo("writingArea", anchor: .bottom)
                         }
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
                     if (isWritingFieldFocused || isTestingExpanded) && !isStatsExpanded {
-                        withAnimation(.easeInOut(duration: 0.25)) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                             scroll.scrollTo("writingArea", anchor: .bottom)
                         }
                     }
@@ -274,7 +283,7 @@ struct HomeView: View {
                     if expanded {
                         shouldAutoFocusSandbox = true
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                            withAnimation(animationsAllowed ? .easeInOut(duration: 0.3) : nil) {
                                 scroll.scrollTo("writingArea", anchor: .bottom)
                             }
                         }
@@ -293,9 +302,9 @@ struct HomeView: View {
                         .onChange(of: geometry.size) { _, size in containerSize = size }
                 }
             }
-            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: language)
-            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: cyrillicEnabled)
-            .animation(.spring(response: 0.32, dampingFraction: 0.86), value: statsEnabled)
+            .animation(animationsAllowed ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: language)
+            .animation(animationsAllowed ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: cyrillicEnabled)
+            .animation(animationsAllowed ? .spring(response: 0.32, dampingFraction: 0.86) : nil, value: statsEnabled)
         }
         .background {
             // Measure the window before keyboard avoidance; a docked keyboard must not
@@ -316,7 +325,7 @@ struct HomeView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         })
-        .animation(.easeInOut(duration: 0.25), value: shouldShowStartOverlay)
+        .animation(animationsAllowed ? .easeInOut(duration: 0.25) : nil, value: shouldShowStartOverlay)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbar {
@@ -356,6 +365,7 @@ struct HomeView: View {
             Text(localizedInterfaceString("settings.missingCyrillic"))
         }
         .onAppear {
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
             Self.registerFloatingRequestObserverIfNeeded()
             Self.registerStatsSyncObserverIfNeeded()
             Self.enforceFullScreenWindowIfNeeded()
@@ -373,6 +383,9 @@ struct HomeView: View {
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             Self.updateHostSplitBackdropMask()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
             let now = CFAbsoluteTimeGetCurrent()
@@ -392,21 +405,21 @@ struct HomeView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+            if animationsAllowed {
+                iconAnimationEpoch &+= 1
+            }
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             Self.updateHostSplitBackdropMask()
-        }
-        .onReceive(Self.statsPollTimer) { _ in
-            if statsEnabled && scenePhase != .background {
-                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
-            }
         }
         .onChange(of: colorScheme) { _, newScheme in
             let args = ProcessInfo.processInfo.arguments
@@ -429,7 +442,7 @@ struct HomeView: View {
             clearThemeOverride()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                 isKeyboardVisible = true
             }
             Self.syncHostSystemSplitStateIfNeeded()
@@ -444,7 +457,7 @@ struct HomeView: View {
             Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            withAnimation(.easeInOut(duration: 0.25)) {
+            withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                 isKeyboardVisible = false
             }
             Self.updateHostSplitBackdropMask()
@@ -504,6 +517,10 @@ struct HomeView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
+                isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                if animationsAllowed {
+                    iconAnimationEpoch &+= 1
+                }
                 Self.enforceFullScreenWindowIfNeeded()
                 if isWritingFieldFocused || shouldAutoFocusSandbox {
                     syncThemeToAppGroup(selectedThemeMode)
@@ -887,7 +904,7 @@ struct HomeView: View {
 
     private static func clampFloatingKeyboardToScreenBounds() {
         guard Device.iPad else { return }
-        let screenBounds = UIScreen.main.bounds
+        let screenBounds = (UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene)?.screen.bounds ?? (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds ?? UIScreen.main.bounds
         let margin: CGFloat = 12
         var windows = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
@@ -1200,19 +1217,32 @@ private extension HomeView {
         return KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: "Interface")
     }
 
-    func settingsIconBadge(_ systemName: String, color: Color, isEnabled: Bool = true) -> some View {
-        let effectiveColor = isEnabled ? color : Color(.systemGray2)
-        return ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(effectiveColor.gradient)
-                .frame(width: 28, height: 28)
-            Image(systemName: systemName)
-                .font(.system(size: 13.5, weight: .semibold))
-                .foregroundStyle(.white)
-                .contentTransition(.symbolEffect(.replace))
-        }
-        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: systemName)
-        .animation(.spring(response: 0.3, dampingFraction: 0.82), value: isEnabled)
+    static var livelyIconSpring: Animation {
+        .spring(response: 0.36, dampingFraction: 0.58)
+    }
+
+    static var livelyIconJumpTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
+            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+        )
+    }
+
+    static var isUITestingEnvironment: Bool {
+        KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || ProcessInfo.processInfo.arguments.contains("-qt_reset_text")
+    }
+
+    func settingsIconBadge(_ systemName: String, color: Color, isEnabled: Bool = true, triggerToken: String = "") -> some View {
+        InteractiveSettingsIconBadge(
+            systemName: systemName,
+            color: color,
+            isEnabled: isEnabled,
+            language: language,
+            triggerToken: triggerToken,
+            reopenEpoch: iconAnimationEpoch
+        )
     }
 
     func cyrillicKeycapIconBadge(color: Color, isEnabled: Bool = true) -> some View {
@@ -1221,7 +1251,9 @@ private extension HomeView {
             targetLabel: "Q",
             isEnabled: isEnabled,
             isUkrainianStyle: false,
-            accentColor: color
+            accentColor: color,
+            language: language,
+            reopenEpoch: iconAnimationEpoch
         )
     }
 
@@ -1231,55 +1263,31 @@ private extension HomeView {
             targetLabel: "Q",
             isEnabled: isEnabled,
             isUkrainianStyle: true,
-            accentColor: brandBlue
+            accentColor: brandBlue,
+            language: language,
+            reopenEpoch: iconAnimationEpoch
         )
     }
 
     func ukrainianTransliterationMiniCapsules(isEnabled: Bool) -> some View {
-        let pairs: [(src: String, dst: String)] = [
-            ("ґ", "g"),
-            ("г", "ğ"),
-            ("к\u{02BC}", "q"),
-            ("н\u{02BC}", "ñ")
-        ]
-        return HStack(spacing: 5) {
-            ForEach(pairs, id: \.src) { pair in
-                HStack(spacing: 2.5) {
-                    Text(pair.src)
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(isEnabled ? primaryInk : secondaryInk)
-                    Text("→")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(secondaryInk.opacity(0.8))
-                    Text(pair.dst)
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2.5)
-                .background(
-                    isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
-                    in: Capsule()
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(isEnabled ? brandBlue.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 0.75)
-                )
-            }
-        }
-        .animation(.spring(response: 0.32, dampingFraction: 0.84), value: isEnabled)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(localizedInterfaceString("settings.ukrainianCyrillic.desc"))
+        UkrainianTransliterationMiniCapsulesView(
+            isEnabled: isEnabled,
+            language: language,
+            reopenEpoch: iconAnimationEpoch,
+            brandBlue: brandBlue,
+            primaryInk: primaryInk,
+            secondaryInk: secondaryInk,
+            accessibilityLabelText: localizedInterfaceString("settings.ukrainianCyrillic.desc")
+        )
     }
 
     func walnutBrainIconBadge(color: Color, isEnabled: Bool = true) -> some View {
-        let effectiveColor = isEnabled ? color : Color(.systemGray2)
-        return ZStack {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(effectiveColor.gradient)
-                .frame(width: 28, height: 28)
-            WalnutBrainIcon(color: .white, size: 16.5)
-        }
+        InteractiveWalnutIconBadge(
+            color: color,
+            isEnabled: isEnabled,
+            language: language,
+            reopenEpoch: iconAnimationEpoch
+        )
     }
 
     var statusIndicatorsSection: some View {
@@ -1403,7 +1411,7 @@ private extension HomeView {
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
-                        Toggle("", isOn: $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                        Toggle("", isOn: animationsAllowed ? $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $cyrillicEnabled)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .accessibilityIdentifier("settings.cyrillic.toggle")
@@ -1453,6 +1461,7 @@ private extension HomeView {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(appleGreen)
+                                .symbolEffect(.bounce.up.byLayer, value: animationsAllowed ? "\(language)-\(iconAnimationEpoch)" : "")
                             interfaceLabel("settings.cyrillicStatusAdded")
                                 .font(InterfaceFont.font("GeneralSans-Semibold", size: 13))
                                 .foregroundStyle(appleGreen)
@@ -1522,7 +1531,7 @@ private extension HomeView {
                         ukrainianTransliterationMiniCapsules(isEnabled: ukrainianCyrillicLayout)
                     }
                     Spacer(minLength: 8)
-                    Toggle("", isOn: $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                    Toggle("", isOn: animationsAllowed ? $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $ukrainianCyrillicLayout)
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .accessibilityIdentifier("settings.ukrainianCyrillic.toggle")
@@ -1542,7 +1551,7 @@ private extension HomeView {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                Toggle("", isOn: $suggestionsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                Toggle("", isOn: animationsAllowed ? $suggestionsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $suggestionsEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .accessibilityIdentifier("settings.suggestions.toggle")
@@ -1561,7 +1570,7 @@ private extension HomeView {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                Toggle("", isOn: $wordLearningEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                Toggle("", isOn: animationsAllowed ? $wordLearningEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $wordLearningEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .accessibilityIdentifier("settings.wordLearning.toggle")
@@ -1580,7 +1589,7 @@ private extension HomeView {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                Toggle("", isOn: $statsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                Toggle("", isOn: animationsAllowed ? $statsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $statsEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .accessibilityIdentifier("settings.stats.toggle")
@@ -1603,7 +1612,14 @@ private extension HomeView {
                 .init(id: "uk", title: "Українська", accessibilityIdentifier: "settings.lang.uk"),
                 .init(id: "en", title: "English", accessibilityIdentifier: "settings.lang.en")
             ],
-            selection: $language,
+            selection: Binding(
+                get: { language },
+                set: { newValue in
+                    withAnimation(animationsAllowed ? Self.livelyIconSpring : nil) {
+                        language = newValue
+                    }
+                }
+            ),
             apportionsWidthsByContent: !fullWidth,
             expandsToFillWidth: fullWidth
         )
@@ -1614,12 +1630,12 @@ private extension HomeView {
     var testingAndWritingSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.84)) {
+                withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
                     isTestingExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 12) {
-                    settingsIconBadge("keyboard.badge.eye", color: brandBlue)
+                    settingsIconBadge("keyboard.badge.eye", color: brandBlue, triggerToken: "\(isTestingExpanded)")
                     Text(Onboarding.onb_check_key.localized)
                         .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
                         .foregroundStyle(primaryInk)
@@ -1668,7 +1684,11 @@ private extension HomeView {
         VStack(alignment: .leading, spacing: 10) {
             // Row 1: Leading mode icon badge + Native iOS 27 Segmented Field Mode strip
             HStack(spacing: 10) {
-                settingsIconBadge(selectedFieldMode.icon, color: brandBlue)
+                settingsIconBadge(
+                    selectedFieldMode.icon,
+                    color: brandBlue,
+                    triggerToken: selectedFieldMode.rawValue
+                )
                 NativeSegmentedControl(
                     items: KeyboardTestFieldMode.allCases.map { mode in
                         .init(
@@ -1682,7 +1702,9 @@ private extension HomeView {
                         set: { newValue in
                             if let mode = KeyboardTestFieldMode(rawValue: newValue) {
                                 shouldAutoFocusSandbox = true
-                                selectedFieldMode = mode
+                                withAnimation(animationsAllowed ? Self.livelyIconSpring : nil) {
+                                    selectedFieldMode = mode
+                                }
                             }
                         }
                     ),
@@ -1697,7 +1719,8 @@ private extension HomeView {
                     selectedThemeMode.icon,
                     color: selectedThemeMode.isDark
                         ? Color(red: 0.35, green: 0.34, blue: 0.84)
-                        : Color(red: 0.96, green: 0.58, blue: 0.04)
+                        : Color(red: 0.96, green: 0.58, blue: 0.04),
+                    triggerToken: selectedThemeMode.rawValue
                 )
                 NativeSegmentedControl(
                     items: [
@@ -1718,7 +1741,9 @@ private extension HomeView {
                             if let mode = KeyboardTestThemeMode(rawValue: newValue) {
                                 hasManualThemeOverride = true
                                 shouldAutoFocusSandbox = true
-                                selectedThemeMode = mode
+                                withAnimation(animationsAllowed ? Self.livelyIconSpring : nil) {
+                                    selectedThemeMode = mode
+                                }
                             }
                         }
                     ),
@@ -1736,11 +1761,6 @@ private extension HomeView {
 
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: selectedFieldMode.icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(brandBlue)
-                    .contentTransition(.symbolEffect(.replace))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.82), value: selectedFieldMode.icon)
                 Text(Home.home_writearea_key.localized)
                     .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
                     .foregroundStyle(secondaryInk)
@@ -2600,6 +2620,244 @@ private struct WalnutBrainIcon: View {
     }
 }
 
+/// Interactive one-shot animated settings icon badge that respects Reduce Motion & Low Power Mode,
+/// animates on first appearance (when enabled), toggle ON, app/section reopen, language/mode switch,
+/// or direct tap on the icon, and rests completely at 0% idle CPU/GPU.
+private struct InteractiveSettingsIconBadge: View {
+    let systemName: String
+    let color: Color
+    var isEnabled: Bool = true
+    var language: String = "crh"
+    var triggerToken: String = ""
+    var reopenEpoch: Int = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var bounceScale: CGFloat = 1.0
+    @State private var jumpOffset: CGFloat = 0
+    @State private var spinDegrees: Double = 0
+    @State private var symbolBounceCount: Int = 0
+
+    private var animationsAllowed: Bool {
+        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+    }
+
+    private static var livelySpring: Animation {
+        .spring(response: 0.36, dampingFraction: 0.58)
+    }
+
+    private static var iconJumpTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
+            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+        )
+    }
+
+    private func triggerOneShotBounce(delay: Double = 0.0) {
+        guard animationsAllowed else {
+            bounceScale = 1.0
+            jumpOffset = 0
+            spinDegrees = 0
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard animationsAllowed else { return }
+            symbolBounceCount += 1
+            withAnimation(Self.livelySpring) {
+                bounceScale = 1.15
+                jumpOffset = -4.0
+                spinDegrees = (systemName == "sparkles" || systemName == "globe" || systemName == "sun.max.fill" || systemName == "moon.stars.fill") ? 16 : 10
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+                guard animationsAllowed else { return }
+                withAnimation(Self.livelySpring) {
+                    bounceScale = 1.0
+                    jumpOffset = 0
+                    spinDegrees = 0
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        let glyphIdentity = "\(systemName)-\(language)"
+
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(effectiveColor.gradient)
+                .frame(width: 28, height: 28)
+            Image(systemName: systemName)
+                .id(glyphIdentity)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.white)
+                .transition(animationsAllowed ? Self.iconJumpTransition : .identity)
+        }
+        .symbolEffect(.bounce.up.byLayer, value: symbolBounceCount)
+        .scaleEffect(bounceScale)
+        .offset(y: jumpOffset)
+        .rotationEffect(.degrees(spinDegrees))
+        .rotation3DEffect(
+            .degrees(isEnabled ? 0 : -12),
+            axis: (x: 1, y: 0.4, z: 0),
+            perspective: 0.55
+        )
+        .animation(animationsAllowed ? Self.livelySpring : nil, value: isEnabled)
+        .animation(animationsAllowed ? Self.livelySpring : nil, value: glyphIdentity)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerOneShotBounce()
+        }
+        .onAppear {
+            if isEnabled {
+                triggerOneShotBounce(delay: 0.12)
+            }
+        }
+        .onChange(of: isEnabled) { _, newValue in
+            if newValue {
+                triggerOneShotBounce()
+            } else {
+                bounceScale = 1.0
+                jumpOffset = 0
+                spinDegrees = 0
+            }
+        }
+        .onChange(of: triggerToken) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce()
+            }
+        }
+        .onChange(of: systemName) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce()
+            }
+        }
+        .onChange(of: language) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce()
+            }
+        }
+        .onChange(of: reopenEpoch) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce(delay: 0.08)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && isEnabled {
+                triggerOneShotBounce(delay: 0.14)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+    }
+}
+
+/// Interactive one-shot animated walnut-brain icon badge for personalized word & bigram learning.
+private struct InteractiveWalnutIconBadge: View {
+    let color: Color
+    var isEnabled: Bool = true
+    var language: String = "crh"
+    var reopenEpoch: Int = 0
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var bounceScale: CGFloat = 1.0
+    @State private var jumpOffset: CGFloat = 0
+    @State private var tiltDegrees: Double = 0
+
+    private var animationsAllowed: Bool {
+        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+    }
+
+    private static var livelySpring: Animation {
+        .spring(response: 0.36, dampingFraction: 0.58)
+    }
+
+    private func triggerOneShotBounce(delay: Double = 0.0) {
+        guard animationsAllowed else {
+            bounceScale = 1.0
+            jumpOffset = 0
+            tiltDegrees = 0
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard animationsAllowed else { return }
+            withAnimation(Self.livelySpring) {
+                bounceScale = 1.15
+                jumpOffset = -4.0
+                tiltDegrees = 12
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.24) {
+                guard animationsAllowed else { return }
+                withAnimation(Self.livelySpring) {
+                    bounceScale = 1.0
+                    jumpOffset = 0
+                    tiltDegrees = 0
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        let effectiveColor = isEnabled ? color : Color(.systemGray2)
+
+        ZStack {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(effectiveColor.gradient)
+                .frame(width: 28, height: 28)
+            WalnutBrainIcon(color: .white, size: 16.5)
+        }
+        .scaleEffect(bounceScale)
+        .offset(y: jumpOffset)
+        .rotationEffect(.degrees(tiltDegrees))
+        .rotation3DEffect(
+            .degrees(isEnabled ? 0 : -12),
+            axis: (x: 1, y: 0.4, z: 0),
+            perspective: 0.55
+        )
+        .animation(animationsAllowed ? Self.livelySpring : nil, value: isEnabled)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerOneShotBounce()
+        }
+        .onAppear {
+            if isEnabled {
+                triggerOneShotBounce(delay: 0.15)
+            }
+        }
+        .onChange(of: isEnabled) { _, newValue in
+            if newValue {
+                triggerOneShotBounce()
+            } else {
+                bounceScale = 1.0
+                jumpOffset = 0
+                tiltDegrees = 0
+            }
+        }
+        .onChange(of: language) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce()
+            }
+        }
+        .onChange(of: reopenEpoch) { _, _ in
+            if isEnabled {
+                triggerOneShotBounce(delay: 0.08)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && isEnabled {
+                triggerOneShotBounce(delay: 0.16)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+    }
+}
+
 /// Animated keycap badge for Cyrillic -> Latin transliteration row (`Къ ↔ Q` or `Кʼ ↔ Q`).
 private struct TransliterationKeycapBadge: View {
     let sourceLabel: String
@@ -2607,29 +2865,71 @@ private struct TransliterationKeycapBadge: View {
     let isEnabled: Bool
     let isUkrainianStyle: Bool
     let accentColor: Color
+    var language: String = "crh"
+    var reopenEpoch: Int = 0
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var showTargetGlyph = false
-    private let morphTimer = Timer.publish(every: 4.5, on: .main, in: .common).autoconnect()
+    @State private var flipDegrees: Double = 0
+    @State private var jumpOffset: CGFloat = 0
+    @State private var bounceScale: CGFloat = 1.0
 
-    private func triggerMorphPulse(delay: Double = 0.0) {
-        guard isEnabled else {
+    private var animationsAllowed: Bool {
+        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+    }
+
+    private static var livelySpring: Animation {
+        .spring(response: 0.36, dampingFraction: 0.58)
+    }
+
+    private static var glyphTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
+            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+        )
+    }
+
+    private func triggerOneShotFlipBounce(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
+        guard animationsAllowed else {
             showTargetGlyph = false
+            jumpOffset = 0
+            bounceScale = 1.0
+            return
+        }
+        guard isEnabled || forceAllowWhenDisabled else {
+            withAnimation(Self.livelySpring) {
+                showTargetGlyph = false
+                jumpOffset = 0
+                bounceScale = 1.0
+            }
             return
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            guard isEnabled else { return }
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
+            guard (isEnabled || forceAllowWhenDisabled), animationsAllowed else { return }
+            withAnimation(Self.livelySpring) {
                 showTargetGlyph = true
+                flipDegrees += 360
+                jumpOffset = -4.5
+                bounceScale = 1.14
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.95) {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.52) {
+                guard animationsAllowed else { return }
+                withAnimation(Self.livelySpring) {
                     showTargetGlyph = false
+                    flipDegrees += 360
+                    jumpOffset = 0
+                    bounceScale = 1.0
                 }
             }
         }
     }
 
     var body: some View {
+        let activeGlyph = showTargetGlyph ? targetLabel : sourceLabel
+        let glyphToken = "\(activeGlyph)-\(isEnabled)-\(language)"
+
         ZStack {
             if isEnabled {
                 if isUkrainianStyle {
@@ -2653,34 +2953,199 @@ private struct TransliterationKeycapBadge: View {
                     .fill(Color(.systemGray3).gradient)
             }
 
-            Text(isEnabled && showTargetGlyph ? targetLabel : sourceLabel)
+            Text(activeGlyph)
+                .id(glyphToken)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(isUkrainianStyle && isEnabled ? 0.35 : 0.0), radius: 1, x: 0, y: 0.5)
-                .contentTransition(.interpolate)
-                .scaleEffect(isEnabled && showTargetGlyph ? 1.08 : 1.0)
-                .id(isEnabled && showTargetGlyph ? targetLabel : sourceLabel)
+                .transition(animationsAllowed ? Self.glyphTransition : .identity)
         }
         .frame(width: 28, height: 28)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: isEnabled)
-        .animation(.spring(response: 0.35, dampingFraction: 0.78), value: showTargetGlyph)
+        .scaleEffect(bounceScale)
+        .offset(y: jumpOffset)
+        .rotation3DEffect(
+            .degrees(flipDegrees),
+            axis: (x: 0.18, y: 1.0, z: 0.0),
+            perspective: 0.55
+        )
+        .animation(animationsAllowed ? Self.livelySpring : nil, value: glyphToken)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerOneShotFlipBounce(forceAllowWhenDisabled: true)
+        }
         .onAppear {
             if isEnabled {
-                triggerMorphPulse(delay: 0.55)
-            }
-        }
-        .onReceive(morphTimer) { _ in
-            if isEnabled {
-                triggerMorphPulse()
+                triggerOneShotFlipBounce(delay: 0.18)
             }
         }
         .onChange(of: isEnabled) { _, newValue in
             if newValue {
-                triggerMorphPulse()
+                triggerOneShotFlipBounce()
             } else {
-                showTargetGlyph = false
+                withAnimation(animationsAllowed ? Self.livelySpring : nil) {
+                    showTargetGlyph = false
+                    jumpOffset = 0
+                    bounceScale = 1.0
+                }
             }
         }
+        .onChange(of: language) { _, _ in
+            if isEnabled {
+                triggerOneShotFlipBounce()
+            }
+        }
+        .onChange(of: reopenEpoch) { _, _ in
+            if isEnabled {
+                triggerOneShotFlipBounce(delay: 0.08)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && isEnabled {
+                triggerOneShotFlipBounce(delay: 0.18)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+    }
+}
+
+/// Staggered spring-wave mini-capsules (`ґ → g · г → ğ · кʼ → q · нʼ → ñ`) for the Ukrainian Cyrillic layout row.
+private struct UkrainianTransliterationMiniCapsulesView: View {
+    let isEnabled: Bool
+    let language: String
+    var reopenEpoch: Int = 0
+    let brandBlue: Color
+    let primaryInk: Color
+    let secondaryInk: Color
+    let accessibilityLabelText: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
+    @State private var jumpingIndices: Set<Int> = []
+
+    private var animationsAllowed: Bool {
+        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+    }
+
+    private static let pairs: [(src: String, dst: String)] = [
+        ("ґ", "g"),
+        ("г", "ğ"),
+        ("к\u{02BC}", "q"),
+        ("н\u{02BC}", "ñ")
+    ]
+
+    private static var livelySpring: Animation {
+        .spring(response: 0.36, dampingFraction: 0.58)
+    }
+
+    private static var capsuleTransition: AnyTransition {
+        .asymmetric(
+            insertion: .scale(scale: 0.55).combined(with: .opacity).combined(with: .offset(y: 8)),
+            removal: .scale(scale: 0.75).combined(with: .opacity).combined(with: .offset(y: -8))
+        )
+    }
+
+    private func triggerStaggeredWave(initialDelay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
+        guard animationsAllowed, (isEnabled || forceAllowWhenDisabled) else {
+            jumpingIndices.removeAll()
+            return
+        }
+        for idx in 0..<Self.pairs.count {
+            let stepDelay = initialDelay + Double(idx) * 0.055
+            DispatchQueue.main.asyncAfter(deadline: .now() + stepDelay) {
+                guard animationsAllowed else { return }
+                withAnimation(Self.livelySpring) {
+                    jumpingIndices.insert(idx)
+                }
+            }
+            let releaseDelay = stepDelay + 0.24
+            DispatchQueue.main.asyncAfter(deadline: .now() + releaseDelay) {
+                guard animationsAllowed else { return }
+                withAnimation(Self.livelySpring) {
+                    jumpingIndices.remove(idx)
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            ForEach(Array(Self.pairs.enumerated()), id: \.element.src) { index, pair in
+                let isJumping = jumpingIndices.contains(index)
+                let itemToken = "\(pair.src)-\(isEnabled)-\(language)"
+                ZStack {
+                    HStack(spacing: 2.5) {
+                        Text(pair.src)
+                            .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(isEnabled ? primaryInk : secondaryInk)
+                        Text("→")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(secondaryInk.opacity(0.8))
+                        Text(pair.dst)
+                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                            .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
+                    }
+                    .id(itemToken)
+                    .transition(animationsAllowed ? Self.capsuleTransition : .identity)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(
+                    isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
+                    in: Capsule()
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isEnabled ? brandBlue.opacity(0.22) : Color.primary.opacity(0.06), lineWidth: 0.75)
+                )
+                .scaleEffect(isJumping ? 1.11 : 1.0)
+                .offset(y: isJumping ? -4.5 : 0)
+                .rotation3DEffect(
+                    .degrees(isJumping ? 14 : 0),
+                    axis: (x: 1, y: 0.2, z: 0),
+                    perspective: 0.55
+                )
+                .animation(animationsAllowed ? Self.livelySpring.delay(Double(index) * 0.04) : nil, value: itemToken)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerStaggeredWave(forceAllowWhenDisabled: true)
+        }
+        .onAppear {
+            if isEnabled {
+                triggerStaggeredWave(initialDelay: 0.14)
+            }
+        }
+        .onChange(of: isEnabled) { _, newValue in
+            if newValue {
+                triggerStaggeredWave()
+            } else {
+                jumpingIndices.removeAll()
+            }
+        }
+        .onChange(of: language) { _, _ in
+            if isEnabled {
+                triggerStaggeredWave()
+            }
+        }
+        .onChange(of: reopenEpoch) { _, _ in
+            if isEnabled {
+                triggerStaggeredWave(initialDelay: 0.08)
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active && isEnabled {
+                triggerStaggeredWave(initialDelay: 0.16)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabelText)
     }
 }
 

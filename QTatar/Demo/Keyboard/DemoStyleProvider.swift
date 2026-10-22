@@ -137,7 +137,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         switch keyboardContext.deviceType {
         case .phone:
-            return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+            return EdgeInsets(top: 0, leading: 3, bottom: 0, trailing: 3)
         case .pad:
             return EdgeInsets(top: 2, leading: 3, bottom: 2, trailing: 3)
         default:
@@ -148,8 +148,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         if keyboardContext.isKeyboardFloating {
-            config.rowHeight = 43
-            config.buttonInsets = EdgeInsets(top: 4.5, leading: 2.5, bottom: 4.5, trailing: 2.5)
+            config.rowHeight = 49
+            config.buttonInsets = EdgeInsets(top: 3.5, leading: 1.8, bottom: 3.5, trailing: 1.8)
             config.buttonCornerRadius = 7.5
         } else if keyboardContext.deviceType == .phone {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
@@ -160,10 +160,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             config.buttonCornerRadius = 6.5
         } else if isPad {
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            config.rowHeight = isPortrait ? 58 : 75
+            config.rowHeight = isPortrait ? 56.5 : 75
             config.buttonInsets = isPortrait
-                ? EdgeInsets(top: 4.0, leading: 3.5, bottom: 4.0, trailing: 3.5)
-                : EdgeInsets(top: 5.0, leading: 4.5, bottom: 5.0, trailing: 4.5)
+                ? EdgeInsets(top: 4.25, leading: 6.0, bottom: 4.25, trailing: 6.0)
+                : EdgeInsets(top: 6.0, leading: 7.0, bottom: 6.0, trailing: 7.0)
             config.buttonCornerRadius = isPortrait ? 7.0 : 8.0
         }
         return config
@@ -178,7 +178,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             return letterRowHeight
         }
         if isPad {
-            return keyboardContext.interfaceOrientation.isPortrait ? 58 : 75
+            if keyboardContext.interfaceOrientation.isPortrait {
+                return rowIndex == 3 ? 54.5 : 56.5
+            }
+            return 75
         }
         return super.rowHeight(forRowAt: rowIndex, in: layout)
     }
@@ -316,7 +319,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     /// Height of letter rows tuned for native iOS look and feel
     private var letterRowHeight: CGFloat {
         if keyboardContext.isKeyboardFloating {
-            return 43
+            return 49
         }
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
         return isPortrait ? 55 : 42
@@ -447,20 +450,24 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let isFloating = keyboardContext.isKeyboardFloating
         let isDockedPad = isPad && !isFloating
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
+        let minScreenDim = min(keyboardContext.screenSize.width, keyboardContext.screenSize.height)
+        let isCompactPhone = !isPad && !isFloating && minScreenDim > 0 && minScreenDim < 385
         switch action {
         case .character(let char):
             let isLetter = char.first?.isLetter ?? false
             if isLetter {
                 let isLower = char == char.lowercased() && char != char.uppercased()
                 if isFloating {
-                    return .system(size: isLower ? 22 : 19, weight: .regular)
+                    return .system(size: isLower ? 20.5 : 18.0, weight: .regular)
                 } else if isDockedPad {
-                    return .system(size: isPortrait ? (isLower ? 21 : 19.5) : (isLower ? 23 : 21.5), weight: .regular)
+                    return .system(size: isPortrait ? (isLower ? 20.5 : 19.5) : (isLower ? 23.0 : 21.5), weight: .regular)
+                } else if isCompactPhone {
+                    return .system(size: isLower ? 22.5 : 19.5, weight: .regular)
                 } else {
                     return .system(size: isLower ? 24.5 : 21.5, weight: .regular)
                 }
             }
-            return .system(size: isFloating ? 19 : (isDockedPad ? (isPortrait ? 20 : 22) : 21.5), weight: .regular)
+            return .system(size: isFloating ? 19 : (isDockedPad ? (isPortrait ? 20 : 22) : (isCompactPhone ? 20 : 21.5)), weight: .regular)
         case .custom(let name) where name == "url_domain":
             return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":

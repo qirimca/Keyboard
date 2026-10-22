@@ -172,6 +172,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     func handleSwipePath(
         _ keys: [String],
         trailPoints: [CGPoint] = [],
+        timestamps: [TimeInterval] = [],
         keyFrames: [String: CGRect] = [:]
     ) {
         let controllerWidth = (keyboardController as? UIViewController)?.view.bounds.width ?? 0
@@ -201,6 +202,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             shouldCapitalize: shouldCap,
             contextWords: contextWords,
             trailPoints: trailPoints,
+            timestamps: timestamps,
             keyFrames: keyFrames
         )
         if isAllCaps {
@@ -571,18 +573,35 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 didConsumeBackspacePress = true
                 triggerFeedback(for: gesture, on: action)
                 resetComposition()
+                let remainingBefore = String(before.dropLast(swipedInsertion.count))
                 for _ in 0..<swipedInsertion.count {
                     proxy.deleteBackward()
                 }
                 TextHistoryManager.shared.recordDelete(swipedInsertion)
                 typedWordBuffer = ""
-                if (proxy.documentContextBeforeInput ?? "").isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
+                if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
                     GreetingBannerState.shared.prepareForAppearance()
                 } else {
                     GreetingBannerState.shared.dismissForTyping()
                 }
-                tryChangeKeyboardType(after: .release, on: action)
+                if SystemKeyboardSettings.isAutoCapitalizationEnabled,
+                   proxy.autocapitalizationType != UITextAutocapitalizationType.none,
+                   keyboardContext.keyboardType == .alphabetic(.lowercased),
+                   remainingBefore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || remainingBefore.hasSuffix(". ")
+                    || remainingBefore.hasSuffix("! ")
+                    || remainingBefore.hasSuffix("? ")
+                    || remainingBefore.hasSuffix("\n") {
+                    keyboardController?.setKeyboardType(.alphabetic(.uppercased))
+                } else {
+                    tryChangeKeyboardType(after: .release, on: action)
+                }
                 keyboardController?.performAutocomplete()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
+                    guard let self else { return }
+                    self.tryChangeKeyboardType(after: .release, on: action)
+                    self.keyboardController?.performAutocomplete()
+                }
                 return
             }
         }

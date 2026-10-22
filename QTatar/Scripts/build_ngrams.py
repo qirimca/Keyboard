@@ -565,6 +565,7 @@ CLEAN_RESTORED_WORDS: dict[str, int] = {
     "klaviaturanı": 55,
     "yahşılaştırıñız": 35,
     "tüzetiñiz": 40,
+    "dembel": 25,
 }
 
 OCR_RESCUE_MAP: dict[str, str] = {

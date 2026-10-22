@@ -158,6 +158,19 @@ final class SuggestionsDataBaseManager {
         }
     }
 
+    /// Releases non-essential SQLite page cache memory under iOS Jetsam pressure (`didReceiveMemoryWarning`).
+    func releaseMemory() {
+        databaseQueue.async { [weak self] in
+            guard let self else { return }
+            if let db = self.db {
+                sqlite3_db_release_memory(db)
+            }
+            if let userDB = self.userDB {
+                sqlite3_db_release_memory(userDB)
+            }
+        }
+    }
+
     private func openDB() {
         let state = Self.signposter.beginInterval("openDB")
         defer { Self.signposter.endInterval("openDB", state) }
@@ -181,26 +194,44 @@ final class SuggestionsDataBaseManager {
             return
         }
 
-        guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
-            if let db, let errMsg = sqlite3_errmsg(db) {
-                debugPrint("Failed to open SQLite database: \(String(cString: errMsg))")
-            } else {
-                debugPrint("Failed to open SQLite database at \(dbURL.path)")
+        let immutableURI = "file:\(dbURL.path)?immutable=1"
+        let uriFlags = SQLITE_OPEN_READONLY | SQLITE_OPEN_URI | SQLITE_OPEN_NOMUTEX
+        let openedImmutable = (sqlite3_open_v2(immutableURI, &db, uriFlags, nil) == SQLITE_OK)
+        if !openedImmutable {
+            if let staleDB = db {
+                sqlite3_close_v2(staleDB)
+                db = nil
             }
-            return
+            guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
+                if let db, let errMsg = sqlite3_errmsg(db) {
+                    debugPrint("Failed to open SQLite database: \(String(cString: errMsg))")
+                } else {
+                    debugPrint("Failed to open SQLite database at \(dbURL.path)")
+                }
+                return
+            }
         }
 
-        sqlite3_exec(db, "PRAGMA cache_size = -2000;", nil, nil, nil)
         sqlite3_exec(db, "PRAGMA mmap_size = 25165824;", nil, nil, nil)
+        sqlite3_exec(db, "PRAGMA cache_size = -256;", nil, nil, nil)
         sqlite3_exec(db, "PRAGMA temp_store = MEMORY;", nil, nil, nil)
-        debugPrint("Successfully opened SQLite database (readonly, optimized) at \(dbURL.path)")
+        debugPrint("Successfully opened SQLite database (readonly, immutable, optimized) at \(dbURL.path)")
     }
 
     private func openUserDB() {
-        let containerDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID)
-            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        try? FileManager.default.createDirectory(at: containerDir, withIntermediateDirectories: true)
+        let fm = FileManager.default
+        let fallbackDir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fm.temporaryDirectory
+        let containerDir: URL = {
+            if let groupDir = fm.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID) {
+                try? fm.createDirectory(at: groupDir, withIntermediateDirectories: true)
+                if fm.isWritableFile(atPath: groupDir.path) {
+                    return groupDir
+                }
+            }
+            try? fm.createDirectory(at: fallbackDir, withIntermediateDirectories: true)
+            return fallbackDir
+        }()
         let userDBURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
 
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
@@ -208,7 +239,7 @@ final class SuggestionsDataBaseManager {
             userDB = nil
             return
         }
-        sqlite3_busy_timeout(userDB, 2000)
+        sqlite3_busy_timeout(userDB, 150)
         let schema = """
         PRAGMA journal_mode = DELETE;
         PRAGMA synchronous = NORMAL;
@@ -226,10 +257,26 @@ final class SuggestionsDataBaseManager {
             PRIMARY KEY (word1, word2)
         );
         CREATE INDEX IF NOT EXISTS idx_user_bigrams_word1 ON user_bigrams(word1, freq DESC, last_used DESC);
-        DELETE FROM user_bigrams WHERE word1 = word2 OR (word1 = 'ne' AND word2 = 'sen');
-        DELETE FROM user_unigrams WHERE word IN ('krım', 'kırım', 'kırımda', 'kırımğa', 'kırımnıñ', 'qirim', 'qrım', 'krim', 'kirim');
         """
         sqlite3_exec(userDB, schema, nil, nil, nil)
+
+        var userVersion: Int32 = 0
+        var versionStmt: OpaquePointer?
+        if sqlite3_prepare_v2(userDB, "PRAGMA user_version;", -1, &versionStmt, nil) == SQLITE_OK {
+            if sqlite3_step(versionStmt) == SQLITE_ROW {
+                userVersion = sqlite3_column_int(versionStmt, 0)
+            }
+        }
+        sqlite3_finalize(versionStmt)
+
+        if userVersion < 2 {
+            let migrationSQL = """
+            DELETE FROM user_bigrams WHERE word1 = word2 OR (word1 = 'ne' AND word2 = 'sen');
+            DELETE FROM user_unigrams WHERE word IN ('krım', 'kırım', 'kırımda', 'kırımğa', 'kırımnıñ', 'qirim', 'qrım', 'krim', 'kirim');
+            PRAGMA user_version = 2;
+            """
+            sqlite3_exec(userDB, migrationSQL, nil, nil, nil)
+        }
     }
 
     private func ensureDB() {
@@ -420,10 +467,11 @@ final class SuggestionsDataBaseManager {
         databaseQueue.async { [weak self] in
             guard let self else { return }
             self.sessionUnconfirmedOOVCounts.removeAll()
+            guard !self.isSuspended else { return }
             self.ensureUserDB()
             if let userDB = self.userDB {
                 sqlite3_exec(userDB, "DELETE FROM user_unigrams; DELETE FROM user_bigrams;", nil, nil, nil)
-                sqlite3_close(userDB)
+                sqlite3_close_v2(userDB)
                 self.userDB = nil
             }
         }
@@ -1114,14 +1162,15 @@ final class SuggestionsDataBaseManager {
 
     /// Matches a swipe key sequence (from iPhone or iPad Floating keyboard) to top dictionary candidates
     /// using the QırımKey Swipe v2 hybrid decoder (12-column physical layout geometry, `Δθ >= 22°` curvature
-    /// anchor weighting, 16-point resampled SHARK2 trajectory comparison, `ъ`/`ʼ` corridor cleaning, and
-    /// two-sided `(prefix, allowedEndBaseChars)` candidate retrieval).
+    /// and local velocity `v_t` slowdown anchor weighting, 16-point resampled SHARK2 trajectory comparison,
+    /// `ъ`/`ʼ` corridor cleaning, and two-sided `(prefix, allowedEndBaseChars)` candidate retrieval).
     func matchSwipePath(
         keySequence: [String],
         isCyrillic: Bool = false,
         shouldCapitalize: Bool = false,
         contextWords: [String] = [],
         trailPoints: [CGPoint] = [],
+        timestamps: [TimeInterval] = [],
         keyFrames: [String: CGRect] = [:]
     ) -> [Autocomplete.Suggestion] {
         databaseQueue.sync {
@@ -1222,7 +1271,29 @@ final class SuggestionsDataBaseManager {
                 endCandidates.insert(lastBase)
             }
 
+            // Compute per-sample instantaneous velocity `v_t` when timestamps are provided
+            var sampleVelocities: [Double] = []
+            var medianVelocity: Double = 0
+            if trailPoints.count == timestamps.count && trailPoints.count >= 3 {
+                sampleVelocities = Array(repeating: 0.0, count: trailPoints.count)
+                for sIdx in 1..<(trailPoints.count - 1) {
+                    let dt = max(0.001, timestamps[sIdx + 1] - timestamps[sIdx - 1])
+                    let ds = Double(hypot(
+                        trailPoints[sIdx + 1].x - trailPoints[sIdx - 1].x,
+                        trailPoints[sIdx + 1].y - trailPoints[sIdx - 1].y
+                    ))
+                    sampleVelocities[sIdx] = ds / dt
+                }
+                sampleVelocities[0] = sampleVelocities[1]
+                sampleVelocities[trailPoints.count - 1] = sampleVelocities[trailPoints.count - 2]
+                let sortedVel = sampleVelocities.filter { $0 > 1.0 }.sorted()
+                if !sortedVel.isEmpty {
+                    medianVelocity = sortedVel[sortedVel.count / 2]
+                }
+            }
+
             // Compute per-key curvature turn angles (`Δθ >= 22°` = anchor/inflection; `< 22°` = collinear transit key)
+            // and local finger slowdown (`v_local < 0.55 * v_median`)
             var isPathAnchor = Array(repeating: true, count: basePath.count)
             var pathKeyWeights = Array(repeating: 1.0, count: basePath.count)
             var pathTurnAngles = Array(repeating: 180.0, count: basePath.count)
@@ -1243,12 +1314,28 @@ final class SuggestionsDataBaseManager {
                         pathTurnAngles[idx] = angleDeg
                         let isLocalPassThrough = (n1 <= 2.4 * keyWidth && n2 <= 2.4 * keyWidth)
                         let isShortWordPreFinalConsonant = (basePath.count <= 4 && idx == basePath.count - 2 && !Self.baseVowels.contains(basePath[idx]))
-                        if angleDeg < 22.0 && isLocalPassThrough && !isShortWordPreFinalConsonant {
+
+                        var isVelocitySlowdown = false
+                        if medianVelocity > 10.0 && !sampleVelocities.isEmpty {
+                            let radius = max(16.0, keyWidth * 0.65)
+                            var minLocalVel = Double.greatestFiniteMagnitude
+                            for (sIdx, tPt) in trailPoints.enumerated() {
+                                if hypot(tPt.x - pCurr.x, tPt.y - pCurr.y) <= radius {
+                                    minLocalVel = min(minLocalVel, sampleVelocities[sIdx])
+                                }
+                            }
+                            if minLocalVel < medianVelocity * 0.55 {
+                                isVelocitySlowdown = true
+                            }
+                        }
+
+                        if angleDeg < 22.0 && isLocalPassThrough && !isShortWordPreFinalConsonant && !isVelocitySlowdown {
                             isPathAnchor[idx] = false
                             pathKeyWeights[idx] = 0.20 + (angleDeg / 22.0) * 0.18
                         } else {
                             isPathAnchor[idx] = true
-                            pathKeyWeights[idx] = min(1.0, 0.70 + (max(22.0, angleDeg) - 22.0) / 90.0 * 0.30)
+                            let baseWeight = min(1.0, 0.70 + (max(22.0, angleDeg) - 22.0) / 90.0 * 0.30)
+                            pathKeyWeights[idx] = isVelocitySlowdown ? max(baseWeight, 0.85) : baseWeight
                         }
                     }
                 }

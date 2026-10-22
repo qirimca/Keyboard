@@ -260,11 +260,14 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let isFloating = context.isKeyboardFloating || isTransitioningToFloating || isTargetFloating || (isPad && view.bounds.width > 0 && view.bounds.width < 420)
         let hasToolbar = state.autocompleteContext.isAutocompleteEnabled
         if isFloating {
-            return (hasToolbar ? 38 : 0) + (43 * 4) + 6
+            return (hasToolbar ? 38 : 0) + (49 * 4) + 6
         }
         let isLandscape: Bool = {
+            if let sceneOrientation = view.window?.windowScene?.interfaceOrientation, sceneOrientation != .unknown {
+                return sceneOrientation.isLandscape
+            }
             if let targetSize, targetSize.width > 0 {
-                let screenBounds = UIScreen.main.bounds
+                let screenBounds = view.window?.windowScene?.screen.bounds ?? UIScreen.main.bounds
                 let maxDim = max(screenBounds.width, screenBounds.height)
                 let minDim = min(screenBounds.width, screenBounds.height)
                 if abs(targetSize.width - maxDim) < abs(targetSize.width - minDim) {
@@ -458,10 +461,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             .sink { [weak self] note in
                 guard let self, let keys = note.userInfo?["keys"] as? [String] else { return }
                 let points = note.userInfo?["points"] as? [CGPoint] ?? []
+                let timestamps = note.userInfo?["timestamps"] as? [TimeInterval] ?? []
                 let keyFrames = note.userInfo?["keyFrames"] as? [String: CGRect] ?? [:]
                 (self.services.actionHandler as? DemoActionHandler)?.handleSwipePath(
                     keys,
                     trailPoints: points,
+                    timestamps: timestamps,
                     keyFrames: keyFrames
                 )
             }
@@ -554,16 +559,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             nil,
             .deliverImmediately
         )
-        CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            observer,
-            { _, _, _, _, _ in
-                SuggestionsDataBaseManager.shared.clearUserLexicon()
-            },
-            KeyboardUsageStats.statsResetNotification as CFString,
-            nil,
-            .deliverImmediately
-        )
 
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
@@ -571,6 +566,11 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         Self.installPinchPassthroughIfNeeded()
         installSplitPinchGestureIfNeeded()
         applyPreferences(syncDisk: false)
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        SuggestionsDataBaseManager.shared.releaseMemory()
     }
 
     private func installSplitPinchGestureIfNeeded() {
@@ -1129,8 +1129,8 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
 
     @State private var progress: CGFloat = 0
 
-    private var primaryFontSize: CGFloat { isLandscape ? 23 : 21 }
-    private var restingScale: CGFloat { isLandscape ? (12.0 / 23.0) : (10.5 / 21.0) }
+    private var primaryFontSize: CGFloat { isLandscape ? 23.0 : 20.5 }
+    private var restingScale: CGFloat { isLandscape ? (12.5 / 23.0) : (10.5 / 20.5) }
     private var flickGlyphBaselineCompensation: CGFloat {
         switch flickSymbol {
         case ",", ".", "_":
@@ -1139,9 +1139,9 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
             return 0
         }
     }
-    private var restingOffsetY: CGFloat { (isLandscape ? -21.5 : -16.5) + flickGlyphBaselineCompensation }
-    private var restingOpacity: Double { isDark ? 0.45 : 0.42 }
-    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 8.5 : 7.5 }
+    private var restingOffsetY: CGFloat { (isLandscape ? -19.5 : -13.5) + flickGlyphBaselineCompensation }
+    private var restingOpacity: Double { isDark ? 0.42 : 0.34 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 9.5 : 8.5 }
 
     var body: some View {
         let currentFlickScale = restingScale + (1.0 - restingScale) * progress
@@ -1186,7 +1186,7 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
 
 private extension UIGestureRecognizer {
     var qirim_isSystemFloatingGesture: Bool {
-        self is UIPinchGestureRecognizer
+        self is UIPinchGestureRecognizer && self.view?.window != nil
     }
 
     @objc func qirim_canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
