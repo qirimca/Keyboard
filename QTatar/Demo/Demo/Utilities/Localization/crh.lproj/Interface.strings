@@ -83,3 +83,5 @@
 "settings.cyrillicPromoDesc" = "Cihazıñızda kirill elifbesi qullanıla. «Къырымтатарджа» klaviaturasını qoşıp, kirill ariflerinen de qolaylıqnen yazıñız.";
 "settings.cyrillicAddAction" = "Sazlamalarda qoşmaq";
 "settings.cyrillicGuideTitle" = "Kirill klaviaturasını nasıl qoşmalı?";
+"settings.ukrainianCyrillic" = "Ukrain kirill tizilimi (ФІВА)";
+"settings.ukrainianCyrillic.desc" = "і → i, и → ı, є → e, ґ → g, гъ/ґъ → ğ (ъ saqlana)";

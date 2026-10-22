@@ -83,3 +83,5 @@
 "settings.cyrillicPromoDesc" = "Ви використовуєте кириличну абетку. Додайте клавіатуру «Къырымтатарджа» в Параметрах iOS, щоб зручно писати і кирилицею.";
 "settings.cyrillicAddAction" = "Додати в Параметрах";
 "settings.cyrillicGuideTitle" = "Як додати кириличну клавіатуру?";
+"settings.ukrainianCyrillic" = "Українська кирилична розкладка (ФІВА)";
+"settings.ukrainianCyrillic.desc" = "і → i, и → ı, є → e, ґ → g, гъ/ґъ → ğ (твердий знак ъ збережено)";
