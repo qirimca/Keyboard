@@ -901,7 +901,7 @@ private let parityCases: [(String, String)] = {
         let neighborMap = isCyrillic ? cyrNeighbors : latNeighbors
         var lastNeighbors = Set<Character>()
         for ec in endCandidates { lastNeighbors.formUnion(neighborMap[ec] ?? []) }
-        let allowedEnd = endCandidates.union(lastNeighbors)
+        lastNeighbors.subtract(endCandidates)
 
         var prefixes = Set<String>()
         for sc in startCandidates {
@@ -932,17 +932,26 @@ private let parityCases: [(String, String)] = {
             let hi = pfx + "\u{FFFF}"
             _ = hi.withCString { sqlite3_bind_text(stmt, 2, $0, -1, transient) }
             sqlite3_bind_int(stmt, 3, Int32(maxLen))
-            var count = 0
+            var exactCount = 0
+            var neighborCount = 0
             while sqlite3_step(stmt) == SQLITE_ROW {
                 if let cStr = sqlite3_column_text(stmt, 0) {
                     let w = String(cString: cStr)
                     let wl = w.lowercased(with: casingLocale)
-                    if let lc = wl.last, allowedEnd.contains(baseMap[lc] ?? lc) {
-                        if seen.insert(wl).inserted {
-                            candidates.append((w, Int(sqlite3_column_int(stmt, 1))))
-                            count += 1
-                            if count >= 480 { break }
+                    if let lc = wl.last {
+                        let lb = baseMap[lc] ?? lc
+                        if endCandidates.contains(lb) {
+                            if exactCount < 320, seen.insert(wl).inserted {
+                                candidates.append((w, Int(sqlite3_column_int(stmt, 1))))
+                                exactCount += 1
+                            }
+                        } else if lastNeighbors.contains(lb) {
+                            if neighborCount < 140, seen.insert(wl).inserted {
+                                candidates.append((w, Int(sqlite3_column_int(stmt, 1))))
+                                neighborCount += 1
+                            }
                         }
+                        if exactCount >= 320 && neighborCount >= 140 { break }
                     }
                 }
             }
@@ -1043,7 +1052,7 @@ private let parityCases: [(String, String)] = {
             }
             let regularMisses = max(0, misses - repeatedVowelMisses)
             let missPenalty = Double(regularMisses) * 1.65 + Double(repeatedVowelMisses) * 0.35
-            let coverageRatio = (weightedExact + Double(neighborHits) * 0.55 - missPenalty) / Double(wordBase.count)
+            let coverageRatio = (weightedExact + Double(neighborHits) * 0.55 - missPenalty) / max(2.0, Double(wordBase.count) - Double(repeatedVowelMisses) * 0.5)
             let matchedKeyBonus = min(weightedExact * 0.95 + Double(neighborHits) * 0.35, 7.5)
             let allExactBonus = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
             let anchorBonus = (matchedAnchors == anchorCount && wordBase.count == anchorCount && misses == 0) ? 2.1 : 0.0
@@ -1057,11 +1066,12 @@ private let parityCases: [(String, String)] = {
         return bestWord
     }
 
-    // 1. Cyrillic `машалла` & `сен`
+    // 1. Cyrillic `машалла` & `сен` & `бор`
     #expect(topSwipeMatch(for: ["м", "а", "в", "п", "о", "ш", "щ", "о", "п", "а", "в", "а", "п", "о", "л", "о", "п", "а"], isCyrillic: true) == "maşalla")
     #expect(topSwipeMatch(for: ["м", "а", "ш", "л", "а", "л", "а"], isCyrillic: true) == "maşalla")
     #expect(topSwipeMatch(for: ["м", "а", "ш", "а", "л", "а"], isCyrillic: true) == "maşalla")
     #expect(topSwipeMatch(for: ["с", "в", "а", "п", "е", "н"], isCyrillic: true) == "sen")
+    #expect(topSwipeMatch(for: ["б", "о", "р"], isCyrillic: true) == "bor")
 
     // 2. Short high-frequency words with collinear transit keys (`bir`, `edi`, `men`)
     #expect(topSwipeMatch(for: ["b", "g", "y", "i", "u", "r"], isCyrillic: false) == "bir")
@@ -1080,6 +1090,15 @@ private let parityCases: [(String, String)] = {
     #expect(topSwipeMatch(for: ["а", "л", "м", "а", "к"], isCyrillic: true) == "almaq")
     #expect(topSwipeMatch(for: ["к", "у", "ч", "а", "г", "ы", "н", "д", "а"], isCyrillic: true) == "quçağında")
     #expect(topSwipeMatch(for: ["к", "е", "н", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "г", "н", "е", "у", "ч", "а", "г", "ш", "щ", "з", "х", "ъ", "х", "з", "щ", "ш", "ы", "н", "д", "а"], isCyrillic: true) == "quçağında")
+
+    // 5. DB cleanliness (absence of Turkish/dialect forms) & NotebookLM agglutinative words
+    #expect(wordFrequency("yok") == 0)
+    #expect(wordFrequency("değil") == 0)
+    #expect(wordFrequency("bolğan") == 0)
+    #expect(wordFrequency("teşebbüslerimiz") >= 10)
+    #expect(wordFrequency("qıymetlendiriñiz") >= 10)
+    #expect(wordFrequency("irişimli") >= 10)
+    #expect(wordFrequency("sazlamalar") >= 10)
 }
 
 

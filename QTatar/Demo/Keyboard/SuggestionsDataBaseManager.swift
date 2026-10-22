@@ -1134,6 +1134,7 @@ final class SuggestionsDataBaseManager {
             // Compute per-key curvature turn angles (`Δθ >= 22°` = anchor/inflection; `< 22°` = collinear transit key)
             var isPathAnchor = Array(repeating: true, count: basePath.count)
             var pathKeyWeights = Array(repeating: 1.0, count: basePath.count)
+            var pathTurnAngles = Array(repeating: 180.0, count: basePath.count)
             if basePathKeyPoints.count == basePath.count && basePath.count >= 3 {
                 for idx in 1..<(basePath.count - 1) {
                     let pPrev = basePathKeyPoints[idx - 1]
@@ -1148,17 +1149,29 @@ final class SuggestionsDataBaseManager {
                     if n1 > 1.0 && n2 > 1.0 {
                         let cosTheta = min(1.0, max(-1.0, (v1x * v2x + v1y * v2y) / (n1 * n2)))
                         let angleDeg = Double(acos(cosTheta) * 180.0 / .pi)
-                        if angleDeg < 22.0 {
+                        pathTurnAngles[idx] = angleDeg
+                        let isLocalPassThrough = (n1 <= 2.4 * keyWidth && n2 <= 2.4 * keyWidth)
+                        if angleDeg < 22.0 && isLocalPassThrough {
                             isPathAnchor[idx] = false
                             pathKeyWeights[idx] = 0.20 + (angleDeg / 22.0) * 0.18
                         } else {
                             isPathAnchor[idx] = true
-                            pathKeyWeights[idx] = min(1.0, 0.70 + (angleDeg - 22.0) / 90.0 * 0.30)
+                            pathKeyWeights[idx] = min(1.0, 0.70 + (max(22.0, angleDeg) - 22.0) / 90.0 * 0.30)
                         }
                     }
                 }
             }
             let anchorCount = max(2, isPathAnchor.filter { $0 }.count)
+            var interiorAnchorPoints: [CGPoint] = []
+            var sharpTurnaroundBases = Set<Character>()
+            if basePathKeyPoints.count == basePath.count && basePath.count >= 3 {
+                for idx in 1..<(basePath.count - 1) where isPathAnchor[idx] {
+                    interiorAnchorPoints.append(basePathKeyPoints[idx])
+                    if pathTurnAngles[idx] >= 135.0 {
+                        sharpTurnaroundBases.insert(basePath[idx])
+                    }
+                }
+            }
             let effectiveSwipePoints: [CGPoint] = {
                 if !isCyrillic && trailPoints.count >= 2 {
                     return trailPoints
@@ -1191,7 +1204,7 @@ final class SuggestionsDataBaseManager {
             for ec in endCandidates {
                 lastNeighbors.formUnion(neighborMap[ec] ?? [])
             }
-            let allowedEndBaseChars = endCandidates.union(lastNeighbors)
+            lastNeighbors.subtract(endCandidates)
 
             var bigramBoosts: [String: Int] = [:]
             if let prev = contextWords.last?.lowercased(with: Self.casingLocale), !prev.isEmpty {
@@ -1219,8 +1232,10 @@ final class SuggestionsDataBaseManager {
                     prefix: prefix,
                     minLen: minLen,
                     maxLen: maxLen,
-                    allowedEndBaseChars: allowedEndBaseChars,
-                    limit: 480
+                    exactEndBaseChars: endCandidates,
+                    neighborEndBaseChars: lastNeighbors,
+                    exactLimit: 320,
+                    neighborLimit: 140
                 ) {
                     let k = bw.lowercased(with: Self.casingLocale)
                     if seenWords.insert(k).inserted {
@@ -1235,20 +1250,20 @@ final class SuggestionsDataBaseManager {
                 let lower = word.lowercased(with: Self.casingLocale)
                 guard !lower.contains(" "), let firstWordChar = lower.first else { continue }
                 var wordBase: [Character] = []
-                var wordCenters: [CGPoint] = []
+                var wordOrigChars: [Character] = []
+                var wordCharCenters: [CGPoint?] = []
                 for ch in lower {
                     if ch == "-" { continue }
                     let b = Self.normalizeBaseChar(ch)
                     if wordBase.last != b {
                         wordBase.append(b)
-                        if let cPt = Self.targetWordCharCenter(
+                        wordOrigChars.append(ch)
+                        wordCharCenters.append(Self.targetWordCharCenter(
                             for: ch,
                             centers: keyCenters,
                             isCyrillic: isCyrillic,
                             isUkrainianCyrillic: isUkrainianCyr
-                        ) {
-                            wordCenters.append(cPt)
-                        }
+                        ))
                     }
                 }
                 guard wordBase.count >= 2, let wordLast = wordBase.last else { continue }
@@ -1267,16 +1282,13 @@ final class SuggestionsDataBaseManager {
                 var repeatedVowelMisses = 0
                 var matchedVowels = Set<Character>()
                 var startDistanceBonus: Double = 0.0
+                var matchedWordCenters: [CGPoint] = []
 
                 for (i, targetChar) in wordBase.enumerated() {
                     if i == 0 {
+                        if let cPt = wordCharCenters[0] { matchedWordCenters.append(cPt) }
                         if let u1 = startTouchPoint,
-                           let k1 = Self.targetWordCharCenter(
-                               for: firstWordChar,
-                               centers: keyCenters,
-                               isCyrillic: isCyrillic,
-                               isUkrainianCyrillic: isUkrainianCyr
-                           ) {
+                           let k1 = wordCharCenters[0] {
                             let d0 = Double(hypot(u1.x - k1.x, u1.y - k1.y) / max(1.0, keyWidth))
                             if d0 <= 0.75 {
                                 exactHits += 1
@@ -1303,6 +1315,7 @@ final class SuggestionsDataBaseManager {
                         continue
                     }
                     if i == wordBase.count - 1 {
+                        if let cPt = wordCharCenters[i] { matchedWordCenters.append(cPt) }
                         if exactLast {
                             exactHits += 1
                             weightedExactHits += 1.0
@@ -1332,9 +1345,16 @@ final class SuggestionsDataBaseManager {
                             foundExact = true
                             pathIdx = searchIdx + 1
                             exactHits += 1
-                            let w = pathKeyWeights[searchIdx]
+                            if let cPt = wordCharCenters[i] { matchedWordCenters.append(cPt) }
+                            let nearInteriorAnchor: Bool = {
+                                guard !isPathAnchor[searchIdx],
+                                      wordOrigChars[i] != targetChar,
+                                      let cPt = wordCharCenters[i] else { return false }
+                                return interiorAnchorPoints.contains { hypot($0.x - cPt.x, $0.y - cPt.y) <= 1.35 * keyWidth }
+                            }()
+                            let w = nearInteriorAnchor ? max(0.85, pathKeyWeights[searchIdx]) : pathKeyWeights[searchIdx]
                             weightedExactHits += w
-                            if isPathAnchor[searchIdx] {
+                            if isPathAnchor[searchIdx] || nearInteriorAnchor {
                                 matchedAnchors += 1
                             } else {
                                 transitOnlyHits += 1
@@ -1353,15 +1373,19 @@ final class SuggestionsDataBaseManager {
                                 foundNeighbor = true
                                 pathIdx = nIdx + 1
                                 neighborHits += 1
+                                if let cPt = wordCharCenters[i] { matchedWordCenters.append(cPt) }
                                 break
                             }
                             nIdx += 1
                         }
                         if !foundNeighbor {
                             misses += 1
-                            if (Self.baseVowels.contains(targetChar) && (matchedVowels.contains(targetChar) || wordLast == targetChar))
-                                || (wordBase.count >= 5 && (targetChar == wordBase.first || targetChar == wordLast)) {
+                            let isRepVowelMiss = (Self.baseVowels.contains(targetChar) && (matchedVowels.contains(targetChar) || wordLast == targetChar))
+                                || (wordBase.count >= 5 && (targetChar == wordBase.first || targetChar == wordLast))
+                            if isRepVowelMiss {
                                 repeatedVowelMisses += 1
+                            } else if let cPt = wordCharCenters[i] {
+                                matchedWordCenters.append(cPt)
                             }
                             let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
                             if misses > maxAllowedMisses {
@@ -1395,8 +1419,8 @@ final class SuggestionsDataBaseManager {
 
                 // 16-point resampled SHARK2 geometric trajectory similarity
                 var geometricBonus: Double = 0.0
-                if resampledSwipePoints.count == 16 && wordCenters.count >= 2 {
-                    let resampledWord = Self.resamplePolyline(wordCenters, count: 16)
+                if resampledSwipePoints.count == 16 && matchedWordCenters.count >= 2 {
+                    let resampledWord = Self.resamplePolyline(matchedWordCenters, count: 16)
                     var distSum: CGFloat = 0
                     for k in 0..<16 {
                         distSum += hypot(
@@ -1408,10 +1432,19 @@ final class SuggestionsDataBaseManager {
                     geometricBonus = max(-2.6, (1.20 - meanKeyDist) * 1.95)
                 }
 
+                var missedTurnaroundPenalty: Double = 0.0
+                if !sharpTurnaroundBases.isEmpty {
+                    let wordBaseSet = Set(wordBase)
+                    for tb in sharpTurnaroundBases where !wordBaseSet.contains(tb) {
+                        missedTurnaroundPenalty += 1.85
+                    }
+                }
+
                 let regularMisses = max(0, misses - repeatedVowelMisses)
                 let missPenalty = Double(regularMisses) * 1.65 + Double(repeatedVowelMisses) * 0.35
                 let coverage = weightedExactHits + Double(neighborHits) * 0.55 - missPenalty
-                let coverageRatio = coverage / Double(max(1, wordBase.count))
+                let effectiveWordLen = max(2.0, Double(wordBase.count) - Double(repeatedVowelMisses) * 0.5)
+                let coverageRatio = coverage / effectiveWordLen
                 let matchedKeyBonus = min(weightedExactHits * 0.95 + Double(neighborHits) * 0.35, 7.5)
                 let allExactBonus: Double = (exactHits == wordBase.count && misses == 0 && neighborHits == 0) ? 1.8 : 0.0
                 let anchorExactMatchBonus: Double = (matchedAnchors == anchorCount && wordBase.count == anchorCount && misses == 0) ? 2.1 : 0.0
@@ -1433,6 +1466,7 @@ final class SuggestionsDataBaseManager {
                     - lengthPenalty
                     - unanchoredComplexityPenalty
                     - shortWordDetourPenalty
+                    - missedTurnaroundPenalty
                 scoredCandidates.append((word, totalScore))
             }
 
@@ -1456,11 +1490,15 @@ final class SuggestionsDataBaseManager {
         prefix: String,
         minLen: Int,
         maxLen: Int,
-        allowedEndBaseChars: Set<Character>,
-        limit: Int
+        exactEndBaseChars: Set<Character>,
+        neighborEndBaseChars: Set<Character>,
+        exactLimit: Int,
+        neighborLimit: Int
     ) -> [(String, Int)] {
         guard let db else { return [] }
         var results: [(String, Int)] = []
+        var exactCount = 0
+        var neighborCount = 0
         var stmt: OpaquePointer?
         let query = """
         SELECT word, freq FROM words
@@ -1481,13 +1519,20 @@ final class SuggestionsDataBaseManager {
         while sqlite3_step(stmt) == SQLITE_ROW {
             if let wordPtr = sqlite3_column_text(stmt, 0) {
                 let word = String(cString: wordPtr)
-                if !allowedEndBaseChars.isEmpty,
-                   let lastCh = word.lowercased(with: Self.casingLocale).last,
-                   !allowedEndBaseChars.contains(Self.normalizeBaseChar(lastCh)) {
-                    continue
+                guard let lastCh = word.lowercased(with: Self.casingLocale).last else { continue }
+                let lastBase = Self.normalizeBaseChar(lastCh)
+                if exactEndBaseChars.contains(lastBase) {
+                    if exactCount < exactLimit {
+                        results.append((word, Int(sqlite3_column_int(stmt, 1))))
+                        exactCount += 1
+                    }
+                } else if neighborEndBaseChars.contains(lastBase) {
+                    if neighborCount < neighborLimit {
+                        results.append((word, Int(sqlite3_column_int(stmt, 1))))
+                        neighborCount += 1
+                    }
                 }
-                results.append((word, Int(sqlite3_column_int(stmt, 1))))
-                if results.count >= limit {
+                if exactCount >= exactLimit && neighborCount >= neighborLimit {
                     break
                 }
             }

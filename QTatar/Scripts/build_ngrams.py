@@ -155,6 +155,9 @@ SEED_SYNCOPE_CORRECTIONS: dict[str, str] = {
     "qoyunı": "qoynu",
     "kompyuter": "kompüter",
     "kompyüter": "kompüter",
+    "yok": "yoq",
+    "değil": "degil",
+    "bolğan": "olğan",
     # Inverted missing-ъ compound words from lat_diff.csv
     "alânaq": "alyanaq",
     "alânaqlı": "alyanaqlı",
@@ -501,6 +504,9 @@ BAD_STD_WORDS: set[str] = {
     "cuyrüq",
     "kompyuter",
     "kompyüter",
+    "yok",
+    "değil",
+    "bolğan",
 }
 
 CLEAN_RESTORED_WORDS: dict[str, int] = {
@@ -522,6 +528,24 @@ CLEAN_RESTORED_WORDS: dict[str, int] = {
     "özbekistan": 220,
     "cüyrük": 65,
     "kompüter": 200,
+    "qullanmağa": 60,
+    "teşebbüslerimiz": 45,
+    "qıymetlendiriñiz": 45,
+    "irişimli": 50,
+    "irişim": 55,
+    "irişimge": 35,
+    "vazgeçmek": 45,
+    "sazlamalar": 80,
+    "sazlamaları": 60,
+    "sazlamalarda": 55,
+    "sazlamalarında": 45,
+    "sazlamalarnı": 45,
+    "klaviatura": 90,
+    "klaviaturası": 70,
+    "klaviaturalar": 50,
+    "klaviaturanı": 55,
+    "yahşılaştırıñız": 35,
+    "tüzetiñiz": 40,
 }
 
 OCR_RESCUE_MAP: dict[str, str] = {
