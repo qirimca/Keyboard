@@ -36,6 +36,7 @@ extension Keyboard {
                 keyboardContext.keyboardType,
                 keyboardContext.isKeyboardFloating,
                 keyboardContext.isKeyboardSplit,
+                keyboardContext.traitCollection.userInterfaceStyle,
                 keyboardContext.interfaceOrientation
             )
             if keyboardContext.isKeyboardFloating {

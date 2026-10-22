@@ -581,6 +581,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 } else {
                     GreetingBannerState.shared.dismissForTyping()
                 }
+                tryChangeKeyboardType(after: .release, on: action)
                 keyboardController?.performAutocomplete()
                 return
             }
@@ -603,6 +604,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 proxy.insertText(autoFix.original)
                 TextHistoryManager.shared.recordReplace(oldText: autoFix.corrected + " ", newText: autoFix.original)
                 typedWordBuffer = autoFix.original
+                tryChangeKeyboardType(after: .release, on: action)
                 keyboardController?.performAutocomplete()
                 return
             } else {
@@ -611,6 +613,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
         if action == .backspace, gesture == .release, didConsumeBackspacePress {
             didConsumeBackspacePress = false
+            tryChangeKeyboardType(after: gesture, on: action)
             SpaceBarState.shared.fadeToResting()
             return
         }

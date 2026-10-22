@@ -2609,6 +2609,25 @@ private struct TransliterationKeycapBadge: View {
     let accentColor: Color
 
     @State private var showTargetGlyph = false
+    private let morphTimer = Timer.publish(every: 4.5, on: .main, in: .common).autoconnect()
+
+    private func triggerMorphPulse(delay: Double = 0.0) {
+        guard isEnabled else {
+            showTargetGlyph = false
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard isEnabled else { return }
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
+                showTargetGlyph = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.95) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
+                    showTargetGlyph = false
+                }
+            }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -2639,21 +2658,25 @@ private struct TransliterationKeycapBadge: View {
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(isUkrainianStyle && isEnabled ? 0.35 : 0.0), radius: 1, x: 0, y: 0.5)
                 .contentTransition(.interpolate)
+                .scaleEffect(isEnabled && showTargetGlyph ? 1.08 : 1.0)
                 .id(isEnabled && showTargetGlyph ? targetLabel : sourceLabel)
         }
         .frame(width: 28, height: 28)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: isEnabled)
         .animation(.spring(response: 0.35, dampingFraction: 0.78), value: showTargetGlyph)
+        .onAppear {
+            if isEnabled {
+                triggerMorphPulse(delay: 0.55)
+            }
+        }
+        .onReceive(morphTimer) { _ in
+            if isEnabled {
+                triggerMorphPulse()
+            }
+        }
         .onChange(of: isEnabled) { _, newValue in
             if newValue {
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.76)) {
-                    showTargetGlyph = true
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-                        showTargetGlyph = false
-                    }
-                }
+                triggerMorphPulse()
             } else {
                 showTargetGlyph = false
             }
@@ -2995,7 +3018,11 @@ private struct SandboxTextView: UIViewRepresentable {
                 if parent.isFocused {
                     if UIApplication.shared.applicationState == .active {
                         let defaults = KeyboardPreferences.defaults
-                        defaults.set(parent.themeMode.isDark, forKey: "crh.key.test.isDark")
+                        if parent.hasManualThemeOverride {
+                            defaults.set(parent.themeMode.isDark, forKey: "crh.key.test.isDark")
+                        } else {
+                            defaults.removeObject(forKey: "crh.key.test.isDark")
+                        }
                         defaults.set(parent.fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
                         defaults.set(true, forKey: "crh.key.test.sandboxFocused")
                         defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")

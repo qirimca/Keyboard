@@ -6,9 +6,18 @@
 //
 
 import Foundation
+#if canImport(KeyboardKit)
 import KeyboardKit
+#endif
+#if canImport(Transliteration)
+@testable import Transliteration
+#endif
 import SQLite3
+#if canImport(UIKit)
 import UIKit
+#else
+import CoreGraphics
+#endif
 import os
 
 final class SuggestionsDataBaseManager {
@@ -155,8 +164,18 @@ final class SuggestionsDataBaseManager {
         let siblingURL = Bundle.main.bundleURL
             .deletingLastPathComponent()
             .appendingPathComponent("Keyboard.appex/qırım_tatar.db")
+        let sourceDirURL = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        let directSiblingDB = sourceDirURL.appendingPathComponent("qırım_tatar.db")
+        let testRelativeDB = sourceDirURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Keyboard/qırım_tatar.db")
         let resolvedURL = Bundle.main.url(forResource: "qırım_tatar", withExtension: "db")
             ?? (FileManager.default.fileExists(atPath: siblingURL.path) ? siblingURL : nil)
+            ?? (FileManager.default.fileExists(atPath: directSiblingDB.path) ? directSiblingDB : nil)
+            ?? (FileManager.default.fileExists(atPath: testRelativeDB.path) ? testRelativeDB : nil)
         guard let dbURL = resolvedURL else {
             debugPrint("Cant open DB")
             return

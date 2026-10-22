@@ -552,7 +552,7 @@ struct TaraqTamgaLogoBadge: View {
                 let unit = unitSize
                 let badge = ZStack {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(lightGradient)
+                        .fill(Color.white)
                     SharedTaraqTamgaShape()
                         .fill(Color.black)
                         .frame(width: unit * 9.0, height: unit * 5.0)

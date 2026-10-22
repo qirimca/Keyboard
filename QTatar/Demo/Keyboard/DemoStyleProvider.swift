@@ -31,12 +31,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let recentlyToggled = ts > 0 && (Date().timeIntervalSince1970 - ts) < 1.8
         if context.hostApplicationBundleId == nil && !recentlyToggled {
             let appearance = context.textDocumentProxy.keyboardAppearance ?? .default
-            guard KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil else {
-                return false
-            }
-            let expectedAppearance: UIKeyboardAppearance = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark") ? .dark : .light
-            if appearance != expectedAppearance {
-                return false
+            if KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
+                let expectedAppearance: UIKeyboardAppearance = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark") ? .dark : .light
+                if appearance != expectedAppearance {
+                    return false
+                }
+            } else {
+                guard KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") != nil,
+                      appearance == .default else {
+                    return false
+                }
             }
         }
         return true
@@ -92,7 +96,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if context.keyboardAppearance == .dark {
             return true
         }
+        if context.keyboardAppearance == .light {
+            return false
+        }
         return context.hasDarkColorScheme
+            || UITraitCollection.current.userInterfaceStyle == .dark
+            || UIScreen.main.traitCollection.userInterfaceStyle == .dark
     }
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {

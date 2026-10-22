@@ -827,12 +827,11 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if context.isAutoCapitalizationEnabled != targetCapitalize {
             context.isAutoCapitalizationEnabled = targetCapitalize
         }
-        if overrideUserInterfaceStyle != .unspecified {
-            overrideUserInterfaceStyle = .unspecified
-        }
+        let systemDark = traitCollection.userInterfaceStyle == .dark
+            || UIScreen.main.traitCollection.userInterfaceStyle == .dark
         let baseTraits = UITraitCollection(traitsFrom: [
             traitCollection,
-            UITraitCollection(userInterfaceStyle: traitCollection.userInterfaceStyle == .dark ? .dark : .light)
+            UITraitCollection(userInterfaceStyle: systemDark ? .dark : .light)
         ])
         if context.traitCollection != baseTraits {
             context.traitCollection = baseTraits
@@ -844,6 +843,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         ])
         if context.traitCollection != resolvedTraits {
             context.traitCollection = resolvedTraits
+        }
+        if overrideUserInterfaceStyle != .unspecified {
+            overrideUserInterfaceStyle = .unspecified
         }
         syncPreferredKeyboardTypeWithProxy()
         // Re-render only when a trait the UI depends on changed (field traits, empty <-> non-empty for the Return key).

@@ -524,9 +524,11 @@ BAD_STD_WORDS: set[str] = {
     "yok",
     "değil",
     "bolğan",
+    "kuç",
 }
 
 CLEAN_RESTORED_WORDS: dict[str, int] = {
+    "küç": 1850,
     "alyanaq": 60,
     "alyanaqlı": 45,
     "beşikyapıcı": 40,
