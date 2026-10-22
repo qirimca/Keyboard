@@ -13,7 +13,7 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        if let testRun, testRun.hasSucceeded == false {
+        if let testRun, (testRun.failureCount + testRun.unexpectedExceptionCount) > 0 {
             capture("Failure")
         }
         XCUIDevice.shared.orientation = .portrait
@@ -205,6 +205,22 @@ final class QirimKeyUITests: XCTestCase {
         return hasLetter(value)
     }
 
+    private func tapSwitch(_ toggle: XCUIElement) {
+        let kb = app.keyboards.firstMatch
+        if kb.exists && toggle.exists && toggle.frame.maxY > kb.frame.minY - 12 {
+            app.scrollViews.firstMatch.swipeUp()
+            Thread.sleep(forTimeInterval: 0.35)
+        } else if toggle.exists && toggle.frame.minY < 80 {
+            app.scrollViews.firstMatch.swipeDown()
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+        if toggle.isHittable {
+            toggle.tap()
+        } else {
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).tap()
+        }
+    }
+
     private func selectScript(cyrillic: Bool) throws {
         if key("alphabetic").exists { tap("alphabetic") }
         let wanted = cyrillic ? "ф" : "q"
@@ -215,9 +231,16 @@ final class QirimKeyUITests: XCTestCase {
             return
         }
         let nextKeyboard = app.buttons["Next keyboard"]
-        for step in 1...6 where nextKeyboard.exists {
-            for _ in 0..<step where nextKeyboard.exists {
-                nextKeyboard.tap()
+        let abcBtn = app.buttons["ABC"]
+        for step in 1...6 where (nextKeyboard.exists || abcBtn.exists) {
+            for _ in 0..<step {
+                if nextKeyboard.exists && nextKeyboard.isHittable {
+                    nextKeyboard.tap()
+                } else if abcBtn.exists && abcBtn.isHittable {
+                    abcBtn.tap()
+                } else {
+                    break
+                }
             }
             if key("alphabetic").exists { tap("alphabetic") }
             if waitForLetter(wanted, timeout: 1.2) { return }
@@ -661,6 +684,8 @@ final class QirimKeyUITests: XCTestCase {
         resetBtn.tap()
         let confirmReset = app.alerts.buttons["Sıfırla"].firstMatch
         XCTAssertTrue(confirmReset.waitForExistence(timeout: 2), "Reset confirmation alert button 'Sıfırla' must appear")
+        XCTAssertFalse(app.alerts.buttons["stats.resetCancel"].exists, "Reset confirmation cancel button must be localized, not raw key 'stats.resetCancel'")
+        capture("Reset statistics confirmation dialog")
         confirmReset.tap()
         Thread.sleep(forTimeInterval: 0.4)
         XCTAssertTrue(wordsTile.label.contains("Arifler: 0"), "After reset, wordsTile must show 0 characters (got: '\(wordsTile.label)')")
@@ -682,19 +707,11 @@ final class QirimKeyUITests: XCTestCase {
             ? app.switches["settings.stats.toggle"]
             : app.descendants(matching: .any).matching(identifier: "settings.stats.toggle").firstMatch
         XCTAssertTrue(statsSettingSwitch.exists, "Statistics setting toggle must exist in keyboard settings card")
-        if statsSettingSwitch.isHittable {
-            statsSettingSwitch.tap()
-        } else {
-            statsSettingSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        }
-        Thread.sleep(forTimeInterval: 0.35)
+        tapSwitch(statsSettingSwitch)
+        Thread.sleep(forTimeInterval: 0.4)
         XCTAssertFalse(statsToggle.exists, "Disabling statistics toggle must hide the statistics card")
         capture("Statistics disabled via settings toggle")
-        if statsSettingSwitch.isHittable {
-            statsSettingSwitch.tap()
-        } else {
-            statsSettingSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        }
+        tapSwitch(statsSettingSwitch)
         XCTAssertTrue(statsToggle.waitForExistence(timeout: 2), "Re-enabling statistics toggle must restore the statistics card")
     }
 
@@ -1179,5 +1196,74 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertFalse(learnedWordsTile.label.contains(", 0,"), "Words learned in external app (Safari) must sync back to QTatar.app in real time (got: '\(learnedWordsTile.label)')")
         capture("QTatar real-time stats synced from Safari")
     }
+
+    func testRound2UkrainianLayoutAndSwipeComet() throws {
+        try launch()
+
+        // 1. Verify Swipe-to-Type on iPhone
+        try selectScript(cyrillic: false)
+        clear()
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let sKey = letterElement("s")
+            let mKey = letterElement("m")
+            if sKey.exists && mKey.exists {
+                let cS = sKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                let cM = mKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                cS.press(forDuration: 0.04, thenDragTo: cM, withVelocity: .slow, thenHoldForDuration: 0.05)
+                Thread.sleep(forTimeInterval: 0.35)
+                let swipedText = (field.value as? String) ?? ""
+                XCTAssertFalse(swipedText.isEmpty, "Swiping across keys on iPhone must insert predicted word (got: '\(swipedText)')")
+                capture("iPhone Swipe to Type result")
+                clear()
+            }
+        }
+
+        // 2. Switch interface language to Ukrainian ('uk'), enable Ukrainian Cyrillic layout ('ФІВА'), and verify transliteration
+        let ukLangBtn = app.buttons["settings.lang.uk"]
+        if ukLangBtn.waitForExistence(timeout: 2) {
+            ukLangBtn.tap()
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+        let ukCyrSwitch = app.switches["settings.ukrainianCyrillic.toggle"].exists
+            ? app.switches["settings.ukrainianCyrillic.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.ukrainianCyrillic.toggle").firstMatch
+        XCTAssertTrue(ukCyrSwitch.waitForExistence(timeout: 2), "Ukrainian Cyrillic layout toggle must appear when Ukrainian interface language is active")
+        if ((ukCyrSwitch.value as? String) ?? "0") == "0" {
+            tapSwitch(ukCyrSwitch)
+            Thread.sleep(forTimeInterval: 0.45)
+        }
+        capture("Ukrainian interface with FIVA layout toggle enabled")
+
+        defer {
+            if ((ukCyrSwitch.value as? String) ?? "1") == "1" {
+                tapSwitch(ukCyrSwitch)
+                Thread.sleep(forTimeInterval: 0.35)
+            }
+            let crhLangBtn = app.buttons["settings.lang.crh"]
+            if crhLangBtn.exists {
+                crhLangBtn.tap()
+                Thread.sleep(forTimeInterval: 0.35)
+            }
+        }
+
+        field.tap()
+        try selectScript(cyrillic: true)
+        XCTAssertTrue(waitForLetter("і", timeout: 3), "Ukrainian Cyrillic layout (ФІВА) must include key 'і'")
+        XCTAssertTrue(hasLetter("є"), "Ukrainian Cyrillic layout (ФІВА) must include key 'є'")
+        XCTAssertTrue(hasLetter("ґ"), "Ukrainian Cyrillic layout (ФІВА) must include key 'ґ'")
+        XCTAssertTrue(hasLetter("ъ"), "Ukrainian Cyrillic layout (ФІВА) must preserve hard sign 'ъ'")
+        capture("Ukrainian Cyrillic FIVA layout")
+
+        clear()
+        typeLetters("фікір")
+        expectText("fikir")
+        capture("Ukrainian Cyrillic fikir transliteration")
+        clear()
+        typeLetters("ґъам")
+        expectText("ğam")
+        capture("Ukrainian Cyrillic ğam transliteration")
+        clear()
+    }
 }
+
 

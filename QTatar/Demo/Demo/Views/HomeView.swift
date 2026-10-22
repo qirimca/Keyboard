@@ -107,6 +107,7 @@ struct HomeView: View {
     @AppStorage("crh.key.text") private var text = ""
     @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
     @AppStorage(KeyboardPreferences.cyrillicKey, store: KeyboardPreferences.defaults) private var cyrillicEnabled = true
+    @AppStorage(KeyboardPreferences.ukrainianCyrillicLayoutKey, store: KeyboardPreferences.defaults) private var ukrainianCyrillicLayout = false
     @AppStorage(KeyboardPreferences.suggestionsKey, store: KeyboardPreferences.defaults) private var suggestionsEnabled = true
     @AppStorage(KeyboardPreferences.wordLearningKey, store: KeyboardPreferences.defaults) private var wordLearningEnabled = true
     @AppStorage(KeyboardPreferences.statsEnabledKey, store: KeyboardPreferences.defaults) private var statsEnabled = true
@@ -429,6 +430,13 @@ struct HomeView: View {
         }
         .onChange(of: cyrillicEnabled) { _, newValue in
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
+            KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.refreshCachedPreferences()
+            notifySandboxTraitsChanged()
+        }
+        .onChange(of: ukrainianCyrillicLayout) { _, newValue in
+            KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(newValue)
             KeyboardPreferences.defaults.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
@@ -1444,6 +1452,26 @@ private extension HomeView {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.cyrillicWarning")
+            }
+
+            if (cyrillicEnabled || !Device.iPad) && (language == "uk" || ukrainianCyrillicLayout || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true) {
+                Divider().padding(.leading, 54)
+
+                HStack(spacing: 12) {
+                    settingsIconBadge("keyboard.badge.ellipsis", color: Color(red: 0.20, green: 0.48, blue: 0.88))
+                    interfaceLabel("settings.ukrainianCyrillic")
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                        .foregroundStyle(primaryInk)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Toggle("", isOn: $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("settings.ukrainianCyrillic.toggle")
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
 
             Divider().padding(.leading, 54)

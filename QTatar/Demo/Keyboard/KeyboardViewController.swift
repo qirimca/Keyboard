@@ -42,6 +42,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     private var isTransitioningToFloating = false
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private var cancellables = Set<AnyCancellable>()
+    private var lastObservedUkrainianCyrillic = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
 
     /// Tracks system menu appearance (long-press on globe) vs quick in-place cycling
     private var isCyrillicExtension: Bool { Bundle.main.bundleIdentifier == AppConfiguration.cyrillicKeyboardBundleId }
@@ -419,12 +420,24 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if state.keyboardContext.isKeyboardSplit != splitEnabled {
             state.keyboardContext.isKeyboardSplit = splitEnabled
         }
+        let ukCyrNow = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+        let ukCyrChanged = (ukCyrNow != lastObservedUkrainianCyrillic)
+        lastObservedUkrainianCyrillic = ukCyrNow
+
         if !KeyboardPreferences.cyrillicEnabled {
             if state.keyboardContext.locale.identifier.contains("Cyrl") {
                 (services.actionHandler as? DemoActionHandler)?.resetComposition()
                 state.keyboardContext.locale = Locale(identifier: "crh-Latn")
                 SpaceBarState.shared.triggerSwitchAnimation()
             }
+        } else if ukCyrChanged && ukCyrNow && !state.keyboardContext.locale.identifier.contains("Cyrl") {
+            (services.actionHandler as? DemoActionHandler)?.resetComposition()
+            state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+            SpaceBarState.shared.triggerSwitchAnimation()
+        } else if ukCyrChanged && !ukCyrNow && !isCyrillicExtension && state.keyboardContext.deviceType != .pad && state.keyboardContext.locale.identifier.contains("Cyrl") {
+            (services.actionHandler as? DemoActionHandler)?.resetComposition()
+            state.keyboardContext.locale = Locale(identifier: "crh-Latn")
+            SpaceBarState.shared.triggerSwitchAnimation()
         } else if isCyrillicExtension && state.keyboardContext.deviceType != .pad && !state.keyboardContext.locale.identifier.contains("Cyrl") {
             state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
             SpaceBarState.shared.triggerSwitchAnimation()
@@ -600,6 +613,22 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             },
             KeyboardPreferences.splitModeChangedNotification as CFString,
+            nil,
+            .deliverImmediately
+        )
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            observer,
+            { _, observer, _, _, _ in
+                guard let observer else { return }
+                let controller = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
+                DispatchQueue.main.async { [weak controller] in
+                    guard let controller, controller.isViewLoaded else { return }
+                    (controller.services.actionHandler as? DemoActionHandler)?.resetComposition()
+                    controller.applyPreferences(syncDisk: true)
+                }
+            },
+            KeyboardPreferences.ukrainianCyrillicLayoutChangedNotification as CFString,
             nil,
             .deliverImmediately
         )
@@ -782,6 +811,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let contentType: String?
         let isDark: Bool
         let cyrillicEnabled: Bool
+        let ukrainianCyrillicLayoutEnabled: Bool
         let suggestionsEnabled: Bool
         let splitEnabled: Bool
         let isFloating: Bool
@@ -800,6 +830,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             contentType: proxy.textContentType.map { $0.rawValue },
             isDark: DemoStyleProvider.effectiveIsDark(for: context),
             cyrillicEnabled: KeyboardPreferences.cyrillicEnabled,
+            ukrainianCyrillicLayoutEnabled: KeyboardPreferences.ukrainianCyrillicLayoutEnabled,
             suggestionsEnabled: KeyboardPreferences.suggestionsEnabled,
             splitEnabled: context.isKeyboardSplit,
             isFloating: context.isKeyboardFloating,
@@ -856,6 +887,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if signature != lastRenderSignature || forceRender {
             let prefsChanged = forceRender
                 || lastRenderSignature?.cyrillicEnabled != signature.cyrillicEnabled
+                || lastRenderSignature?.ukrainianCyrillicLayoutEnabled != signature.ukrainianCyrillicLayoutEnabled
                 || lastRenderSignature?.suggestionsEnabled != signature.suggestionsEnabled
                 || lastRenderSignature?.splitEnabled != signature.splitEnabled
             if prefsChanged {
