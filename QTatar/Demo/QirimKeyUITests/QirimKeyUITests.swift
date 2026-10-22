@@ -265,6 +265,10 @@ final class QirimKeyUITests: XCTestCase {
                     tap("shift")
                 }
             }
+            if !key(id).exists, key("shift").exists {
+                tap("shift")
+                _ = key(id).waitForExistence(timeout: 1.0)
+            }
             key(id).tap()
         }
     }
@@ -1244,7 +1248,7 @@ final class QirimKeyUITests: XCTestCase {
 
         // 2. Verify "Sen ne " next-word predictions offer 2nd-person verbs and never repeat "sen", plus "qırım" -> "Qırım" proper noun capitalization
         clear()
-        typeLetters("sen")
+        typeLetters("Sen")
         tap("space")
         typeLetters("ne")
         tap("space")
@@ -1295,7 +1299,9 @@ final class QirimKeyUITests: XCTestCase {
             }
         }
 
-        field.tap()
+        if !key("space").exists {
+            field.tap()
+        }
         try selectScript(cyrillic: true)
         XCTAssertTrue(waitForLetter("і", timeout: 3), "Ukrainian Cyrillic layout (ФІВА) must include key 'і'")
         XCTAssertTrue(hasLetter("є"), "Ukrainian Cyrillic layout (ФІВА) must include key 'є'")

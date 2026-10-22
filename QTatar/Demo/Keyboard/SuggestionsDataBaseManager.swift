@@ -1476,7 +1476,9 @@ final class SuggestionsDataBaseManager {
                         ))
                     }
                 }
-                guard wordBase.count >= 2, let wordLast = wordBase.last else { continue }
+                guard wordBase.count >= 2,
+                      wordBase.contains(where: { Self.baseVowels.contains($0) }),
+                      let wordLast = wordBase.last else { continue }
 
                 let exactLast = endCandidates.contains(wordLast)
                 let neighborLast = !exactLast && lastNeighbors.contains(wordLast)
