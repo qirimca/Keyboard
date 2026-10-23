@@ -23,7 +23,7 @@
 "sandbox.redo" = "Qaytar";
 "sandbox.paste" = "Qoy";
 "sandbox.clear" = "Temizle";
-"stats.title" = "Statistika ve yeñişler";
+"stats.title" = "Statistika";
 "stats.words" = "Yazılğan sözler";
 "stats.chars" = "Arifler";
 "stats.speed" = "Yazuv tezligi";
@@ -35,13 +35,14 @@
 "stats.secUnit" = "s";
 "stats.achievements" = "Yeñişler";
 "stats.ach.firstStep" = "İlk adım";
-"stats.ach.firstStep.desc" = "Ana tilde 10+ söz";
+"stats.ach.firstStep.desc" = "Ana tilde: %d / %d söz";
 "stats.ach.speed" = "Yürek tezligi";
-"stats.ach.speed.desc" = "30+ söz/daq tezlik";
+"stats.ach.speed.desc" = "Tezlik: %d / %d söz/daq";
 "stats.ach.scholar" = "Söz ustası";
-"stats.ach.scholar.desc" = "100+ söz ya da 10+ ögrenilgen";
+"stats.ach.scholar.desc" = "Luğat: %d / %d söz";
 "stats.ach.wisdom" = "Atalar hikmeti";
-"stats.ach.wisdom.desc" = "Hikmetli söz qoşuldı";
+"stats.ach.wisdom.desc" = "Hikmetli söz: %d / %d";
+"stats.ach.levelBadge" = "Sev. %d/%d";
 "stats.manualWords" = "Arif-arif yazılğan";
 "stats.suggestedWords" = "Tevsiyelernen";
 "stats.suggestionBoost" = "Tekliflernen tezlik artımı: ×%@";
@@ -65,7 +66,7 @@
 "stats.volumeTier3" = "Söz ustası";
 "stats.volumeTier4" = "Tilni yaşatqan";
 "stats.volumeTier5" = "Qırımtatar tiliniñ ışıqçısı";
-"settings.stats" = "Statistika ve yazuv seviyeleri";
+"settings.stats" = "Statistika";
 "settings.stats.desc" = "Yazuv tezligi, sözler ve yeñişlerni közetüv";
 "stats.charsSubtitle" = "Arifler: %d";
 "stats.speedSubtitle" = "Soñki tezlik: %d %@ · %d %@";
@@ -88,7 +89,7 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek";
 "settings.appSettings" = "Qoşulma sazlamaları";
-"settings.appSettings.desc" = "Söz teklifleri, sözlerni ögrenüv, statistika";
+"settings.appSettings.desc" = "Söz teklifleri, sözlerni ögrenüv";
 "settings.systemKeyboard" = "Sistem sazlamaları";
-"settings.systemKeyboard.desc" = "Klaviaturalar, avto-tüzetüv, tınış işaretleri";
-
+"settings.systemKeyboard.desc" = "Avto-büyük arifler, avto-tüzetüv, matematika";
+"settings.systemKeyboard.ios26Desc" = "«Umumiy» → «Klaviatura» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";

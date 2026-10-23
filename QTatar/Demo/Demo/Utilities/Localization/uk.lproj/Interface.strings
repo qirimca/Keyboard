@@ -23,7 +23,7 @@
 "sandbox.redo" = "Повторити";
 "sandbox.paste" = "Вставити";
 "sandbox.clear" = "Очистити";
-"stats.title" = "Статистика та досягнення";
+"stats.title" = "Статистика";
 "stats.words" = "Написано слів";
 "stats.chars" = "Символів";
 "stats.speed" = "Швидкість друку";
@@ -35,14 +35,15 @@
 "stats.secUnit" = "с";
 "stats.achievements" = "Досягнення";
 "stats.ach.firstStep" = "Перший крок";
-"stats.ach.firstStep.desc" = "10+ слів рідною мовою";
+"stats.ach.firstStep.desc" = "Рідною мовою: %d / %d сл.";
 "stats.ach.speed" = "Темп серця";
-"stats.ach.speed.desc" = "Швидкість 30+ сл/хв";
+"stats.ach.speed.desc" = "Швидкість: %d / %d сл/хв";
 "stats.ach.scholar" = "Знавець слів";
-"stats.ach.scholar.desc" = "100+ слів або 10+ вивчених";
+"stats.ach.scholar.desc" = "Словник: %d / %d сл.";
 "stats.ach.wisdom" = "Мудрість предків";
-"stats.ach.wisdom.desc" = "Вставлено крилатий вислів";
-"stats.manualWords" = "Надруковано по буквах";
+"stats.ach.wisdom.desc" = "Відомі вислови: %d / %d";
+"stats.ach.levelBadge" = "Рів. %d/%d";
+"stats.manualWords" = "Вручну по буквах";
 "stats.suggestedWords" = "З підказками";
 "stats.suggestionBoost" = "Прискорення з підказками: ×%@";
 "stats.reset" = "Скинути статистику";
@@ -65,12 +66,12 @@
 "stats.volumeTier3" = "Майстер слова";
 "stats.volumeTier4" = "Носій живої мови";
 "stats.volumeTier5" = "Світоч кримськотатарської";
-"settings.stats" = "Статистика та рівні набору";
+"settings.stats" = "Статистика";
 "settings.stats.desc" = "Відстеження швидкості набору, слів і досягнень";
 "stats.charsSubtitle" = "Символів: %d";
 "stats.speedSubtitle" = "Поточний темп: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Рекордний темп друку";
-"stats.manualWordsSubtitle" = "Вручну по літерах";
+"stats.manualWordsSubtitle" = "Надруковано по літерах";
 "stats.suggestedWordsSubtitle" = "Зекономлено символів: %d";
 "stats.speedNextFormat" = "Далі: «%@» — %d %@, ще +%d";
 "stats.speedMaxReached" = "Досягнуто найвищого рівня!";
@@ -88,7 +89,7 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму";
 "settings.appSettings" = "Налаштування програми";
-"settings.appSettings.desc" = "Підказки слів, навчання слів, статистика";
+"settings.appSettings.desc" = "Підказки слів, навчання слів";
 "settings.systemKeyboard" = "Системні налаштування";
-"settings.systemKeyboard.desc" = "Клавіатури, автовиправлення, пунктуація";
-
+"settings.systemKeyboard.desc" = "Автовеликі літери, автовиправлення, математика";
+"settings.systemKeyboard.ios26Desc" = "Перейдіть у «Загальні» → «Клавіатура» (автовиправлення, математика тощо)";

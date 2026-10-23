@@ -246,6 +246,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
+        SpaceBarState.shared.recordKeystroke()
         resetComposition()
         lastAutoCorrection = nil
         suppressedAutocorrectWord = nil
@@ -742,6 +743,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if gesture == .press, !replaced {
             activeFlickSymbol = nil
             KeyFlickState.shared.reset()
+            switch action {
+            case .character, .characterMargin:
+                SpaceBarState.shared.fadeToResting()
+            default:
+                break
+            }
         }
         if gesture == .release, !replaced {
             KeyFlickState.shared.reset()

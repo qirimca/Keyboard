@@ -35,7 +35,7 @@ enum KeyboardPreferences {
         cachedWordLearning = (defaults.object(forKey: wordLearningKey) as? Bool) ?? (UserDefaults.standard.object(forKey: wordLearningKey) as? Bool) ?? true
         cachedCyrillic = defaults.object(forKey: cyrillicKey) as? Bool ?? true
         cachedUkrainianCyrillicLayout = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
-        cachedStatsEnabled = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? (UserDefaults.standard.object(forKey: statsEnabledKey) as? Bool) ?? true
+        cachedStatsEnabled = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
     }
 
@@ -62,7 +62,7 @@ enum KeyboardPreferences {
 
     static var statsEnabled: Bool {
         if let cached = cachedStatsEnabled { return cached }
-        let val = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? (UserDefaults.standard.object(forKey: statsEnabledKey) as? Bool) ?? true
+        let val = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedStatsEnabled = val
         return val
     }
@@ -78,6 +78,8 @@ enum KeyboardPreferences {
     static func setStatsEnabled(_ enabled: Bool) {
         cachedStatsEnabled = enabled
         defaults.set(enabled, forKey: statsEnabledKey)
+        defaults.set(enabled, forKey: "crh.key.lastSynced.\(statsEnabledKey)")
+        UserDefaults.standard.set(enabled, forKey: statsEnabledKey)
         if !enabled {
             KeyboardUsageStats.reclaimResourcesWhenDisabled()
         }
@@ -264,11 +266,11 @@ enum KeyboardUsageStats {
     /// Returns speed tier index (0...5) and next tier target WPM (if any).
     static func speedTier(for wpm: Int) -> (level: Int, nextTargetWPM: Int?) {
         switch wpm {
-        case ..<1: return (0, 1)
-        case 1..<15: return (1, 15)
-        case 15..<28: return (2, 28)
-        case 28..<43: return (3, 43)
-        case 43..<60: return (4, 60)
+        case ..<1: return (0, 15)
+        case 1..<25: return (1, 25)
+        case 25..<40: return (2, 40)
+        case 40..<55: return (3, 55)
+        case 55..<75: return (4, 75)
         default: return (5, nil)
         }
     }

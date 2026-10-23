@@ -32,16 +32,6 @@
 			<key>DefaultValue</key>
 			<true/>
 		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
-			<string>Statistika ve yazuv seviyeleri</string>
-			<key>Key</key>
-			<string>crh.key.statsEnabled</string>
-			<key>DefaultValue</key>
-			<true/>
-		</dict>
 	</array>
 </dict>
 </plist>

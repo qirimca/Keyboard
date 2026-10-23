@@ -18,7 +18,10 @@
 "onb_onb1_key" = "Allow Full Access: Settings > Apps > QırımKey > Keyboards > Allow Full Access";
 
 /* (No Comment) */
-"onb_onb2_key" = "Add the Keyboard: Settings > General > Keyboards > Add New Keyboard > Select the Crimean Tatar keyboard";
+"onb_onb2_key" = "Add the Keyboard: Settings > General > Keyboard > Keyboards > Add New Keyboard > QırımKey";
+
+/* (No Comment) */
+"onb_onb2_ios26_key" = "Add the Keyboard: Open Settings > General > Keyboard > Keyboards > Add New Keyboard > QırımKey";
 
 /* (No Comment) */
 "onb_onb3_key" = "Choose the Keyboard While Typing: Tap or touch and hold 🌐, then choose Qırımtatarca from the list";

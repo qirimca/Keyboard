@@ -159,7 +159,7 @@
 | `Interface` | `sandbox.redo` | ≤ 32 | Qaytar | Повторити | Redo |
 | `Interface` | `sandbox.paste` | ≤ 32 | Qoy | Вставити | Paste |
 | `Interface` | `sandbox.clear` | ≤ 32 | Temizle | Очистити | Clear |
-| `Interface` | `stats.title` | ≤ 32 | Statistika ve yeñişler | Статистика та досягнення | Stats & Achievements |
+| `Interface` | `stats.title` | ≤ 32 | Statistika | Статистика | Statistics |
 | `Interface` | `stats.words` | ≤ 32 | Yazılğan sözler | Написано слів | Words typed |
 | `Interface` | `stats.chars` | ≤ 32 | Arifler | Символів | Characters |
 | `Interface` | `stats.speed` | ≤ 32 | Yazuv tezligi | Швидкість друку | Typing speed |
@@ -171,14 +171,15 @@
 | `Interface` | `stats.secUnit` | ≤ 32 | s | с | s |
 | `Interface` | `stats.achievements` | ≤ 32 | Yeñişler | Досягнення | Achievements |
 | `Interface` | `stats.ach.firstStep` | ≤ 32 | İlk adım | Перший крок | First Step |
-| `Interface` | `stats.ach.firstStep.desc` | ≤ 32 | Ana tilde 10+ söz | 10+ слів рідною мовою | Type 10+ words |
+| `Interface` | `stats.ach.firstStep.desc` | ≤ 32 | Ana tilde: %d / %d söz | Рідною мовою: %d / %d сл. | Words typed: %d / %d |
 | `Interface` | `stats.ach.speed` | ≤ 32 | Yürek tezligi | Темп серця | Heartbeat Tempo |
-| `Interface` | `stats.ach.speed.desc` | ≤ 32 | 30+ söz/daq tezlik | Швидкість 30+ сл/хв | Reach 30+ WPM speed |
+| `Interface` | `stats.ach.speed.desc` | ≤ 32 | Tezlik: %d / %d söz/daq | Швидкість: %d / %d сл/хв | Speed: %d / %d WPM |
 | `Interface` | `stats.ach.scholar` | ≤ 32 | Söz ustası | Знавець слів | Word Scholar |
-| `Interface` | `stats.ach.scholar.desc` | ≤ 65 | 100+ söz ya da 10+ ögrenilgen | 100+ слів або 10+ вивчених | 100+ words or 10+ learned |
+| `Interface` | `stats.ach.scholar.desc` | ≤ 65 | Luğat: %d / %d söz | Словник: %d / %d сл. | Vocabulary: %d / %d words |
 | `Interface` | `stats.ach.wisdom` | ≤ 32 | Atalar hikmeti | Мудрість предків | Ancestral Wisdom |
-| `Interface` | `stats.ach.wisdom.desc` | ≤ 32 | Hikmetli söz qoşuldı | Вставлено крилатий вислів | Insert a daily proverb |
-| `Interface` | `stats.manualWords` | ≤ 32 | Arif-arif yazılğan | Надруковано по буквах | Typed letter by letter |
+| `Interface` | `stats.ach.wisdom.desc` | ≤ 32 | Hikmetli söz: %d / %d | Відомі вислови: %d / %d | Proverbs used: %d / %d |
+| `Interface` | `stats.ach.levelBadge` | ≤ 32 | Sev. %d/%d | Рів. %d/%d | Lv. %d/%d |
+| `Interface` | `stats.manualWords` | ≤ 32 | Arif-arif yazılğan | Вручну по буквах | Typed manually |
 | `Interface` | `stats.suggestedWords` | ≤ 32 | Tevsiyelernen | З підказками | With suggestions |
 | `Interface` | `stats.suggestionBoost` | ≤ 65 | Tekliflernen tezlik artımı: ×%@ | Прискорення з підказками: ×%@ | Speed boost with suggestions: ×%@ |
 | `Interface` | `stats.reset` | ≤ 32 | Statistikanı sıfırla | Скинути статистику | Reset Statistics |
@@ -201,12 +202,12 @@
 | `Interface` | `stats.volumeTier3` | ≤ 32 | Söz ustası | Майстер слова | Wordsmith |
 | `Interface` | `stats.volumeTier4` | ≤ 32 | Tilni yaşatqan | Носій живої мови | Language Keeper |
 | `Interface` | `stats.volumeTier5` | ≤ 32 | Qırımtatar tiliniñ ışıqçısı | Світоч кримськотатарської | Crimean Tatar Luminary |
-| `Interface` | `settings.stats` | ≤ 65 | Statistika ve yazuv seviyeleri | Статистика та рівні набору | Typing statistics & levels |
+| `Interface` | `settings.stats` | ≤ 65 | Statistika | Статистика | Statistics |
 | `Interface` | `settings.stats.desc` | ≤ 65 | Yazuv tezligi, sözler ve yeñişlerni közetüv | Відстеження швидкості набору, слів і досягнень | Track typing speed, words & achievements |
 | `Interface` | `stats.charsSubtitle` | ≤ 32 | Arifler: %d | Символів: %d | Characters: %d |
 | `Interface` | `stats.speedSubtitle` | ≤ 32 | Soñki tezlik: %d %@ · %d %@ | Поточний темп: %d %@ · %d %@ | Recent pace: %d %@ · %d %@ |
 | `Interface` | `stats.speedPeakSubtitle` | ≤ 32 | Eñ yüksek yazuv tezligi | Рекордний темп друку | Peak typing pace |
-| `Interface` | `stats.manualWordsSubtitle` | ≤ 32 | Qolnen arif-arif yazılğan | Вручну по літерах | Typed manually |
+| `Interface` | `stats.manualWordsSubtitle` | ≤ 32 | Qolnen arif-arif yazılğan | Надруковано по літерах | Written letter by letter |
 | `Interface` | `stats.suggestedWordsSubtitle` | ≤ 32 | Qazanılğan arifler: %d | Зекономлено символів: %d | Characters saved: %d |
 | `Interface` | `stats.speedNextFormat` | ≤ 65 | Soñraki: «%@» — %d %@, daa +%d | Далі: «%@» — %d %@, ще +%d | Next: “%@” — %d %@, +%d more |
 | `Interface` | `stats.speedMaxReached` | ≤ 32 | Eñ yüksek tezlik seviyesi! | Досягнуто найвищого рівня! | Top speed tier reached! |
@@ -224,9 +225,10 @@
 | `Interface` | `settings.ukrainianCyrillic.desc` | ≤ 65 | ґ → g · г → ğ · кʼ → q · нʼ → ñ | ґ → g · г → ğ · кʼ → q · нʼ → ñ | ґ → g · г → ğ · кʼ → q · нʼ → ñ |
 | `Interface` | `settings.cyrillic.ipadFloatingNote` | ≤ 120 | iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek | Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму | Separate keyboard in iOS Settings is only needed for floating mode |
 | `Interface` | `settings.appSettings` | ≤ 32 | Qoşulma sazlamaları | Налаштування програми | App settings |
-| `Interface` | `settings.appSettings.desc` | ≤ 65 | Söz teklifleri, sözlerni ögrenüv, statistika | Підказки слів, навчання слів, статистика | Word suggestions, word learning, statistics |
+| `Interface` | `settings.appSettings.desc` | ≤ 65 | Söz teklifleri, sözlerni ögrenüv | Підказки слів, навчання слів | Word suggestions, word learning |
 | `Interface` | `settings.systemKeyboard` | ≤ 32 | Sistem sazlamaları | Системні налаштування | System settings |
-| `Interface` | `settings.systemKeyboard.desc` | ≤ 65 | Klaviaturalar, avto-tüzetüv, tınış işaretleri | Клавіатури, автовиправлення, пунктуація | Keyboards, auto-correction, smart punctuation |
+| `Interface` | `settings.systemKeyboard.desc` | ≤ 65 | Avto-büyük arifler, avto-tüzetüv, matematika | Автовеликі літери, автовиправлення, математика | Auto-capitalization, auto-correction, math results |
+| `Interface` | `settings.systemKeyboard.ios26Desc` | ≤ 120 | «Umumiy» → «Klaviatura» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.) | Перейдіть у «Загальні» → «Клавіатура» (автовиправлення, математика тощо) | Go to “General” → “Keyboard” (auto-correction, math results, etc.) |
 | `Onboarding` | `onb_back_key` | ≤ 32 | Keri qaytıñız | Назад | Back |
 | `Onboarding` | `onb_check_key` | ≤ 32 | Klaviaturanı sınap baqıñız | Спробувати клавіатуру | Try the Keyboard |
 | `Onboarding` | `onb_finish_key` | ≤ 32 | Bitiriñiz | Завершити | Finish |
@@ -243,7 +245,6 @@
 | `Settings.bundle/Root` | `none given` | ≤ 32 | Berilmedi | Не вказано | none given |
 | `Settings.bundle/Root` | `Söz teklifleri` | ≤ 32 | Söz teklifleri | Підказки слів | Word suggestions |
 | `Settings.bundle/Root` | `Sözlerni ögrenüv` | ≤ 32 | Sözlerni ögrenüv | Навчання слів | Word learning |
-| `Settings.bundle/Root` | `Statistika ve yazuv seviyeleri` | ≤ 65 | Statistika ve yazuv seviyeleri | Статистика та рівні набору | Statistics & typing levels |
 | `DailyPhrases` | `phrase.1.attribution` | ≤ 90 | Qırımtatar atalar sözü | Qırımtatar atalar sözü | Qırımtatar atalar sözü |
 | `DailyPhrases` | `phrase.1.text` | ≤ 65 | Atalar sözünde altın bar. | Atalar sözünde altın bar. | Atalar sözünde altın bar. |
 | `DailyPhrases` | `phrase.1.translation` | ≤ 90 | «Atalar sözünde altın bar.» (Qırımtatar atalar sözü) | «У словах предків є золото.» (Кримськотатарське прислів'я) | \"There is gold in the words of ancestors.\" (Crimean Tatar proverb) |

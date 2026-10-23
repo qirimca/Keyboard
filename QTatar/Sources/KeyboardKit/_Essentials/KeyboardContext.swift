@@ -408,8 +408,24 @@ extension KeyboardContext {
             textInputMode = controller.textInputMode
         }
 
-        if traitCollection != controller.traitCollection {
-            traitCollection = controller.traitCollection
+        let resolvedStyle: UIUserInterfaceStyle = {
+            if let viewStyle = controller.viewIfLoaded?.overrideUserInterfaceStyle, viewStyle != .unspecified {
+                return viewStyle
+            }
+            if controller.overrideUserInterfaceStyle != .unspecified {
+                return controller.overrideUserInterfaceStyle
+            }
+            if controller.textDocumentProxy.keyboardAppearance == .dark {
+                return .dark
+            }
+            return controller.traitCollection.userInterfaceStyle
+        }()
+        let targetTraits = UITraitCollection(traitsFrom: [
+            controller.traitCollection,
+            UITraitCollection(userInterfaceStyle: resolvedStyle)
+        ])
+        if traitCollection != targetTraits {
+            traitCollection = targetTraits
         }
     }
 

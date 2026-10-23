@@ -21,24 +21,31 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
     
     static func isSandboxOverrideActive(for context: KeyboardContext) -> Bool {
-        if let bundleId = context.hostApplicationBundleId, bundleId != AppConfiguration.appBundleId {
+        if let bundleId = context.hostApplicationBundleId,
+           bundleId != AppConfiguration.appBundleId,
+           bundleId != "com.apple.springboard",
+           bundleId != "none" {
             return false
         }
         guard KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused") else {
             return false
         }
         let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
-        let recentlyToggled = ts > 0 && (Date().timeIntervalSince1970 - ts) < 1.8
-        if context.hostApplicationBundleId == nil && !recentlyToggled {
+        let isUITesting = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+        let age = ts > 0 ? (Date().timeIntervalSince1970 - ts) : 0
+        if !isUITesting && ts > 0 && age > 1800.0 {
+            return false
+        }
+        let recentlyActiveInSandbox = isUITesting || (ts > 0 && age < 600.0)
+        if context.hostApplicationBundleId == nil && !recentlyActiveInSandbox {
             let appearance = context.textDocumentProxy.keyboardAppearance ?? .default
             if KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
                 let expectedAppearance: UIKeyboardAppearance = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark") ? .dark : .light
-                if appearance != expectedAppearance {
+                if appearance != expectedAppearance && appearance != .default {
                     return false
                 }
             } else {
-                guard KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") != nil,
-                      appearance == .default else {
+                guard KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") != nil else {
                     return false
                 }
             }
@@ -85,23 +92,23 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func effectiveIsDark(for context: KeyboardContext) -> Bool {
+        if isSandboxOverrideActive(for: context),
+           KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
+        }
         if context.keyboardAppearance == .dark {
             return true
         }
         if context.keyboardAppearance == .light {
             return false
         }
-        if isSandboxOverrideActive(for: context),
-           KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
-            let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
-            let isUITesting = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
-            if isUITesting || (ts > 0 && (Date().timeIntervalSince1970 - ts) < 60.0) {
-                return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
-            }
+        if context.traitCollection.userInterfaceStyle == .dark
+            || context.colorScheme == .dark
+            || UITraitCollection.current.userInterfaceStyle == .dark
+            || UIScreen.main.traitCollection.userInterfaceStyle == .dark {
+            return true
         }
         return context.hasDarkColorScheme
-            || UITraitCollection.current.userInterfaceStyle == .dark
-            || UIScreen.main.traitCollection.userInterfaceStyle == .dark
     }
 
     static func shouldShowTopToolbar(for context: KeyboardContext) -> Bool {
@@ -391,16 +398,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
 
         let darkInputKey = useClassicStyle
             ? Color(white: 0.28)
-            : Color(red: 0.50, green: 0.50, blue: 0.54).opacity(0.38)
+            : Color(red: 0.27, green: 0.27, blue: 0.29).opacity(0.88)
         let darkInputKeyPressed = useClassicStyle
             ? Color(white: 0.18)
-            : Color(red: 0.68, green: 0.68, blue: 0.72).opacity(0.52)
+            : Color(red: 0.36, green: 0.36, blue: 0.39).opacity(0.92)
         let darkSystemKey = useClassicStyle
             ? Color(white: 0.20)
-            : darkInputKey
+            : Color(red: 0.21, green: 0.21, blue: 0.23).opacity(0.82)
         let darkSystemKeyPressed = useClassicStyle
             ? Color(white: 0.28)
-            : darkInputKeyPressed
+            : Color(red: 0.31, green: 0.31, blue: 0.34).opacity(0.90)
 
         let lightInputKey = useClassicStyle
             ? Color.white

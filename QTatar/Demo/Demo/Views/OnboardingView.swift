@@ -23,10 +23,18 @@ struct OnboardingView: View {
         
         var instruction: String {
             switch self {
-            case .onboard1: Onboarding.onb_onb1_key.localized
-            case .onboard2: Onboarding.onb_onb2_key.localized
-            case .onboard3: Onboarding.onb_onb3_key.localized
-            case .onboard4: Onboarding.onb_onb4_key.localized
+            case .onboard1:
+                return Onboarding.onb_onb1_key.localized
+            case .onboard2:
+                if #available(iOS 26.0, *) {
+                    let v26 = L10n.tr("onb_onb2_ios26_key", table: "Onboarding")
+                    return v26 != "onb_onb2_ios26_key" ? v26 : Onboarding.onb_onb2_key.localized
+                }
+                return Onboarding.onb_onb2_key.localized
+            case .onboard3:
+                return Onboarding.onb_onb3_key.localized
+            case .onboard4:
+                return Onboarding.onb_onb4_key.localized
             }
         }
         

@@ -22,7 +22,7 @@ DESIGNED FOR iOS & iPadOS 26/27
 • Built-in interactive testing sandbox for field modes (Text, Search, Email, URL, 123) and on-device typing speed and volume progression levels.
 
 100% PRIVATE & OFFLINE BY DESIGN
-• QırımKey runs completely offline on your device (RequestsOpenAccess = NO).
+• QırımKey runs completely offline on your device with zero network requests.
 • We never collect, transmit, store, or share anything you type or any personal data.
 
 Official Website & Support: https://ctcorpus.org/index.php/en/

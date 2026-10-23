@@ -23,7 +23,7 @@
 "sandbox.redo" = "Redo";
 "sandbox.paste" = "Paste";
 "sandbox.clear" = "Clear";
-"stats.title" = "Stats & Achievements";
+"stats.title" = "Statistics";
 "stats.words" = "Words typed";
 "stats.chars" = "Characters";
 "stats.speed" = "Typing speed";
@@ -35,14 +35,15 @@
 "stats.secUnit" = "s";
 "stats.achievements" = "Achievements";
 "stats.ach.firstStep" = "First Step";
-"stats.ach.firstStep.desc" = "Type 10+ words";
+"stats.ach.firstStep.desc" = "Words typed: %d / %d";
 "stats.ach.speed" = "Heartbeat Tempo";
-"stats.ach.speed.desc" = "Reach 30+ WPM speed";
+"stats.ach.speed.desc" = "Speed: %d / %d WPM";
 "stats.ach.scholar" = "Word Scholar";
-"stats.ach.scholar.desc" = "100+ words or 10+ learned";
+"stats.ach.scholar.desc" = "Vocabulary: %d / %d words";
 "stats.ach.wisdom" = "Ancestral Wisdom";
-"stats.ach.wisdom.desc" = "Insert a daily proverb";
-"stats.manualWords" = "Typed letter by letter";
+"stats.ach.wisdom.desc" = "Proverbs used: %d / %d";
+"stats.ach.levelBadge" = "Lv. %d/%d";
+"stats.manualWords" = "Typed manually";
 "stats.suggestedWords" = "With suggestions";
 "stats.suggestionBoost" = "Speed boost with suggestions: ×%@";
 "stats.reset" = "Reset Statistics";
@@ -65,12 +66,12 @@
 "stats.volumeTier3" = "Wordsmith";
 "stats.volumeTier4" = "Language Keeper";
 "stats.volumeTier5" = "Crimean Tatar Luminary";
-"settings.stats" = "Typing statistics & levels";
+"settings.stats" = "Statistics";
 "settings.stats.desc" = "Track typing speed, words & achievements";
 "stats.charsSubtitle" = "Characters: %d";
 "stats.speedSubtitle" = "Recent pace: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Peak typing pace";
-"stats.manualWordsSubtitle" = "Typed manually";
+"stats.manualWordsSubtitle" = "Written letter by letter";
 "stats.suggestedWordsSubtitle" = "Characters saved: %d";
 "stats.speedNextFormat" = "Next: “%@” — %d %@, +%d more";
 "stats.speedMaxReached" = "Top speed tier reached!";
@@ -88,7 +89,7 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Separate keyboard in iOS Settings is only needed for floating mode";
 "settings.appSettings" = "App settings";
-"settings.appSettings.desc" = "Word suggestions, word learning, statistics";
+"settings.appSettings.desc" = "Word suggestions, word learning";
 "settings.systemKeyboard" = "System settings";
-"settings.systemKeyboard.desc" = "Keyboards, auto-correction, smart punctuation";
-
+"settings.systemKeyboard.desc" = "Auto-capitalization, auto-correction, math results";
+"settings.systemKeyboard.ios26Desc" = "Go to “General” → “Keyboard” (auto-correction, math results, etc.)";

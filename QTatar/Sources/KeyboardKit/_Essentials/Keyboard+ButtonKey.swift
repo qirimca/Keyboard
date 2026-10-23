@@ -45,7 +45,6 @@ public extension Keyboard {
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius)
                         .fill(backgroundColor)
-                        .blendMode((colorScheme == .dark && backgroundColor != .blue && backgroundColor != .clear) ? .plusLighter : .normal)
                 )
                 .overlay(isPressed ? style.pressedOverlayColor : .clear)
                 .cornerRadius(cornerRadius)

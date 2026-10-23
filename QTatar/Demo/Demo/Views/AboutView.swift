@@ -30,19 +30,29 @@ struct AboutView: View {
         let _ = language
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 18) {
-                    headerSection
-                    projectSection
-                    contactSection
-                    feedbackSection
-                    FooterView()
+            ScrollViewReader { scroll in
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        headerSection
+                        projectSection
+                        contactSection
+                            .id("contactSection")
+                        feedbackSection
+                        FooterView()
+                    }
+                    .padding(.horizontal, Device.iPhone ? 12 : 24)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, Device.iPhone ? 12 : 24)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onAppear {
+                    if ProcessInfo.processInfo.arguments.contains("-qt_open_about") {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            scroll.scrollTo("contactSection", anchor: .center)
+                        }
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
@@ -95,12 +105,26 @@ private extension AboutView {
     }
     
     var contactSection: some View {
-        VStack(spacing: 6) {
+        let links = socialMediaLinks
+        return VStack(alignment: .leading, spacing: 8) {
             containerTitle(title: About.about_join_key.localized, icon: "hand.thumbsup")
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .center, spacing: 15) {
-                    ForEach(socialMediaLinks, id: \.0) { social, link in
+
+            if Device.iPhone {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.prefix(3)), id: \.0) { social, link in
+                            linkButton(name: social, link: link)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.dropFirst(3)), id: \.0) { social, link in
+                            linkButton(name: social, link: link)
+                        }
+                    }
+                }
+            } else {
+                HStack(alignment: .center, spacing: 10) {
+                    ForEach(links, id: \.0) { social, link in
                         linkButton(name: social, link: link)
                     }
                 }
@@ -145,13 +169,16 @@ private extension AboutView {
     
     // MARK: Additional components
     func containerTitle(title: String, icon: String) -> some View {
-        HStack {
-            Text(title).mediumText()
-            Spacer()
+        HStack(alignment: .center, spacing: 8) {
+            Text(title)
+                .mediumText(size: Device.iPhone ? 16 : 18)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
             Image(systemName: icon)
                 .imageScale(.large)
                 .foregroundStyle(Color(.label))
-        }.padding(.bottom, 6)
+        }
+        .padding(.bottom, 6)
     }
     
     func linkButton(name: String, link: String) -> some View {
@@ -161,17 +188,22 @@ private extension AboutView {
                 openURL(URL(string: link)!)
             }
         } label: {
-            HStack {
-                Text(name).regularText(size: 14, color: Color(.systemBackground))
+            HStack(spacing: 4) {
+                Text(name)
+                    .regularText(size: 13.5, color: Color(.systemBackground))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 Image(systemName: "arrow.up.forward.app")
                     .imageScale(.small)
                     .foregroundStyle(Color(.systemBackground))
             }
-            .padding(7)
-            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
             .background(Color(.label))
             .clipShape(Capsule())
         }
+        .buttonStyle(.plain)
     }
     
     func feedbackButton(
@@ -223,7 +255,9 @@ private extension AboutView {
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.18), lineWidth: 1.5))
             
-            Text(projectName).mediumText()
+            Text(projectName)
+                .mediumText()
+                .fixedSize(horizontal: false, vertical: true)
             
             Button {
                 withAnimation {
@@ -243,7 +277,9 @@ private extension AboutView {
                 .clipShape(Capsule())
             }
             
-            Text(description).regularText(color: Color(.secondaryLabel))
+            Text(description)
+                .regularText(color: Color(.secondaryLabel))
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 1)
         }
         .padding(14)

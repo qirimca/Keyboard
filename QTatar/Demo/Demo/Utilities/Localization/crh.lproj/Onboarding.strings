@@ -18,7 +18,10 @@
 "onb_onb1_key" = "Tam irişim beriñiz: Sazlamalar > İlâveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz";
 
 /* (No Comment) */
-"onb_onb2_key" = "Klaviaturanı qoşuñız: Sazlamalar > Umumiy > Klaviaturalar > Yañı klaviatura qoşmaq > Qırımtatar klaviaturasını saylañız";
+"onb_onb2_key" = "Klaviaturanı qoşuñız: Sazlamalar > Umumiy > Klaviatura > Klaviaturalar > Yañı klaviatura qoşmaq > QırımKey";
+
+/* (No Comment) */
+"onb_onb2_ios26_key" = "Klaviaturanı qoşuñız: «Sazlamalar» > «Umumiy» > «Klaviatura» > «Klaviaturalar» > «Yañı klaviatura qoşmaq» > QırımKey";
 
 /* (No Comment) */
 "onb_onb3_key" = "Yazğanda klaviaturanı saylañız: 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız";

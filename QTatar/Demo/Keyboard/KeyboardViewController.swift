@@ -1033,6 +1033,10 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if overrideUserInterfaceStyle != .unspecified {
             overrideUserInterfaceStyle = .unspecified
         }
+        let targetViewStyle: UIUserInterfaceStyle = effectiveDark ? .dark : .light
+        if view.overrideUserInterfaceStyle != targetViewStyle {
+            view.overrideUserInterfaceStyle = targetViewStyle
+        }
         syncPreferredKeyboardTypeWithProxy()
         // Re-render only when a trait the UI depends on changed (field traits, empty <-> non-empty for the Return key).
         let signature = currentRenderSignature
@@ -1145,10 +1149,10 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if !isTransitioningToFloating {
             state.keyboardContext.syncIsFloating(with: self)
         }
+        SpaceBarState.shared.triggerSwitchAnimation()
         updateKeyboardHeightConstraint()
         clampFloatingHostContainerIfNeeded(initialLift: false)
         refreshProxyState()
-        SpaceBarState.shared.triggerSwitchAnimation()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
         if hasText {
             performAutocomplete()

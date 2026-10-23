@@ -7,7 +7,7 @@ LATİN VE KİRİL TİZİLİŞLERİ (AVTOTRANSLİTERATSİYA İLE)
 
 2024/2025 RESMİY İMLÂSI VE AQILLI SÖZ TEVSİYELERİ
 • Qırımtatar tiliniñ Milliy Korpusına tayanğan luğat bazası 2024/2025 resmiy qırımtatar imlâ qaidelerine (ДЕСС № 1722/04-03/25) uyğundır.
-• Defisli murakkep sözler (gece-kündüz, alış-veriş), -mı/-mi sualuklarınıñ qoşulıp yazıluvı (yaptıñ mı → yaptıñmı) ve qırımtatar toponimleriniñ büyük arifnen yazıluvı (Qırım, Aqmescit, Bağçasaray, Çonğar, Or Qapı) desteklene.
+• Defisli murakkep sözler (gece-kündüz, alış-veriş), -mı/-mi sualuklarınıñ qoşulıp yazıluvı (yaptıñ mı → yaptıñmı) ve Qırım (Ukrayna) qırımtatar toponimleriniñ büyük arifnen yazıluvı (Qırım, Ukrayna, Aqmescit, Bağçasaray, Çonğar, Or Qapı) desteklene.
 • Soñki avtotüzetüvni Backspace (⌫) dögmesine bir basuvnen lâğu etüv.
 • Cihaz içinde şahsiy söz ve söz birikmelerini ögrenüv.
 
@@ -22,7 +22,7 @@ iOS VE iPadOS 26/27 İÇÜN YARATILĞAN
 • Qoşulma içinde interaktiv sınama meydançığı ve yazuv tezligi statistika seviyeleri.
 
 100% MAHREMİYET VE İNTERNETSİZ ÇALIŞUV
-• QırımKey bütünley cihaz içinde ve internetsiz çalışa (RequestsOpenAccess = NO).
+• QırımKey bütünley cihaz içinde ve internetsiz çalışa (iç bir ağ sorğusı yapılmay).
 • Yazğan metinleriñiz ya da şahsiy malümatlarıñız iç bir vaqıt toplanmay ve iç bir yerge yiberilmey.
 
 Resmiy sayt ve destek: https://ctcorpus.org/index.php/crh/
