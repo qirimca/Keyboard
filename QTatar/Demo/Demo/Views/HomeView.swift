@@ -156,7 +156,7 @@ struct HomeView: View {
     @State private var isTestingExpanded = true
     @State private var shouldAutoFocusSandbox: Bool = {
         let args = ProcessInfo.processInfo.arguments
-        return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme")
+        return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || args.contains("-qt_focus_sandbox_live")
     }()
     @State private var isKeyboardVisible = false
     @State private var cyrillicStatus = CyrillicStatus.unknown
@@ -166,6 +166,8 @@ struct HomeView: View {
     @State private var containerSize = CGSize.zero
     @State private var isWritingFieldFocused = false
     @State private var didInitializeThemeFromSystem = false
+    @State private var lastKnownSettingsSnapshot: [String: Bool] = [:]
+    @State private var settingsSyncRevision: Int = 0
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -182,6 +184,7 @@ struct HomeView: View {
 
     var body: some View {
         let _ = language // Observe interface language changes immediately
+        let _ = settingsSyncRevision // Observe external Settings.bundle / App Group preference updates
         ZStack {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
@@ -359,6 +362,7 @@ struct HomeView: View {
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            AppStoreReviewManager.recordForegroundSession()
             Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
@@ -387,6 +391,7 @@ struct HomeView: View {
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            AppStoreReviewManager.recordForegroundSession()
             Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -450,41 +455,56 @@ struct HomeView: View {
             syncThemeToAppGroup(selectedThemeMode)
         }
         .onChange(of: cyrillicEnabled) { _, newValue in
+            lastKnownSettingsSnapshot[KeyboardPreferences.cyrillicKey] = newValue
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
+            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.cyrillicKey)")
             UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
             KeyboardPreferences.defaults.synchronize()
+            UserDefaults.standard.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: ukrainianCyrillicLayout) { _, newValue in
+            lastKnownSettingsSnapshot[KeyboardPreferences.ukrainianCyrillicLayoutKey] = newValue
             KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(newValue)
+            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.ukrainianCyrillicLayoutKey)")
             UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
             KeyboardPreferences.defaults.synchronize()
+            UserDefaults.standard.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: suggestionsEnabled) { _, newValue in
+            lastKnownSettingsSnapshot[KeyboardPreferences.suggestionsKey] = newValue
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
+            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.suggestionsKey)")
             UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
             KeyboardPreferences.defaults.synchronize()
+            UserDefaults.standard.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: wordLearningEnabled) { _, newValue in
+            lastKnownSettingsSnapshot[KeyboardPreferences.wordLearningKey] = newValue
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
+            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.wordLearningKey)")
             UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
             KeyboardPreferences.defaults.synchronize()
+            UserDefaults.standard.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
         }
         .onChange(of: statsEnabled) { _, newValue in
+            lastKnownSettingsSnapshot[KeyboardPreferences.statsEnabledKey] = newValue
             KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.statsEnabledKey)
+            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.statsEnabledKey)")
             UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.statsEnabledKey)
             KeyboardPreferences.defaults.synchronize()
+            UserDefaults.standard.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             KeyboardPreferences.refreshCachedPreferences()
             notifySandboxTraitsChanged()
@@ -565,13 +585,27 @@ struct HomeView: View {
         CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication)
         let groupDefaults = KeyboardPreferences.defaults
         let stdDefaults = UserDefaults.standard
+        var didReconcileChange = false
 
-        func reconcileBool(key: String, currentValue: Bool, defaultValue: Bool) -> Bool {
+        func reconcileBool(key: String, defaultValue: Bool) -> Bool {
+            let lastSyncedKey = "crh.key.lastSynced.\(key)"
             let groupObj = groupDefaults.object(forKey: key) as? Bool
             let stdObj = stdDefaults.object(forKey: key) as? Bool
+            let previousKnown = lastKnownSettingsSnapshot[key] ?? (groupDefaults.object(forKey: lastSyncedKey) as? Bool)
             let resolved: Bool
-            if let stdVal = stdObj, stdVal != currentValue, groupObj == currentValue {
-                resolved = stdVal
+            if let g = groupObj, let s = stdObj, g != s {
+                if let prev = previousKnown {
+                    if s != prev && g == prev {
+                        resolved = s
+                    } else if g != prev && s == prev {
+                        resolved = g
+                    } else {
+                        resolved = g
+                    }
+                } else {
+                    resolved = g
+                }
+                didReconcileChange = true
             } else if let groupVal = groupObj {
                 resolved = groupVal
             } else if let stdVal = stdObj {
@@ -579,26 +613,50 @@ struct HomeView: View {
             } else {
                 resolved = defaultValue
             }
+            if let prev = previousKnown, prev != resolved {
+                didReconcileChange = true
+            }
             if groupObj != resolved {
                 groupDefaults.set(resolved, forKey: key)
+                didReconcileChange = true
             }
             if stdObj != resolved {
                 stdDefaults.set(resolved, forKey: key)
+                didReconcileChange = true
             }
+            if (groupDefaults.object(forKey: lastSyncedKey) as? Bool) != resolved {
+                groupDefaults.set(resolved, forKey: lastSyncedKey)
+            }
+            lastKnownSettingsSnapshot[key] = resolved
             return resolved
         }
 
-        let newCyrillic = reconcileBool(key: KeyboardPreferences.cyrillicKey, currentValue: cyrillicEnabled, defaultValue: true)
-        let newUkrainian = reconcileBool(key: KeyboardPreferences.ukrainianCyrillicLayoutKey, currentValue: ukrainianCyrillicLayout, defaultValue: false)
-        let newSuggestions = reconcileBool(key: KeyboardPreferences.suggestionsKey, currentValue: suggestionsEnabled, defaultValue: true)
-        let newWordLearning = reconcileBool(key: KeyboardPreferences.wordLearningKey, currentValue: wordLearningEnabled, defaultValue: true)
-        let newStats = reconcileBool(key: KeyboardPreferences.statsEnabledKey, currentValue: statsEnabled, defaultValue: true)
+        let newCyrillic = (groupDefaults.object(forKey: KeyboardPreferences.cyrillicKey) as? Bool) ?? true
+        let newUkrainian = (groupDefaults.object(forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey) as? Bool) ?? false
+        let newSuggestions = reconcileBool(key: KeyboardPreferences.suggestionsKey, defaultValue: true)
+        let newWordLearning = reconcileBool(key: KeyboardPreferences.wordLearningKey, defaultValue: true)
+        let newStats = reconcileBool(key: KeyboardPreferences.statsEnabledKey, defaultValue: true)
 
         if cyrillicEnabled != newCyrillic { cyrillicEnabled = newCyrillic }
-        if ukrainianCyrillicLayout != newUkrainian { ukrainianCyrillicLayout = newUkrainian }
+        if ukrainianCyrillicLayout != newUkrainian {
+            ukrainianCyrillicLayout = newUkrainian
+        }
         if suggestionsEnabled != newSuggestions { suggestionsEnabled = newSuggestions }
         if wordLearningEnabled != newWordLearning { wordLearningEnabled = newWordLearning }
         if statsEnabled != newStats { statsEnabled = newStats }
+
+        if didReconcileChange {
+            if !newStats {
+                isStatsExpanded = false
+                liveWPM = 0
+                liveCPM = 0
+            }
+            groupDefaults.synchronize()
+            stdDefaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            settingsSyncRevision &+= 1
+            notifySandboxTraitsChanged()
+        }
 
         KeyboardPreferences.refreshCachedPreferences()
     }
@@ -638,6 +696,15 @@ struct HomeView: View {
         if lastWPM != newLastWPM { lastWPM = newLastWPM }
         if lastCPM != newLastCPM { lastCPM = newLastCPM }
         if phrasesInserted != newPhrasesInserted { phrasesInserted = newPhrasesInserted }
+
+        let bestWPM = max(newPeakWPM, max(newLastWPM, liveWPM))
+        AppStoreReviewManager.evaluateAndRequestReviewIfAppropriate(
+            totalWords: newTotalWords,
+            learnedWords: newLearnedWords,
+            bestWPM: bestWPM,
+            isKeyboardReady: areAllIndicatorsEnabled,
+            isTypingActive: isWritingFieldFocused || isKeyboardVisible
+        )
     }
 
     private static func registerFloatingRequestObserverIfNeeded() {
@@ -843,47 +910,16 @@ struct HomeView: View {
     }
 
     static func openKeyboardSettings() {
-        let candidates = [
-            "App-Prefs:root=General&path=Keyboard/KEYBOARDS",
-            "App-Prefs:root=General&path=Keyboard",
-            "prefs:root=General&path=Keyboard/KEYBOARDS",
-            "prefs:root=General&path=Keyboard",
-            UIApplication.openSettingsURLString
-        ]
-        func tryNext(_ index: Int) {
-            guard index < candidates.count else { return }
-            guard let url = URL(string: candidates[index]) else {
-                tryNext(index + 1)
-                return
-            }
-            UIApplication.shared.open(url, options: [:]) { success in
-                if !success {
-                    tryNext(index + 1)
-                }
-            }
-        }
-        tryNext(0)
+        openAppSettings()
+    }
+
+    static func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 
     static func openSystemKeyboardSettings() {
-        let candidates = [
-            "App-Prefs:root=General&path=Keyboard",
-            "prefs:root=General&path=Keyboard",
-            UIApplication.openSettingsURLString
-        ]
-        func tryNext(_ index: Int) {
-            guard index < candidates.count else { return }
-            guard let url = URL(string: candidates[index]) else {
-                tryNext(index + 1)
-                return
-            }
-            UIApplication.shared.open(url, options: [:]) { success in
-                if !success {
-                    tryNext(index + 1)
-                }
-            }
-        }
-        tryNext(0)
+        openAppSettings()
     }
 
     private static func updateHostSplitBackdropMask() {
@@ -962,7 +998,7 @@ struct HomeView: View {
                 }
             }
         }
-        func clampView(_ view: UIView) {
+        func clampView(_ view: UIView, bottomMargin: CGFloat) {
             let className = NSStringFromClass(type(of: view))
             if className.contains("UIInputSetHostView") {
                 let f = view.frame
@@ -972,20 +1008,21 @@ struct HomeView: View {
                     if f.minX < margin { clampedX = margin }
                     if f.maxX > screenBounds.width - margin { clampedX = max(margin, screenBounds.width - f.width - margin) }
                     if f.minY < margin { clampedY = margin }
-                    if f.maxY > screenBounds.height - margin { clampedY = max(margin, screenBounds.height - f.height - margin) }
+                    if f.maxY > screenBounds.height - bottomMargin { clampedY = max(margin, screenBounds.height - f.height - bottomMargin) }
                     if abs(clampedX - f.origin.x) > 0.5 || abs(clampedY - f.origin.y) > 0.5 {
                         view.frame.origin = CGPoint(x: clampedX, y: clampedY)
                     }
                 }
             }
             for sub in view.subviews {
-                clampView(sub)
+                clampView(sub, bottomMargin: bottomMargin)
             }
         }
         for win in windows {
             let winName = NSStringFromClass(type(of: win))
             if winName.contains("RemoteKeyboard") || winName.contains("TextEffects") {
-                clampView(win)
+                let bottomMargin = max(win.safeAreaInsets.bottom + 38, 52)
+                clampView(win, bottomMargin: bottomMargin)
             }
         }
     }
@@ -1143,6 +1180,15 @@ struct HomeView: View {
             } else if args.contains("-qt_split") {
                 KeyboardPreferences.setSplitKeyboardEnabled(true)
             }
+            if args.contains("-qt_focus_sandbox_live") {
+                isTestingExpanded = true
+                shouldAutoFocusSandbox = true
+            }
+            if args.contains("-qt_open_app_settings") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    Self.openAppSettings()
+                }
+            }
             if shouldAutoFocusSandbox {
                 syncThemeToAppGroup(selectedThemeMode)
             }
@@ -1155,6 +1201,10 @@ struct HomeView: View {
         defaults.removeObject(forKey: "crh.key.test.isDark")
         defaults.removeObject(forKey: "crh.key.test.fieldMode")
         defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+            && !CommandLine.arguments.contains("-UITesting") {
+            defaults.removeObject(forKey: "crh.key.test.isUITesting")
+        }
         defaults.set(false, forKey: "crh.key.test.sandboxFocused")
         defaults.synchronize()
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
@@ -1257,12 +1307,12 @@ private extension HomeView {
     private var segmentedTrackColor: Color { Color(.tertiarySystemFill) }
 
     func interfaceLabel(_ key: String) -> Text {
-        Text(LocalizedStringKey(key), tableName: "Interface", bundle: KeyboardPreferences.interfaceBundle)
+        L10n.label(key)
     }
 
     func localizedInterfaceString(_ key: String) -> String {
         let _ = language
-        return KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: "Interface")
+        return L10n.tr(key)
     }
 
     private static var appearedBadgeIDs: Set<String> = []
@@ -1432,6 +1482,8 @@ private extension HomeView {
                                 interfaceLabel("settings.cyrillicAddAction")
                                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 12))
                                     .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(brandBlue, in: Capsule())
@@ -1477,6 +1529,8 @@ private extension HomeView {
                             interfaceLabel("settings.cyrillicAddAction")
                                 .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
                                 .foregroundStyle(.white)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
                                 .background(brandBlue, in: Capsule())
@@ -1543,77 +1597,20 @@ private extension HomeView {
 
             Divider().padding(.leading, 54)
 
-            // Autocomplete suggestions toggle
-            HStack(spacing: 12) {
-                settingsIconBadge("sparkles", color: appleGreen, isEnabled: suggestionsEnabled, badgeID: "settings.suggestions.sparkles")
-                interfaceLabel("settings.suggestions")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                    .foregroundStyle(primaryInk)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                Toggle("", isOn: animationsAllowed ? $suggestionsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $suggestionsEnabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .accessibilityIdentifier("settings.suggestions.toggle")
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider().padding(.leading, 54)
-
-            // Personalized word & bigram learning toggle
-            HStack(spacing: 12) {
-                walnutBrainIconBadge(color: Color(red: 0.96, green: 0.58, blue: 0.04), isEnabled: wordLearningEnabled)
-                interfaceLabel("settings.wordLearning")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                    .foregroundStyle(primaryInk)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                Toggle("", isOn: animationsAllowed ? $wordLearningEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $wordLearningEnabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .accessibilityIdentifier("settings.wordLearning.toggle")
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider().padding(.leading, 54)
-
-            // Typing statistics & progression levels toggle
-            HStack(spacing: 12) {
-                settingsIconBadge("chart.bar.xaxis", color: Color(red: 0.58, green: 0.29, blue: 0.92), isEnabled: statsEnabled, badgeID: "settings.stats.chart")
-                interfaceLabel("settings.stats")
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                    .foregroundStyle(primaryInk)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                Toggle("", isOn: animationsAllowed ? $statsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $statsEnabled)
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .accessibilityIdentifier("settings.stats.toggle")
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider().padding(.leading, 54)
-
-            // Navigation link row to iOS System Keyboard Settings (Settings → General → Keyboards)
+            // Navigation link row to App Settings in iOS Settings (Settings → Apps → QırımKey)
             Button {
                 HapticFeedback.playSelection()
-                Self.openSystemKeyboardSettings()
+                Self.openAppSettings()
             } label: {
                 HStack(spacing: 12) {
-                    settingsIconBadge("slider.horizontal.3", color: Color(.systemGray), badgeID: "settings.systemKeyboard.slider")
+                    settingsIconBadge("gearshape", color: brandBlue, badgeID: "settings.appSettings.gear")
                     VStack(alignment: .leading, spacing: 2) {
-                        interfaceLabel("settings.systemKeyboard")
+                        interfaceLabel("settings.appSettings")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        interfaceLabel("settings.systemKeyboard.desc")
+                        interfaceLabel("settings.appSettings.desc")
                             .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
                             .foregroundStyle(secondaryInk)
                             .lineLimit(2)
@@ -1629,7 +1626,7 @@ private extension HomeView {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("settings.systemKeyboard.button")
+            .accessibilityIdentifier("settings.appSettings.button")
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
@@ -1745,7 +1742,7 @@ private extension HomeView {
                             }
                         }
                     ),
-                    apportionsWidthsByContent: false
+                    apportionsWidthsByContent: true
                 )
                 .frame(height: 30)
             }
@@ -1796,90 +1793,86 @@ private extension HomeView {
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let displayWPM = (statsEnabled && hasText) ? liveWPM : 0
         let displayCPM = (statsEnabled && hasText) ? liveCPM : 0
+        let showsSpeedBadge = statsEnabled && (displayCPM > 0 || displayWPM > 0)
 
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                Text(Home.home_writearea_key.localized)
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: 12.5))
-                    .foregroundStyle(secondaryInk)
-                    .lineLimit(1)
-
-                if statsEnabled && (displayCPM > 0 || displayWPM > 0) {
-                    HStack(spacing: 3) {
-                        Image(systemName: "bolt.heart.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(brandBlue)
-                        Text(
-                            displayWPM > 0
-                                ? "\(displayWPM) \(localizedInterfaceString("stats.wpmUnit")) · \(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
-                                : "\(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
-                        )
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(brandBlue)
-                        .contentTransition(.numericText())
-                        .lineLimit(1)
-                    }
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2.5)
-                    .background(brandBlue.opacity(0.12), in: Capsule())
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("sandbox.speedBadge")
-                }
-
-                Spacer(minLength: 4)
-
-                Button {
-                    text = ""
-                    NotificationCenter.default.post(name: Notification.Name("crh.key.clearSandboxText"), object: nil)
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(secondaryInk.opacity(0.75))
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .opacity(text.isEmpty ? 0 : 1)
-                .disabled(text.isEmpty)
-                .accessibilityIdentifier("sandbox.clear")
+        return ZStack(alignment: .topLeading) {
+            if text.isEmpty {
+                Text(Home.home_typing_key.localized)
+                    .font(InterfaceFont.font("GeneralSans-Regular", size: Device.iPad ? 16 : 15))
+                    .foregroundStyle(Color(.placeholderText))
+                    .padding(.horizontal, 13)
+                    .padding(.top, 11)
+                    .allowsHitTesting(false)
             }
-            .padding(.horizontal, 10)
+            SandboxTextView(
+                text: $text,
+                currentText: text,
+                isFocused: $isWritingFieldFocused,
+                canUndo: $canSandboxUndo,
+                canRedo: $canSandboxRedo,
+                liveWPM: $liveWPM,
+                liveCPM: $liveCPM,
+                autoFocusOnAppear: shouldAutoFocusSandbox,
+                onDidAutoFocus: {
+                    if shouldAutoFocusSandbox {
+                        shouldAutoFocusSandbox = false
+                    }
+                },
+                placeholder: Home.home_typing_key.localized,
+                fieldMode: selectedFieldMode,
+                themeMode: selectedThemeMode,
+                hasManualThemeOverride: hasManualThemeOverride,
+                preferencesToken: "\(cyrillicEnabled)-\(ukrainianCyrillicLayout)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
+                fontSize: Device.iPad ? 16 : 15
+            )
+            .frame(height: Device.iPad ? 92 : 70)
+            .padding(.leading, 8)
+            .padding(.trailing, text.isEmpty ? 8 : 34)
+            .padding(.top, 4)
+            .padding(.bottom, showsSpeedBadge ? 24 : 5)
+            .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                text = ""
+                NotificationCenter.default.post(name: Notification.Name("crh.key.clearSandboxText"), object: nil)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(secondaryInk.opacity(0.75))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             .padding(.top, 6)
-
-            ZStack(alignment: .topLeading) {
-                if text.isEmpty {
-                    Text(Home.home_typing_key.localized)
-                        .font(InterfaceFont.font("GeneralSans-Regular", size: Device.iPad ? 16 : 15))
-                        .foregroundStyle(Color(.placeholderText))
-                        .padding(.horizontal, 13)
-                        .padding(.top, 7)
-                        .allowsHitTesting(false)
+            .padding(.trailing, 6)
+            .opacity(text.isEmpty ? 0 : 1)
+            .disabled(text.isEmpty)
+            .accessibilityIdentifier("sandbox.clear")
+        }
+        .overlay(alignment: .bottomLeading) {
+            if showsSpeedBadge {
+                HStack(spacing: 3) {
+                    Image(systemName: "bolt.heart.fill")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(brandBlue)
+                    Text(
+                        displayWPM > 0
+                            ? "\(displayWPM) \(localizedInterfaceString("stats.wpmUnit")) · \(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
+                            : "\(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
+                    )
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(brandBlue)
+                    .contentTransition(.numericText())
+                    .lineLimit(1)
                 }
-                SandboxTextView(
-                    text: $text,
-                    currentText: text,
-                    isFocused: $isWritingFieldFocused,
-                    canUndo: $canSandboxUndo,
-                    canRedo: $canSandboxRedo,
-                    liveWPM: $liveWPM,
-                    liveCPM: $liveCPM,
-                    autoFocusOnAppear: shouldAutoFocusSandbox,
-                    onDidAutoFocus: {
-                        if shouldAutoFocusSandbox {
-                            shouldAutoFocusSandbox = false
-                        }
-                    },
-                    placeholder: Home.home_typing_key.localized,
-                    fieldMode: selectedFieldMode,
-                    themeMode: selectedThemeMode,
-                    hasManualThemeOverride: hasManualThemeOverride,
-                    preferencesToken: "\(cyrillicEnabled)-\(ukrainianCyrillicLayout)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
-                    fontSize: Device.iPad ? 16 : 15
-                )
-                .frame(height: Device.iPad ? 84 : 62)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 5)
-                .environment(\.layoutDirection, isRtl ? .rightToLeft : .leftToRight)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2.5)
+                .background(brandBlue.opacity(0.12), in: Capsule())
+                .padding(.leading, 10)
+                .padding(.bottom, 6)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("sandbox.speedBadge")
             }
         }
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -2495,7 +2488,8 @@ private final class AccessibleUISegmentedControl: UISegmentedControl {
 
     func applySegmentAccessibilityIdentifiers() {
         for label in Self.collectLabels(in: self) {
-            label.adjustsFontSizeToFitWidth = false
+            label.adjustsFontSizeToFitWidth = true
+            label.minimumScaleFactor = 0.82
             label.lineBreakMode = .byTruncatingTail
         }
         let segments = Self.collectSegments(in: self)
@@ -2701,6 +2695,35 @@ private struct SettingsLineArtIconShape: Shape {
             p.move(to: CGPoint(x: w * 0.28, y: h * 0.64))
             p.addLine(to: CGPoint(x: w * 0.72, y: h * 0.64))
 
+        case "gearshape":
+            let c = CGPoint(x: w * 0.5, y: h * 0.5)
+            let innerR = min(w, h) * 0.165
+            let rootR = min(w, h) * 0.295
+            let tipR = min(w, h) * 0.415
+            p.addEllipse(in: CGRect(x: c.x - innerR, y: c.y - innerR, width: innerR * 2, height: innerR * 2))
+            let teeth = 8
+            for i in 0..<teeth {
+                let baseAngle = Double(i) * (2.0 * .pi / Double(teeth))
+                let a0 = baseAngle - 0.17
+                let a1 = baseAngle - 0.10
+                let a2 = baseAngle + 0.10
+                let a3 = baseAngle + 0.17
+                let nextBase = Double(i + 1) * (2.0 * .pi / Double(teeth)) - 0.17
+                let pt0 = CGPoint(x: c.x + CGFloat(cos(a0)) * rootR, y: c.y + CGFloat(sin(a0)) * rootR)
+                let pt1 = CGPoint(x: c.x + CGFloat(cos(a1)) * tipR, y: c.y + CGFloat(sin(a1)) * tipR)
+                let pt2 = CGPoint(x: c.x + CGFloat(cos(a2)) * tipR, y: c.y + CGFloat(sin(a2)) * tipR)
+                let pt3 = CGPoint(x: c.x + CGFloat(cos(a3)) * rootR, y: c.y + CGFloat(sin(a3)) * rootR)
+                let ptNext = CGPoint(x: c.x + CGFloat(cos(nextBase)) * rootR, y: c.y + CGFloat(sin(nextBase)) * rootR)
+                if i == 0 {
+                    p.move(to: pt0)
+                }
+                p.addLine(to: pt1)
+                p.addLine(to: pt2)
+                p.addLine(to: pt3)
+                p.addLine(to: ptNext)
+            }
+            p.closeSubpath()
+
         case "slider.horizontal.3":
             let rows: [(y: CGFloat, knobX: CGFloat)] = [
                 (h * 0.24, w * 0.34),
@@ -2798,14 +2821,36 @@ private struct SettingsLineArtIconShape: Shape {
     }
 }
 
-/// Vector stroke path for the `Къ` or `Кʼ` glyph inside `TransliterationKeycapBadge` so the inner symbol draws from lines while the 3D keycap rim stays stationary.
+/// Vector stroke path for the `Къ`, `Кʼ`, or `Q` glyph inside `TransliterationKeycapBadge` so the inner symbol draws from lines while the 3D keycap rim stays stationary.
 private struct KeycapGlyphStrokeShape: Shape {
     let isUkrainianStyle: Bool
+    var showsTargetQ: Bool = false
 
     func path(in rect: CGRect) -> Path {
         let w = rect.width
         let h = rect.height
         var p = Path()
+
+        if showsTargetQ {
+            // Latin "Q" vector contour: smooth oval ring drawn clockwise from 12 o'clock + crisp diagonal tail
+            let cx = w * 0.49
+            let cy = h * 0.47
+            let rx = w * 0.25
+            let ry = h * 0.29
+            var oval = Path()
+            oval.addArc(
+                center: .zero,
+                radius: 1.0,
+                startAngle: .degrees(-90),
+                endAngle: .degrees(270),
+                clockwise: false
+            )
+            let transform = CGAffineTransform(translationX: cx, y: cy).scaledBy(x: rx, y: ry)
+            p.addPath(oval, transform: transform)
+            p.move(to: CGPoint(x: cx + rx * 0.15, y: cy + ry * 0.32))
+            p.addLine(to: CGPoint(x: cx + rx * 1.10, y: cy + ry * 1.12))
+            return p
+        }
 
         // Cyrillic "К" strokes
         let kLeftX = isUkrainianStyle ? w * 0.24 : w * 0.16
@@ -3015,7 +3060,7 @@ private struct InteractiveWalnutIconBadge: View {
     }
 }
 
-/// Stationary 3D keycap badge for Cyrillic -> Latin transliteration row (`Къ` or `Кʼ`) with restored physical keycap rim and inner glyph `.trim` line-drawing animation.
+/// Stationary 3D keycap badge for Cyrillic -> Latin transliteration row (`Къ → Q → Къ` or `Кʼ → Q → Кʼ`) with physical keycap rim and inner glyph `.trim` line-drawing animation.
 private struct TransliterationKeycapBadge: View {
     let badgeID: String
     let sourceLabel: String
@@ -3027,6 +3072,8 @@ private struct TransliterationKeycapBadge: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var drawProgress: CGFloat = 1.0
+    @State private var activeGlyphIsTargetQ: Bool = false
+    @State private var isDrawingStroke: Bool = false
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
@@ -3034,7 +3081,15 @@ private struct TransliterationKeycapBadge: View {
     }
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
+        if ProcessInfo.processInfo.arguments.contains("-qt_hold_q_phase") {
+            activeGlyphIsTargetQ = true
+            isDrawingStroke = true
+            drawProgress = 1.0
+            return
+        }
         guard animationsAllowed, (isEnabled || forceAllowWhenDisabled) else {
+            activeGlyphIsTargetQ = false
+            isDrawingStroke = false
             drawProgress = 1.0
             return
         }
@@ -3043,21 +3098,76 @@ private struct TransliterationKeycapBadge: View {
         var resetTx = Transaction()
         resetTx.disablesAnimations = true
         withTransaction(resetTx) {
+            activeGlyphIsTargetQ = false
+            isDrawingStroke = true
             drawProgress = 0.0
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + max(delay, 0.025)) {
+        let startDelay = max(delay, 0.025)
+        // Phase 1: Draw source glyph (Къ / Кʼ)
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay) {
             guard currentGen == drawGeneration else { return }
             guard animationsAllowed else {
+                activeGlyphIsTargetQ = false
+                isDrawingStroke = false
                 drawProgress = 1.0
                 return
             }
-            withAnimation(.easeInOut(duration: 0.48)) {
+            withAnimation(.easeInOut(duration: 0.36)) {
                 drawProgress = 1.0
+            }
+        }
+        // Phase 2: Morph to target Latin glyph "Q" and draw its contour
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 0.50) {
+            guard currentGen == drawGeneration else { return }
+            guard animationsAllowed else {
+                activeGlyphIsTargetQ = false
+                isDrawingStroke = false
+                drawProgress = 1.0
+                return
+            }
+            var qResetTx = Transaction()
+            qResetTx.disablesAnimations = true
+            withTransaction(qResetTx) {
+                activeGlyphIsTargetQ = true
+                isDrawingStroke = true
+                drawProgress = 0.0
+            }
+            withAnimation(.easeInOut(duration: 0.38)) {
+                drawProgress = 1.0
+            }
+        }
+        // Phase 3: Return smoothly to source glyph (Къ / Кʼ) and draw its contour
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 1.18) {
+            guard currentGen == drawGeneration else { return }
+            guard animationsAllowed else {
+                activeGlyphIsTargetQ = false
+                isDrawingStroke = false
+                drawProgress = 1.0
+                return
+            }
+            var srcResetTx = Transaction()
+            srcResetTx.disablesAnimations = true
+            withTransaction(srcResetTx) {
+                activeGlyphIsTargetQ = false
+                isDrawingStroke = true
+                drawProgress = 0.0
+            }
+            withAnimation(.easeInOut(duration: 0.38)) {
+                drawProgress = 1.0
+            }
+        }
+        // Phase 4: Hand off cleanly to solid crisp Text once Phase 3 contour completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 1.60) {
+            guard currentGen == drawGeneration else { return }
+            withAnimation(.easeInOut(duration: 0.16)) {
+                isDrawingStroke = false
             }
         }
     }
 
     var body: some View {
+        let displayedLabel = activeGlyphIsTargetQ ? targetLabel : sourceLabel
+
         ZStack {
             if isEnabled {
                 if isUkrainianStyle {
@@ -3102,8 +3212,8 @@ private struct TransliterationKeycapBadge: View {
                 .frame(width: 22, height: 20.5)
                 .offset(y: -0.25)
 
-            // Inner vector line-drawing stroke for Къ / Кʼ during animation
-            KeycapGlyphStrokeShape(isUkrainianStyle: isUkrainianStyle)
+            // Inner vector line-drawing stroke for Къ / Кʼ / Q during animation
+            KeycapGlyphStrokeShape(isUkrainianStyle: isUkrainianStyle, showsTargetQ: activeGlyphIsTargetQ)
                 .trim(from: 0, to: drawProgress)
                 .stroke(
                     Color.white,
@@ -3111,14 +3221,14 @@ private struct TransliterationKeycapBadge: View {
                 )
                 .frame(width: 15, height: 13.5)
                 .offset(y: -0.25)
-                .opacity(drawProgress < 0.99 ? 1.0 : 0.0)
+                .opacity(isDrawingStroke ? 1.0 : 0.0)
 
-            Text(sourceLabel)
+            Text(displayedLabel)
                 .font(.system(size: 11.5, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(isUkrainianStyle && isEnabled ? 0.40 : 0.15), radius: 0.8, x: 0, y: 0.5)
                 .offset(y: -0.25)
-                .opacity(drawProgress < 0.99 ? Double(max(drawProgress - 0.35, 0) / 0.65) : 1.0)
+                .opacity(isDrawingStroke ? 0.0 : 1.0)
         }
         .frame(width: 28, height: 28)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
@@ -3127,7 +3237,11 @@ private struct TransliterationKeycapBadge: View {
             triggerLineDraw(forceAllowWhenDisabled: true)
         }
         .onAppear {
-            if HomeView.shouldAnimateInitialAppear(for: badgeID) {
+            if ProcessInfo.processInfo.arguments.contains("-qt_hold_q_phase") {
+                activeGlyphIsTargetQ = true
+                isDrawingStroke = true
+                drawProgress = 1.0
+            } else if HomeView.shouldAnimateInitialAppear(for: badgeID) {
                 triggerLineDraw(delay: 0.06, forceAllowWhenDisabled: true)
             }
         }
@@ -3136,6 +3250,8 @@ private struct TransliterationKeycapBadge: View {
                 triggerLineDraw()
             } else {
                 drawGeneration &+= 1
+                activeGlyphIsTargetQ = false
+                isDrawingStroke = false
                 drawProgress = 1.0
             }
         }
@@ -3145,7 +3261,7 @@ private struct TransliterationKeycapBadge: View {
     }
 }
 
-/// Stationary mini-capsules (`ґ → g · г → ğ · ї → yi · кʼ → q · нʼ → ñ`) for the Ukrainian Cyrillic layout row.
+/// Stationary mini-capsules (`ґ → g · г → ğ · кʼ → q · нʼ → ñ`) for the Ukrainian Cyrillic layout row.
 private struct UkrainianTransliterationMiniCapsulesView: View {
     let badgeID: String
     let isEnabled: Bool
@@ -3166,7 +3282,6 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     private static let pairs: [(src: String, dst: String)] = [
         ("ґ", "g"),
         ("г", "ğ"),
-        ("ї", "yi"),
         ("к\u{02BC}", "q"),
         ("н\u{02BC}", "ñ")
     ]
@@ -3209,7 +3324,7 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
                 .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
         }
         .lineLimit(1)
-        .fixedSize(horizontal: true, vertical: false)
+        .minimumScaleFactor(0.78)
         .padding(.horizontal, 5)
         .padding(.vertical, 2)
         .background(
@@ -3227,26 +3342,13 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     }
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) {
-                ForEach(Self.pairs, id: \.src) { pair in
-                    capsulePill(for: pair)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    ForEach(Array(Self.pairs.prefix(3)), id: \.src) { pair in
-                        capsulePill(for: pair)
-                    }
-                }
-                HStack(spacing: 4) {
-                    ForEach(Array(Self.pairs.suffix(2)), id: \.src) { pair in
-                        capsulePill(for: pair)
-                    }
-                }
+        HStack(spacing: 4) {
+            ForEach(Self.pairs, id: \.src) { pair in
+                capsulePill(for: pair)
             }
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.78)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
         .onTapGesture {

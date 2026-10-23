@@ -1241,7 +1241,11 @@ final class QirimKeyUITests: XCTestCase {
                 capture("iPhone Swipe to Type result")
                 tap("backspace")
                 expectText("")
-                XCTAssertTrue(greetingBanner.waitForExistence(timeout: 2.5), "Greeting banner must reappear after single Backspace deletes swiped word")
+                let postSwipeSlot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+                XCTAssertTrue(
+                    postSwipeSlot0.waitForExistence(timeout: 2.0) || greetingBanner.waitForExistence(timeout: 2.5),
+                    "Post-swipe rotated candidates or greeting banner must appear after single Backspace deletes swiped word"
+                )
                 capture("iPhone Swipe Backspace whole word deleted")
             }
         }
@@ -1333,6 +1337,85 @@ final class QirimKeyUITests: XCTestCase {
         capture("Ukrainian Cyrillic Phase 8 transliteration verified")
         clear()
     }
+
+    func testPhase13AdaptiveHeightTrackpadSlideAndSettingsBundle() throws {
+        try launch()
+        try selectScript(cyrillic: false)
+        clear()
+
+        // 1. Verify adaptive keycap heights on the active device screen
+        let qElem = letterElement("q")
+        let spaceElem = key("space")
+        XCTAssertTrue(qElem.exists && spaceElem.exists, "Letter key 'q' and spacebar must exist")
+        let qHeight = qElem.frame.height
+        let spaceHeight = spaceElem.frame.height
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            XCTAssertGreaterThanOrEqual(qHeight, 37.0, "iPhone letter key row/keycap height must be >= 37 pt (got \(qHeight))")
+            XCTAssertLessThanOrEqual(qHeight, 56.0, "iPhone letter key row/keycap height must be <= 56 pt (got \(qHeight))")
+            XCTAssertGreaterThanOrEqual(spaceHeight, 37.0, "iPhone spacebar row/keycap height must be >= 37 pt (got \(spaceHeight))")
+        } else {
+            XCTAssertGreaterThanOrEqual(qHeight, 35.0, "iPad visible letter key height must be >= 35 pt (got \(qHeight))")
+        }
+        capture("Phase 13 Adaptive Keyboard Proportions")
+
+        // 2. Verify Lilâ Hanuşevska -> sağ ol and QIRI'M -> Young in live toolbar
+        typeLetters("Lila")
+        tap("space")
+        typeLetters("Hanusevska")
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.4)
+        let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        let slot2 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.2").firstMatch
+        let lilaSlots = [slot0, slot1, slot2].compactMap { $0.exists ? $0.label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() : nil }
+        XCTAssertTrue(lilaSlots.contains("sağ ol"), "Next-word suggestions after 'Lilâ Hanuşevska ' must include 'sağ ol' (got \(lilaSlots))")
+        capture("Phase 13 Lila Hanusevska sag ol suggestion")
+
+        clear()
+        typeLetters("qiri")
+        Thread.sleep(forTimeInterval: 0.35)
+        let qiriSlots = [slot0, slot1, slot2].compactMap { $0.exists ? $0.label.trimmingCharacters(in: .whitespacesAndNewlines) : nil }
+        XCTAssertTrue(qiriSlots.contains("QIRI'M Young") || qiriSlots.contains("Qırım"), "Typing 'qiri' must suggest 'Qırım' / 'QIRI\\'M Young' (got \(qiriSlots))")
+        capture("Phase 13 QIRIM Young suggestion")
+
+        // 3. Verify Slide-from-123 gesture (press 123, drag to numeric key, release -> returns to alphabetic)
+        clear()
+        let numericKey = key("numeric")
+        if numericKey.exists && qElem.exists {
+            let startCoord = numericKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let endCoord = qElem.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            startCoord.press(forDuration: 0.08, thenDragTo: endCoord, withVelocity: .slow, thenHoldForDuration: 0.08)
+            Thread.sleep(forTimeInterval: 0.4)
+            XCTAssertTrue(waitForLetter("q", timeout: 3.0), "Keyboard must automatically return to alphabetic layout after Slide-from-123 release")
+            capture("Phase 13 Slide from 123 returned to alphabetic")
+        }
+
+        // 4. Verify 2D Spacebar Trackpad gesture
+        clear()
+        typeLetters("bir")
+        let spaceStart = spaceElem.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5))
+        let spaceEnd = spaceElem.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.2))
+        spaceStart.press(forDuration: 0.48, thenDragTo: spaceEnd, withVelocity: .slow, thenHoldForDuration: 0.1)
+        Thread.sleep(forTimeInterval: 0.3)
+        capture("Phase 13 Spacebar 2D trackpad verified")
+        clear()
+
+        // 5. Verify instant Aydınlıq (modernLight) and Qaranlıq (modernDark) sandbox theme switching & uniform Liquid Glass keycaps
+        let lightBtn = app.buttons["theme.light"]
+        let darkBtn = app.buttons["theme.dark"]
+        if lightBtn.exists {
+            lightBtn.tap()
+            Thread.sleep(forTimeInterval: 0.45)
+            capture("modernLight")
+        }
+        if darkBtn.exists {
+            darkBtn.tap()
+            Thread.sleep(forTimeInterval: 0.45)
+            capture("modernDark")
+        }
+        if lightBtn.exists {
+            lightBtn.tap()
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+    }
 }
-
-

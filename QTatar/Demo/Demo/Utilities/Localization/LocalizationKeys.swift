@@ -25,7 +25,7 @@ enum Home: String {
     case home_start_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "Home", bundle: KeyboardPreferences.interfaceBundle, comment: "")
+        L10n.tr(self.rawValue, table: "Home")
     }
 
     var allLocalizedVersions: [String] {
@@ -33,6 +33,21 @@ enum Home: String {
             let bundle = KeyboardPreferences.localizationBundle(for: lang)
             return NSLocalizedString(self.rawValue, tableName: "Home", bundle: bundle, comment: "")
         }
+    }
+}
+
+enum L10n {
+    static func tr(_ key: String, table: String = "Interface") -> String {
+        KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: table)
+    }
+
+    static func label(_ key: String, table: String = "Interface") -> Text {
+        Text(LocalizedStringKey(key), tableName: table, bundle: KeyboardPreferences.interfaceBundle)
+    }
+
+    static func dailyPhrase(_ key: String, language: String = KeyboardPreferences.interfaceLanguage) -> String {
+        let bundle = KeyboardPreferences.localizationBundle(for: language)
+        return bundle.localizedString(forKey: key, value: key, table: "DailyPhrases")
     }
 }
 
@@ -46,6 +61,7 @@ enum About: String {
     case about_language_title_key
     case about_language_description_key
     case about_join_key
+    case about_website_key
     case about_feedback_key
     case about_rate_key
     case about_share_key
@@ -54,7 +70,7 @@ enum About: String {
     case about_rights_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "About", bundle: KeyboardPreferences.interfaceBundle, comment: "")
+        L10n.tr(self.rawValue, table: "About")
     }
 }
 
@@ -71,6 +87,8 @@ enum Onboarding: String {
     case onb_settings_key
     
     var localized: String {
-        NSLocalizedString(self.rawValue, tableName: "Onboarding", bundle: KeyboardPreferences.interfaceBundle, comment: "")
+        L10n.tr(self.rawValue, table: "Onboarding")
     }
 }
+
+

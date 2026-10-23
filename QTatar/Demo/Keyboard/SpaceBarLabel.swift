@@ -259,9 +259,12 @@ final class BreathingTamgaUIView: UIView {
 
             let settleGroup = CAAnimationGroup()
             settleGroup.animations = [settleOpacity, settleScale]
-            settleGroup.duration = 0.32
+            settleGroup.duration = 3.5
             settleGroup.timingFunction = CAMediaTimingFunction(name: .easeOut)
             settleGroup.isRemovedOnCompletion = true
+            if #available(iOS 15.0, *) {
+                settleGroup.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 24)
+            }
             shapeLayer.add(settleGroup, forKey: "settleToRest")
         } else {
             shapeLayer.removeAnimation(forKey: "continuousBreath")
@@ -271,6 +274,16 @@ final class BreathingTamgaUIView: UIView {
             shapeLayer.beginTime = 0.0
             shapeLayer.opacity = restOpacity
         }
+    }
+
+    private func scheduleIdleStopTimer(after seconds: TimeInterval = 8.0) {
+        idleStopWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.exertionTimer == nil, self.currentExertion < 0.005 else { return }
+            self.pauseAtRest()
+        }
+        idleStopWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
 
     private func startContinuousBreathIfNeeded(scheduleIdleStop: Bool = false) {
@@ -305,6 +318,9 @@ final class BreathingTamgaUIView: UIView {
             group.duration = 4.4
             group.repeatCount = .infinity
             group.isRemovedOnCompletion = false
+            if #available(iOS 15.0, *) {
+                group.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 24)
+            }
 
             shapeLayer.speed = 1.0
             shapeLayer.timeOffset = 0.0
@@ -313,13 +329,7 @@ final class BreathingTamgaUIView: UIView {
         }
 
         if scheduleIdleStop && exertionTimer == nil {
-            idleStopWorkItem?.cancel()
-            let work = DispatchWorkItem { [weak self] in
-                guard let self, self.exertionTimer == nil, self.currentExertion < 0.005 else { return }
-                self.pauseAtRest()
-            }
-            idleStopWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: work)
+            scheduleIdleStopTimer(after: 8.0)
         }
     }
 
@@ -355,7 +365,8 @@ final class BreathingTamgaUIView: UIView {
             targetExertion = 0
             exertionTimer?.invalidate()
             exertionTimer = nil
-            pauseAtRest()
+            updateBreathingSpeed(1.0)
+            scheduleIdleStopTimer(after: 8.0)
             return
         }
         let speed = 1.0 + Float(currentExertion) * 1.9
@@ -373,6 +384,7 @@ struct SpaceBarLabel: View {
     let languageCode: String
     let isCompact: Bool
     var isDarkOverride: Bool? = nil
+    var isSpaceDragActive: Bool = false
     @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject private var spaceBarState = SpaceBarState.shared
@@ -381,12 +393,14 @@ struct SpaceBarLabel: View {
         fullName: String = "Qırımtatarca",
         languageCode: String = "QT",
         isCompact: Bool = UIDevice.current.userInterfaceIdiom != .pad,
-        isDarkOverride: Bool? = nil
+        isDarkOverride: Bool? = nil,
+        isSpaceDragActive: Bool = false
     ) {
         self.fullName = fullName
         self.languageCode = languageCode
         self.isCompact = isCompact
         self.isDarkOverride = isDarkOverride
+        self.isSpaceDragActive = isSpaceDragActive
     }
 
     private var effectiveIsDark: Bool {
@@ -398,7 +412,15 @@ struct SpaceBarLabel: View {
     }
 
     private var cornerFontSize: CGFloat {
-        isCompact ? 11.5 : 12.0
+        isCompact ? 12.0 : 12.8
+    }
+
+    private var cornerFont: Font {
+        if #available(iOS 16.0, *) {
+            return .system(size: cornerFontSize, weight: .semibold, design: .default).width(.condensed)
+        } else {
+            return .system(size: cornerFontSize, weight: .semibold, design: .default)
+        }
     }
 
     var body: some View {
@@ -416,16 +438,20 @@ struct SpaceBarLabel: View {
                 .frame(width: isCompact ? 18.0 : 22.5, height: isCompact ? 10.0 : 12.5)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
 
-            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state
+            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state, condensed to match native iOS "УК"
             Text(languageCode)
-                .font(.system(size: cornerFontSize, weight: .semibold, design: .rounded))
-                .foregroundStyle(primaryColor.opacity(0.60))
+                .font(cornerFont)
+                .kerning(-0.3)
+                .scaleEffect(x: 0.85, y: 1.0, anchor: .bottomTrailing)
+                .foregroundStyle(primaryColor.opacity(0.55))
                 .lineLimit(1)
                 .padding(.trailing, isCompact ? 8.5 : 9.5)
                 .padding(.bottom, isCompact ? 4.5 : 5.5)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
         }
+        .opacity(isSpaceDragActive ? 0 : 1)
+        .animation(.easeOut(duration: 0.15), value: isSpaceDragActive)
         .animation(.easeInOut(duration: 0.4), value: spaceBarState.isShowingFullName)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

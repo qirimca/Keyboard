@@ -235,7 +235,7 @@ open class StandardKeyboardActionHandler: NSObject, KeyboardActionHandler {
         on action: KeyboardAction
     ) -> KeyboardAction.GestureAction? {
         let standard = action.standardAction(for: gesture)
-        if action != .space && gesture != .release { return standard }
+        if action != .space || gesture != .release { return standard }
         let isSpaceDragActive = keyboardContext.isSpaceDragGestureActive
         return isSpaceDragActive ? nil : standard
     }
@@ -356,6 +356,7 @@ private extension StandardKeyboardActionHandler {
 
     func isSpaceCursorDrag(_ action: KeyboardAction) -> Bool {
         guard action == .space else { return false }
+        if keyboardContext.isSpaceDragGestureActive { return true }
         let handler = spaceDragGestureHandler
         return handler.currentDragTextPositionOffset != 0
     }

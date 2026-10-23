@@ -103,6 +103,9 @@ public extension Keyboard.KeyboardServices {
             let offset = self?.state.keyboardContext.spaceDragOffset(for: $0)
             controller?.adjustTextPosition(by: offset ?? $0)
         }
+        spaceDragGestureHandler.verticalLineAction = { [weak controller] lineDelta in
+            controller?.textDocumentProxy.adjustVerticalLinePosition(by: lineDelta)
+        }
     }
 }
 #endif

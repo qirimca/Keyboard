@@ -29,17 +29,42 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     }
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private var cancellables = Set<AnyCancellable>()
-    private var lastObservedUkrainianCyrillic = false
+    private var lastObservedUkrainianCyrillic = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+    private static let prefsSyncQueue = DispatchQueue(label: "crh.key.prefsSyncQueue", qos: .utility)
 
     override var hasDictationKey: Bool {
         get { true }
         set { super.hasDictationKey = true }
     }
 
-    /// Tracks system menu appearance (long-press on globe) vs quick in-place cycling
+    /// Tracks whether this process is the Cyrillic extension (`crh.key.KeyboardCyrillic`) or a standalone keyboard extension.
     private var isCyrillicExtension: Bool { Bundle.main.bundleIdentifier == AppConfiguration.cyrillicKeyboardBundleId }
+    private var isRealKeyboardExtension: Bool {
+        let bundleId = Bundle.main.bundleIdentifier ?? ""
+        return bundleId == AppConfiguration.keyboardBundleId || bundleId == AppConfiguration.cyrillicKeyboardBundleId
+    }
+    private var defaultLocaleIdentifierForExtension: String {
+        isCyrillicExtension ? "crh-Cyrl" : "crh-Latn"
+    }
+
+    /// Resets the keyboard script to the extension's strict default (`crh-Latn` for `crh.key.Keyboard`,
+    /// `crh-Cyrl` for `crh.key.KeyboardCyrillic`) on `viewDidLoad` and `viewWillAppear`.
+    func resetToExtensionDefaultScript() {
+        let targetId = defaultLocaleIdentifierForExtension
+        if state.keyboardContext.locale.identifier != targetId {
+            var transaction = Transaction(animation: nil)
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                state.keyboardContext.locale = Locale(identifier: targetId)
+            }
+        }
+    }
 
     func toggleScript() {
+        let isUITestHostPreview = !isRealKeyboardExtension
+            && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+            && DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
+        guard state.keyboardContext.deviceType == .pad || isUITestHostPreview else { return }
         guard KeyboardPreferences.cyrillicEnabled else { return }
         SwipeTypingState.shared.clearKeyFrames()
         let isCyrillic = state.keyboardContext.locale.identifier.contains("Cyrl")
@@ -93,12 +118,40 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         updateKeyboardHeightConstraint(targetSize: CGSize(width: 320, height: floatingHeight))
         children.first?.view.invalidateIntrinsicContentSize()
         view.setNeedsLayout()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            self?.clampFloatingHostContainerIfNeeded(initialLift: true)
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
             guard let self else { return }
             self.isTransitioningToFloating = false
             self.state.keyboardContext.isTransitioningSplit = false
             self.state.keyboardContext.syncIsFloating(with: self)
             self.updateKeyboardHeightConstraint()
+            self.clampFloatingHostContainerIfNeeded(initialLift: false)
+        }
+    }
+
+    /// Ensures the iPad floating keyboard platter and its bottom system grabber handle remain fully
+    /// inside `UIScreen.main.bounds` above the bottom safe-area / home indicator margin.
+    private func clampFloatingHostContainerIfNeeded(initialLift: Bool = false) {
+        guard state.keyboardContext.deviceType == .pad,
+              state.keyboardContext.isKeyboardFloating || isTransitioningToFloating,
+              let window = view.window else { return }
+        let screenBounds = window.windowScene?.screen.bounds ?? UIScreen.main.bounds
+        let safeBottom = max(window.safeAreaInsets.bottom + 38.0, initialLift ? 72.0 : 52.0)
+        let maxAllowedMaxY = screenBounds.height - safeBottom
+        var candidateView: UIView? = view
+        while let current = candidateView {
+            let className = NSStringFromClass(type(of: current))
+            if className.contains("UIInputSetHostView") || className.contains("UIKBInputBackdrop") || current == window.rootViewController?.view {
+                let frameInScreen = current.superview?.convert(current.frame, to: nil) ?? current.frame
+                if frameInScreen.maxY > maxAllowedMaxY && frameInScreen.height > 100 && frameInScreen.height < 360 {
+                    let deltaY = frameInScreen.maxY - maxAllowedMaxY
+                    current.frame.origin.y -= deltaY
+                }
+                break
+            }
+            candidateView = current.superview
         }
     }
 
@@ -259,9 +312,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let isTargetFloating = targetSize.map { $0.width > 0 && $0.width < 420 } ?? false
         let isFloating = context.isKeyboardFloating || isTransitioningToFloating || isTargetFloating || (isPad && view.bounds.width > 0 && view.bounds.width < 420)
         let hasToolbar = state.autocompleteContext.isAutocompleteEnabled && DemoStyleProvider.shouldShowTopToolbar(for: context)
-        if isFloating {
-            return (hasToolbar ? 38 : 0) + (49 * 4) + 6
-        }
         let isLandscape: Bool = {
             if let sceneOrientation = view.window?.windowScene?.interfaceOrientation, sceneOrientation != .unknown {
                 return sceneOrientation.isLandscape
@@ -278,15 +328,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
             return context.interfaceOrientation.isLandscape
         }()
-        if isPad {
-            let toolbarH: CGFloat = hasToolbar ? 38 : 0
-            let rowH: CGFloat = isLandscape ? 75 : 58
-            return toolbarH + (rowH * 4) + 4
-        } else {
-            let toolbarH: CGFloat = hasToolbar ? 42 : 0
-            let rowH: CGFloat = isLandscape ? 42 : 55
-            return toolbarH + (rowH * 4)
-        }
+        return DemoStyleProvider.expectedKeyboardHeight(
+            for: context,
+            isLandscapeOverride: isLandscape,
+            isFloatingOverride: isFloating,
+            hasToolbar: hasToolbar
+        )
     }
 
     private func updateKeyboardHeightConstraint(targetSize: CGSize? = nil) {
@@ -318,20 +365,44 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     private func applyPreferences(syncDisk: Bool = false) {
         if syncDisk {
-            KeyboardPreferences.defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            Self.prefsSyncQueue.async { [weak self] in
+                KeyboardPreferences.defaults.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.isViewLoaded else { return }
+                    self.applyPreferences(syncDisk: false)
+                    self.refreshProxyState(forceRender: false)
+                }
+            }
         }
         KeyboardPreferences.refreshCachedPreferences()
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: state.keyboardContext)
-        let suggestionsOn = KeyboardPreferences.suggestionsEnabled
-            && SystemKeyboardSettings.isPredictiveTextEnabled
-            && topBarAllowed
-        state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
-        state.autocompleteContext.isAutocorrectEnabled = suggestionsOn
+        let suggestionsMasterOn = KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled
+        let suggestionsOn = suggestionsMasterOn && topBarAllowed
+        let autocorrectOn = suggestionsOn
             && (textDocumentProxy.autocorrectionType != .no)
             && SystemKeyboardSettings.isAutoCorrectionEnabled
+        state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
+        state.autocompleteContext.isAutocorrectEnabled = autocorrectOn
         state.keyboardContext.isAutoCapitalizationEnabled = SystemKeyboardSettings.isAutoCapitalizationEnabled
         if !suggestionsOn { state.autocompleteContext.suggestions = [] }
+        if !KeyboardPreferences.statsEnabled {
+            KeyboardUsageStats.reclaimResourcesWhenDisabled()
+        }
+        SuggestionsDataBaseManager.shared.reclaimResourcesForDisabledFeatures(
+            suggestionsActive: suggestionsMasterOn,
+            wordLearningActive: KeyboardPreferences.wordLearningEnabled,
+            autocorrectActive: KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled
+        )
+        if suggestionsMasterOn {
+            SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
+                guard let self, self.isViewLoaded, self.view.window != nil else { return }
+                let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
+                if hasText {
+                    self.performAutocomplete()
+                }
+            }
+        }
         let supportsSplit = state.keyboardContext.deviceSupportsSplitKeyboard
         if !supportsSplit && KeyboardPreferences.splitKeyboardEnabled {
             KeyboardPreferences.setSplitKeyboardEnabled(false)
@@ -343,24 +414,37 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let ukCyrNow = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
         let ukCyrChanged = (ukCyrNow != lastObservedUkrainianCyrillic)
         lastObservedUkrainianCyrillic = ukCyrNow
+        let isUITestHostPreview = !isRealKeyboardExtension
+            && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+            && DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
 
-        if !KeyboardPreferences.cyrillicEnabled {
-            if state.keyboardContext.locale.identifier.contains("Cyrl") {
+        if state.keyboardContext.deviceType != .pad {
+            if isCyrillicExtension {
+                if !state.keyboardContext.locale.identifier.contains("Cyrl") {
+                    state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+                    SpaceBarState.shared.triggerSwitchAnimation()
+                }
+            } else if isUITestHostPreview && ukCyrNow && ukCyrChanged {
+                (services.actionHandler as? DemoActionHandler)?.resetComposition()
+                state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+                SpaceBarState.shared.triggerSwitchAnimation()
+            } else if !(isUITestHostPreview && ukCyrNow) && state.keyboardContext.locale.identifier.contains("Cyrl") {
                 (services.actionHandler as? DemoActionHandler)?.resetComposition()
                 state.keyboardContext.locale = Locale(identifier: "crh-Latn")
                 SpaceBarState.shared.triggerSwitchAnimation()
             }
-        } else if ukCyrNow && (ukCyrChanged || state.keyboardContext.deviceType != .pad) && !state.keyboardContext.locale.identifier.contains("Cyrl") {
-            (services.actionHandler as? DemoActionHandler)?.resetComposition()
-            state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
-            SpaceBarState.shared.triggerSwitchAnimation()
-        } else if !ukCyrNow && !isCyrillicExtension && state.keyboardContext.deviceType != .pad && state.keyboardContext.locale.identifier.contains("Cyrl") {
-            (services.actionHandler as? DemoActionHandler)?.resetComposition()
-            state.keyboardContext.locale = Locale(identifier: "crh-Latn")
-            SpaceBarState.shared.triggerSwitchAnimation()
-        } else if isCyrillicExtension && state.keyboardContext.deviceType != .pad && !state.keyboardContext.locale.identifier.contains("Cyrl") {
-            state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
-            SpaceBarState.shared.triggerSwitchAnimation()
+        } else {
+            if !isCyrillicExtension && !KeyboardPreferences.cyrillicEnabled {
+                if state.keyboardContext.locale.identifier.contains("Cyrl") {
+                    (services.actionHandler as? DemoActionHandler)?.resetComposition()
+                    state.keyboardContext.locale = Locale(identifier: "crh-Latn")
+                    SpaceBarState.shared.triggerSwitchAnimation()
+                }
+            } else if isUITestHostPreview && ukCyrNow && ukCyrChanged && !state.keyboardContext.locale.identifier.contains("Cyrl") {
+                (services.actionHandler as? DemoActionHandler)?.resetComposition()
+                state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+                SpaceBarState.shared.triggerSwitchAnimation()
+            }
         }
         warmTransliteratorIfNeeded()
         SwipeTypingState.shared.isSlideToTypeSettingEnabled = SystemKeyboardSettings.isSlideToTypeEnabled
@@ -374,6 +458,16 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     ///
     /// Here, we make demo-specific service keyboard configs.
     override func viewDidLoad() {
+        QirimKeyDiagnosticsSubscriber.shared.start()
+        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
+            SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
+                guard let self, self.isViewLoaded, self.view.window != nil else { return }
+                let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
+                if hasText {
+                    self.performAutocomplete()
+                }
+            }
+        }
         view.backgroundColor = .clear
 
         /// 💡 Setup custom keyboard behavior that respects iOS system keyboard settings.
@@ -483,6 +577,17 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
             .store(in: &cancellables)
 
+        /// When Spacebar Trackpad drag ends, refresh proxy state and autocomplete once at final cursor position.
+        state.keyboardContext.$isSpaceDragGestureActive
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] isActive in
+                guard let self, !isActive, self.isViewLoaded, self.view.window != nil else { return }
+                self.refreshProxyState()
+                self.performAutocomplete()
+            }
+            .store(in: &cancellables)
+
         /// Observe text changes to update primary action (Search/Go) enabled state and autocomplete suggestions
         NotificationCenter.default.publisher(for: UITextField.textDidChangeNotification)
             .sink { [weak self] _ in
@@ -502,6 +607,23 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                     timestamps: timestamps,
                     keyFrames: keyFrames
                 )
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: SwipeTypingState.didCompleteSlideFrom123Notification)
+            .sink { [weak self] note in
+                guard let self,
+                      let ch = (note.userInfo?["char"] as? String) ?? (note.userInfo?["character"] as? String) else { return }
+                (self.services.actionHandler as? DemoActionHandler)?.handleSlideFrom123Character(ch)
+            }
+            .store(in: &cancellables)
+
+        NotificationCenter.default.publisher(for: Notification.Name("crh.key.gestureEnded"))
+            .sink { [weak self] _ in
+                guard let self else { return }
+                if self.state.keyboardContext.isSpaceDragGestureActive {
+                    self.state.keyboardContext.setIsSpaceDragGestureActive(false, animated: true)
+                }
             }
             .store(in: &cancellables)
 
@@ -553,9 +675,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             { _, observer, _, _, _ in
                 guard let observer else { return }
                 let controller = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
-                DispatchQueue.main.async { [weak controller] in
-                    guard let controller, controller.isViewLoaded, controller.view.window != nil else { return }
-                    controller.refreshProxyState(forceRender: true)
+                KeyboardViewController.prefsSyncQueue.async { [weak controller] in
+                    KeyboardPreferences.defaults.synchronize()
+                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                    DispatchQueue.main.async { [weak controller] in
+                        guard let controller, controller.isViewLoaded, controller.view.window != nil else { return }
+                        controller.refreshProxyState(forceRender: true)
+                    }
                 }
             },
             "crh.key.sandboxTraitsChanged" as CFString,
@@ -587,8 +713,17 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                     guard let controller, controller.isViewLoaded else { return }
                     (controller.services.actionHandler as? DemoActionHandler)?.resetComposition()
                     controller.applyPreferences(syncDisk: true)
-                    if KeyboardPreferences.ukrainianCyrillicLayoutEnabled && KeyboardPreferences.cyrillicEnabled && !controller.state.keyboardContext.locale.identifier.contains("Cyrl") {
+                    let isUITestHostPreview = !controller.isRealKeyboardExtension
+                        && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+                        && DemoStyleProvider.isSandboxOverrideActive(for: controller.state.keyboardContext)
+                    if isUITestHostPreview
+                        && KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+                        && KeyboardPreferences.cyrillicEnabled
+                        && !controller.state.keyboardContext.locale.identifier.contains("Cyrl") {
                         controller.state.keyboardContext.locale = Locale(identifier: "crh-Cyrl")
+                        SpaceBarState.shared.triggerSwitchAnimation()
+                        controller.state.keyboardContext.renderVersion &+= 1
+                    } else if controller.state.keyboardContext.locale.identifier.contains("Cyrl") {
                         SpaceBarState.shared.triggerSwitchAnimation()
                         controller.state.keyboardContext.renderVersion &+= 1
                     }
@@ -604,6 +739,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         self.hasDictationKey = true
         Self.installPinchPassthroughIfNeeded()
         installSplitPinchGestureIfNeeded()
+        resetToExtensionDefaultScript()
         applyPreferences(syncDisk: false)
     }
 
@@ -679,6 +815,10 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     }
 
     private func refreshSupplementaryLexicon() {
+        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled else {
+            SuggestionsDataBaseManager.shared.updateSupplementaryLexicon([:])
+            return
+        }
         requestSupplementaryLexicon { lexicon in
             var map: [String: String] = [:]
             for entry in lexicon.entries {
@@ -723,9 +863,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func viewWillAppear(_ animated: Bool) {
         self.hasDictationKey = true
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil && !CommandLine.arguments.contains("-UITesting") {
-            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.isUITesting")
-        }
         SuggestionsDataBaseManager.shared.resumeAccess()
         refreshSupplementaryLexicon()
         isResettingDocumentState = false
@@ -736,12 +873,17 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if state.keyboardContext.traitCollection != traitCollection {
             state.keyboardContext.traitCollection = traitCollection
         }
-        state.keyboardContext.proxyKeyboardTypeOverride = DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
+        let sandboxActive = DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
+        if !sandboxActive && ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil && !CommandLine.arguments.contains("-UITesting") {
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.isUITesting")
+        }
+        state.keyboardContext.proxyKeyboardTypeOverride = sandboxActive
             ? DemoStyleProvider.effectiveProxyKeyboardType(for: state.keyboardContext)
             : nil
         state.keyboardContext.hasChosenLettersInNumericField = false // new input session
         lastDocumentIdentifier = textDocumentProxy.safeDocumentIdentifier
         lastProxyKeyboardType = nil
+        resetToExtensionDefaultScript()
         syncPreferredKeyboardTypeWithProxy()
 
         if isCyrillicExtension {
@@ -838,10 +980,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     private func refreshProxyState(forceRender: Bool = false) {
         guard !isResettingDocumentState else { return }
-        if forceRender {
-            KeyboardPreferences.defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        }
         let documentID = textDocumentProxy.safeDocumentIdentifier
         if let last = lastDocumentIdentifier, last != documentID {
             resetHostBundleIdCache()
@@ -922,6 +1060,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func textDidChange(_ textInput: UITextInput?) {
         isResettingDocumentState = false
+        if state.keyboardContext.isSpaceDragGestureActive {
+            return
+        }
         state.keyboardContext.proxyKeyboardTypeOverride = DemoStyleProvider.isSandboxOverrideActive(for: state.keyboardContext)
             ? DemoStyleProvider.effectiveProxyKeyboardType(for: state.keyboardContext)
             : nil
@@ -930,7 +1071,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     }
 
     override func textDidChangeAsync(_ textInput: UITextInput?) {
-        guard !isResettingDocumentState, isViewLoaded, view.window != nil else { return }
+        guard !isResettingDocumentState, !state.keyboardContext.isSpaceDragGestureActive, isViewLoaded, view.window != nil else { return }
         super.textDidChangeAsync(textInput)
     }
 
@@ -981,6 +1122,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateKeyboardHeightConstraint()
+        if state.keyboardContext.isKeyboardFloating || isTransitioningToFloating {
+            clampFloatingHostContainerIfNeeded(initialLift: false)
+        }
         let shouldEnableInputCallout = state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating
         if state.calloutContext.inputContext.isEnabled != shouldEnableInputCallout {
             state.calloutContext.inputContext.isEnabled = shouldEnableInputCallout
@@ -989,11 +1133,20 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        SuggestionsDataBaseManager.shared.prepareAsync()
+        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
+            SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
+                guard let self, self.isViewLoaded, self.view.window != nil else { return }
+                let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
+                if hasText {
+                    self.performAutocomplete()
+                }
+            }
+        }
         if !isTransitioningToFloating {
             state.keyboardContext.syncIsFloating(with: self)
         }
         updateKeyboardHeightConstraint()
+        clampFloatingHostContainerIfNeeded(initialLift: false)
         refreshProxyState()
         SpaceBarState.shared.triggerSwitchAnimation()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
@@ -1083,7 +1236,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                             fullName: isCyrillic ? (isUkrainianCyr ? "Кʼиримтатарджа" : "Къырымтатарджа") : "Qırımtatarca",
                             languageCode: isCyrillic ? (isUkrainianCyr ? "Кʼ" : "КЪ") : "QT",
                             isCompact: isCompact,
-                            isDarkOverride: isDark
+                            isDarkOverride: isDark,
+                            isSpaceDragActive: context.isSpaceDragGestureActive
                         )
                     } else if let flick = CrimeanTatarIPadKeyboardLayoutProvider.flickSymbol(
                         for: params.item.action,

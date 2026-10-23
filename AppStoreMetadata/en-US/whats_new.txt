@@ -1,0 +1,7 @@
+Major QırımKey update:
+• Added QırımKey Swipe v2 glide typing for Crimean Tatar Latin and Cyrillic layouts, including single-tap Backspace (⌫) deletion of a just-swiped word.
+• Added the Ukrainian-adapted Cyrillic layout (ФІВА) option (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e).
+• Updated dictionary and autocorrection engine for compliance with the official 2024/2025 Crimean Tatar Orthography (DESS No. 1722/04-03/25), including hyphenated compounds, -mı/-mi question particles, Crimean Tatar toponyms, and instant Backspace (⌫) undo.
+• Added full iOS & iPadOS 26/27 Liquid Glass styling and native iPad Split & Floating keyboard support.
+• Added daily Crimean Tatar proverbs, literary quotes, and on-device typing statistics & progression tiers.
+• Streamlined in-app settings and iOS Settings integration (Settings → Apps → QırımKey).

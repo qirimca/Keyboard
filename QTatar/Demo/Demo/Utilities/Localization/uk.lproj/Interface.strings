@@ -66,14 +66,15 @@
 "stats.volumeTier4" = "Носій живої мови";
 "stats.volumeTier5" = "Світоч кримськотатарської";
 "settings.stats" = "Статистика та рівні набору";
+"settings.stats.desc" = "Відстеження швидкості набору, слів і досягнень";
 "stats.charsSubtitle" = "Символів: %d";
 "stats.speedSubtitle" = "Поточний темп: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Рекордний темп друку";
 "stats.manualWordsSubtitle" = "Вручну по літерах";
 "stats.suggestedWordsSubtitle" = "Зекономлено символів: %d";
-"stats.speedNextFormat" = "Далі: «%@» — %d %@ (ще +%d)";
+"stats.speedNextFormat" = "Далі: «%@» — %d %@, ще +%d";
 "stats.speedMaxReached" = "Досягнуто найвищого рівня!";
-"stats.volumeNextFormat" = "Далі: «%@» — %d сл. (ще +%d)";
+"stats.volumeNextFormat" = "Далі: «%@» — %d сл., ще +%d";
 "stats.volumeMaxReached" = "Досягнуто найвищого рівня!";
 "stats.activeTimeSubtitle" = "Чистий час набору";
 "stats.learnedWordsSubtitle" = "Особистий словник";
@@ -84,7 +85,10 @@
 "settings.cyrillicAddAction" = "Додати в Параметрах";
 "settings.cyrillicGuideTitle" = "Як додати кириличну клавіатуру?";
 "settings.ukrainianCyrillic" = "Українська розкладка";
-"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · ї → yi · кʼ → q · нʼ → ñ";
+"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму";
-"settings.systemKeyboard" = "Системні параметри клавіатури";
-"settings.systemKeyboard.desc" = "Автовиправлення, математичні підказки, пунктуація";
+"settings.appSettings" = "Налаштування програми";
+"settings.appSettings.desc" = "Підказки слів, навчання слів, статистика";
+"settings.systemKeyboard" = "Системні налаштування";
+"settings.systemKeyboard.desc" = "Клавіатури, автовиправлення, пунктуація";
+

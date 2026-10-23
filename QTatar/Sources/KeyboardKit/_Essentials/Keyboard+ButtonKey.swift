@@ -32,6 +32,9 @@ public extension Keyboard {
         
         private let isPressed: Bool
         
+        @Environment(\.colorScheme)
+        private var colorScheme
+
         @Environment(\.keyboardButtonStyle)
         private var envStyle
         
@@ -39,7 +42,11 @@ public extension Keyboard {
             RoundedRectangle(cornerRadius: cornerRadius)
                 .strokeBorder(borderColor, lineWidth: borderLineWidth)
                 .background(style.background)
-                .background(backgroundColor)
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(backgroundColor)
+                        .blendMode((colorScheme == .dark && backgroundColor != .blue && backgroundColor != .clear) ? .plusLighter : .normal)
+                )
                 .overlay(isPressed ? style.pressedOverlayColor : .clear)
                 .cornerRadius(cornerRadius)
                 .overlay(Keyboard.ButtonShadow())

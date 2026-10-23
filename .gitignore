@@ -80,4 +80,9 @@ AGENTS.md
 # Local environment & signing secrets
 .env.local
 **/LocalSigning.xcconfig
-
+*.p12
+*.cer
+*.mobileprovision
+QTatar/build/
+QTatar/Demo/build/
+QTatar/Scripts/

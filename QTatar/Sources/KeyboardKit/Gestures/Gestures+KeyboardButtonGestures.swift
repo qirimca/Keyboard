@@ -75,6 +75,9 @@ extension Gestures {
         
         @State
         private var shouldApplyReleaseAction = true
+
+        @State
+        private var didTriggerLongPress = false
         
         var body: some View {
             view.overlay(
@@ -114,6 +117,7 @@ private struct KeyFramePreferenceKey: PreferenceKey {
 public final class SwipeTypingState: ObservableObject {
     public static let shared = SwipeTypingState()
     public static let didCompleteSwipeNotification = Notification.Name("crh.key.didCompleteSwipePath")
+    public static let didCompleteSlideFrom123Notification = Notification.Name("crh.key.didCompleteSlideFrom123")
     public static let coordinateSpaceName = "SystemKeyboardZStack"
     private static let casingLocale = Locale(identifier: "tr")
 
@@ -146,6 +150,9 @@ public final class SwipeTypingState: ObservableObject {
     @Published public private(set) var activeTrailSamples: [TrailSample] = []
     public private(set) var isSwiping: Bool = false
     public private(set) var totalDragDistance: CGFloat = 0
+    public var canSlideFrom123: Bool = false
+    public var isSlideFrom123Active: Bool = false
+    public var slideFrom123TargetChar: String? = nil
 
     private var keyFrames: [String: CGRect] = [:]
     private var visitedKeys: [String] = []
@@ -156,9 +163,49 @@ public final class SwipeTypingState: ObservableObject {
 
     private init() {}
 
+    public func beginSlideFrom123() {
+        canSlideFrom123 = true
+        isSlideFrom123Active = false
+        slideFrom123TargetChar = nil
+        clearKeyFrames()
+    }
+
+    public func endSlideFrom123() -> String? {
+        let target = isSlideFrom123Active ? slideFrom123TargetChar : nil
+        resetSlideFrom123()
+        return target
+    }
+
+    public func resetSlideFrom123() {
+        canSlideFrom123 = false
+        isSlideFrom123Active = false
+        slideFrom123TargetChar = nil
+    }
+
+    public func hitTestAnyKey(at point: CGPoint) -> String? {
+        for (ch, rect) in keyFrames where rect.contains(point) {
+            return ch
+        }
+        var bestChar: String?
+        var bestDist: CGFloat = 24.0
+        for (ch, rect) in keyFrames {
+            let d = hypot(rect.midX - point.x, rect.midY - point.y)
+            if d < bestDist {
+                bestDist = d
+                bestChar = ch
+            }
+        }
+        return bestChar
+    }
+
     private static func isCyrillicCharacter(_ s: String) -> Bool {
         guard let scalar = s.unicodeScalars.first else { return false }
         return (0x0400...0x04FF).contains(scalar.value) || scalar.value == 0x02BC
+    }
+
+    private static func isLetterOrApostrophe(_ s: String) -> Bool {
+        guard let first = s.first else { return false }
+        return first.isLetter || s == "\u{02BC}"
     }
 
     public func clearKeyFrames() {
@@ -169,10 +216,14 @@ public final class SwipeTypingState: ObservableObject {
         let norm = character.lowercased(with: Self.casingLocale)
         guard !norm.isEmpty, frame.width > 4, frame.height > 4 else { return }
         let isCyr = Self.isCyrillicCharacter(norm)
+        let isLetter = Self.isLetterOrApostrophe(norm)
         let overlapTestRect = frame.insetBy(dx: max(2, frame.width * 0.18), dy: max(2, frame.height * 0.18))
         let staleKeys = keyFrames.compactMap { existingChar, existingRect -> String? in
             guard existingChar != norm else { return nil }
-            if Self.isCyrillicCharacter(existingChar) != isCyr {
+            if Self.isLetterOrApostrophe(existingChar) != isLetter {
+                return existingChar
+            }
+            if isLetter && Self.isCyrillicCharacter(existingChar) != isCyr {
                 return existingChar
             }
             if existingRect.intersects(overlapTestRect) {
@@ -309,18 +360,18 @@ public final class SwipeTypingState: ObservableObject {
     }
 
     private func hitTestCharacter(at point: CGPoint) -> String? {
-        for (ch, rect) in keyFrames {
+        for (ch, rect) in keyFrames where ch.first?.isLetter == true || ch == "\u{02BC}" {
             let insetRect = rect.insetBy(dx: rect.width * 0.10, dy: rect.height * 0.10)
             if insetRect.contains(point) {
                 return ch
             }
         }
-        for (ch, rect) in keyFrames where rect.contains(point) {
+        for (ch, rect) in keyFrames where (ch.first?.isLetter == true || ch == "\u{02BC}") && rect.contains(point) {
             return ch
         }
         var bestChar: String?
         var bestDist: CGFloat = 22.0
-        for (ch, rect) in keyFrames {
+        for (ch, rect) in keyFrames where ch.first?.isLetter == true || ch == "\u{02BC}" {
             let d = hypot(rect.midX - point.x, rect.midY - point.y)
             if d < bestDist {
                 bestDist = d
@@ -336,7 +387,7 @@ public final class SwipeTypingState: ObservableObject {
 private extension Gestures.KeyboardButtonGestures {
 
     var characterKeyString: String? {
-        if case .character(let ch) = action, ch.first?.isLetter == true || ch == "\u{02BC}" {
+        if case .character(let ch) = action, !ch.isEmpty {
             return ch
         }
         return nil
@@ -421,7 +472,22 @@ private extension Gestures.KeyboardButtonGestures {
                 shouldApplyReleaseAction = false
             }
         }
-        if let ch = characterKeyString, SwipeTypingState.shared.isSwipeEnabled {
+        if action == .keyboardType(.numeric) || SwipeTypingState.shared.canSlideFrom123 {
+            let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
+            let globalPoint = CGPoint(
+                x: frame.origin.x + value.location.x,
+                y: frame.origin.y + value.location.y
+            )
+            if !frame.insetBy(dx: -4, dy: -4).contains(globalPoint) {
+                SwipeTypingState.shared.isSlideFrom123Active = true
+                SwipeTypingState.shared.slideFrom123TargetChar = SwipeTypingState.shared.hitTestAnyKey(at: globalPoint)
+                shouldApplyReleaseAction = false
+                return
+            } else {
+                SwipeTypingState.shared.slideFrom123TargetChar = nil
+            }
+        }
+        if let ch = characterKeyString, (ch.first?.isLetter == true || ch == "\u{02BC}"), SwipeTypingState.shared.isSwipeEnabled {
             let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
             SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
             let globalPoint = CGPoint(
@@ -444,6 +510,17 @@ private extension Gestures.KeyboardButtonGestures {
     }
 
     func handleGestureEnded(in geo: GeometryProxy) {
+        if SwipeTypingState.shared.isSlideFrom123Active {
+            if let targetChar = SwipeTypingState.shared.endSlideFrom123(), !targetChar.isEmpty {
+                NotificationCenter.default.post(
+                    name: SwipeTypingState.didCompleteSlideFrom123Notification,
+                    object: nil,
+                    userInfo: ["char": targetChar]
+                )
+            }
+        } else {
+            SwipeTypingState.shared.resetSlideFrom123()
+        }
         if action == .backspace, let drag = lastDragValue {
             let dx = drag.location.x - drag.startLocation.x
             let dy = drag.location.y - drag.startLocation.y
@@ -465,12 +542,17 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleLongPress(in geo: GeometryProxy) {
         guard !SwipeTypingState.shared.isSwiping else { return }
+        didTriggerLongPress = true
         tryBeginActionCallout(in: geo)
         longPressAction?()
     }
 
     func handlePress(in geo: GeometryProxy) {
-        if let ch = characterKeyString, SwipeTypingState.shared.isSwipeEnabled {
+        didTriggerLongPress = false
+        if action == .keyboardType(.numeric) {
+            SwipeTypingState.shared.beginSlideFrom123()
+        }
+        if let ch = characterKeyString, (ch.first?.isLetter == true || ch == "\u{02BC}"), SwipeTypingState.shared.isSwipeEnabled {
             let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
             SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
             SwipeTypingState.shared.beginPotentialSwipe(
@@ -491,6 +573,10 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleReleaseOutside(in geo: GeometryProxy) {
         guard !SwipeTypingState.shared.isSwiping else { return }
+        if action == .space && didTriggerLongPress {
+            handleReleaseInside(in: geo)
+            return
+        }
         guard shouldApplyReleaseOutsize(for: geo) else { return }
         handleReleaseInside(in: geo)
     }
@@ -535,6 +621,7 @@ private extension Gestures.KeyboardButtonGestures {
     func resetGestureState() {
         lastDragValue = nil
         shouldApplyReleaseAction = true
+        didTriggerLongPress = false
     }
 
     func shouldApplyReleaseOutsize(for geo: GeometryProxy) -> Bool {

@@ -16,7 +16,16 @@ enum Configurations {
     static let localization = "Loading localization data..."
     
     // Social media 
-    static let website = "https://ctcorpus.org/index.php/uk/"
+    static var website: String {
+        switch KeyboardPreferences.interfaceLanguage {
+        case "crh":
+            return "https://ctcorpus.org/index.php/crh/"
+        case "en":
+            return "https://ctcorpus.org/index.php/en/"
+        default:
+            return "https://ctcorpus.org/index.php/uk/"
+        }
+    }
     static let instagram = "https://www.instagram.com/crimeantatar_corpora/"
     static let facebook = "https://www.facebook.com/OnlineTerciman/"
     static let github = "https://github.com/qirimca"

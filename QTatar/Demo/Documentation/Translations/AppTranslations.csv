@@ -1,83 +1,488 @@
-﻿crh,en,uk,Context
-QırımKey — iOS içün ilk Qırımtatar klaviaturasıdır. Göñülliler tarafından yaratılğan bu leyha Qırımtatarca yazmaqnı her kes içün qolay ve irişimli yapmaq içün hazırlandı.,"QırımKey is the first Crimean Tatar keyboard for iOS. Created by volunteers, this project makes writing in Crimean Tatar easy and accessible to everyone.","QırımKey — перша кримськотатарська клавіатура для iOS. Цей волонтерський проєкт створено, щоб писати кримськотатарською було легко й доступно кожному.","About.about_description_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Fikirler,Feedback,Відгуки,"About.about_feedback_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-"QırımKey
-İlk Qırımtatar Klaviaturası","QırımKey
-The First Crimean Tatar Keyboard","QırımKey
-Перша кримськотатарська клавіатура","About.about_first_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Teşebbüslerimiz,Our Initiatives,Наші ініціативи,"About.about_init_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-İçtimaiy ağlarımızğa qoşulıñız!,Join us on social media!,Приєднуйтеся до нас у соціальних мережах!,"About.about_join_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-"Qırımtatar tili ve diger 30-dan ziyade til içün küçlü yazuv yardımını sınap baqıñız. Bu aqıllı yazuv yardımcısınen hatalarnı tüzetiñiz, üslübiñizni yahşılaştırıñız ve açıq-aydın qatnaşuv quruñız.","Try powerful writing assistance for Crimean Tatar and more than 30 other languages. Correct mistakes, improve your style, and communicate clearly with this smart writing assistant.","Спробуйте потужний інструмент для роботи з текстами кримськотатарською та понад 30 іншими мовами. Виправляйте помилки, вдосконалюйте стиль і спілкуйтеся зрозуміло завдяки розумному помічнику для письма.","About.about_language_description_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-iOS içün LanguageTool,LanguageTool for iOS,LanguageTool для iOS,"About.about_language_title_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Daha çoq biliñiz,Learn More,Дізнатися більше,"About.about_more_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Qıymet kesiñiz,Rate the App,Оцінити програму,"About.about_rate_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-"Müelliflik haqqı © 2025 QIRI’M Young
-Bütün haqları saqlanğandır","Copyright © 2025 QIRI’M Young
-All rights reserved","© 2025 QIRI’M Young
-Усі права захищено","About.about_rights_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Leyhağa qol tutuñız,Support the Project,Підтримати проєкт,"About.about_send_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Paylaşıñız,Share,Поділитися,"About.about_share_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-"Qırımtatarca yazuvıñıznı yañı seviyege köteriñiz! Bu alet Qırımtatar tili içün imlâ ve grammatika hatalarını tapıp tüzetmege yardım ete, ana tiliñizde eminliknen yazmaqnı qolaylaştıra.","Take your Crimean Tatar writing to the next level! This tool helps find and correct spelling and grammar mistakes in Crimean Tatar, making it easier to write confidently in your native language.","Удосконалюйте письмо кримськотатарською! Цей інструмент допомагає знаходити й виправляти орфографічні та граматичні помилки, щоб писати рідною мовою було легше та впевненіше.","About.about_spell_description_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Qırımtatar imlâ teşkericisi,Crimean Tatar Spell Checker,Перевірка кримськотатарського правопису,"About.about_spell_title_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Haqqında,About,Про програму,"About.about_title_key | About screen: title, descriptive text, link or action. No format placeholders; preserve names and explicit line breaks. 1 line; minimum scale 0.5; no fixed character limit."
-"Qırımtatar Klaviaturası — siziñ içün, siznen beraber","Crimean Tatar Keyboard — for you, with you","Кримськотатарська клавіатура — для вас, разом із вами","Home.home_crimea_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Tam irişim berilmedi,Full Access Disabled,Повний доступ вимкнено,"Home.home_full_off_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Tam irişim berildi,Full Access Enabled,Повний доступ увімкнено,"Home.home_full_on_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Yazğanda 🌐 işaretine basıñız (ya da basıp tutuñız) ve cedvelden Qırımtatarcanı saylañız.,"While typing, tap or touch and hold 🌐, then choose Qırımtatarca from the list.","Під час введення торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку.","Home.home_getkeyboard_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Klaviatura körünmey,Keyboard Hidden,Клавіатуру приховано,"Home.home_keyboard_hidden_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Klaviatura qoşulmağan,Keyboard Not Enabled,Клавіатуру не ввімкнено,"Home.home_keyboard_off_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Klaviatura qoşulğan,Keyboard Enabled,Клавіатуру ввімкнено,"Home.home_keyboard_on_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Klaviatura peyda oldu,Keyboard Visible,Клавіатуру показано,"Home.home_keyboard_visible_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. Up to 2 lines; minimum scale 0.85; no fixed character limit."
-Yahşı,OK,OK,"Home.home_ok_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Başlañız,Get Started,Почати,"Home.home_start_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Bir şey yazıñız…,Type something…,Напишіть щось…,"Home.home_typing_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Yazı meydanı,Writing Area,Поле введення,"Home.home_writearea_key | Home screen: input, onboarding action or keyboard status. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-E-poçta,Email,Електронна пошта,Interface.field.email | HomeView: input mode selector. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Raqamlar,Numbers,Цифри,Interface.field.numbers | HomeView: input mode selector. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Qıdıruv,Search,Пошук,Interface.field.search | HomeView: input mode selector. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Yazı,Text,Текст,Interface.field.standard | HomeView: input mode selector. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Veb,Web,Веб,Interface.field.url | HomeView: input mode selector. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Kirill klaviaturası,Cyrillic keyboard,Кирилична клавіатура,"Interface.settings.cyrillic | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-"iOS klaviaturanıñ yazı sistemi haqqında malümat bermey, onuñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.","iOS does not expose the keyboard script, so we cannot confirm that the Cyrillic keyboard is enabled. Check both keyboards in Settings.","iOS не надає даних про систему письма клавіатури, тому неможливо підтвердити, що кириличну клавіатуру ввімкнено. Перевірте обидві клавіатури в Параметрах.","Interface.settings.cyrillicUnverified | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Hazır,Done,Готово,"Interface.settings.done | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.,"To switch with the globe, add both Qırımtatarca and Къырымтатарджа in iOS Settings → General → Keyboard → Keyboards → Add New Keyboard → QırımKey.","Щоб перемикатися кнопкою глобуса, додайте обидві клавіатури — Qırımtatarca та Къырымтатарджа: Параметри iOS → Загальні → Клавіатура → Клавіатури → Додати нову клавіатуру → QırımKey.","Interface.settings.enableBothKeyboards | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Kirill klaviaturası metinni latin harflerinen kirsete. Globus dögmesinen almaştırmaq içün iOS Sazlamalarında eki klaviaturanı da faalleştiriñiz. Bu seçimni söndürmek kirillnen kirsetüvni söndüre; onu iOS Sazlamalarındaki sistem klaviaturaları cedvelinden çıqarıñız. Ortaq sazlamalar içün tam irişim kerek.,The Cyrillic keyboard inserts Latin text. Enable both keyboards in iOS Settings to switch with the globe. Turning this option off disables Cyrillic input; remove its entry from the system keyboard list in iOS Settings. Shared preferences require Full Access.,"Кирилична клавіатура вводить текст латиницею. Увімкніть обидві клавіатури в Параметрах iOS, щоб перемикатися між ними кнопкою глобуса. Вимкнення цієї опції вимикає кириличне введення; видаліть відповідний запис зі списку системних клавіатур у Параметрах iOS. Для спільних параметрів потрібен повний доступ.","Interface.settings.keyboardHelp | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-İnterfeys tili,Interface language,Мова інтерфейсу,"Interface.settings.language | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Kirill klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарджа klaviaturasını qoşuñız.,Cyrillic keyboard not detected. Add Къырымтатарджа in iOS Settings.,Кириличну клавіатуру не виявлено. Додайте Къырымтатарджа в Параметрах iOS.,"Interface.settings.missingCyrillic | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Söz teklifleri,Word suggestions,Підказки слів,"Interface.settings.suggestions | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Sazlamalar,Settings,Параметри,"Interface.settings.title | KeyboardSettingsView: preference label, help or activation warning. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code."
-Klassik,Classic,Класична,Interface.theme.classic | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Klassik · Qaranlıq,Classic · Dark,Класична · Темна,Interface.theme.classicDark | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Klassik · Aydınlıq,Classic · Light,Класична · Світла,Interface.theme.classicLight | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Qaranlıq,Dark,Темна,Interface.theme.dark | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Aydınlıq,Light,Світла,Interface.theme.light | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-iOS 26 · Qaranlıq,iOS 26 · Dark,iOS 26 · Темна,Interface.theme.modernDark | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-iOS 26 · Aydınlıq,iOS 26 · Light,iOS 26 · Світла,Interface.theme.modernLight | HomeView: appearance/style choice; older combined theme keys retained. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Keri qaytıñız,Back,Назад,Onboarding.onb_back_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Klaviaturanı sınap baqıñız,Try the Keyboard,Спробувати клавіатуру,Onboarding.onb_check_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Bitiriñiz,Finish,Завершити,Onboarding.onb_finish_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-İleri ketiñiz,Next,Далі,Onboarding.onb_next_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Tam irişim beriñiz: Sazlamalar > İlâveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz,Allow Full Access: Settings > Apps > QırımKey > Keyboards > Allow Full Access,Дозвольте повний доступ: Параметри > Програми > QırımKey > Клавіатури > Дозволити повний доступ,Onboarding.onb_onb1_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Klaviaturanı qoşuñız: Sazlamalar > Umumiy > Klaviaturalar > Yañı klaviatura qoşmaq > Qırımtatar klaviaturasını saylañız,Add the Keyboard: Settings > General > Keyboards > Add New Keyboard > Select the Crimean Tatar keyboard,Додайте клавіатуру: Параметри > Загальні > Клавіатури > Додати нову клавіатуру > Оберіть кримськотатарську клавіатуру,Onboarding.onb_onb2_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Yazğanda klaviaturanı saylañız: 🌐 işaretine basıñız (ya da basıp tutuñız) ve cedvelden Qırımtatarcanı saylañız,"Choose the Keyboard While Typing: Tap or touch and hold 🌐, then choose Qırımtatarca from the list","Оберіть клавіатуру під час введення: торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку",Onboarding.onb_onb3_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Yazmağa başlañız: QırımKeyniñ titrev bildirüvi ve T9 kibi imkânlarından faydalanıñız,Start Typing: Enjoy QırımKey features such as haptic feedback and T9,"Почніть вводити текст: користуйтеся тактильним відгуком, T9 та іншими можливостями QırımKey",Onboarding.onb_onb4_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Sazlamalarnı açıñız,Open Settings,Відкрити параметри,Onboarding.onb_open_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. No fixed character limit established in code.
-Klaviatura sazlamaları,Keyboard Settings,Параметри клавіатури,Onboarding.onb_settings_key | Keyboard setup instructions or navigation. No format placeholders; preserve names and explicit line breaks. 1 line; minimum scale 0.5; no fixed character limit.
-Qırımtatarca,Qırımtatarca,Qırımtatarca,"Extension display name: Latin keyboard; intended new name, also language autonym in KeyboardSettingsView; do not translate. No placeholders; no fixed character limit."
-Къырымтатарджа,Къырымтатарджа,Къырымтатарджа,Extension display name: Cyrillic keyboard; intended new name; do not translate. No placeholders; no fixed character limit.
-QırımKey,QırımKey,QırımKey,"Hardcoded app brand in HomeView toolbar; 1 line, minimum scale 0.5; do not translate. No placeholders; no fixed character limit."
-English,English,English,Hardcoded language autonym in KeyboardSettingsView; do not translate. No placeholders; no fixed character limit.
-Українська,Українська,Українська,Hardcoded language autonym in KeyboardSettingsView; do not translate. No placeholders; no fixed character limit.
-: ,: ,: ,"Demo/Localizable.xcstrings: :  |  | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-%1$@/%2$@,%1$@/%2$@,%1$@/%2$@,"Demo/Localizable.xcstrings: %@/%@ |  | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-QırımKey,QırımKey,QırımKey,"Demo/Localizable.xcstrings: QırımKey |  | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-QırımKey,QırımKey,QırımKey,"Demo/InfoPlist.xcstrings: CFBundleDisplayName | Bundle display name | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-QTatar,QTatar,QTatar,"Demo/InfoPlist.xcstrings: CFBundleName | Bundle name | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-Sesni tanuv,Speech Recognition,Розпізнавання мовлення,"Demo/InfoPlist.xcstrings: NSSpeechRecognitionUsageDescription | Privacy - Speech Recognition Usage Description | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-Qırımtatarca,Qırımtatarca,Qırımtatarca,"Demo/Utilities/Localization/InfoPlist.xcstrings: CFBundleDisplayName | Bundle display name | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-Klaviatura,Keyboard,Клавіатура,"Demo/Utilities/Localization/InfoPlist.xcstrings: CFBundleName | Bundle name | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-Müelliflik haqqı © 2024 Qırımtatar. Bütün haqları saqlanğandır.,Copyright © 2024 Qırımtatar. All rights reserved.,© 2024 Qırımtatar. Усі права захищено.,"Demo/Utilities/Localization/InfoPlist.xcstrings: NSHumanReadableCopyright | Copyright (human-readable) | Зберігати параметри форматування (%@, %d тощо) та переноси рядків. Фіксований ліміт символів не встановлено."
-Zümre,Group,Група,Demo/Settings.bundle/en.lproj/Root.strings: Group | Налаштування застосунку в iOS. Фіксований ліміт не встановлено.
-Ad,Name,Ім’я,Demo/Settings.bundle/en.lproj/Root.strings: Name | Налаштування застосунку в iOS. Фіксований ліміт не встановлено.
-Qoşulğan,Enabled,Увімкнено,Demo/Settings.bundle/en.lproj/Root.strings: Enabled | Налаштування застосунку в iOS. Фіксований ліміт не встановлено.
-Belgilenmegen,None given,Не вказано,Demo/Settings.bundle/en.lproj/Root.strings: none given | Налаштування застосунку в iOS. Фіксований ліміт не встановлено.
+Table / ID,Key / Категорія чи тригер,Max Chars (екран: ≤ 48 симв.),Qırımtatarca (crh — на екрані = при вставці),Джерело / Автор у дужках при тапі (crh),"Українська / Український переклад при тапі (uk, без зайвих дужок типу (Cuma))",English / English translation on tap (en)
+About,about_description_key,280,QırımKey — iOS içün ilk Qırımtatar klaviaturasıdır. Göñülliler tarafından yaratılğan bu leyha Qırımtatarca yazmaqnı er kes içün qolay ve irişimli yapmaq içün azırlandı.,—,"QırımKey — перша кримськотатарська клавіатура для iOS. Цей волонтерський проєкт створено, щоб писати кримськотатарською було легко й доступно кожному.","QırımKey is the first Crimean Tatar keyboard for iOS. Created by volunteers, this project makes writing in Crimean Tatar easy and accessible to everyone."
+About,about_feedback_key,32,Fikirler,—,Відгуки,Feedback
+About,about_first_key,65,"QırımKey
+İlk Qırımtatar Klaviaturası",—,"QırımKey
+Перша кримськотатарська клавіатура","QırımKey
+The First Crimean Tatar Keyboard"
+About,about_init_key,32,Teşebbüslerimiz,—,Наші ініціативи,Our Initiatives
+About,about_join_key,65,İçtimaiy ağlarımızğa qoşulıñız!,—,Приєднуйтеся до нас у соціальних мережах!,Join us on social media!
+About,about_language_description_key,280,"Qırımtatar tili ve diger 30-dan ziyade til içün küçlü yazuv yardımını sınap baqıñız. Bu aqıllı yazuv yardımcısınen hatalarnı tüzetiñiz, üslübiñizni yahşılaştırıñız ve açıq-aydın qatnaşuv quruñız.",—,"Спробуйте потужний інструмент для роботи з текстами кримськотатарською та понад 30 іншими мовами. Виправляйте помилки, вдосконалюйте стиль і спілкуйтеся зрозуміло завдяки розумному помічнику для письма.","Try powerful writing assistance for Crimean Tatar and more than 30 other languages. Correct mistakes, improve your style, and communicate clearly with this smart writing assistant."
+About,about_language_title_key,32,iOS içün LanguageTool,—,LanguageTool для iOS,LanguageTool for iOS
+About,about_more_key,32,Daa çoq biliñiz,—,Дізнатися більше,Learn More
+About,about_rate_key,32,App Store-da qıymet beriñiz,—,Оцінити в App Store,Rate on the App Store
+About,about_website_key,32,Sayt,—,Сайт,Website
+About,about_rights_key,120,"Müelliflik aqqı © 2025 QIRI’M Young
+Bütün aqları saqlanğandır",—,"© 2025 QIRI’M Young
+Усі права захищено","Copyright © 2025 QIRI’M Young
+All rights reserved"
+About,about_send_key,32,Leyhağa qol tutuñız,—,Підтримати проєкт,Support the Project
+About,about_share_key,32,Paylaşıñız,—,Поділитися,Share
+About,about_spell_description_key,280,"Qırımtatarca yazuvıñıznı yañı seviyege köteriñiz! Bu alet Qırımtatar tili içün imlâ ve grammatika hatalarını tapıp tüzetmege yardım ete, ana tiliñizde eminliknen yazmaqnı qolaylaştıra.",—,"Удосконалюйте письмо кримськотатарською! Цей інструмент допомагає знаходити й виправляти орфографічні та граматичні помилки, щоб писати рідною мовою було легше та впевненіше.","Take your Crimean Tatar writing to the next level! This tool helps find and correct spelling and grammar mistakes in Crimean Tatar, making it easier to write confidently in your native language."
+About,about_spell_title_key,65,Qırımtatar imlâ teşkericisi,—,Перевірка кримськотатарського правопису,Crimean Tatar Spell Checker
+About,about_title_key,32,Aqqında,—,Про програму,About
+Home,home_crimea_key,65,"Qırımtatar Klaviaturası — siziñ içün, siznen beraber",—,"Кримськотатарська клавіатура — для вас, разом із вами","Crimean Tatar Keyboard — for you, with you"
+Home,home_full_off_key,32,Tam irişim berilmedi,—,Повний доступ вимкнено,Full Access Disabled
+Home,home_full_on_key,32,Tam irişim berildi,—,Повний доступ увімкнено,Full Access Enabled
+Home,home_getkeyboard_key,120,Yazğanda 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız.,—,"Під час введення торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку.","While typing, tap or touch and hold 🌐, then choose Qırımtatarca from the list."
+Home,home_keyboard_hidden_key,32,Klaviatura körünmey,—,Клавіатуру приховано,Keyboard Hidden
+Home,home_keyboard_off_key,32,Klaviatura qoşulmağan,—,Клавіатуру не ввімкнено,Keyboard Not Enabled
+Home,home_keyboard_on_key,32,Klaviatura qoşulğan,—,Клавіатуру ввімкнено,Keyboard Enabled
+Home,home_keyboard_visible_key,32,Klaviatura peyda oldı,—,Клавіатуру показано,Keyboard Visible
+Home,home_ok_key,32,Yahşı,—,OK,OK
+Home,home_start_key,32,Başlañız,—,Почати,Get Started
+Home,home_typing_key,32,Bir şey yazıñız…,—,Напишіть щось…,Type something…
+Home,home_writearea_key,32,Yazı meydanı,—,Поле введення,Writing Area
+Home,home_cyrillic_on_key,32,Kirill qoşulğan,—,Кириличну додано,Cyrillic Added
+Home,home_cyrillic_off_key,32,Kirill qoşulmağan,—,Кириличну не додано,Cyrillic Not Added
+Interface,field.standard,32,Yazı,—,Текст,Text
+Interface,field.search,32,Qıdıruv,—,Пошук,Search
+Interface,field.email,32,E-poçta,—,Пошта,Email
+Interface,field.url,32,Veb,—,Веб,Web
+Interface,field.numbers,32,Raqamlar,—,Цифри,Numbers
+Interface,theme.modernLight,32,Aydınlıq,—,Світла,Light
+Interface,theme.modernDark,32,Qaranlıq,—,Темна,Dark
+Interface,settings.title,32,Sazlamalar,—,Параметри,Settings
+Interface,settings.language,32,İnterfeys tili,—,Мова інтерфейсу,Interface language
+Interface,settings.cyrillic,32,Kirill klaviaturası,—,Кирилична клавіатура,Cyrillic keyboard
+Interface,settings.suggestions,32,Söz teklifleri,—,Підказки слів,Word suggestions
+Interface,settings.wordLearning,32,Sözlerni ögrenüv,—,Навчання слів,Learn words
+Interface,settings.done,32,Azır,—,Готово,Done
+Interface,settings.keyboardHelp,280,Kirill klaviaturası metinni latin ariflerinen kirsete. iPad'de bu seçim «абв/abc» dögmesini köstere yaki gizley. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.,—,Кирилична клавіатура транслітерує текст латиницею. На iPad перемикач показує або ховає клавішу «абв/abc». Навчання слів адаптує підказки та наступні слова на пристрої. Для спільних параметрів потрібен повний доступ.,The Cyrillic keyboard transliterates into Latin text. On iPad the switch shows or hides the абв/abc key. Learn words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.
+Interface,settings.keyboardHelpPhone,280,Kirill klaviaturası metinni latin ariflerinen kirsete. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.,—,Кирилична клавіатура транслітерує текст латиницею. Навчання слів адаптує підказки та наступні слова на пристрої. Для спільних параметрів потрібен повний доступ.,The Cyrillic keyboard transliterates into Latin text. Learn words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.
+Interface,theme.light,32,Aydınlıq,—,Світла,Light
+Interface,theme.dark,32,Qaranlıq,—,Темна,Dark
+Interface,settings.enableBothKeyboards,280,Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.,—,"Щоб перемикатися кнопкою глобуса, додайте обидві клавіатури — Qırımtatarca та Къырымтатарджа: Параметри iOS → Загальні → Клавіатура → Клавіатури → Додати нову клавіатуру → QırımKey.","To switch with the globe, add both Qırımtatarca and Къырымтатарджа in iOS Settings → General → Keyboard → Keyboards → Add New Keyboard → QırımKey."
+Interface,settings.missingCyrillic,120,Kirill klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарджа klaviaturasını qoşuñız.,—,Кириличну клавіатуру не виявлено. Додайте Къырымтатарджа в Параметрах iOS.,Cyrillic keyboard not detected. Add Къырымтатарджа in iOS Settings.
+Interface,settings.cyrillicUnverified,280,"iOS klaviaturanıñ yazı sistemi aqqında malümat bermey, onıñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.",—,"iOS не надає даних про систему письма клавіатури, тому неможливо підтвердити, що кириличну клавіатуру ввімкнено. Перевірте обидві клавіатури в Параметрах.","iOS does not expose the keyboard script, so we cannot confirm that the Cyrillic keyboard is enabled. Check both keyboards in Settings."
+Interface,sandbox.undo,32,Keri al,—,Скасувати,Undo
+Interface,sandbox.redo,32,Qaytar,—,Повторити,Redo
+Interface,sandbox.paste,32,Qoy,—,Вставити,Paste
+Interface,sandbox.clear,32,Temizle,—,Очистити,Clear
+Interface,stats.title,32,Statistika ve yeñişler,—,Статистика та досягнення,Stats & Achievements
+Interface,stats.words,32,Yazılğan sözler,—,Написано слів,Words typed
+Interface,stats.chars,32,Arifler,—,Символів,Characters
+Interface,stats.speed,32,Yazuv tezligi,—,Швидкість друку,Typing speed
+Interface,stats.activeTime,32,Faal vaqıt,—,Час друку,Active time
+Interface,stats.learnedWords,32,Ögrenilgen sözler,—,Вивчено слів,Learned words
+Interface,stats.wpmUnit,32,söz/daq,—,сл/хв,WPM
+Interface,stats.cpmUnit,32,arf/daq,—,зн/хв,CPM
+Interface,stats.minUnit,32,daq,—,хв,min
+Interface,stats.secUnit,32,s,—,с,s
+Interface,stats.achievements,32,Yeñişler,—,Досягнення,Achievements
+Interface,stats.ach.firstStep,32,İlk adım,—,Перший крок,First Step
+Interface,stats.ach.firstStep.desc,32,Ana tilde 10+ söz,—,10+ слів рідною мовою,Type 10+ words
+Interface,stats.ach.speed,32,Yürek tezligi,—,Темп серця,Heartbeat Tempo
+Interface,stats.ach.speed.desc,32,30+ söz/daq tezlik,—,Швидкість 30+ сл/хв,Reach 30+ WPM speed
+Interface,stats.ach.scholar,32,Söz ustası,—,Знавець слів,Word Scholar
+Interface,stats.ach.scholar.desc,65,100+ söz ya da 10+ ögrenilgen,—,100+ слів або 10+ вивчених,100+ words or 10+ learned
+Interface,stats.ach.wisdom,32,Atalar hikmeti,—,Мудрість предків,Ancestral Wisdom
+Interface,stats.ach.wisdom.desc,32,Hikmetli söz qoşuldı,—,Вставлено крилатий вислів,Insert a daily proverb
+Interface,stats.manualWords,32,Arif-arif yazılğan,—,Надруковано по буквах,Typed letter by letter
+Interface,stats.suggestedWords,32,Tevsiyelernen,—,З підказками,With suggestions
+Interface,stats.suggestionBoost,65,Tekliflernen tezlik artımı: ×%@,—,Прискорення з підказками: ×%@,Speed boost with suggestions: ×%@
+Interface,stats.reset,32,Statistikanı sıfırla,—,Скинути статистику,Reset Statistics
+Interface,stats.resetConfirmTitle,32,Statistikanı sıfırlamaq?,—,Скинути статистику?,Reset Statistics?
+Interface,stats.resetConfirmMessage,120,Bütün yazuv ve tezlik statistikası yoq etilecek. Bu amelni keri qaytarıp olmaz.,—,Усю статистику набору та швидкості буде видалено. Цю дію неможливо скасувати.,All typing and speed statistics will be permanently cleared. This action cannot be undone.
+Interface,stats.resetConfirmAction,32,Sıfırla,—,Скинути,Reset
+Interface,stats.cancel,32,Vazgeç,—,Скасувати,Cancel
+Interface,stats.resetCancel,32,Vazgeç,—,Скасувати,Cancel
+Interface,stats.speedLevel,32,Tezlik derecesi,—,Рівень швидкості,Speed Level
+Interface,stats.speedTier0,32,Asuda başlanğıç,—,Спокійний старт,Calm Start
+Interface,stats.speedTier1,32,Diqqatlı adım,—,Уважний крок,Careful Step
+Interface,stats.speedTier2,32,İnamlı aqım,—,Впевнений темп,Steady Flow
+Interface,stats.speedTier3,32,Çevik parmaqlar,—,Прудкі пальці,Nimble Fingers
+Interface,stats.speedTier4,32,Çoqraq tezligi,—,Стрімке джерело,Mountain Stream
+Interface,stats.speedTier5,32,Yıldırım tezligi,—,Блискавичний темп,Lightning Speed
+Interface,stats.volumeLevel,32,Yazuv derecesi,—,Рівень активності,Writing Level
+Interface,stats.volumeTier0,32,İlk sözni yaz,—,Перше слово попереду,First Word Ahead
+Interface,stats.volumeTier1,32,İlk satırlar,—,Перші рядки,First Lines
+Interface,stats.volumeTier2,32,Faal subetçi,—,Активний співрозмовник,Active Conversationalist
+Interface,stats.volumeTier3,32,Söz ustası,—,Майстер слова,Wordsmith
+Interface,stats.volumeTier4,32,Tilni yaşatqan,—,Носій живої мови,Language Keeper
+Interface,stats.volumeTier5,32,Qırımtatar tiliniñ ışıqçısı,—,Світоч кримськотатарської,Crimean Tatar Luminary
+Interface,settings.stats,65,Statistika ve yazuv seviyeleri,—,Статистика та рівні набору,Typing statistics & levels
+Interface,settings.stats.desc,65,"Yazuv tezligi, sözler ve yeñişlerni közetüv",—,"Відстеження швидкості набору, слів і досягнень","Track typing speed, words & achievements"
+Interface,stats.charsSubtitle,32,Arifler: %d,—,Символів: %d,Characters: %d
+Interface,stats.speedSubtitle,32,Soñki tezlik: %d %@ · %d %@,—,Поточний темп: %d %@ · %d %@,Recent pace: %d %@ · %d %@
+Interface,stats.speedPeakSubtitle,32,Eñ yüksek yazuv tezligi,—,Рекордний темп друку,Peak typing pace
+Interface,stats.manualWordsSubtitle,32,Qolnen arif-arif yazılğan,—,Вручну по літерах,Typed manually
+Interface,stats.suggestedWordsSubtitle,32,Qazanılğan arifler: %d,—,Зекономлено символів: %d,Characters saved: %d
+Interface,stats.speedNextFormat,65,"Soñraki: «%@» — %d %@, daa +%d",—,"Далі: «%@» — %d %@, ще +%d","Next: “%@” — %d %@, +%d more"
+Interface,stats.speedMaxReached,32,Eñ yüksek tezlik seviyesi!,—,Досягнуто найвищого рівня!,Top speed tier reached!
+Interface,stats.volumeNextFormat,65,"Soñraki: «%@» — %d söz, daa +%d",—,"Далі: «%@» — %d сл., ще +%d","Next: “%@” — %d words, +%d more"
+Interface,stats.volumeMaxReached,32,Eñ yüksek faallik seviyesi!,—,Досягнуто найвищого рівня!,Top activity tier reached!
+Interface,stats.activeTimeSubtitle,32,Faal yazuv vaqtı,—,Чистий час набору,Active typing sessions
+Interface,stats.learnedWordsSubtitle,32,Şahsiy luğat,—,Особистий словник,Personal dictionary
+Interface,settings.cyrillicStatusAdded,32,Qoşulğan,—,Додано,Added
+Interface,settings.cyrillicStatusMissing,32,Qoşulmağan,—,Не додано,Not Added
+Interface,settings.cyrillicPromoTitle,65,Kirill klaviaturasını da qoşuñız,—,Додайте також кириличну клавіатуру,Also Add the Cyrillic Keyboard
+Interface,settings.cyrillicPromoDesc,280,"Cihazıñızda kirill elifbesi qullanıla. «Къырымтатарджа» klaviaturasını qoşıp, kirill ariflerinen de qolaylıqnen yazıñız.",—,"Ви використовуєте кириличну абетку. Додайте клавіатуру «Къырымтатарджа» в Параметрах iOS, щоб зручно писати і кирилицею.",You use a Cyrillic language. Add the “Къырымтатарджа” keyboard in iOS Settings to type in Cyrillic as well.
+Interface,settings.cyrillicAddAction,32,Sazlamalarda qoşmaq,—,Додати в Параметрах,Add in Settings
+Interface,settings.cyrillicGuideTitle,65,Kirill klaviaturasını nasıl qoşmalı?,—,Як додати кириличну клавіатуру?,How to Add the Cyrillic Keyboard
+Interface,settings.ukrainianCyrillic,32,Ukraina tizilişi,—,Українська розкладка,Ukrainian layout
+Interface,settings.ukrainianCyrillic.desc,65,ґ → g · г → ğ · кʼ → q · нʼ → ñ,—,ґ → g · г → ğ · кʼ → q · нʼ → ñ,ґ → g · г → ğ · кʼ → q · нʼ → ñ
+Interface,settings.cyrillic.ipadFloatingNote,120,iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek,—,Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму,Separate keyboard in iOS Settings is only needed for floating mode
+Interface,settings.appSettings,32,Qoşulma sazlamaları,—,Налаштування програми,App settings
+Interface,settings.appSettings.desc,65,"Söz teklifleri, sözlerni ögrenüv, statistika",—,"Підказки слів, навчання слів, статистика","Word suggestions, word learning, statistics"
+Interface,settings.systemKeyboard,32,Sistem sazlamaları,—,Системні налаштування,System settings
+Interface,settings.systemKeyboard.desc,65,"Klaviaturalar, avto-tüzetüv, tınış işaretleri",—,"Клавіатури, автовиправлення, пунктуація","Keyboards, auto-correction, smart punctuation"
+Onboarding,onb_back_key,32,Keri qaytıñız,—,Назад,Back
+Onboarding,onb_check_key,32,Klaviaturanı sınap baqıñız,—,Спробувати клавіатуру,Try the Keyboard
+Onboarding,onb_finish_key,32,Bitiriñiz,—,Завершити,Finish
+Onboarding,onb_next_key,32,İleri ketiñiz,—,Далі,Next
+Onboarding,onb_onb1_key,120,Tam irişim beriñiz: Sazlamalar > İlâveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz,—,Дозвольте повний доступ: Параметри > Програми > QırımKey > Клавіатури > Дозволити повний доступ,Allow Full Access: Settings > Apps > QırımKey > Keyboards > Allow Full Access
+Onboarding,onb_onb2_key,280,Klaviaturanı qoşuñız: Sazlamalar > Umumiy > Klaviaturalar > Yañı klaviatura qoşmaq > Qırımtatar klaviaturasını saylañız,—,Додайте клавіатуру: Параметри > Загальні > Клавіатури > Додати нову клавіатуру > Оберіть кримськотатарську клавіатуру,Add the Keyboard: Settings > General > Keyboards > Add New Keyboard > Select the Crimean Tatar keyboard
+Onboarding,onb_onb3_key,280,Yazğanda klaviaturanı saylañız: 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız,—,"Оберіть клавіатуру під час введення: торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку","Choose the Keyboard While Typing: Tap or touch and hold 🌐, then choose Qırımtatarca from the list"
+Onboarding,onb_onb4_key,280,"Yazmağa başlañız: QırımKeyniñ titrev bildirüvi, söz teklifleri ve avtomatik transliteratsiya kibi imkânlarından faydalanıñız",—,"Почніть вводити текст: користуйтеся тактильним відгуком, підказками слів та автоматичною транслітерацією QırımKey","Start Typing: Enjoy QırımKey features such as haptic feedback, word suggestions, and automatic transliteration"
+Onboarding,onb_open_key,32,Sazlamalarnı açıñız,—,Відкрити параметри,Open Settings
+Onboarding,onb_settings_key,32,Klaviatura sazlamaları,—,Параметри клавіатури,Keyboard Settings
+Settings.bundle/Root,Group,32,Gruppa,—,Група,Group
+Settings.bundle/Root,Name,32,Ad,—,Ім’я,Name
+Settings.bundle/Root,Enabled,32,Açuvlı,—,Увімкнено,Enabled
+Settings.bundle/Root,none given,32,Berilmedi,—,Не вказано,none given
+Settings.bundle/Root,Söz teklifleri,32,Söz teklifleri,—,Підказки слів,Word suggestions
+Settings.bundle/Root,Sözlerni ögrenüv,32,Sözlerni ögrenüv,—,Навчання слів,Word learning
+Settings.bundle/Root,Statistika ve yazuv seviyeleri,65,Statistika ve yazuv seviyeleri,—,Статистика та рівні набору,Statistics & typing levels
+Щоденні та мотиваційні фрази верхньої панелі клавіатури (85 фраз),DailyPhrases.strings,≤ 48,phrase.<ID>.text,phrase.<ID>.attribution,phrase.<ID>.translation (uk),phrase.<ID>.translation (en)
+ID,Категорія / Тригер часу чи свята,Max Chars (екран: ≤ 48 симв.),Qırımtatarca (на екрані = при вставці),Джерело / Автор у дужках при тапі (crh),"Український переклад при тапі (uk, без зайвих дужок типу (Cuma))",English translation on tap (en)
+#1,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (25 симв.),Atalar sözünde altın bar.,Qırımtatar atalar sözü,«У словах предків є золото.» (Кримськотатарське прислів'я),"""There is gold in the words of ancestors."" (Crimean Tatar proverb)"
+#2,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (27 симв.),Atalar sözü — aqılnıñ közü.,Qırımtatar atalar sözü,«Слово предків — око розуму.» (Кримськотатарське прислів'я),"""The word of ancestors is the eye of the mind."" (Crimean Tatar proverb)"
+#3,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (22 симв.),Yahşı söz — can azığı.,Qırımtatar atalar sözü,«Добре слово — пожива для душі.» (Кримськотатарське прислів'я),"""A kind word is nourishment for the soul."" (Crimean Tatar proverb)"
+#4,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (23 симв.),Til — aqıl terazesidir.,Qırımtatar atalar sözü,«Мова — це терези розуму.» (Кримськотатарське прислів'я),"""Language is the scales of the mind."" (Crimean Tatar proverb)"
+#5,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (24 симв.),Til — yürekniñ anahtarı.,Qırımtatar atalar sözü,«Мова — ключ до серця.» (Кримськотатарське прислів'я),"""Language is the key to the heart."" (Crimean Tatar proverb)"
+#6,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (16 симв.),"Az ayt, naz ayt!",Qırımtatar atalar sözü,«Мало кажи — вишукано кажи!» (Кримськотатарське прислів'я),"""Speak little, speak gracefully!"" (Crimean Tatar proverb)"
+#7,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (28 симв.),Tilge ürmet — ilge ürmettir.,Qırımtatar atalar sözü,«Повага до мови — це повага до народу.» (Кримськотатарське прислів'я),"""Respect for the language is respect for the people."" (Crimean Tatar proverb)"
+#8,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (24 симв.),Sözüñnen işiñ bir olsun!,Qırımtatar atalar sözü,«Нехай твоє слово і твоє діло будуть єдиними!» (Кримськотатарське прислів'я),"""Let your word and your deed be one!"" (Crimean Tatar proverb)"
+#9,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (31 симв.),Kişiniñ sözünen işi bir olmalı.,Qırımtatar atalar sözü,«Слово і діло людини мають бути єдиними.» (Кримськотатарське прислів'я),"""A person's word and deed must be one."" (Crimean Tatar proverb)"
+#10,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (32 симв.),Aqiqiy söz aqqan suvnı toqtatır.,Qırımtatar atalar sözü,«Правдиве слово зупинить і плинну воду.» (Кримськотатарське прислів'я),"""A true word stops even flowing water."" (Crimean Tatar proverb)"
+#11,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (23 симв.),İlim — aqıl çoqrağıdır.,Qırımtatar atalar sözü,«Знання — це джерело розуму.» (Кримськотатарське прислів'я),"""Knowledge is the spring of wisdom."" (Crimean Tatar proverb)"
+#12,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (23 симв.),Tatlı söz baldan tatlı.,Qırımtatar atalar sözü,«Лагідне слово солодше за мед.» (Кримськотатарське прислів'я),"""A sweet word is sweeter than honey."" (Crimean Tatar proverb)"
+#13,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (25 симв.),Ana tiliñ — baldan tatlı.,Qırımtatar atalar sözü,«Рідна мова — солодша за мед.» (Кримськотатарське прислів'я),"""Your mother tongue is sweeter than honey."" (Crimean Tatar proverb)"
+#14,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (27 симв.),Tiliñnen göñlüñ bir olmalı.,Qırımtatar atalar sözü,«Твої слова і твоє серце мають бути єдиними.» (Кримськотатарське прислів'я),"""Your tongue and your heart must be one."" (Crimean Tatar proverb)"
+#15,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (21 симв.),Göñlüñdeki — tiliñde.,Qırımtatar atalar sözü,«Що на серці — те й на язиці.» (Кримськотатарське прислів'я),"""What is in the heart is on the tongue."" (Crimean Tatar proverb)"
+#16,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (25 симв.),Emek — ömürniñ zinetidir.,Qırımtatar atalar sözü,«Праця — окраса життя.» (Кримськотатарське прислів'я),"""Labor is the adornment of life."" (Crimean Tatar proverb)"
+#17,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (24 симв.),Birlik evde bereket bar.,Qırımtatar atalar sözü,"«У домі, де панує єдність, є й достаток.» (Кримськотатарське прислів'я)","""In a united home, there is abundance."" (Crimean Tatar proverb)"
+#18,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (28 симв.),Muhabbetlik — baht anahtarı.,Qırımtatar atalar sözü,«Любов і щирість — ключ до щастя.» (Кримськотатарське прислів'я),"""Love and affection are the key to happiness."" (Crimean Tatar proverb)"
+#19,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (30 симв.),"Tilini coyğan, Vatanını coyar.",Qırımtatar atalar sözü,«Хто втратив свою мову — втратить і Батьківщину.» (Кримськотатарське прислів'я),"""Whoever loses their language will lose their Homeland."" (Crimean Tatar proverb)"
+#20,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (43 симв.),"Aşnıñ dadı — tuznen, adamnıñ dadı — söznen.",Qırımtatar atalar sözü,"«Смак страви — у солі, а суть людини — у слові.» (Кримськотатарське прислів'я)","""The taste of food is in salt; the essence of a person is in their word."" (Crimean Tatar proverb)"
+#21,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (45 симв.),"Qulaq — eki, til — bir: eki diñle, bir söyle.",Qırımtatar atalar sözü,"«Вух — двоє, язик — один: двічі слухай, один раз кажи.» (Кримськотатарське прислів'я)","""Two ears, one tongue: listen twice, speak once."" (Crimean Tatar proverb)"
+#22,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (43 симв.),Tilni bilmek — dostluqnı qaviyleştirmektir.,Qırımtatar atalar sözü,«Знати мову — це зміцнювати дружбу.» (Кримськотатарське прислів'я),"""Knowing a language strengthens friendship."" (Crimean Tatar proverb)"
+#23,Пріоритет 3 — Час доби: денна кава та гостинність (08:00–17:00),≤ 48 (41 симв.),Bir filcan qaveniñ qırq yıl hatri bardır.,Qırımtatar atalar sözü,«Одна філіжанка кави має сорок років пошани.» (Кримськотатарське прислів'я),"""A single cup of coffee is remembered with gratitude for forty years."" (Crimean Tatar proverb)"
+#24,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (26 симв.),Ana tilim — canım-cigerim.,Dilâver Osman,«Рідна мово моя — душе й серце моє.» (Ділявер Осман),"""My native tongue is my heart and soul."" (Dilâver Osman)"
+#25,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (27 симв.),Ana tilim — halqnıñ temeli.,Dilâver Osman,«Рідна мова — основа народу.» (Ділявер Осман),"""My native language is the foundation of the people."" (Dilâver Osman)"
+#26,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (22 симв.),Til — bizim temelimiz!,Seyran Üseinov,«Мова — наша основа!» (Сейран Усеїнов),"""Language is our foundation!"" (Seyran Üseinov)"
+#27,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (24 симв.),Öz tilini bilsin er kes!,Seyran Üseinov,«Нехай кожен знає свою рідну мову!» (Сейран Усеїнов),"""Let everyone know their native language!"" (Seyran Üseinov)"
+#28,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (38 симв.),Dünyada eñ tatlı — qırımtatar tilimiz!,Seyran Üseinov,«Найсолодша у світі — наша кримськотатарська мова!» (Сейран Усеїнов),"""The sweetest in the world is our Crimean Tatar language!"" (Seyran Üseinov)"
+#29,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (32 симв.),"Sev tiliñni, sevgen kibi anañnı!",Eşref Şemi-zade,"«Люби свою мову, як любиш свою матір!» (Ешреф Шем'ї-заде)","""Love your language as you love your mother!"" (Eşref Şemi-zade)"
+#30,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (24 симв.),Tilimiz pek zengin eken!,Eşref Şemi-zade,«Наша мова така багата!» (Ешреф Шем'ї-заде),"""Our language is truly so rich!"" (Eşref Şemi-zade)"
+#31,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (35 симв.),Sevdigim ana til — ruhumnıñ ğıdası.,Mambet Ablâlimov,«Люба рідна мова — пожива мого духу.» (Мамбет Аблялімов),"""My beloved mother tongue is the nourishment of my spirit."" (Mambet Ablâlimov)"
+#32,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (30 симв.),Ana tili beşigimniñ yırı oldı.,Löman Suleyman,«Рідна мова стала піснею моєї колиски.» (Льоман Сулейман),"""The mother tongue became the song of my cradle."" (Löman Suleyman)"
+#33,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (38 симв.),"Ana tilim — bu muabbetlik, sevgi sırı.",Löman Suleyman,«Моя рідна мова — це доброта й таємниця любові.» (Льоман Сулейман),"""My mother tongue is affection and the secret of love."" (Löman Suleyman)"
+#34,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (30 симв.),"Ana tili aenklidir, yımşaqtır.",Riza Halid,«Рідна мова милозвучна й лагідна.» (Різа Халід),"""The mother tongue is melodious and gentle."" (Riza Halid)"
+#35,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (27 симв.),"Sen bar ekeç, men de barım!",Şeryan Ali,"«Доки живеш ти, рідна мово, — живу і я!» (Шерьян Алі)","""As long as you live, O native tongue, I live too!"" (Şeryan Ali)"
+#36,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (22 симв.),"Tiliñni bil, oqu, yaz!",Vasfiye Qıpçaq,"«Знай свою мову, читай і пиши!» (Васфіє Кипчак)","""Know your language, read, and write!"" (Vasfiye Qıpçaq)"
+#37,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (34 симв.),"Sırıñnı, yırıñnı şu tilde aytıñız!",Güner Aqmolla,«Свої таємниці й свої пісні розповідайте цією мовою!» (Гунер Акмолла),"""Share your secrets and your songs in this language!"" (Güner Aqmolla)"
+#38,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (32 симв.),Çatırtav kibidir — bu Ana tilim!,Kerim Camanaqlı,«Немов Чатир-Даг — ця моя рідна мова!» (Керім Джаманакли),"""Like Chatyr-Dag is this Mother Tongue of mine!"" (Kerim Camanaqlı)"
+#39,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (21 симв.),Oqup-yazam men bugün!,Seitümer Emin,«Сьогодні я читаю і пишу рідною мовою!» (Сейтумер Емін),"""Today I read and write in my native tongue!"" (Seitümer Emin)"
+#40,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (29 симв.),Yürekni ohşar tatlı sözleriñ!,Seitümer Emin,«Твої солодкі слова пестять серце!» (Сейтумер Емін),"""Your sweet words caress the heart!"" (Seitümer Emin)"
+#41,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (26 симв.),Tuvğan tilim! Güzel tilim!,Şakir Selim,«Рідна мово моя! Прекрасна мово моя!» (Шакір Селім),"""My native tongue! My beautiful tongue!"" (Şakir Selim)"
+#42,Пріоритет 4 — Щоденний пул: поетичні рядки класиків про рідну мову,≤ 48 (33 симв.),"Ne yapsañ yap, öz tiliñni unutma!",Refat Çaylaq,"«Що б ти не робив, не забувай своєї рідної мови!» (Рефат Чайлак)","""Whatever you do, do not forget your native language!"" (Refat Çaylaq)"
+#43,Пріоритет 4 — Щоденний пул: традиційні побажання та привітання,≤ 48 (24 симв.),Elleriñiz dert körmesin!,—,Нехай ваші руки ніколи не знають втоми й болю!,May your hands never know pain!
+#44,Пріоритет 4 — Щоденний пул: традиційні побажання та привітання,≤ 48 (13 симв.),Eliñe sağlıq!,—,Здоров'я твоїм рукам!,Health to your hands!
+#45,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (22 симв.),Bergen el dert körmez.,Qırımtatar atalar sözü,"«Рука, що дає, ніколи не знатиме біди.» (Кримськотатарське прислів'я)","""The hand that gives will know no pain."" (Crimean Tatar proverb)"
+#46,Пріоритет 4 — Щоденний пул: народна мудрість і прислів'я,≤ 48 (25 симв.),Ünerli qolda bereket bar.,Qırımtatar atalar sözü,«В умілих руках — благословення й достаток.» (Кримськотатарське прислів'я),"""In skilled hands there is blessing and abundance."" (Crimean Tatar proverb)"
+#47,Пріоритет 4 — Щоденний пул: традиційні побажання та привітання,≤ 48 (22 симв.),Ağzıñızdan bal tamlay!,—,З ваших уст мед крапає!,Honey drips from your lips!
+#48,Пріоритет 4 — Щоденний пул: традиційні побажання та привітання,≤ 48 (30 симв.),Körüşkenimiz ne de yahşı oldı!,—,"Як же добре, що ми зустрілися!",How wonderful it is that we met!
+#49,Пріоритет 4 — Щоденний пул: традиційні побажання та привітання,≤ 48 (18 симв.),Hoş sefa keldiñiz!,—,"Ласкаво просимо, раді вашому приходу!","Welcome, we are glad you have come!"
+#50,Пріоритет 3 — Час доби: ранок (05:00–11:00),≤ 48 (26 симв.),Saba şerfiñiz hayır olsun!,—,Нехай ваш благословенний ранок буде добрим!,May your blessed morning be good!
+#51,Пріоритет 3 — Час доби: ранок (05:00–11:00),≤ 48 (22 симв.),Hayırlı sabalar olsun!,—,Доброго ранку!,Good morning!
+#52,Пріоритет 3 — Час доби: день (11:00–18:00),≤ 48 (22 симв.),Künüñiz hayırlı olsun!,—,Нехай ваш день буде добрим і благословенним!,Have a good and blessed day!
+#53,Пріоритет 3 — Час доби: вечір (18:00–23:00),≤ 48 (27 симв.),Aqşam şerfiñiz hayır olsun!,—,Нехай ваш благословенний вечір буде добрим!,May your blessed evening be good!
+#54,Пріоритет 3 — Час доби: ніч (23:00–05:00),≤ 48 (14 симв.),Geceler hayır!,—,Доброї та спокійної ночі!,Good night!
+#55,Пріоритет 1A — Ісламський календар (Хіджра): 1 Рамазану (початок Рамазану),≤ 48 (24 симв.),"Şehr-u Ramazan, merhaba!",—,"Ласкаво просимо, благословенний місяцю Рамазан!","Welcome, O blessed month of Ramadan!"
+#56,Пріоритет 1A — Ісламський календар (Хіджра): 1–3 Шавваля (Ораза-байрам),≤ 48 (31 симв.),Oraza bayramıñız hayırlı olsun!,—,Нехай ваше свято Ораза-байрам буде благословенним і добрим!,May your Oraza Bayram be blessed and joyful!
+#57,Пріоритет 1A — Ісламський календар (Хіджра): 10–13 Зу-ль-хіджа (Курбан-байрам),≤ 48 (32 симв.),Qurban bayramıñız hayırlı olsun!,—,Нехай ваше свято Курбан-байрам буде благословенним і добрим!,May your Qurban Bayram be blessed and joyful!
+#58,Пріоритет 2 — День тижня: п'ятниця / Джума (05:00–16:00),≤ 48 (27 симв.),Cuma künüñiz mubarek olsun!,—,Нехай ваша п'ятниця буде благословенною!,May your Friday be blessed!
+#59,Пріоритет 1B — 01.02: День пам'яті двічі Героя Амет-Хана Султана,≤ 48 (30 симв.),Amet-Han — tillerde destansıñ!,Riza Fazıl,"«Амет-Хане, на устах ти — легенда!» (Різа Фазил)","""Amet-Khan, on every tongue you are a legend!"" (Riza Fazıl)"
+#60,Пріоритет 1B — 21.02: Міжнародний день рідної мови,≤ 48 (24 симв.),Bu til maña — tolğun Ay!,Remzi Burnaş,«Ця мова для мене — повний Місяць!» (Ремзі Бурнаш),"""This language is a full Moon to me!"" (Remzi Burnaş)"
+#61,Пріоритет 1B — 23.02: День пам'яті Номана Челебіджихана,≤ 48 (28 симв.),Ant etkenmen yaranı sarmağa!,Noman Çelebicihan,«Я присягнувся перев'язати рани свого народу!» (Номан Челебіджихан),"""I have sworn to bind the wounds of my people!"" (Noman Çelebicihan)"
+#62,Пріоритет 1B — 21.03: Свято весни Наврез та Всесвітній день поезії,≤ 48 (25 симв.),Navrez keldi — yaz keldi!,Qırımtatar halq yırı,«Наврез прийшов — весна прийшла!» (Кримськотатарська народна пісня),"""Navrez has come—spring has arrived!"" (Crimean Tatar folk song)"
+#63,Пріоритет 1B — 10.04: День виходу газети «Терджиман» І. Гаспринського,≤ 48 (30 симв.),"Tilde, fikirde, işte — birlik!",İsmail Gasprinskiy,"«У мові, у думці, у ділі — єдність!» (Ісмаїл Гаспринський)","""Unity in language, in thought, and in action!"" (İsmail Gasprinskiy)"
+#64,Пріоритет 1B — 23.04: Всесвітній день книги та авторського права,≤ 48 (23 симв.),Kitap — bilgi anahtarı.,Qırımtatar atalar sözü,«Книга — ключ до знань.» (Кримськотатарське прислів'я),"""A book is the key to knowledge."" (Crimean Tatar proverb)"
+#65,Пріоритет 1B — 23.04: Всесвітній день книги (народна загадка),≤ 48 (45 симв.),"Közü yoq — körsete, sözü yoq — ögrete: Kitap.",Qırımtatar tapmacası,"«Очей не має — а показує, слів не має — а навчає: Книга.» (Кримськотатарська загадка)","""Has no eyes yet shows, has no words yet teaches: A Book."" (Crimean Tatar riddle)"
+#66,Пріоритет 1B — Перша п'ятниця травня: весняне свято Хидирлез,≤ 48 (30 симв.),Birlik olğan yerde tirlik bar.,Qırımtatar atalar sözü,«Де є єдність — там є життя.» (Кримськотатарське прислів'я),"""Where there is unity, there is life."" (Crimean Tatar proverb)"
+#67,Пріоритет 1B — Друга неділя травня: День матері,≤ 48 (44 симв.),"Ana-babaña ürmet etseñ, özüñ ürmet körersiñ.",Qırımtatar atalar sözü,«Шануватимеш батька й матір — сам зазнаєш пошани.» (Кримськотатарське прислів'я),"""If you honor your mother and father, you yourself will be honored."" (Crimean Tatar proverb)"
+#68,Пріоритет 1B — 18.05: День пам'яті жертв геноциду кримськотатарського народу,≤ 48 (25 симв.),Qırım — menim Vatanımdır!,Çerkez-Ali,«Крим — моя рідна Батьківщина!» (Черкез-Алі),"""Crimea is my native Homeland!"" (Çerkez-Ali)"
+#69,Пріоритет 1B — 18.05: День пам'яті жертв депортації 1944 р. (дуа пам'яті),≤ 48 (37 симв.),Allah keçmişlerimizni rahmet eylesin!,—,Нехай Всевишній помилує душі наших померлих предків!,May God have mercy on the souls of our departed ancestors!
+#70,Пріоритет 1B — 01.06: Міжнародний день захисту дітей,≤ 48 (28 симв.),Canımız-cigerimiz — balalar!,Remziye Tarsinova,«Наша душа й серце — це діти!» (Ремзіє Тарсінова),"""Our heart and soul are our children!"" (Remziye Tarsinova)"
+#71,Пріоритет 1B — 26.06: День кримськотатарського прапора,≤ 48 (28 симв.),Milletniñ şanı — bayrağında!,Noman Çelebicihan,«Слава й честь народу — у його прапорі!» (Номан Челебіджихан),"""The glory and honor of a nation are in its flag!"" (Noman Çelebicihan)"
+#72,Пріоритет 1B — 01.09: День знань (1 вересня),≤ 48 (42 симв.),"Oquvnı sevgen oqur, soñundan gülday qoqur.",Qırımtatar atalar sözü,"«Хто любить навчання, той читає, а згодом квітне й пахне, мов троянда.» (Кримськотатарське прислів'я)","""Whoever loves learning will study, and later blossom like a rose."" (Crimean Tatar proverb)"
+#73,Пріоритет 1B / 2 — 22.09: Свято врожаю Дервіза / 01.03: Початок весни,≤ 48 (34 симв.),Baardeki areket — küzdeki bereket.,Qırımtatar atalar sözü,«Весняна праця — осінній достаток.» (Кримськотатарське прислів'я),"""Effort in spring brings abundance in autumn."" (Crimean Tatar proverb)"
+#74,Пріоритет 1B — 05.10: День учителя,≤ 48 (28 симв.),"Şegirt olmay, usta olmazsıñ.",Qırımtatar atalar sözü,"«Не побувши учнем, не станеш майстром.» (Кримськотатарське прислів'я)","""Without being an apprentice, you cannot become a master."" (Crimean Tatar proverb)"
+#75,Пріоритет 1B — 20.03: День народження Ісмаїла Гаспринського,≤ 48 (23 симв.),İlim barda — qaruv bar.,Qırımtatar atalar sözü,«Де є знання — там є сила й снага.» (Кримськотатарське прислів'я),"""Where there is knowledge, there is strength."" (Crimean Tatar proverb)"
+#76,Пріоритет 1B — 15.05: День народження Бекіра Чобан-заде,≤ 48 (27 симв.),Öz tuvğan tilimde ayt mağa!,Bekir Çoban-zade,«Скажи мені моєю рідною мовою!» (Бекір Чобан-заде),"""Speak to me in my native tongue!"" (Bekir Çoban-zade)"
+#77,Пріоритет 1B — 21.06: День народження Ешрефа Шем'ї-заде,≤ 48 (32 симв.),Türkiy tiller gülzarınıñ fidanı!,Eşref Şemi-zade,«Пагін трояндового саду тюркських мов!» (Ешреф Шем'ї-заде),"""The sapling of the rose garden of Turkic languages!"" (Eşref Şemi-zade)"
+#78,Пріоритет 1B — 12.07: День народження Шаміля Алядіна,≤ 48 (48 симв.),"Terek tamırlarına tayanır, insan — tuvğanlarına.",Qırımtatar atalar sözü,"«Дерево тримається на корінні, а людина — на рідних.» (Кримськотатарське прислів'я)","""A tree relies on its roots; a person relies on their family."" (Crimean Tatar proverb)"
+#79,Пріоритет 1B — 04.09: День народження Юнуса Кандима,≤ 48 (30 симв.),Yol köstergen Çolpan yıldızım!,Yunus Qandım,"«Моя ранкова зоря Чолпан, що вказує шлях!» (Юнус Кандим)","""My morning star Venus that shows the way!"" (Yunus Qandım)"
+#80,Пріоритет 1B — 10.10: День народження Усеїна Шаміля Тохтаргази,≤ 48 (26 симв.),İlim — insannıñ kemalıdır!,Üsein Şamil Tohtarğazı,«Знання — це досконалість людини!» (Усеїн Шаміль Тохтаргази),"""Knowledge is the perfection of humanity!"" (Üsein Şamil Tohtarğazı)"
+#81,Пріоритет 1B — 01.02: День пам'яті двічі Героя Амет-Хана Султана,≤ 48 (29 симв.),"Amet-Han, köklerde Sultansıñ!",Riza Fazıl,"«Амет-Хане, у небесах ти — Султан!» (Різа Фазил)","""Amet-Khan, in the skies you are a Sultan!"" (Riza Fazıl)"
+#82,Пріоритет 1B — 13.11: День вшанування Ідріса Асаніна та Нузета Умерова,≤ 48 (20 симв.),"Acayipsiñ, Ana tili!",İdris Asanin,"«Дивовижна ти, рідна мово!» (Ідріс Асанін)","""You are wonderful, Mother Tongue!"" (İdris Asanin)"
+#83,"Пріоритет 2 — День тижня: понеділок, ранок (06:00–12:00)",≤ 48 (17 симв.),İşiñiz oñ kelsin!,—,Нехай ваша справа легко вдається й іде на лад!,May your work go smoothly and succeed!
+#84,"Пріоритет 2 — Дні тижня: вихідні, субота–неділя (09:00–21:00)",≤ 48 (20 симв.),Vatan — ekinci anañ.,Qırımtatar atalar sözü,«Батьківщина — твоя друга матір.» (Кримськотатарське прислів'я),"""The homeland is your second mother."" (Crimean Tatar proverb)"
+#85,Пріоритет 2 — 01.12: Перший день зими,≤ 48 (17 симв.),Birlikte — quvet!,Qırımtatar atalar sözü,«У єдності — сила!» (Кримськотатарське прислів'я),"""In unity there is strength!"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.1.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.1.text,≤ 65,Atalar sözünde altın bar.,Atalar sözünde altın bar.,Atalar sözünde altın bar.
+DailyPhrases,phrase.1.translation,≤ 90,«Atalar sözünde altın bar.» (Qırımtatar atalar sözü),«У словах предків є золото.» (Кримськотатарське прислів'я),"\""There is gold in the words of ancestors.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.10.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.10.text,≤ 65,Aqiqiy söz aqqan suvnı toqtatır.,Aqiqiy söz aqqan suvnı toqtatır.,Aqiqiy söz aqqan suvnı toqtatır.
+DailyPhrases,phrase.10.translation,≤ 90,«Aqiqiy söz aqqan suvnı toqtatır.» (Qırımtatar atalar sözü),«Правдиве слово зупинить і плинну воду.» (Кримськотатарське прислів'я),"\""A true word stops even flowing water.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.11.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.11.text,≤ 65,İlim — aqıl çoqrağıdır.,İlim — aqıl çoqrağıdır.,İlim — aqıl çoqrağıdır.
+DailyPhrases,phrase.11.translation,≤ 90,«İlim — aqıl çoqrağıdır.» (Qırımtatar atalar sözü),«Знання — це джерело розуму.» (Кримськотатарське прислів'я),"\""Knowledge is the spring of wisdom.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.12.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.12.text,≤ 65,Tatlı söz baldan tatlı.,Tatlı söz baldan tatlı.,Tatlı söz baldan tatlı.
+DailyPhrases,phrase.12.translation,≤ 90,«Tatlı söz baldan tatlı.» (Qırımtatar atalar sözü),«Лагідне слово солодше за мед.» (Кримськотатарське прислів'я),"\""A sweet word is sweeter than honey.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.13.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.13.text,≤ 65,Ana tiliñ — baldan tatlı.,Ana tiliñ — baldan tatlı.,Ana tiliñ — baldan tatlı.
+DailyPhrases,phrase.13.translation,≤ 90,«Ana tiliñ — baldan tatlı.» (Qırımtatar atalar sözü),«Рідна мова — солодша за мед.» (Кримськотатарське прислів'я),"\""Your mother tongue is sweeter than honey.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.14.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.14.text,≤ 65,Tiliñnen göñlüñ bir olmalı.,Tiliñnen göñlüñ bir olmalı.,Tiliñnen göñlüñ bir olmalı.
+DailyPhrases,phrase.14.translation,≤ 90,«Tiliñnen göñlüñ bir olmalı.» (Qırımtatar atalar sözü),«Твої слова і твоє серце мають бути єдиними.» (Кримськотатарське прислів'я),"\""Your tongue and your heart must be one.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.15.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.15.text,≤ 65,Göñlüñdeki — tiliñde.,Göñlüñdeki — tiliñde.,Göñlüñdeki — tiliñde.
+DailyPhrases,phrase.15.translation,≤ 90,«Göñlüñdeki — tiliñde.» (Qırımtatar atalar sözü),«Що на серці — те й на язиці.» (Кримськотатарське прислів'я),"\""What is in the heart is on the tongue.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.16.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.16.text,≤ 65,Emek — ömürniñ zinetidir.,Emek — ömürniñ zinetidir.,Emek — ömürniñ zinetidir.
+DailyPhrases,phrase.16.translation,≤ 90,«Emek — ömürniñ zinetidir.» (Qırımtatar atalar sözü),«Праця — окраса життя.» (Кримськотатарське прислів'я),"\""Labor is the adornment of life.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.17.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.17.text,≤ 65,Birlik evde bereket bar.,Birlik evde bereket bar.,Birlik evde bereket bar.
+DailyPhrases,phrase.17.translation,≤ 90,«Birlik evde bereket bar.» (Qırımtatar atalar sözü),"«У домі, де панує єдність, є й достаток.» (Кримськотатарське прислів'я)","\""In a united home, there is abundance.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.18.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.18.text,≤ 65,Muhabbetlik — baht anahtarı.,Muhabbetlik — baht anahtarı.,Muhabbetlik — baht anahtarı.
+DailyPhrases,phrase.18.translation,≤ 90,«Muhabbetlik — baht anahtarı.» (Qırımtatar atalar sözü),«Любов і щирість — ключ до щастя.» (Кримськотатарське прислів'я),"\""Love and affection are the key to happiness.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.19.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.19.text,≤ 65,"Tilini coyğan, Vatanını coyar.","Tilini coyğan, Vatanını coyar.","Tilini coyğan, Vatanını coyar."
+DailyPhrases,phrase.19.translation,≤ 90,"«Tilini coyğan, Vatanını coyar.» (Qırımtatar atalar sözü)",«Хто втратив свою мову — втратить і Батьківщину.» (Кримськотатарське прислів'я),"\""Whoever loses their language will lose their Homeland.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.2.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.2.text,≤ 65,Atalar sözü — aqılnıñ közü.,Atalar sözü — aqılnıñ közü.,Atalar sözü — aqılnıñ közü.
+DailyPhrases,phrase.2.translation,≤ 90,«Atalar sözü — aqılnıñ közü.» (Qırımtatar atalar sözü),«Слово предків — око розуму.» (Кримськотатарське прислів'я),"\""The word of ancestors is the eye of the mind.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.20.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.20.text,≤ 65,"Aşnıñ dadı — tuznen, adamnıñ dadı — söznen.","Aşnıñ dadı — tuznen, adamnıñ dadı — söznen.","Aşnıñ dadı — tuznen, adamnıñ dadı — söznen."
+DailyPhrases,phrase.20.translation,≤ 90,"«Aşnıñ dadı — tuznen, adamnıñ dadı — söznen.» (Qırımtatar atalar sözü)","«Смак страви — у солі, а суть людини — у слові.» (Кримськотатарське прислів'я)","\""The taste of food is in salt; the essence of a person is in their word.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.21.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.21.text,≤ 65,"Qulaq — eki, til — bir: eki diñle, bir söyle.","Qulaq — eki, til — bir: eki diñle, bir söyle.","Qulaq — eki, til — bir: eki diñle, bir söyle."
+DailyPhrases,phrase.21.translation,≤ 90,"«Qulaq — eki, til — bir: eki diñle, bir söyle.» (Qırımtatar atalar sözü)","«Вух — двоє, язик — один: двічі слухай, один раз кажи.» (Кримськотатарське прислів'я)","\""Two ears, one tongue: listen twice, speak once.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.22.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.22.text,≤ 65,Tilni bilmek — dostluqnı qaviyleştirmektir.,Tilni bilmek — dostluqnı qaviyleştirmektir.,Tilni bilmek — dostluqnı qaviyleştirmektir.
+DailyPhrases,phrase.22.translation,≤ 90,«Tilni bilmek — dostluqnı qaviyleştirmektir.» (Qırımtatar atalar sözü),«Знати мову — це зміцнювати дружбу.» (Кримськотатарське прислів'я),"\""Knowing a language strengthens friendship.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.23.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.23.text,≤ 65,Bir filcan qaveniñ qırq yıl hatri bardır.,Bir filcan qaveniñ qırq yıl hatri bardır.,Bir filcan qaveniñ qırq yıl hatri bardır.
+DailyPhrases,phrase.23.translation,≤ 90,«Bir filcan qaveniñ qırq yıl hatri bardır.» (Qırımtatar atalar sözü),«Одна філіжанка кави має сорок років пошани.» (Кримськотатарське прислів'я),"\""A single cup of coffee is remembered with gratitude for forty years.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.24.attribution,≤ 90,Dilâver Osman,Dilâver Osman,Dilâver Osman
+DailyPhrases,phrase.24.text,≤ 65,Ana tilim — canım-cigerim.,Ana tilim — canım-cigerim.,Ana tilim — canım-cigerim.
+DailyPhrases,phrase.24.translation,≤ 90,«Ana tilim — canım-cigerim.» (Dilâver Osman),«Рідна мово моя — душе й серце моє.» (Ділявер Осман),"\""My native tongue is my heart and soul.\"" (Dilâver Osman)"
+DailyPhrases,phrase.25.attribution,≤ 90,Dilâver Osman,Dilâver Osman,Dilâver Osman
+DailyPhrases,phrase.25.text,≤ 65,Ana tilim — halqnıñ temeli.,Ana tilim — halqnıñ temeli.,Ana tilim — halqnıñ temeli.
+DailyPhrases,phrase.25.translation,≤ 90,«Ana tilim — halqnıñ temeli.» (Dilâver Osman),«Рідна мова — основа народу.» (Ділявер Осман),"\""My native language is the foundation of the people.\"" (Dilâver Osman)"
+DailyPhrases,phrase.26.attribution,≤ 90,Seyran Üseinov,Seyran Üseinov,Seyran Üseinov
+DailyPhrases,phrase.26.text,≤ 65,Til — bizim temelimiz!,Til — bizim temelimiz!,Til — bizim temelimiz!
+DailyPhrases,phrase.26.translation,≤ 90,«Til — bizim temelimiz!» (Seyran Üseinov),«Мова — наша основа!» (Сейран Усеїнов),"\""Language is our foundation!\"" (Seyran Üseinov)"
+DailyPhrases,phrase.27.attribution,≤ 90,Seyran Üseinov,Seyran Üseinov,Seyran Üseinov
+DailyPhrases,phrase.27.text,≤ 65,Öz tilini bilsin er kes!,Öz tilini bilsin er kes!,Öz tilini bilsin er kes!
+DailyPhrases,phrase.27.translation,≤ 90,«Öz tilini bilsin er kes!» (Seyran Üseinov),«Нехай кожен знає свою рідну мову!» (Сейран Усеїнов),"\""Let everyone know their native language!\"" (Seyran Üseinov)"
+DailyPhrases,phrase.28.attribution,≤ 90,Seyran Üseinov,Seyran Üseinov,Seyran Üseinov
+DailyPhrases,phrase.28.text,≤ 65,Dünyada eñ tatlı — qırımtatar tilimiz!,Dünyada eñ tatlı — qırımtatar tilimiz!,Dünyada eñ tatlı — qırımtatar tilimiz!
+DailyPhrases,phrase.28.translation,≤ 90,«Dünyada eñ tatlı — qırımtatar tilimiz!» (Seyran Üseinov),«Найсолодша у світі — наша кримськотатарська мова!» (Сейран Усеїнов),"\""The sweetest in the world is our Crimean Tatar language!\"" (Seyran Üseinov)"
+DailyPhrases,phrase.29.attribution,≤ 90,Eşref Şemi-zade,Eşref Şemi-zade,Eşref Şemi-zade
+DailyPhrases,phrase.29.text,≤ 65,"Sev tiliñni, sevgen kibi anañnı!","Sev tiliñni, sevgen kibi anañnı!","Sev tiliñni, sevgen kibi anañnı!"
+DailyPhrases,phrase.29.translation,≤ 90,"«Sev tiliñni, sevgen kibi anañnı!» (Eşref Şemi-zade)","«Люби свою мову, як любиш свою матір!» (Ешреф Шем'ї-заде)","\""Love your language as you love your mother!\"" (Eşref Şemi-zade)"
+DailyPhrases,phrase.3.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.3.text,≤ 65,Yahşı söz — can azığı.,Yahşı söz — can azığı.,Yahşı söz — can azığı.
+DailyPhrases,phrase.3.translation,≤ 90,«Yahşı söz — can azığı.» (Qırımtatar atalar sözü),«Добре слово — пожива для душі.» (Кримськотатарське прислів'я),"\""A kind word is nourishment for the soul.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.30.attribution,≤ 90,Eşref Şemi-zade,Eşref Şemi-zade,Eşref Şemi-zade
+DailyPhrases,phrase.30.text,≤ 65,Tilimiz pek zengin eken!,Tilimiz pek zengin eken!,Tilimiz pek zengin eken!
+DailyPhrases,phrase.30.translation,≤ 90,«Tilimiz pek zengin eken!» (Eşref Şemi-zade),«Наша мова така багата!» (Ешреф Шем'ї-заде),"\""Our language is truly so rich!\"" (Eşref Şemi-zade)"
+DailyPhrases,phrase.31.attribution,≤ 90,Mambet Ablâlimov,Mambet Ablâlimov,Mambet Ablâlimov
+DailyPhrases,phrase.31.text,≤ 65,Sevdigim ana til — ruhumnıñ ğıdası.,Sevdigim ana til — ruhumnıñ ğıdası.,Sevdigim ana til — ruhumnıñ ğıdası.
+DailyPhrases,phrase.31.translation,≤ 90,«Sevdigim ana til — ruhumnıñ ğıdası.» (Mambet Ablâlimov),«Люба рідна мова — пожива мого духу.» (Мамбет Аблялімов),"\""My beloved mother tongue is the nourishment of my spirit.\"" (Mambet Ablâlimov)"
+DailyPhrases,phrase.32.attribution,≤ 90,Löman Suleyman,Löman Suleyman,Löman Suleyman
+DailyPhrases,phrase.32.text,≤ 65,Ana tili beşigimniñ yırı oldı.,Ana tili beşigimniñ yırı oldı.,Ana tili beşigimniñ yırı oldı.
+DailyPhrases,phrase.32.translation,≤ 90,«Ana tili beşigimniñ yırı oldı.» (Löman Suleyman),«Рідна мова стала піснею моєї колиски.» (Льоман Сулейман),"\""The mother tongue became the song of my cradle.\"" (Löman Suleyman)"
+DailyPhrases,phrase.33.attribution,≤ 90,Löman Suleyman,Löman Suleyman,Löman Suleyman
+DailyPhrases,phrase.33.text,≤ 65,"Ana tilim — bu muabbetlik, sevgi sırı.","Ana tilim — bu muabbetlik, sevgi sırı.","Ana tilim — bu muabbetlik, sevgi sırı."
+DailyPhrases,phrase.33.translation,≤ 90,"«Ana tilim — bu muabbetlik, sevgi sırı.» (Löman Suleyman)",«Моя рідна мова — це доброта й таємниця любові.» (Льоман Сулейман),"\""My mother tongue is affection and the secret of love.\"" (Löman Suleyman)"
+DailyPhrases,phrase.34.attribution,≤ 90,Riza Halid,Riza Halid,Riza Halid
+DailyPhrases,phrase.34.text,≤ 65,"Ana tili aenklidir, yımşaqtır.","Ana tili aenklidir, yımşaqtır.","Ana tili aenklidir, yımşaqtır."
+DailyPhrases,phrase.34.translation,≤ 90,"«Ana tili aenklidir, yımşaqtır.» (Riza Halid)",«Рідна мова милозвучна й лагідна.» (Різа Халід),"\""The mother tongue is melodious and gentle.\"" (Riza Halid)"
+DailyPhrases,phrase.35.attribution,≤ 90,Şeryan Ali,Şeryan Ali,Şeryan Ali
+DailyPhrases,phrase.35.text,≤ 65,"Sen bar ekeç, men de barım!","Sen bar ekeç, men de barım!","Sen bar ekeç, men de barım!"
+DailyPhrases,phrase.35.translation,≤ 90,"«Sen bar ekeç, men de barım!» (Şeryan Ali)","«Доки живеш ти, рідна мово, — живу і я!» (Шерьян Алі)","\""As long as you live, O native tongue, I live too!\"" (Şeryan Ali)"
+DailyPhrases,phrase.36.attribution,≤ 90,Vasfiye Qıpçaq,Vasfiye Qıpçaq,Vasfiye Qıpçaq
+DailyPhrases,phrase.36.text,≤ 65,"Tiliñni bil, oqu, yaz!","Tiliñni bil, oqu, yaz!","Tiliñni bil, oqu, yaz!"
+DailyPhrases,phrase.36.translation,≤ 90,"«Tiliñni bil, oqu, yaz!» (Vasfiye Qıpçaq)","«Знай свою мову, читай і пиши!» (Васфіє Кипчак)","\""Know your language, read, and write!\"" (Vasfiye Qıpçaq)"
+DailyPhrases,phrase.37.attribution,≤ 90,Güner Aqmolla,Güner Aqmolla,Güner Aqmolla
+DailyPhrases,phrase.37.text,≤ 65,"Sırıñnı, yırıñnı şu tilde aytıñız!","Sırıñnı, yırıñnı şu tilde aytıñız!","Sırıñnı, yırıñnı şu tilde aytıñız!"
+DailyPhrases,phrase.37.translation,≤ 90,"«Sırıñnı, yırıñnı şu tilde aytıñız!» (Güner Aqmolla)",«Свої таємниці й свої пісні розповідайте цією мовою!» (Гунер Акмолла),"\""Share your secrets and your songs in this language!\"" (Güner Aqmolla)"
+DailyPhrases,phrase.38.attribution,≤ 90,Kerim Camanaqlı,Kerim Camanaqlı,Kerim Camanaqlı
+DailyPhrases,phrase.38.text,≤ 65,Çatırtav kibidir — bu Ana tilim!,Çatırtav kibidir — bu Ana tilim!,Çatırtav kibidir — bu Ana tilim!
+DailyPhrases,phrase.38.translation,≤ 90,«Çatırtav kibidir — bu Ana tilim!» (Kerim Camanaqlı),«Немов Чатир-Даг — ця моя рідна мова!» (Керім Джаманакли),"\""Like Chatyr-Dag is this Mother Tongue of mine!\"" (Kerim Camanaqlı)"
+DailyPhrases,phrase.39.attribution,≤ 90,Seitümer Emin,Seitümer Emin,Seitümer Emin
+DailyPhrases,phrase.39.text,≤ 65,Oqup-yazam men bugün!,Oqup-yazam men bugün!,Oqup-yazam men bugün!
+DailyPhrases,phrase.39.translation,≤ 90,«Oqup-yazam men bugün!» (Seitümer Emin),«Сьогодні я читаю і пишу рідною мовою!» (Сейтумер Емін),"\""Today I read and write in my native tongue!\"" (Seitümer Emin)"
+DailyPhrases,phrase.4.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.4.text,≤ 65,Til — aqıl terazesidir.,Til — aqıl terazesidir.,Til — aqıl terazesidir.
+DailyPhrases,phrase.4.translation,≤ 90,«Til — aqıl terazesidir.» (Qırımtatar atalar sözü),«Мова — це терези розуму.» (Кримськотатарське прислів'я),"\""Language is the scales of the mind.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.40.attribution,≤ 90,Seitümer Emin,Seitümer Emin,Seitümer Emin
+DailyPhrases,phrase.40.text,≤ 65,Yürekni ohşar tatlı sözleriñ!,Yürekni ohşar tatlı sözleriñ!,Yürekni ohşar tatlı sözleriñ!
+DailyPhrases,phrase.40.translation,≤ 90,«Yürekni ohşar tatlı sözleriñ!» (Seitümer Emin),«Твої солодкі слова пестять серце!» (Сейтумер Емін),"\""Your sweet words caress the heart!\"" (Seitümer Emin)"
+DailyPhrases,phrase.41.attribution,≤ 90,Şakir Selim,Şakir Selim,Şakir Selim
+DailyPhrases,phrase.41.text,≤ 65,Tuvğan tilim! Güzel tilim!,Tuvğan tilim! Güzel tilim!,Tuvğan tilim! Güzel tilim!
+DailyPhrases,phrase.41.translation,≤ 90,«Tuvğan tilim! Güzel tilim!» (Şakir Selim),«Рідна мово моя! Прекрасна мово моя!» (Шакір Селім),"\""My native tongue! My beautiful tongue!\"" (Şakir Selim)"
+DailyPhrases,phrase.42.attribution,≤ 90,Refat Çaylaq,Refat Çaylaq,Refat Çaylaq
+DailyPhrases,phrase.42.text,≤ 65,"Ne yapsañ yap, öz tiliñni unutma!","Ne yapsañ yap, öz tiliñni unutma!","Ne yapsañ yap, öz tiliñni unutma!"
+DailyPhrases,phrase.42.translation,≤ 90,"«Ne yapsañ yap, öz tiliñni unutma!» (Refat Çaylaq)","«Що б ти не робив, не забувай своєї рідної мови!» (Рефат Чайлак)","\""Whatever you do, do not forget your native language!\"" (Refat Çaylaq)"
+DailyPhrases,phrase.43.attribution,≤ 90,,,
+DailyPhrases,phrase.43.text,≤ 65,Elleriñiz dert körmesin!,Elleriñiz dert körmesin!,Elleriñiz dert körmesin!
+DailyPhrases,phrase.43.translation,≤ 90,Elleriñiz dert körmesin!,Нехай ваші руки ніколи не знають втоми й болю!,May your hands never know pain!
+DailyPhrases,phrase.44.attribution,≤ 90,,,
+DailyPhrases,phrase.44.text,≤ 65,Eliñe sağlıq!,Eliñe sağlıq!,Eliñe sağlıq!
+DailyPhrases,phrase.44.translation,≤ 90,Eliñe sağlıq!,Здоров'я твоїм рукам!,Health to your hands!
+DailyPhrases,phrase.45.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.45.text,≤ 65,Bergen el dert körmez.,Bergen el dert körmez.,Bergen el dert körmez.
+DailyPhrases,phrase.45.translation,≤ 90,«Bergen el dert körmez.» (Qırımtatar atalar sözü),"«Рука, що дає, ніколи не знатиме біди.» (Кримськотатарське прислів'я)","\""The hand that gives will know no pain.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.46.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.46.text,≤ 65,Ünerli qolda bereket bar.,Ünerli qolda bereket bar.,Ünerli qolda bereket bar.
+DailyPhrases,phrase.46.translation,≤ 90,«Ünerli qolda bereket bar.» (Qırımtatar atalar sözü),«В умілих руках — благословення й достаток.» (Кримськотатарське прислів'я),"\""In skilled hands there is blessing and abundance.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.47.attribution,≤ 90,,,
+DailyPhrases,phrase.47.text,≤ 65,Ağzıñızdan bal tamlay!,Ağzıñızdan bal tamlay!,Ağzıñızdan bal tamlay!
+DailyPhrases,phrase.47.translation,≤ 90,Ağzıñızdan bal tamlay!,З ваших уст мед крапає!,Honey drips from your lips!
+DailyPhrases,phrase.48.attribution,≤ 90,,,
+DailyPhrases,phrase.48.text,≤ 65,Körüşkenimiz ne de yahşı oldı!,Körüşkenimiz ne de yahşı oldı!,Körüşkenimiz ne de yahşı oldı!
+DailyPhrases,phrase.48.translation,≤ 90,Körüşkenimiz ne de yahşı oldı!,"Як же добре, що ми зустрілися!",How wonderful it is that we met!
+DailyPhrases,phrase.49.attribution,≤ 90,,,
+DailyPhrases,phrase.49.text,≤ 65,Hoş sefa keldiñiz!,Hoş sefa keldiñiz!,Hoş sefa keldiñiz!
+DailyPhrases,phrase.49.translation,≤ 90,Hoş sefa keldiñiz!,"Ласкаво просимо, раді вашому приходу!","Welcome, we are glad you have come!"
+DailyPhrases,phrase.5.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.5.text,≤ 65,Til — yürekniñ anahtarı.,Til — yürekniñ anahtarı.,Til — yürekniñ anahtarı.
+DailyPhrases,phrase.5.translation,≤ 90,«Til — yürekniñ anahtarı.» (Qırımtatar atalar sözü),«Мова — ключ до серця.» (Кримськотатарське прислів'я),"\""Language is the key to the heart.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.50.attribution,≤ 90,,,
+DailyPhrases,phrase.50.text,≤ 65,Saba şerfiñiz hayır olsun!,Saba şerfiñiz hayır olsun!,Saba şerfiñiz hayır olsun!
+DailyPhrases,phrase.50.translation,≤ 90,Saba şerfiñiz hayır olsun!,Нехай ваш благословенний ранок буде добрим!,May your blessed morning be good!
+DailyPhrases,phrase.51.attribution,≤ 90,,,
+DailyPhrases,phrase.51.text,≤ 65,Hayırlı sabalar olsun!,Hayırlı sabalar olsun!,Hayırlı sabalar olsun!
+DailyPhrases,phrase.51.translation,≤ 90,Hayırlı sabalar olsun!,Доброго ранку!,Good morning!
+DailyPhrases,phrase.52.attribution,≤ 90,,,
+DailyPhrases,phrase.52.text,≤ 65,Künüñiz hayırlı olsun!,Künüñiz hayırlı olsun!,Künüñiz hayırlı olsun!
+DailyPhrases,phrase.52.translation,≤ 90,Künüñiz hayırlı olsun!,Нехай ваш день буде добрим і благословенним!,Have a good and blessed day!
+DailyPhrases,phrase.53.attribution,≤ 90,,,
+DailyPhrases,phrase.53.text,≤ 65,Aqşam şerfiñiz hayır olsun!,Aqşam şerfiñiz hayır olsun!,Aqşam şerfiñiz hayır olsun!
+DailyPhrases,phrase.53.translation,≤ 90,Aqşam şerfiñiz hayır olsun!,Нехай ваш благословенний вечір буде добрим!,May your blessed evening be good!
+DailyPhrases,phrase.54.attribution,≤ 90,,,
+DailyPhrases,phrase.54.text,≤ 65,Geceler hayır!,Geceler hayır!,Geceler hayır!
+DailyPhrases,phrase.54.translation,≤ 90,Geceler hayır!,Доброї та спокійної ночі!,Good night!
+DailyPhrases,phrase.55.attribution,≤ 90,,,
+DailyPhrases,phrase.55.text,≤ 65,"Şehr-u Ramazan, merhaba!","Şehr-u Ramazan, merhaba!","Şehr-u Ramazan, merhaba!"
+DailyPhrases,phrase.55.translation,≤ 90,"Şehr-u Ramazan, merhaba!","Ласкаво просимо, благословенний місяцю Рамазан!","Welcome, O blessed month of Ramadan!"
+DailyPhrases,phrase.56.attribution,≤ 90,,,
+DailyPhrases,phrase.56.text,≤ 65,Oraza bayramıñız hayırlı olsun!,Oraza bayramıñız hayırlı olsun!,Oraza bayramıñız hayırlı olsun!
+DailyPhrases,phrase.56.translation,≤ 90,Oraza bayramıñız hayırlı olsun!,Нехай ваше свято Ораза-байрам буде благословенним і добрим!,May your Oraza Bayram be blessed and joyful!
+DailyPhrases,phrase.57.attribution,≤ 90,,,
+DailyPhrases,phrase.57.text,≤ 65,Qurban bayramıñız hayırlı olsun!,Qurban bayramıñız hayırlı olsun!,Qurban bayramıñız hayırlı olsun!
+DailyPhrases,phrase.57.translation,≤ 90,Qurban bayramıñız hayırlı olsun!,Нехай ваше свято Курбан-байрам буде благословенним і добрим!,May your Qurban Bayram be blessed and joyful!
+DailyPhrases,phrase.58.attribution,≤ 90,,,
+DailyPhrases,phrase.58.text,≤ 65,Cuma künüñiz mubarek olsun!,Cuma künüñiz mubarek olsun!,Cuma künüñiz mubarek olsun!
+DailyPhrases,phrase.58.translation,≤ 90,Cuma künüñiz mubarek olsun!,Нехай ваша п'ятниця буде благословенною!,May your Friday be blessed!
+DailyPhrases,phrase.59.attribution,≤ 90,Riza Fazıl,Riza Fazıl,Riza Fazıl
+DailyPhrases,phrase.59.text,≤ 65,Amet-Han — tillerde destansıñ!,Amet-Han — tillerde destansıñ!,Amet-Han — tillerde destansıñ!
+DailyPhrases,phrase.59.translation,≤ 90,«Amet-Han — tillerde destansıñ!» (Riza Fazıl),"«Амет-Хане, на устах ти — легенда!» (Різа Фазил)","\""Amet-Khan, on every tongue you are a legend!\"" (Riza Fazıl)"
+DailyPhrases,phrase.6.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.6.text,≤ 65,"Az ayt, naz ayt!","Az ayt, naz ayt!","Az ayt, naz ayt!"
+DailyPhrases,phrase.6.translation,≤ 90,"«Az ayt, naz ayt!» (Qırımtatar atalar sözü)",«Мало кажи — вишукано кажи!» (Кримськотатарське прислів'я),"\""Speak little, speak gracefully!\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.60.attribution,≤ 90,Remzi Burnaş,Remzi Burnaş,Remzi Burnaş
+DailyPhrases,phrase.60.text,≤ 65,Bu til maña — tolğun Ay!,Bu til maña — tolğun Ay!,Bu til maña — tolğun Ay!
+DailyPhrases,phrase.60.translation,≤ 90,«Bu til maña — tolğun Ay!» (Remzi Burnaş),«Ця мова для мене — повний Місяць!» (Ремзі Бурнаш),"\""This language is a full Moon to me!\"" (Remzi Burnaş)"
+DailyPhrases,phrase.61.attribution,≤ 90,Noman Çelebicihan,Noman Çelebicihan,Noman Çelebicihan
+DailyPhrases,phrase.61.text,≤ 65,Ant etkenmen yaranı sarmağa!,Ant etkenmen yaranı sarmağa!,Ant etkenmen yaranı sarmağa!
+DailyPhrases,phrase.61.translation,≤ 90,«Ant etkenmen yaranı sarmağa!» (Noman Çelebicihan),«Я присягнувся перев'язати рани свого народу!» (Номан Челебіджихан),"\""I have sworn to bind the wounds of my people!\"" (Noman Çelebicihan)"
+DailyPhrases,phrase.62.attribution,≤ 90,Qırımtatar halq yırı,Qırımtatar halq yırı,Qırımtatar halq yırı
+DailyPhrases,phrase.62.text,≤ 65,Navrez keldi — yaz keldi!,Navrez keldi — yaz keldi!,Navrez keldi — yaz keldi!
+DailyPhrases,phrase.62.translation,≤ 90,«Navrez keldi — yaz keldi!» (Qırımtatar halq yırı),«Наврез прийшов — весна прийшла!» (Кримськотатарська народна пісня),"\""Navrez has come—spring has arrived!\"" (Crimean Tatar folk song)"
+DailyPhrases,phrase.63.attribution,≤ 90,İsmail Gasprinskiy,İsmail Gasprinskiy,İsmail Gasprinskiy
+DailyPhrases,phrase.63.text,≤ 65,"Tilde, fikirde, işte — birlik!","Tilde, fikirde, işte — birlik!","Tilde, fikirde, işte — birlik!"
+DailyPhrases,phrase.63.translation,≤ 90,"«Tilde, fikirde, işte — birlik!» (İsmail Gasprinskiy)","«У мові, у думці, у ділі — єдність!» (Ісмаїл Гаспринський)","\""Unity in language, in thought, and in action!\"" (İsmail Gasprinskiy)"
+DailyPhrases,phrase.64.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.64.text,≤ 65,Kitap — bilgi anahtarı.,Kitap — bilgi anahtarı.,Kitap — bilgi anahtarı.
+DailyPhrases,phrase.64.translation,≤ 90,«Kitap — bilgi anahtarı.» (Qırımtatar atalar sözü),«Книга — ключ до знань.» (Кримськотатарське прислів'я),"\""A book is the key to knowledge.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.65.attribution,≤ 90,Qırımtatar tapmacası,Qırımtatar tapmacası,Qırımtatar tapmacası
+DailyPhrases,phrase.65.text,≤ 65,"Közü yoq — körsete, sözü yoq — ögrete: Kitap.","Közü yoq — körsete, sözü yoq — ögrete: Kitap.","Közü yoq — körsete, sözü yoq — ögrete: Kitap."
+DailyPhrases,phrase.65.translation,≤ 90,"«Közü yoq — körsete, sözü yoq — ögrete: Kitap.» (Qırımtatar tapmacası)","«Очей не має — а показує, слів не має — а навчає: Книга.» (Кримськотатарська загадка)","\""Has no eyes yet shows, has no words yet teaches: A Book.\"" (Crimean Tatar riddle)"
+DailyPhrases,phrase.66.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.66.text,≤ 65,Birlik olğan yerde tirlik bar.,Birlik olğan yerde tirlik bar.,Birlik olğan yerde tirlik bar.
+DailyPhrases,phrase.66.translation,≤ 90,«Birlik olğan yerde tirlik bar.» (Qırımtatar atalar sözü),«Де є єдність — там є життя.» (Кримськотатарське прислів'я),"\""Where there is unity, there is life.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.67.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.67.text,≤ 65,"Ana-babaña ürmet etseñ, özüñ ürmet körersiñ.","Ana-babaña ürmet etseñ, özüñ ürmet körersiñ.","Ana-babaña ürmet etseñ, özüñ ürmet körersiñ."
+DailyPhrases,phrase.67.translation,≤ 90,"«Ana-babaña ürmet etseñ, özüñ ürmet körersiñ.» (Qırımtatar atalar sözü)",«Шануватимеш батька й матір — сам зазнаєш пошани.» (Кримськотатарське прислів'я),"\""If you honor your mother and father, you yourself will be honored.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.68.attribution,≤ 90,Çerkez-Ali,Çerkez-Ali,Çerkez-Ali
+DailyPhrases,phrase.68.text,≤ 65,Qırım — menim Vatanımdır!,Qırım — menim Vatanımdır!,Qırım — menim Vatanımdır!
+DailyPhrases,phrase.68.translation,≤ 90,«Qırım — menim Vatanımdır!» (Çerkez-Ali),«Крим — моя рідна Батьківщина!» (Черкез-Алі),"\""Crimea is my native Homeland!\"" (Çerkez-Ali)"
+DailyPhrases,phrase.69.attribution,≤ 90,,,
+DailyPhrases,phrase.69.text,≤ 65,Allah keçmişlerimizni rahmet eylesin!,Allah keçmişlerimizni rahmet eylesin!,Allah keçmişlerimizni rahmet eylesin!
+DailyPhrases,phrase.69.translation,≤ 90,Allah keçmişlerimizni rahmet eylesin!,Нехай Всевишній помилує душі наших померлих предків!,May God have mercy on the souls of our departed ancestors!
+DailyPhrases,phrase.7.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.7.text,≤ 65,Tilge ürmet — ilge ürmettir.,Tilge ürmet — ilge ürmettir.,Tilge ürmet — ilge ürmettir.
+DailyPhrases,phrase.7.translation,≤ 90,«Tilge ürmet — ilge ürmettir.» (Qırımtatar atalar sözü),«Повага до мови — це повага до народу.» (Кримськотатарське прислів'я),"\""Respect for the language is respect for the people.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.70.attribution,≤ 90,Remziye Tarsinova,Remziye Tarsinova,Remziye Tarsinova
+DailyPhrases,phrase.70.text,≤ 65,Canımız-cigerimiz — balalar!,Canımız-cigerimiz — balalar!,Canımız-cigerimiz — balalar!
+DailyPhrases,phrase.70.translation,≤ 90,«Canımız-cigerimiz — balalar!» (Remziye Tarsinova),«Наша душа й серце — це діти!» (Ремзіє Тарсінова),"\""Our heart and soul are our children!\"" (Remziye Tarsinova)"
+DailyPhrases,phrase.71.attribution,≤ 90,Noman Çelebicihan,Noman Çelebicihan,Noman Çelebicihan
+DailyPhrases,phrase.71.text,≤ 65,Milletniñ şanı — bayrağında!,Milletniñ şanı — bayrağında!,Milletniñ şanı — bayrağında!
+DailyPhrases,phrase.71.translation,≤ 90,«Milletniñ şanı — bayrağında!» (Noman Çelebicihan),«Слава й честь народу — у його прапорі!» (Номан Челебіджихан),"\""The glory and honor of a nation are in its flag!\"" (Noman Çelebicihan)"
+DailyPhrases,phrase.72.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.72.text,≤ 65,"Oquvnı sevgen oqur, soñundan gülday qoqur.","Oquvnı sevgen oqur, soñundan gülday qoqur.","Oquvnı sevgen oqur, soñundan gülday qoqur."
+DailyPhrases,phrase.72.translation,≤ 90,"«Oquvnı sevgen oqur, soñundan gülday qoqur.» (Qırımtatar atalar sözü)","«Хто любить навчання, той читає, а згодом квітне й пахне, мов троянда.» (Кримськотатарське прислів'я)","\""Whoever loves learning will study, and later blossom like a rose.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.73.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.73.text,≤ 65,Baardeki areket — küzdeki bereket.,Baardeki areket — küzdeki bereket.,Baardeki areket — küzdeki bereket.
+DailyPhrases,phrase.73.translation,≤ 90,«Baardeki areket — küzdeki bereket.» (Qırımtatar atalar sözü),«Весняна праця — осінній достаток.» (Кримськотатарське прислів'я),"\""Effort in spring brings abundance in autumn.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.74.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.74.text,≤ 65,"Şegirt olmay, usta olmazsıñ.","Şegirt olmay, usta olmazsıñ.","Şegirt olmay, usta olmazsıñ."
+DailyPhrases,phrase.74.translation,≤ 90,"«Şegirt olmay, usta olmazsıñ.» (Qırımtatar atalar sözü)","«Не побувши учнем, не станеш майстром.» (Кримськотатарське прислів'я)","\""Without being an apprentice, you cannot become a master.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.75.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.75.text,≤ 65,İlim barda — qaruv bar.,İlim barda — qaruv bar.,İlim barda — qaruv bar.
+DailyPhrases,phrase.75.translation,≤ 90,«İlim barda — qaruv bar.» (Qırımtatar atalar sözü),«Де є знання — там є сила й снага.» (Кримськотатарське прислів'я),"\""Where there is knowledge, there is strength.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.76.attribution,≤ 90,Bekir Çoban-zade,Bekir Çoban-zade,Bekir Çoban-zade
+DailyPhrases,phrase.76.text,≤ 65,Öz tuvğan tilimde ayt mağa!,Öz tuvğan tilimde ayt mağa!,Öz tuvğan tilimde ayt mağa!
+DailyPhrases,phrase.76.translation,≤ 90,«Öz tuvğan tilimde ayt mağa!» (Bekir Çoban-zade),«Скажи мені моєю рідною мовою!» (Бекір Чобан-заде),"\""Speak to me in my native tongue!\"" (Bekir Çoban-zade)"
+DailyPhrases,phrase.77.attribution,≤ 90,Eşref Şemi-zade,Eşref Şemi-zade,Eşref Şemi-zade
+DailyPhrases,phrase.77.text,≤ 65,Türkiy tiller gülzarınıñ fidanı!,Türkiy tiller gülzarınıñ fidanı!,Türkiy tiller gülzarınıñ fidanı!
+DailyPhrases,phrase.77.translation,≤ 90,«Türkiy tiller gülzarınıñ fidanı!» (Eşref Şemi-zade),«Пагін трояндового саду тюркських мов!» (Ешреф Шем'ї-заде),"\""The sapling of the rose garden of Turkic languages!\"" (Eşref Şemi-zade)"
+DailyPhrases,phrase.78.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.78.text,≤ 65,"Terek tamırlarına tayanır, insan — tuvğanlarına.","Terek tamırlarına tayanır, insan — tuvğanlarına.","Terek tamırlarına tayanır, insan — tuvğanlarına."
+DailyPhrases,phrase.78.translation,≤ 90,"«Terek tamırlarına tayanır, insan — tuvğanlarına.» (Qırımtatar atalar sözü)","«Дерево тримається на корінні, а людина — на рідних.» (Кримськотатарське прислів'я)","\""A tree relies on its roots; a person relies on their family.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.79.attribution,≤ 90,Yunus Qandım,Yunus Qandım,Yunus Qandım
+DailyPhrases,phrase.79.text,≤ 65,Yol köstergen Çolpan yıldızım!,Yol köstergen Çolpan yıldızım!,Yol köstergen Çolpan yıldızım!
+DailyPhrases,phrase.79.translation,≤ 90,«Yol köstergen Çolpan yıldızım!» (Yunus Qandım),"«Моя ранкова зоря Чолпан, що вказує шлях!» (Юнус Кандим)","\""My morning star Venus that shows the way!\"" (Yunus Qandım)"
+DailyPhrases,phrase.8.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.8.text,≤ 65,Sözüñnen işiñ bir olsun!,Sözüñnen işiñ bir olsun!,Sözüñnen işiñ bir olsun!
+DailyPhrases,phrase.8.translation,≤ 90,«Sözüñnen işiñ bir olsun!» (Qırımtatar atalar sözü),«Нехай твоє слово і твоє діло будуть єдиними!» (Кримськотатарське прислів'я),"\""Let your word and your deed be one!\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.80.attribution,≤ 90,Üsein Şamil Tohtarğazı,Üsein Şamil Tohtarğazı,Üsein Şamil Tohtarğazı
+DailyPhrases,phrase.80.text,≤ 65,İlim — insannıñ kemalıdır!,İlim — insannıñ kemalıdır!,İlim — insannıñ kemalıdır!
+DailyPhrases,phrase.80.translation,≤ 90,«İlim — insannıñ kemalıdır!» (Üsein Şamil Tohtarğazı),«Знання — це досконалість людини!» (Усеїн Шаміль Тохтаргази),"\""Knowledge is the perfection of humanity!\"" (Üsein Şamil Tohtarğazı)"
+DailyPhrases,phrase.81.attribution,≤ 90,Riza Fazıl,Riza Fazıl,Riza Fazıl
+DailyPhrases,phrase.81.text,≤ 65,"Amet-Han, köklerde Sultansıñ!","Amet-Han, köklerde Sultansıñ!","Amet-Han, köklerde Sultansıñ!"
+DailyPhrases,phrase.81.translation,≤ 90,"«Amet-Han, köklerde Sultansıñ!» (Riza Fazıl)","«Амет-Хане, у небесах ти — Султан!» (Різа Фазил)","\""Amet-Khan, in the skies you are a Sultan!\"" (Riza Fazıl)"
+DailyPhrases,phrase.82.attribution,≤ 90,İdris Asanin,İdris Asanin,İdris Asanin
+DailyPhrases,phrase.82.text,≤ 65,"Acayipsiñ, Ana tili!","Acayipsiñ, Ana tili!","Acayipsiñ, Ana tili!"
+DailyPhrases,phrase.82.translation,≤ 90,"«Acayipsiñ, Ana tili!» (İdris Asanin)","«Дивовижна ти, рідна мово!» (Ідріс Асанін)","\""You are wonderful, Mother Tongue!\"" (İdris Asanin)"
+DailyPhrases,phrase.83.attribution,≤ 90,,,
+DailyPhrases,phrase.83.text,≤ 65,İşiñiz oñ kelsin!,İşiñiz oñ kelsin!,İşiñiz oñ kelsin!
+DailyPhrases,phrase.83.translation,≤ 90,İşiñiz oñ kelsin!,Нехай ваша справа легко вдається й іде на лад!,May your work go smoothly and succeed!
+DailyPhrases,phrase.84.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.84.text,≤ 65,Vatan — ekinci anañ.,Vatan — ekinci anañ.,Vatan — ekinci anañ.
+DailyPhrases,phrase.84.translation,≤ 90,«Vatan — ekinci anañ.» (Qırımtatar atalar sözü),«Батьківщина — твоя друга матір.» (Кримськотатарське прислів'я),"\""The homeland is your second mother.\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.85.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.85.text,≤ 65,Birlikte — quvet!,Birlikte — quvet!,Birlikte — quvet!
+DailyPhrases,phrase.85.translation,≤ 90,«Birlikte — quvet!» (Qırımtatar atalar sözü),«У єдності — сила!» (Кримськотатарське прислів'я),"\""In unity there is strength!\"" (Crimean Tatar proverb)"
+DailyPhrases,phrase.9.attribution,≤ 90,Qırımtatar atalar sözü,Qırımtatar atalar sözü,Qırımtatar atalar sözü
+DailyPhrases,phrase.9.text,≤ 65,Kişiniñ sözünen işi bir olmalı.,Kişiniñ sözünen işi bir olmalı.,Kişiniñ sözünen işi bir olmalı.
+DailyPhrases,phrase.9.translation,≤ 90,«Kişiniñ sözünen işi bir olmalı.» (Qırımtatar atalar sözü),«Слово і діло людини мають бути єдиними.» (Кримськотатарське прислів'я),"\""A person's word and deed must be one.\"" (Crimean Tatar proverb)"

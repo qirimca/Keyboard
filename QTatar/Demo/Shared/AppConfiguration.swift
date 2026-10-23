@@ -31,24 +31,24 @@ enum KeyboardPreferences {
     private static var cachedSplitKeyboard: Bool?
 
     static func refreshCachedPreferences() {
-        cachedSuggestions = defaults.object(forKey: suggestionsKey) as? Bool ?? true
-        cachedWordLearning = defaults.object(forKey: wordLearningKey) as? Bool ?? true
+        cachedSuggestions = (defaults.object(forKey: suggestionsKey) as? Bool) ?? (UserDefaults.standard.object(forKey: suggestionsKey) as? Bool) ?? true
+        cachedWordLearning = (defaults.object(forKey: wordLearningKey) as? Bool) ?? (UserDefaults.standard.object(forKey: wordLearningKey) as? Bool) ?? true
         cachedCyrillic = defaults.object(forKey: cyrillicKey) as? Bool ?? true
         cachedUkrainianCyrillicLayout = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
-        cachedStatsEnabled = defaults.object(forKey: statsEnabledKey) as? Bool ?? true
+        cachedStatsEnabled = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? (UserDefaults.standard.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
     }
 
     static var suggestionsEnabled: Bool {
         if let cached = cachedSuggestions { return cached }
-        let val = defaults.object(forKey: suggestionsKey) as? Bool ?? true
+        let val = (defaults.object(forKey: suggestionsKey) as? Bool) ?? (UserDefaults.standard.object(forKey: suggestionsKey) as? Bool) ?? true
         cachedSuggestions = val
         return val
     }
 
     static var wordLearningEnabled: Bool {
         if let cached = cachedWordLearning { return cached }
-        let val = defaults.object(forKey: wordLearningKey) as? Bool ?? true
+        let val = (defaults.object(forKey: wordLearningKey) as? Bool) ?? (UserDefaults.standard.object(forKey: wordLearningKey) as? Bool) ?? true
         cachedWordLearning = val
         return val
     }
@@ -62,7 +62,7 @@ enum KeyboardPreferences {
 
     static var statsEnabled: Bool {
         if let cached = cachedStatsEnabled { return cached }
-        let val = defaults.object(forKey: statsEnabledKey) as? Bool ?? true
+        let val = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? (UserDefaults.standard.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedStatsEnabled = val
         return val
     }
@@ -78,6 +78,9 @@ enum KeyboardPreferences {
     static func setStatsEnabled(_ enabled: Bool) {
         cachedStatsEnabled = enabled
         defaults.set(enabled, forKey: statsEnabledKey)
+        if !enabled {
+            KeyboardUsageStats.reclaimResourcesWhenDisabled()
+        }
     }
 
     static func setSuggestionsEnabled(_ enabled: Bool) {
@@ -131,24 +134,64 @@ enum KeyboardPreferences {
         return val
     }
     static var interfaceLanguage: String { defaults.string(forKey: languageKey) ?? "crh" }
+    private static var bundleCacheLock = os_unfair_lock_s()
+    private static var cachedContainerBundle: Bundle?
+    private static var cachedLanguageBundles: [String: Bundle] = [:]
+
     static var localizationContainerBundle: Bundle {
-        if let url = Bundle.main.url(forResource: "AppLocalizations", withExtension: "bundle"),
-           let bundle = Bundle(url: url) {
-            return bundle
+        os_unfair_lock_lock(&bundleCacheLock)
+        if let cached = cachedContainerBundle {
+            os_unfair_lock_unlock(&bundleCacheLock)
+            return cached
         }
-        return .main
+        os_unfair_lock_unlock(&bundleCacheLock)
+
+        let resolved: Bundle = {
+            if let url = Bundle.main.url(forResource: "AppLocalizations", withExtension: "bundle"),
+               let bundle = Bundle(url: url) {
+                return bundle
+            }
+            let mainURL = Bundle.main.bundleURL
+            if mainURL.pathExtension == "appex" {
+                let hostAppURL = mainURL.deletingLastPathComponent().deletingLastPathComponent()
+                let hostLocURL = hostAppURL.appendingPathComponent("AppLocalizations.bundle")
+                if let bundle = Bundle(url: hostLocURL) {
+                    return bundle
+                }
+            }
+            return .main
+        }()
+
+        os_unfair_lock_lock(&bundleCacheLock)
+        cachedContainerBundle = resolved
+        os_unfair_lock_unlock(&bundleCacheLock)
+        return resolved
     }
     static func localizationBundle(for language: String) -> Bundle {
+        os_unfair_lock_lock(&bundleCacheLock)
+        if let cached = cachedLanguageBundles[language] {
+            os_unfair_lock_unlock(&bundleCacheLock)
+            return cached
+        }
+        os_unfair_lock_unlock(&bundleCacheLock)
+
         let container = localizationContainerBundle
-        if let path = container.path(forResource: language, ofType: "lproj"),
-           let bundle = Bundle(path: path) {
-            return bundle
-        }
-        if let path = Bundle.main.path(forResource: language, ofType: "lproj"),
-           let bundle = Bundle(path: path) {
-            return bundle
-        }
-        return .main
+        let resolved: Bundle = {
+            if let path = container.path(forResource: language, ofType: "lproj"),
+               let bundle = Bundle(path: path) {
+                return bundle
+            }
+            if let path = Bundle.main.path(forResource: language, ofType: "lproj"),
+               let bundle = Bundle(path: path) {
+                return bundle
+            }
+            return .main
+        }()
+
+        os_unfair_lock_lock(&bundleCacheLock)
+        cachedLanguageBundles[language] = resolved
+        os_unfair_lock_unlock(&bundleCacheLock)
+        return resolved
     }
     static var interfaceBundle: Bundle {
         localizationBundle(for: interfaceLanguage)
@@ -245,6 +288,14 @@ enum KeyboardUsageStats {
     /// Empirical frequency-weighted average word length in the Crimean Tatar corpus (`qırım_tatar.db`),
     /// including the trailing space (`6.4` letters + `1` space = `7.4` chars/word).
     static let crhCharsPerWord: Double = 7.4
+
+    /// Clears in-memory keystroke timing buffers and cancels coalesced sync work when statistics are disabled.
+    static func reclaimResourcesWhenDisabled() {
+        recentKeystrokeTimes.removeAll(keepingCapacity: false)
+        lastKeystrokeTime = 0
+        hasCompletedWordInSession = false
+        isCoalescedSyncPending = false
+    }
 
     /// Posts a Darwin notification immediately for an open `HomeView` while debouncing
     /// `CFPreferencesAppSynchronize` disk flushes to `1.2s` during rapid typing (or flushing
@@ -400,8 +451,22 @@ enum KeyboardUsageStats {
 
     /// Reads the exact row count of `user_unigrams` from `user_lexicon.sqlite` in the shared App Group container
     /// so `learnedWords` in `HomeView` always stays synchronized with the on-device personal dictionary.
+    /// When called on the main thread, dispatches the SQLite read to `syncQueue` and returns the cached count immediately.
     @discardableResult
     static func syncLearnedWordsCountFromSQLite() -> Int {
+        let defaults = KeyboardPreferences.defaults
+        let stored = defaults.integer(forKey: learnedWordsKey)
+        if Thread.isMainThread {
+            syncQueue.async {
+                _ = performSyncLearnedWordsCountFromSQLite()
+            }
+            return stored
+        }
+        return performSyncLearnedWordsCountFromSQLite()
+    }
+
+    @discardableResult
+    private static func performSyncLearnedWordsCountFromSQLite() -> Int {
         let defaults = KeyboardPreferences.defaults
         let stored = defaults.integer(forKey: learnedWordsKey)
         guard let containerDir = AppConfiguration.appGroupContainerURL else {
@@ -428,6 +493,13 @@ enum KeyboardUsageStats {
         let resolved = max(stored, dbCount)
         if resolved != stored {
             defaults.set(resolved, forKey: learnedWordsKey)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(statsUpdatedNotification as CFString),
+                nil,
+                nil,
+                true
+            )
         }
         return resolved
     }
@@ -651,19 +723,28 @@ extension UITextDocumentProxy {
 /// from `TIPreferencesController` / `UIKeyboardPreferencesController` and `UITextDocumentProxy`.
 enum SystemKeyboardSettings {
 
+    private static var cacheLock = os_unfair_lock_s()
+    private static var cachedValues: [String: Bool] = [:]
     private static var lastSyncTimestamp: TimeInterval = 0
+    private static var isRefreshing = false
+    private static let refreshQueue = DispatchQueue(label: "crh.key.sysPrefsRefresh", qos: .utility)
 
-    private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
-        for key in keys {
-            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
-                return testOverride
-            }
-        }
-        let now = ProcessInfo.processInfo.systemUptime
-        let shouldSync = (now - lastSyncTimestamp) >= 1.0
-        if shouldSync {
-            lastSyncTimestamp = now
-        }
+    private static let knownKeyGroups: [([String], Bool)] = [
+        (["KeyboardCapsLock", "UIKeyboardCapsLock"], true),
+        (["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], true),
+        (["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], true),
+        (["KeyboardAutocorrection", "UIKeyboardAutocorrection"], true),
+        (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions"], true),
+        (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
+        (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
+        (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
+        (["SmartQuotesEnabled", "KeyboardSmartQuotesEnabled", "UIKeyboardSmartQuotesEnabled"], true),
+        (["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled"], true),
+        (["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], true),
+        (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
+    ]
+
+    private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
         for className in ["TIPreferencesController", "UIKeyboardPreferencesController"] {
             guard let cls: AnyClass = NSClassFromString(className) else { continue }
             let sharedSel = NSSelectorFromString("sharedPreferencesController")
@@ -699,6 +780,47 @@ enum SystemKeyboardSettings {
             }
         }
         return defaultValue
+    }
+
+    private static func triggerAsyncRefreshIfNeeded() {
+        let now = ProcessInfo.processInfo.systemUptime
+        os_unfair_lock_lock(&cacheLock)
+        let needsRefresh = !isRefreshing && (cachedValues.isEmpty || (now - lastSyncTimestamp) >= 2.0)
+        if needsRefresh {
+            isRefreshing = true
+            lastSyncTimestamp = now
+        }
+        os_unfair_lock_unlock(&cacheLock)
+        guard needsRefresh else { return }
+
+        refreshQueue.async {
+            var updated: [String: Bool] = [:]
+            for (index, entry) in knownKeyGroups.enumerated() {
+                if let primaryKey = entry.0.first {
+                    updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: index == 0, default: entry.1)
+                }
+            }
+            os_unfair_lock_lock(&cacheLock)
+            for (k, v) in updated {
+                cachedValues[k] = v
+            }
+            isRefreshing = false
+            os_unfair_lock_unlock(&cacheLock)
+        }
+    }
+
+    private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
+        for key in keys {
+            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
+                return testOverride
+            }
+        }
+        guard let primaryKey = keys.first else { return defaultValue }
+        os_unfair_lock_lock(&cacheLock)
+        let cached = cachedValues[primaryKey]
+        os_unfair_lock_unlock(&cacheLock)
+        triggerAsyncRefreshIfNeeded()
+        return cached ?? defaultValue
     }
 
     static var isCapsLockEnabled: Bool {
@@ -768,7 +890,112 @@ enum SystemKeyboardSettings {
         }
         return readSystemPreferenceBool(["KeyboardMathExpressionCompletion", "ShowMathResults"], default: true)
     }
+
+    private static var lastEmojiCheckTime: TimeInterval = 0
+    private static var cachedEmojiEnabled: Bool?
+    static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
+
+    /// Checks whether the iOS Emoji keyboard (`com.apple.keyboard.emoji`) is enabled in `Settings → General → Keyboard → Keyboards`.
+    /// Caches the result in the shared App Group so the keyboard extension can read it even when sandboxed.
+    static var isEmojiKeyboardEnabled: Bool {
+        if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.EmojiEnabled") as? Bool {
+            return testOverride
+        }
+        let now = ProcessInfo.processInfo.systemUptime
+        if let cached = cachedEmojiEnabled, (now - lastEmojiCheckTime) < 2.5 {
+            return cached
+        }
+        lastEmojiCheckTime = now
+
+        let activeModes = UITextInputMode.activeInputModes
+        if activeModes.count > 1 {
+            let foundInModes = activeModes.contains { mode in
+                if let lang = mode.primaryLanguage?.lowercased(), lang.contains("emoji") {
+                    return true
+                }
+                if let id = (mode as AnyObject).value(forKey: "identifier") as? String,
+                   id.localizedCaseInsensitiveContains("emoji") {
+                    return true
+                }
+                return false
+            }
+            cachedEmojiEnabled = foundInModes
+            KeyboardPreferences.defaults.set(foundInModes, forKey: cachedEmojiKeyboardEnabledKey)
+            return foundInModes
+        }
+
+        for className in ["TIPreferencesController", "UIKeyboardPreferencesController"] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in ["Keyboards", "AppleKeyboards"] {
+                if controller.responds(to: valSel),
+                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
+                   !list.isEmpty {
+                    let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
+                    cachedEmojiEnabled = hasEmoji
+                    KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+                    return hasEmoji
+                }
+            }
+        }
+
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for domain in domains {
+            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
+                let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
+                cachedEmojiEnabled = hasEmoji
+                KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+                return hasEmoji
+            }
+        }
+        if let list = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !list.isEmpty {
+            let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
+            cachedEmojiEnabled = hasEmoji
+            KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+            return hasEmoji
+        }
+
+        let fallback = KeyboardPreferences.defaults.object(forKey: cachedEmojiKeyboardEnabledKey) as? Bool ?? true
+        cachedEmojiEnabled = fallback
+        return fallback
+    }
 }
+
+#if canImport(MetricKit) && os(iOS)
+import MetricKit
+
+/// Lightweight MetricKit subscriber that records any `MXHangDiagnostic` or `MXCPUExceptionDiagnostic` payloads
+/// into the shared App Group container (`Diagnostics/metrickit_diag_*.json`) for continuous performance auditing.
+@available(iOS 14.0, *)
+final class QirimKeyDiagnosticsSubscriber: NSObject, MXMetricManagerSubscriber {
+    static let shared = QirimKeyDiagnosticsSubscriber()
+    private var isRegistered = false
+
+    func start() {
+        guard !isRegistered else { return }
+        isRegistered = true
+        MXMetricManager.shared.add(self)
+    }
+
+    func didReceive(_ payloads: [MXDiagnosticPayload]) {
+        guard let containerURL = AppConfiguration.appGroupContainerURL else { return }
+        let diagDir = containerURL.appendingPathComponent("Diagnostics", isDirectory: true)
+        try? FileManager.default.createDirectory(at: diagDir, withIntermediateDirectories: true)
+        let timestamp = Int(Date().timeIntervalSince1970)
+        for (idx, payload) in payloads.enumerated() {
+            let fileURL = diagDir.appendingPathComponent("metrickit_diag_\(timestamp)_\(idx).json")
+            try? payload.jsonRepresentation().write(to: fileURL, options: .atomic)
+        }
+    }
+}
+#endif
 
 /// Evaluates trailing arithmetic expressions ending with `=` (iOS "Show Maths Results" / `mathExpressionCompletionType`).
 enum MathExpressionEvaluator {

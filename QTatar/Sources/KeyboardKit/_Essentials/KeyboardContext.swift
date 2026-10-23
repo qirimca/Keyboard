@@ -89,7 +89,7 @@ public class KeyboardContext: ObservableObject {
     @Published
     public var isSpaceDragGestureActive = false
     
-    func setIsSpaceDragGestureActive(
+    public func setIsSpaceDragGestureActive(
         _ value: Bool,
         animated: Bool
     ) {

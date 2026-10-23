@@ -11,20 +11,23 @@ import StoreKit
 
 struct AboutView: View {
     @Binding var navigationPath: NavigationPath
+    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
     
-    @Environment(\.requestReview) var requestReview
     @Environment(\.openURL) var openURL
     @Environment(\.dismiss) var dismiss
     
-    let socialMediaLinks = [
-        ("Website", Configurations.website),
-        ("Instagram", Configurations.instagram),
-        ("Facebook", Configurations.facebook),
-        ("GitHub", Configurations.github),
-        ("Telegram", Configurations.telegram)
-    ]
+    private var socialMediaLinks: [(String, String)] {
+        [
+            (About.about_website_key.localized, Configurations.website),
+            ("Instagram", Configurations.instagram),
+            ("Facebook", Configurations.facebook),
+            ("GitHub", Configurations.github),
+            ("Telegram", Configurations.telegram)
+        ]
+    }
     
     var body: some View {
+        let _ = language
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             ScrollView(.vertical, showsIndicators: false) {
@@ -115,15 +118,19 @@ private extension AboutView {
             containerTitle(title: About.about_feedback_key.localized, icon: "ellipsis.message")
             
             feedbackButton(title: About.about_rate_key.localized, icon: "star") {
-                requestReview()
+                AppStoreReviewManager.openWriteReviewPage(using: openURL)
             }
+            .accessibilityIdentifier("about.rateButton")
             
             ShareLink(
-                item: URL(string: "https://apps.apple.com/app/id\(Configurations.appID)")!
+                item: AppStoreReviewManager.appStoreURL,
+                subject: Text("QırımKey"),
+                message: Text(About.about_first_key.localized)
             ) {
                 cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("about.shareButton")
             
             feedbackButton(title: About.about_send_key.localized, icon: "heart") {
                 openURL(URL(string: Configurations.donatello)!)

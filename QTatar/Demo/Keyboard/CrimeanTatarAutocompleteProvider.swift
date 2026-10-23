@@ -83,11 +83,13 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         let shouldCapitalize: Bool
         let isDocumentEmpty: Bool
         let completedContextWords: [String]
+        let positionContext: SuggestionsDataBaseManager.SentencePositionContext
         let isAutocorrectEnabled: Bool
     }
 
     private func captureQuerySnapshot(fallbackText: String) -> QuerySnapshot {
         let proxy = keyboardContext.textDocumentProxy
+        let beforeInput = proxy.documentContextBeforeInput
         let query = AutocompleteQueryResolver.queryText(for: proxy) ?? fallbackText
         latestQuery = query
         let mathAllowed: Bool = {
@@ -98,7 +100,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             return true
         }()
         let mathEvaluation = mathAllowed
-            ? MathExpressionEvaluator.evaluateTrailingExpressionWithLiteral(in: proxy.documentContextBeforeInput ?? fallbackText)
+            ? MathExpressionEvaluator.evaluateTrailingExpressionWithLiteral(in: beforeInput ?? fallbackText)
             : nil
         let shouldCapitalize = Self.shouldCapitalize(
             typedText: query,
@@ -111,6 +113,10 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         }
         let rawContextWords = !isEmpty ? Self.completedContextWords(before: proxy) : []
         let contextWords = query.isEmpty ? rawContextWords : Array(rawContextWords.dropLast())
+        let positionContext = SuggestionsDataBaseManager.resolveSentencePositionContext(
+            beforeText: beforeInput,
+            contextWords: contextWords
+        )
         let autocorrectAllowed = context.isAutocorrectEnabled
             && proxy.autocorrectionType != .no
             && SystemKeyboardSettings.isAutoCorrectionEnabled
@@ -120,6 +126,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             shouldCapitalize: shouldCapitalize,
             isDocumentEmpty: isEmpty,
             completedContextWords: contextWords,
+            positionContext: positionContext,
             isAutocorrectEnabled: autocorrectAllowed
         )
     }
@@ -168,16 +175,21 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             } else if !snapshot.completedContextWords.isEmpty {
                 suggestions = manager.nextWordSuggestions(
                     contextWords: snapshot.completedContextWords,
-                    shouldCapitalize: snapshot.shouldCapitalize
+                    shouldCapitalize: snapshot.shouldCapitalize,
+                    positionContext: snapshot.positionContext
                 )
             } else {
-                suggestions = []
+                suggestions = manager.starterSuggestions(
+                    shouldCapitalize: snapshot.shouldCapitalize,
+                    positionContext: snapshot.positionContext
+                )
             }
         } else {
             suggestions = manager.suggestions(
                 for: snapshot.query,
                 shouldCapitalize: snapshot.shouldCapitalize,
-                contextWords: snapshot.completedContextWords
+                contextWords: snapshot.completedContextWords,
+                positionContext: snapshot.positionContext
             )
             if let shortcutText = manager.shortcutReplacement(for: snapshot.query) {
                 var updated = suggestions.filter { $0.text != shortcutText }.map { item -> Autocomplete.Suggestion in
@@ -240,8 +252,9 @@ private extension CrimeanTatarAutocompleteProvider {
 
     static func completedContextWords(before proxy: UITextDocumentProxy) -> [String] {
         guard let before = proxy.documentContextBeforeInput else { return [] }
+        let currentClause = String(SuggestionsDataBaseManager.currentSentenceSlice(in: before))
         let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
-        return before
+        return currentClause
             .components(separatedBy: delimiters)
             .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }

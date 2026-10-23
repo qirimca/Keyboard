@@ -1,0 +1,4 @@
+App Review Notes:
+1. Note on Locale: Because App Store Connect does not currently provide a dedicated Crimean Tatar (`crh`) store listing locale, the Turkish (`tr`) store localization slot is used to serve our Crimean Tatar (`Qırımtatarca`) community (matching https://ctcorpus.org/index.php/crh/).
+2. How to Enable: Open "Settings → General → Keyboard → Keyboards → Add New Keyboard…" and select "QırımKey".
+3. Privacy & Offline Operation: Both keyboard extensions (`crh.key.keyboard.keyboard` and `crh.key.keyboard.keyboard.cyrillic`) have `RequestsOpenAccess = NO` in `Info.plist` and make zero network requests.

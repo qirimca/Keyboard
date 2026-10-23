@@ -986,6 +986,296 @@ struct DatabaseAndSwipeTests {
     #expect(coqUkrSwipe.first?.text.lowercased(with: Locale(identifier: "tr")) == "çoq")
 }
 
+@Test func phase13V24ColdStartEasterEggDeLowercaseAndSwipeQueueVerification() throws {
+    // 1. Cold-start main-thread non-blocking (< 16 ms) verification
+    DispatchQueue.main.sync {
+        SuggestionsDataBaseManager.shared.resetForColdStartTest()
+        #expect(!SuggestionsDataBaseManager.shared.isReady)
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        let coldSuggs = SuggestionsDataBaseManager.shared.suggestions(
+            for: "sel",
+            shouldCapitalize: false,
+            contextWords: []
+        )
+        let coldNext = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+            contextWords: ["Men"],
+            shouldCapitalize: false
+        )
+        let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - t0) / 1_000_000.0
+        #expect(elapsedMs < 16.0, "Cold-start main-thread query took \(elapsedMs) ms (must be < 16.0 ms)")
+        #expect(!coldSuggs.isEmpty)
+        #expect(coldNext.isEmpty)
+    }
+
+    let sem = DispatchSemaphore(value: 0)
+    SuggestionsDataBaseManager.shared.prepareAsync {
+        sem.signal()
+    }
+    _ = sem.wait(timeout: .now() + 10.0)
+    #expect(SuggestionsDataBaseManager.shared.isReady)
+
+    // 2. Lowercase "de" and contact job titles ("Producer") must never be auto-capitalized or injected on 2-char fallback
+    SuggestionsDataBaseManager.shared.updateSupplementaryLexicon(["De": "De", "Producer": "Producer", "Mustafa": "Mustafa"])
+    defer { SuggestionsDataBaseManager.shared.updateSupplementaryLexicon([:]) }
+
+    let deSuggs = SuggestionsDataBaseManager.shared.suggestions(
+        for: "de",
+        shouldCapitalize: false,
+        contextWords: ["Men"]
+    )
+    #expect(!deSuggs.contains(where: { $0.text == "De" }), "Lowercase particle 'de' must not be capitalized to 'De'")
+    #expect(deSuggs.first?.text == "de")
+
+    let prprSuggs = SuggestionsDataBaseManager.shared.suggestions(
+        for: "Прпр",
+        shouldCapitalize: true,
+        contextWords: []
+    )
+    #expect(!prprSuggs.contains(where: { $0.text.caseInsensitiveCompare("Producer") == .orderedSame }), "2-char fallback prefix must never pull 'Producer' from UILexicon")
+
+    // 3. Lilâ Hanuşevska / Liliya Hanuşevska -> sağ ol Easter Egg
+    let lilaNext = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+        contextWords: ["Lilâ", "Hanuşevska"],
+        shouldCapitalize: false
+    )
+    #expect(lilaNext.first?.text == "sağ ol")
+
+    let liliyaNextCap = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+        contextWords: ["Liliya", "Hanuşevska"],
+        shouldCapitalize: true
+    )
+    #expect(liliyaNextCap.first?.text == "Sağ ol")
+
+    let lilaInline = SuggestionsDataBaseManager.shared.suggestions(
+        for: "Hanuşevska",
+        shouldCapitalize: false,
+        contextWords: ["Lilâ"]
+    )
+    let sagOlInline = lilaInline.first(where: { $0.text.lowercased(with: Locale(identifier: "tr")) == "sağ ol" })
+    #expect(sagOlInline != nil)
+    #expect((sagOlInline?.additionalInfo["appendAfterCurrentWord"] as? Bool) == true)
+
+    // 4. "QIRI'M Young" brand completion
+    let qirimYoungNext = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+        contextWords: ["QIRI'M"],
+        shouldCapitalize: false
+    )
+    #expect(qirimYoungNext.first?.text == "Young")
+
+    let qirimCapYoungNext = SuggestionsDataBaseManager.shared.nextWordSuggestions(
+        contextWords: ["Qırım"],
+        shouldCapitalize: false
+    )
+    #expect(qirimCapYoungNext.contains(where: { $0.text == "Young" }))
+
+    let qirimBrandSuggs = SuggestionsDataBaseManager.shared.suggestions(
+        for: "qiri'm",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(qirimBrandSuggs.contains(where: { $0.text == "QIRI'M" && ($0.additionalInfo["replaceCharCount"] as? Int) == 6 }))
+    #expect(qirimBrandSuggs.contains(where: { $0.text == "QIRI'M Young" && ($0.additionalInfo["replaceCharCount"] as? Int) == 6 && !$0.isAutocorrect }))
+
+    let qiriSuggs = SuggestionsDataBaseManager.shared.suggestions(
+        for: "qiri",
+        shouldCapitalize: false,
+        contextWords: []
+    )
+    #expect(qiriSuggs.count == 3)
+    #expect(qiriSuggs[1].text == "Qırım")
+    #expect(qiriSuggs[2].text == "QIRI'M Young" && !qiriSuggs[2].isAutocorrect && (qiriSuggs[2].additionalInfo["replaceCharCount"] as? Int) == 4)
+
+    let qiriAllCapsSuggs = SuggestionsDataBaseManager.shared.suggestions(
+        for: "QIRI",
+        shouldCapitalize: true,
+        contextWords: []
+    )
+    #expect(qiriAllCapsSuggs.map(\.text) == ["QIRI", "QIRI'M", "QIRI'M Young"])
+
+    // 5. Swipe candidate queue (limit: 10)
+    let swipeQueue = SuggestionsDataBaseManager.shared.matchSwipePath(
+        keySequence: ["s", "e", "l", "a", "m"],
+        isCyrillic: false,
+        shouldCapitalize: false,
+        contextWords: [],
+        limit: 10
+    )
+    #expect(swipeQueue.first?.text.lowercased(with: Locale(identifier: "tr")) == "selâm")
+    #expect(swipeQueue.count >= 2)
+}
+
+@Test func coldStartStress50IterationsNonBlocking() {
+    let dbm = SuggestionsDataBaseManager.shared
+    var maxMainThreadMs: Double = 0
+    for i in 0..<50 {
+        dbm.resetForColdStartTest()
+        dbm.prepareAsync()
+        let (elapsedMs, s, n) = DispatchQueue.main.sync { () -> (Double, [Autocomplete.Suggestion], [Autocomplete.Suggestion]) in
+            let t0 = DispatchTime.now().uptimeNanoseconds
+            let s = dbm.suggestions(for: "sel", shouldCapitalize: false, contextWords: [])
+            let n = dbm.nextWordSuggestions(contextWords: ["Men"], shouldCapitalize: false)
+            let dt = Double(DispatchTime.now().uptimeNanoseconds - t0) / 1_000_000.0
+            return (dt, s, n)
+        }
+        if elapsedMs > maxMainThreadMs {
+            maxMainThreadMs = elapsedMs
+        }
+        #expect(elapsedMs < 16.0, "Iteration \(i) exceeded 16ms frame budget: \(elapsedMs)ms")
+        #expect(!s.isEmpty)
+        _ = n
+    }
+    let deadline = Date().addingTimeInterval(5.0)
+    while !dbm.isReady && Date() < deadline {
+        usleep(1000)
+    }
+    #expect(dbm.isReady)
+    #expect(maxMainThreadMs < 16.0)
+}
+
+@Test func adaptiveKeyboardGeometryAcrossAllIPhoneAndIPadSizes() {
+    // 1. iPhone SE / mini / Compact (portraitWidth <= 375 pt)
+    for size in [CGSize(width: 320, height: 568), CGSize(width: 375, height: 667), CGSize(width: 375, height: 812)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        #expect(p.letterRowHeight == 51.0)
+        #expect(p.bottomRowHeight == 50.0)
+        #expect(p.letterTopBottomInset == 6.0)
+        #expect(p.bottomTopBottomInset == 5.5)
+        #expect(p.visibleKeyHeight(forRowAt: 0) == 39.0)
+        #expect(p.visibleKeyHeight(forRowAt: 3) == 39.0)
+        #expect(p.totalKeyboardHeight == 243.0)
+
+        let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
+        #expect(pNoToolbar.totalKeyboardHeight == 203.0)
+
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(l.letterRowHeight == 38.0 && l.bottomRowHeight == 38.0)
+        #expect(l.visibleKeyHeight(forRowAt: 0) == 32.0)
+        #expect(l.totalKeyboardHeight == 192.0)
+    }
+
+    // 2. iPhone Standard / Pro (376...419 pt: iPhone 14/15/16, iPhone 15 Pro 393 pt, iPhone 16 Pro 402 pt)
+    for size in [CGSize(width: 390, height: 844), CGSize(width: 393, height: 852), CGSize(width: 402, height: 874), CGSize(width: 414, height: 896)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        #expect(p.letterRowHeight == 54.0)
+        #expect(p.bottomRowHeight == 53.0)
+        #expect(p.letterTopBottomInset == 6.5)
+        #expect(p.bottomTopBottomInset == 5.0)
+        #expect(p.visibleKeyHeight(forRowAt: 0) == 41.0)
+        #expect(p.visibleKeyHeight(forRowAt: 3) == 43.0)
+        #expect(p.totalKeyboardHeight == 255.0)
+
+        let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
+        #expect(pNoToolbar.totalKeyboardHeight == 215.0)
+
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(l.letterRowHeight == 40.0 && l.bottomRowHeight == 40.0)
+        #expect(l.visibleKeyHeight(forRowAt: 0) == 33.0)
+        #expect(l.totalKeyboardHeight == 200.0)
+    }
+
+    // 3. iPhone Plus / Pro Max (>= 420 pt: 428 pt, 430 pt, 440 pt iPhone 16 Pro Max)
+    for size in [CGSize(width: 428, height: 926), CGSize(width: 430, height: 932), CGSize(width: 440, height: 956)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        #expect(p.letterRowHeight == 56.0)
+        #expect(p.bottomRowHeight == 55.0)
+        #expect(p.letterTopBottomInset == 6.5)
+        #expect(p.bottomTopBottomInset == 5.0)
+        #expect(p.visibleKeyHeight(forRowAt: 0) == 43.0)
+        #expect(p.visibleKeyHeight(forRowAt: 3) == 45.0)
+        #expect(p.totalKeyboardHeight == 263.0)
+
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(l.letterRowHeight == 40.0 && l.bottomRowHeight == 40.0)
+        #expect(l.totalKeyboardHeight == 200.0)
+    }
+
+    // 4. iPad Floating (all iPad screen sizes -> uniform 214.0 pt compact floating card)
+    for size in [CGSize(width: 744, height: 1133), CGSize(width: 820, height: 1180), CGSize(width: 834, height: 1112), CGSize(width: 1024, height: 1366)] {
+        let fPortrait = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: size, hasToolbar: true)
+        let fLandscape = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(fPortrait.letterRowHeight == 43.0 && fPortrait.bottomRowHeight == 43.0)
+        #expect(fPortrait.visibleKeyHeight(forRowAt: 0) == 37.0)
+        #expect(fPortrait.toolbarHeight == 38.0)
+        #expect(fPortrait.edgeTopBottomInset == 2.0)
+        #expect(fPortrait.totalKeyboardHeight == 214.0)
+        #expect(fLandscape.totalKeyboardHeight == 214.0)
+    }
+
+    // 5. iPad Docked — Mini / 9.7" (<= 768 pt: 744x1133, 768x1024)
+    for size in [CGSize(width: 744, height: 1133), CGSize(width: 768, height: 1024)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(p.letterRowHeight == 56.5 && p.bottomRowHeight == 54.5)
+        #expect(p.totalKeyboardHeight == 266.0)
+        #expect(l.letterRowHeight == 74.0 && l.bottomRowHeight == 74.0)
+        #expect(l.totalKeyboardHeight == 338.0)
+    }
+
+    // 6. iPad Docked — 10.5" Air 3 (834 pt) / 11" A16 (820 pt) / 11" Pro (769...959 pt)
+    for size in [CGSize(width: 810, height: 1080), CGSize(width: 820, height: 1180), CGSize(width: 834, height: 1112), CGSize(width: 834, height: 1194)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(p.letterRowHeight == 58.5 && p.bottomRowHeight == 56.5)
+        #expect(p.totalKeyboardHeight == 274.0)
+        #expect(l.letterRowHeight == 75.0 && l.bottomRowHeight == 75.0)
+        #expect(l.totalKeyboardHeight == 342.0)
+    }
+
+    // 7. iPad Docked — 12.9" / 13" iPad Pro (>= 960 pt: 1024x1366, 1032x1376)
+    for size in [CGSize(width: 1024, height: 1366), CGSize(width: 1032, height: 1376)] {
+        let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
+        let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
+        #expect(p.letterRowHeight == 64.0 && p.bottomRowHeight == 62.0)
+        #expect(p.totalKeyboardHeight == 296.0)
+        #expect(l.letterRowHeight == 84.0 && l.bottomRowHeight == 84.0)
+        #expect(l.totalKeyboardHeight == 378.0)
+    }
+}
+
+@Test func contextualSwipeSentencePositionAndContentSafety() {
+    // 1. SentencePositionContext classification & sentence boundary slicing
+    #expect(String(SuggestionsDataBaseManager.currentSentenceSlice(in: "Men baram. ")) == " ")
+    #expect(String(SuggestionsDataBaseManager.currentSentenceSlice(in: "Sağ ol. ")) == " ")
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "", contextWords: []) == .documentStart)
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "Sel", contextWords: []) == .documentStart)
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "Men keldim. ", contextWords: []) == .sentenceStart)
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "Sağ ol. ", contextWords: ["Sağ", "ol"]) == .sentenceStart)
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "Men bugün ", contextWords: ["Men", "bugün"]) == .midSentence)
+    #expect(SuggestionsDataBaseManager.resolveSentencePositionContext(beforeText: "Bugün işim bitti, sağ ", contextWords: ["bitti", "sağ"]) == .closingContext)
+
+    // 2. Contextual swipe bonus: pronoun-verb agreement, genitive-possessive, ablative+postposition, sentence position
+    let bonus1st = SuggestionsDataBaseManager.contextualSwipeBonus(for: "keldim", prevWord: "men", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    let bonus2nd = SuggestionsDataBaseManager.contextualSwipeBonus(for: "keldiñ", prevWord: "men", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    #expect(bonus1st > bonus2nd + 1.5)
+
+    let bonusGenPoss = SuggestionsDataBaseManager.contextualSwipeBonus(for: "kitabım", prevWord: "menim", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    let bonusGenBare = SuggestionsDataBaseManager.contextualSwipeBonus(for: "kitap", prevWord: "menim", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    #expect(bonusGenPoss > bonusGenBare + 1.0)
+
+    let bonusAblPost = SuggestionsDataBaseManager.contextualSwipeBonus(for: "soñ", prevWord: "bundan", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    #expect(bonusAblPost >= 1.3)
+
+    let bonusDocGreeting = SuggestionsDataBaseManager.contextualSwipeBonus(for: "selâm", prevWord: nil, prevPrevWord: nil, bigramBoost: 0, positionContext: .documentStart)
+    let bonusMidGreeting = SuggestionsDataBaseManager.contextualSwipeBonus(for: "selâm", prevWord: "men", prevPrevWord: nil, bigramBoost: 0, positionContext: .midSentence)
+    let bonusClosing = SuggestionsDataBaseManager.contextualSwipeBonus(for: "körüşkence", prevWord: "oluñız", prevPrevWord: "sağ", bigramBoost: 0, positionContext: .closingContext)
+    #expect(bonusDocGreeting > bonusMidGreeting && bonusClosing >= 1.1)
+
+    // 3. Content-safety guardrails
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("yaman", contextWords: ["Qırım"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("duşmanı", contextWords: ["qırımtatarlar"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("haini", contextWords: ["qırım"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("zaif", contextWords: ["Ukrayina"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("ulu", contextWords: ["rusiye"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("büyük", contextWords: ["rus"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("qahraman", contextWords: ["putin"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("rusiye", contextWords: ["güzel"], typedQuery: "rus"))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("rusiye", contextWords: ["men"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("hruşçöv", contextWords: ["men"]))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("nkvd", contextWords: [], typedQuery: "nkv"))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("putin", contextWords: [], typedQuery: "put"))
+    #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("stalin", contextWords: [], typedQuery: "sta"))
+}
+
 }
 
 #if !canImport(UIKit)
@@ -1056,7 +1346,9 @@ enum AppConfiguration {
 }
 
 enum KeyboardPreferences {
+    static var suggestionsEnabled: Bool = true
     static var wordLearningEnabled: Bool = false
+    static var statsEnabled: Bool = false
     static var ukrainianCyrillicLayoutEnabled: Bool = false
     static let defaults = UserDefaults.standard
 }

@@ -36,13 +36,16 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
                 .custom(named: "floating_keyboard")
             ]
         }
+        if action == .custom(named: "url_domain") {
+            return [".com", ".ua", ".org", ".net", ".edu"].map { .character($0) }
+        }
         return super.calloutActions(for: action)
     }
 
     override func calloutActions(
         for char: String
     ) -> [KeyboardAction] {
-        guard let alternatives = Self.alternatives(for: char) else { return [] }
+        guard let alternatives = Self.alternatives(for: char, keyboardType: keyboardContext.keyboardType) else { return [] }
         return alternatives.map {
             .character(keyboardContext.keyboardType.isAlphabeticCapsLocked ? $0.uppercased() : $0)
         }
@@ -51,12 +54,50 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
 
 private extension DemoCalloutActionProvider {
 
-    static func alternatives(for char: String) -> [String]? {
+    static func alternatives(for char: String, keyboardType: Keyboard.KeyboardType) -> [String]? {
         switch char {
-        case ",": return ["."]
-        case ".": return [","]
-        case "\u{02BC}": return ["\u{02BC}", "ъ", "ь"]
-        default: return nil
+        case ",":
+            return ["."]
+        case ".":
+            return keyboardType.isAlphabetic ? [","] : [".", "…", ","]
+        case "\u{02BC}":
+            return ["\u{02BC}", "ъ", "ь"]
+        case "$":
+            return ["$", "₴", "€", "₺", "£", "¥", "¢"]
+        case "₴":
+            return ["₴", "$", "€", "₺", "£", "¥", "¢"]
+        case "€":
+            return ["€", "₴", "$", "₺", "£", "¥", "¢"]
+        case "₺":
+            return ["₺", "₴", "$", "€", "£", "¥", "¢"]
+        case "£":
+            return ["£", "₴", "$", "€", "₺", "¥", "¢"]
+        case "¥":
+            return ["¥", "₴", "$", "€", "₺", "£", "¢"]
+        case "-":
+            return ["-", "–", "—", "•"]
+        case "/":
+            return ["/", "\\"]
+        case "&":
+            return ["&", "§"]
+        case "\"":
+            return ["\"", "«", "»", "„", "“", "”"]
+        case "'":
+            return ["'", "\u{02BC}", "‘", "’", "`"]
+        case "?":
+            return ["?", "¿"]
+        case "!":
+            return ["!", "¡"]
+        case "%":
+            return ["%", "‰"]
+        case "=":
+            return ["=", "≠", "≈", "±"]
+        case "+":
+            return ["+", "±"]
+        case "0":
+            return ["0", "°"]
+        default:
+            return nil
         }
     }
 }

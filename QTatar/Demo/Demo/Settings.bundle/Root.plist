@@ -11,30 +11,6 @@
 		<dict>
 			<key>Type</key>
 			<string>PSGroupSpecifier</string>
-			<key>Title</key>
-			<string>QırımKey</string>
-			<key>FooterText</key>
-			<string>Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura.</string>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
-			<string>Kirill klaviaturası</string>
-			<key>Key</key>
-			<string>crh.key.cyrillicEnabled</string>
-			<key>DefaultValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
-			<string>Ukraina tizilişi</string>
-			<key>Key</key>
-			<string>crh.key.ukrainianCyrillicLayout</string>
-			<key>DefaultValue</key>
-			<false/>
 		</dict>
 		<dict>
 			<key>Type</key>

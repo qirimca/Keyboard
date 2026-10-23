@@ -85,6 +85,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func effectiveIsDark(for context: KeyboardContext) -> Bool {
+        if context.keyboardAppearance == .dark {
+            return true
+        }
+        if context.keyboardAppearance == .light {
+            return false
+        }
         if isSandboxOverrideActive(for: context),
            KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
             let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
@@ -92,12 +98,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             if isUITesting || (ts > 0 && (Date().timeIntervalSince1970 - ts) < 60.0) {
                 return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
             }
-        }
-        if context.keyboardAppearance == .dark {
-            return true
-        }
-        if context.keyboardAppearance == .light {
-            return false
         }
         return context.hasDarkColorScheme
             || UITraitCollection.current.userInterfaceStyle == .dark
@@ -113,11 +113,66 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         let kbType = effectiveProxyKeyboardType(for: context)
         switch kbType {
-        case .default, .asciiCapable, .twitter, .namePhonePad:
+        case .default, .asciiCapable, .twitter, .namePhonePad, .webSearch:
             return true
         default:
             return false
         }
+    }
+
+    static func effectiveScreenSize(for context: KeyboardContext) -> CGSize {
+        if context.screenSize.width > 0 && context.screenSize.height > 0 {
+            return context.screenSize
+        }
+        return UIScreen.main.bounds.size
+    }
+
+    static func resolvedMetrics(
+        for context: KeyboardContext,
+        isLandscapeOverride: Bool? = nil,
+        isFloatingOverride: Bool? = nil,
+        hasToolbarOverride: Bool? = nil
+    ) -> KeyboardAdaptiveGeometry {
+        let isPad = context.deviceType == .pad
+        let isFloating = isFloatingOverride ?? context.isKeyboardFloating
+        let isPortrait = !(isLandscapeOverride ?? context.interfaceOrientation.isLandscape)
+        let hasToolbar = hasToolbarOverride ?? shouldShowTopToolbar(for: context)
+        let screenSize = effectiveScreenSize(for: context)
+        return KeyboardAdaptiveGeometry.resolve(
+            isPad: isPad,
+            isFloating: isFloating,
+            isPortrait: isPortrait,
+            screenSize: screenSize,
+            hasToolbar: hasToolbar
+        )
+    }
+
+    static func rowHeight(forRowAt rowIndex: Int, context: KeyboardContext) -> CGFloat {
+        if context.isKeyboardFloating {
+            return 43
+        }
+        return resolvedMetrics(for: context).rowHeight(forRowAt: rowIndex)
+    }
+
+    static func itemEdgeInsets(forRowAt rowIndex: Int, context: KeyboardContext) -> EdgeInsets {
+        let metrics = resolvedMetrics(for: context)
+        let vertical = metrics.verticalItemInset(forRowAt: rowIndex)
+        let horizontal = metrics.horizontalItemInset
+        return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
+    }
+
+    static func expectedKeyboardHeight(
+        for context: KeyboardContext,
+        isLandscapeOverride: Bool? = nil,
+        isFloatingOverride: Bool? = nil,
+        hasToolbar: Bool
+    ) -> CGFloat {
+        resolvedMetrics(
+            for: context,
+            isLandscapeOverride: isLandscapeOverride,
+            isFloatingOverride: isFloatingOverride,
+            hasToolbarOverride: hasToolbar
+        ).totalKeyboardHeight
     }
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
@@ -126,62 +181,35 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             style.height = 0
             return style
         }
-        if keyboardContext.isKeyboardFloating {
-            style.height = 38
-        } else if isPad {
-            style.height = 38
-        } else {
-            style.height = 42
-        }
+        style.height = Self.resolvedMetrics(for: keyboardContext, hasToolbarOverride: true).toolbarHeight
         return style
     }
 
     override func buttonCornerRadius(for action: KeyboardAction) -> CGFloat {
-        if keyboardContext.isKeyboardFloating {
-            return 7.5
-        }
-        if isPad {
-            return keyboardContext.interfaceOrientation.isPortrait ? 7.0 : 8.0
-        }
-        return 6.5
+        Self.resolvedMetrics(for: keyboardContext).cornerRadius
     }
     
     override var keyboardEdgeInsets: EdgeInsets {
-        if keyboardContext.isKeyboardFloating {
-            // Leave the bottom 30pt floatingChromeBuffer grabber bar uncovered inside the 346pt system floating card
-            return EdgeInsets(top: 2, leading: 6, bottom: 4, trailing: 6)
-        }
-        switch keyboardContext.deviceType {
-        case .phone:
-            return EdgeInsets(top: 0, leading: 3, bottom: 0, trailing: 3)
-        case .pad:
-            return EdgeInsets(top: 2, leading: 3, bottom: 2, trailing: 3)
-        default:
-            return super.keyboardEdgeInsets
-        }
+        let metrics = Self.resolvedMetrics(for: keyboardContext)
+        return EdgeInsets(
+            top: metrics.edgeTopBottomInset,
+            leading: metrics.edgeHorizontalInset,
+            bottom: metrics.edgeTopBottomInset,
+            trailing: metrics.edgeHorizontalInset
+        )
     }
     
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
-        if keyboardContext.isKeyboardFloating {
-            config.rowHeight = 49
-            config.buttonInsets = EdgeInsets(top: 3.5, leading: 1.8, bottom: 3.5, trailing: 1.8)
-            config.buttonCornerRadius = 7.5
-        } else if keyboardContext.deviceType == .phone {
-            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            config.rowHeight = isPortrait ? 55 : 42
-            config.buttonInsets = isPortrait
-                ? EdgeInsets(top: 5.5, leading: 3.0, bottom: 5.5, trailing: 3.0)
-                : EdgeInsets(top: 3.5, leading: 3.0, bottom: 3.5, trailing: 3.0)
-            config.buttonCornerRadius = 6.5
-        } else if isPad {
-            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            config.rowHeight = isPortrait ? 56.5 : 75
-            config.buttonInsets = isPortrait
-                ? EdgeInsets(top: 4.25, leading: 6.0, bottom: 4.25, trailing: 6.0)
-                : EdgeInsets(top: 6.0, leading: 7.0, bottom: 6.0, trailing: 7.0)
-            config.buttonCornerRadius = isPortrait ? 7.0 : 8.0
-        }
+        let metrics = Self.resolvedMetrics(for: keyboardContext)
+        config.rowHeight = metrics.letterRowHeight
+        config.buttonInsets = EdgeInsets(
+            top: metrics.letterTopBottomInset,
+            leading: metrics.horizontalItemInset,
+            bottom: metrics.letterTopBottomInset,
+            trailing: metrics.horizontalItemInset
+        )
+        config.buttonCornerRadius = metrics.cornerRadius
         return config
     }
     
@@ -189,17 +217,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         forRowAt rowIndex: Int,
         in layout: KeyboardLayout
     ) -> CGFloat {
-        let isCompact = keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating
-        if isCompact {
-            return letterRowHeight
-        }
-        if isPad {
-            if keyboardContext.interfaceOrientation.isPortrait {
-                return rowIndex == 3 ? 54.5 : 56.5
-            }
-            return 75
-        }
-        return super.rowHeight(forRowAt: rowIndex, in: layout)
+        Self.rowHeight(forRowAt: rowIndex, context: keyboardContext)
     }
     
     override func buttonContentInsets(for action: KeyboardAction) -> EdgeInsets {
@@ -334,11 +352,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     /// Height of letter rows tuned for native iOS look and feel
     private var letterRowHeight: CGFloat {
-        if keyboardContext.isKeyboardFloating {
-            return 49
-        }
-        let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-        return isPortrait ? 55 : 42
+        Self.resolvedMetrics(for: keyboardContext).letterRowHeight
     }
     
     var isPrimaryActionEnabled: Bool {
@@ -350,6 +364,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return true
     }
     
+    static var usesClassicSystemKeyStyle: Bool {
+        if let override = KeyboardPreferences.defaults.object(forKey: "crh.key.test.useClassicStyle") as? Bool {
+            return override
+        }
+        if #available(iOS 26.0, *) {
+            return false
+        }
+        return true
+    }
+
     override func buttonBackgroundColor(
         for action: KeyboardAction,
         isPressed: Bool
@@ -363,19 +387,34 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         
         let context = keyboardContext
         let isDark = Self.effectiveIsDark(for: context)
-        
-        let darkInputKey = Color(white: 0.28)
-        let darkInputKeyPressed = Color(white: 0.18)
-        let darkSystemKey = darkInputKey
-        let darkSystemKeyPressed = darkInputKeyPressed
-        
-        let lightInputKey = Color.white
-        let lightInputKeyPressed = Color(white: 0.85)
-        let lightSystemKeyGray = Color(red: 172/255, green: 177/255, blue: 185/255)
-        let lightSystemKeyGrayPressed = Color.white
-        
-        let lightSystemKey = lightInputKey
-        let lightSystemKeyPressed = lightInputKeyPressed
+        let useClassicStyle = Self.usesClassicSystemKeyStyle
+
+        let darkInputKey = useClassicStyle
+            ? Color(white: 0.28)
+            : Color(red: 0.50, green: 0.50, blue: 0.54).opacity(0.38)
+        let darkInputKeyPressed = useClassicStyle
+            ? Color(white: 0.18)
+            : Color(red: 0.68, green: 0.68, blue: 0.72).opacity(0.52)
+        let darkSystemKey = useClassicStyle
+            ? Color(white: 0.20)
+            : darkInputKey
+        let darkSystemKeyPressed = useClassicStyle
+            ? Color(white: 0.28)
+            : darkInputKeyPressed
+
+        let lightInputKey = useClassicStyle
+            ? Color.white
+            : Color.white.opacity(0.92)
+        let lightInputKeyPressed = useClassicStyle
+            ? Color(white: 0.85)
+            : Color(white: 0.72).opacity(0.68)
+        let lightSystemKeyGray = useClassicStyle
+            ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0) // #ACB3BE
+            : Color(red: 0.68, green: 0.70, blue: 0.75).opacity(0.46)
+        let lightSystemKeyGrayPressed = lightInputKey
+
+        let lightSystemKey = useClassicStyle ? lightSystemKeyGray : lightInputKey
+        let lightSystemKeyPressed = useClassicStyle ? lightSystemKeyGrayPressed : lightInputKeyPressed
         
         // Return / Primary actions
         if case .primary(let type) = action {
@@ -437,11 +476,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         
         let context = keyboardContext
         let isDark = Self.effectiveIsDark(for: context)
+        let primaryLabelColor = isDark ? Color.white.opacity(0.88) : Color.black.opacity(0.84)
         
         if case .primary(let type) = action {
             switch type {
             case .newLine, .return:
-                return isDark ? .white : .black
+                return primaryLabelColor
             default:
                 guard isPrimaryActionEnabled else {
                     return isDark ? Color.white.opacity(0.35) : Color.black.opacity(0.35)
@@ -459,14 +499,15 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             }
         }
         
-        return isDark ? .white : .black
+        return primaryLabelColor
     }
 
     override func buttonFont(for action: KeyboardAction) -> KeyboardFont {
         let isFloating = keyboardContext.isKeyboardFloating
         let isDockedPad = isPad && !isFloating
         let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-        let minScreenDim = min(keyboardContext.screenSize.width, keyboardContext.screenSize.height)
+        let effScreen = Self.effectiveScreenSize(for: keyboardContext)
+        let minScreenDim = min(effScreen.width, effScreen.height)
         let isCompactPhone = !isPad && !isFloating && minScreenDim > 0 && minScreenDim < 385
         switch action {
         case .character(let char):
@@ -474,7 +515,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             if isLetter {
                 let isLower = char == char.lowercased() && char != char.uppercased()
                 if isFloating {
-                    return .system(size: isLower ? 20.5 : 18.0, weight: .regular)
+                    return .system(size: isLower ? 19.5 : 17.5, weight: .regular)
                 } else if isDockedPad {
                     return .system(size: isPortrait ? (isLower ? 20.5 : 19.5) : (isLower ? 23.0 : 21.5), weight: .regular)
                 } else if isCompactPhone {
@@ -483,7 +524,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                     return .system(size: isLower ? 24.5 : 21.5, weight: .regular)
                 }
             }
-            return .system(size: isFloating ? 19 : (isDockedPad ? (isPortrait ? 20 : 22) : (isCompactPhone ? 20 : 21.5)), weight: .regular)
+            return .system(size: isFloating ? 18 : (isDockedPad ? (isPortrait ? 20 : 22) : (isCompactPhone ? 20 : 21.5)), weight: .regular)
         case .custom(let name) where name == "url_domain":
             return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":

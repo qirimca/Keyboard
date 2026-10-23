@@ -13,10 +13,55 @@ import UIKit
 /// Follows the unified Display = On Tap principle (`ios_verified.md`) and is 100% verified against `CrimeanTatarTransliterator`.
 struct KeyboardGreetingPhrase: Identifiable, Equatable {
     let id: Int
-    let text: String
-    let attribution: String?
-    let translationUA: String
-    let translationEN: String
+    let defaultText: String
+    let defaultAttribution: String?
+    let defaultTranslationUA: String
+    let defaultTranslationEN: String
+
+    init(
+        id: Int,
+        text: String,
+        attribution: String?,
+        translationUA: String,
+        translationEN: String
+    ) {
+        self.id = id
+        self.defaultText = text
+        self.defaultAttribution = attribution
+        self.defaultTranslationUA = translationUA
+        self.defaultTranslationEN = translationEN
+    }
+
+    private static func localizedValue(forKey key: String, language: String, fallback: String) -> String {
+        let bundle = KeyboardPreferences.localizationBundle(for: language)
+        let sentinel = "__MISSING_\(key)__"
+        let resolved = bundle.localizedString(forKey: key, value: sentinel, table: "DailyPhrases")
+        if resolved == sentinel || resolved == key {
+            return fallback
+        }
+        return resolved
+    }
+
+    var text: String {
+        let val = Self.localizedValue(forKey: "phrase.\(id).text", language: "crh", fallback: defaultText)
+        return val.isEmpty ? defaultText : val
+    }
+
+    var attribution: String? {
+        let fallback = defaultAttribution ?? ""
+        let val = Self.localizedValue(forKey: "phrase.\(id).attribution", language: "crh", fallback: fallback)
+        return val.isEmpty ? nil : val
+    }
+
+    var translationUA: String {
+        let val = Self.localizedValue(forKey: "phrase.\(id).translation", language: "uk", fallback: defaultTranslationUA)
+        return val.isEmpty ? defaultTranslationUA : val
+    }
+
+    var translationEN: String {
+        let val = Self.localizedValue(forKey: "phrase.\(id).translation", language: "en", fallback: defaultTranslationEN)
+        return val.isEmpty ? defaultTranslationEN : val
+    }
 
     var bannerCRH: String { text }
 
@@ -98,7 +143,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 7,
             text: "Tilge ürmet — ilge ürmettir.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Повага до мови — це повага до краю (народу).» (Кримськотатарське прислів'я)",
+            translationUA: "«Повага до мови — це повага до народу.» (Кримськотатарське прислів'я)",
             translationEN: "\"Respect for the language is respect for the people.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -126,14 +171,14 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 11,
             text: "İlim — aqıl çoqrağıdır.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Наука (знання) — це джерело розуму.» (Кримськотатарське прислів'я)",
+            translationUA: "«Знання — це джерело розуму.» (Кримськотатарське прислів'я)",
             translationEN: "\"Knowledge is the spring of wisdom.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 12,
             text: "Tatlı söz baldan tatlı.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Лагідне (солодке) слово солодше за мед.» (Кримськотатарське прислів'я)",
+            translationUA: "«Лагідне слово солодше за мед.» (Кримськотатарське прислів'я)",
             translationEN: "\"A sweet word is sweeter than honey.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -154,7 +199,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 15,
             text: "Göñlüñdeki — tiliñde.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Що на серці (в душі) — те й на язиці.» (Кримськотатарське прислів'я)",
+            translationUA: "«Що на серці — те й на язиці.» (Кримськотатарське прислів'я)",
             translationEN: "\"What is in the heart is on the tongue.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -168,14 +213,14 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 17,
             text: "Birlik evde bereket bar.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«У домі, де є злагода (єдність), є й достаток.» (Кримськотатарське прислів'я)",
+            translationUA: "«У домі, де панує єдність, є й достаток.» (Кримськотатарське прислів'я)",
             translationEN: "\"In a united home, there is abundance.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 18,
             text: "Muhabbetlik — baht anahtarı.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Любов (дружелюбність) — ключ до щастя.» (Кримськотатарське прислів'я)",
+            translationUA: "«Любов і щирість — ключ до щастя.» (Кримськотатарське прислів'я)",
             translationEN: "\"Love and affection are the key to happiness.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -294,8 +339,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 35,
             text: "Sen bar ekeç, men de barım!",
             attribution: "Şeryan Ali",
-            translationUA: "«Доки є ти — є і я! (про рідну мову).» (Шерьян Алі)",
-            translationEN: "\"As long as you exist, I exist too! (to the native tongue).\" (Şeryan Ali)"
+            translationUA: "«Доки живеш ти, рідна мово, — живу і я!» (Шерьян Алі)",
+            translationEN: "\"As long as you live, O native tongue, I live too!\" (Şeryan Ali)"
         ),
         .init(
             id: 36,
@@ -322,8 +367,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 39,
             text: "Oqup-yazam men bugün!",
             attribution: "Seitümer Emin",
-            translationUA: "«Сьогодні я читаю і пишу (рідною мовою)!» (Сейтумер Емін)",
-            translationEN: "\"Today I read and write (in my native tongue)!\" (Seitümer Emin)"
+            translationUA: "«Сьогодні я читаю і пишу рідною мовою!» (Сейтумер Емін)",
+            translationEN: "\"Today I read and write in my native tongue!\" (Seitümer Emin)"
         ),
         .init(
             id: 40,
@@ -350,7 +395,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 43,
             text: "Elleriñiz dert körmesin!",
             attribution: nil,
-            translationUA: "Нехай ваші руки ніколи не знають болю (біди)!",
+            translationUA: "Нехай ваші руки ніколи не знають втоми й болю!",
             translationEN: "May your hands never know pain!"
         ),
         .init(
@@ -364,14 +409,14 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 45,
             text: "Bergen el dert körmez.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Рука, що дає, не знатиме болю (біди).» (Кримськотатарське прислів'я)",
+            translationUA: "«Рука, що дає, ніколи не знатиме біди.» (Кримськотатарське прислів'я)",
             translationEN: "\"The hand that gives will know no pain.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 46,
             text: "Ünerli qolda bereket bar.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«В умілих руках є благословення (достаток).» (Кримськотатарське прислів'я)",
+            translationUA: "«В умілих руках — благословення й достаток.» (Кримськотатарське прислів'я)",
             translationEN: "\"In skilled hands there is blessing and abundance.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -385,15 +430,15 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 48,
             text: "Körüşkenimiz ne de yahşı oldı!",
             attribution: nil,
-            translationUA: "Як же добре, що ми зустрілися (побачилися)!",
+            translationUA: "Як же добре, що ми зустрілися!",
             translationEN: "How wonderful it is that we met!"
         ),
         .init(
             id: 49,
             text: "Hoş sefa keldiñiz!",
             attribution: nil,
-            translationUA: "Ласкаво просимо! (Раді вашому приходу!)",
-            translationEN: "Welcome! (Glad you have come!)"
+            translationUA: "Ласкаво просимо, раді вашому приходу!",
+            translationEN: "Welcome, we are glad you have come!"
         ),
         .init(
             id: 50,
@@ -413,7 +458,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 52,
             text: "Künüñiz hayırlı olsun!",
             attribution: nil,
-            translationUA: "Нехай ваш день буде добрим (вдалим)!",
+            translationUA: "Нехай ваш день буде добрим і благословенним!",
             translationEN: "Have a good and blessed day!"
         ),
         .init(
@@ -427,7 +472,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 54,
             text: "Geceler hayır!",
             attribution: nil,
-            translationUA: "На добраніч! (Доброї ночі!)",
+            translationUA: "Доброї та спокійної ночі!",
             translationEN: "Good night!"
         ),
         .init(
@@ -442,21 +487,21 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             text: "Oraza bayramıñız hayırlı olsun!",
             attribution: nil,
             translationUA: "Нехай ваше свято Ораза-байрам буде благословенним і добрим!",
-            translationEN: "May your Eid al-Fitr (Oraza Bayram) be blessed and auspicious!"
+            translationEN: "May your Oraza Bayram be blessed and joyful!"
         ),
         .init(
             id: 57,
             text: "Qurban bayramıñız hayırlı olsun!",
             attribution: nil,
             translationUA: "Нехай ваше свято Курбан-байрам буде благословенним і добрим!",
-            translationEN: "May your Eid al-Adha (Qurban Bayram) be blessed and auspicious!"
+            translationEN: "May your Qurban Bayram be blessed and joyful!"
         ),
         .init(
             id: 58,
             text: "Cuma künüñiz mubarek olsun!",
             attribution: nil,
-            translationUA: "Нехай ваша п'ятниця (Джума) буде благословенною!",
-            translationEN: "May your Friday (Jumu'ah) be blessed!"
+            translationUA: "Нехай ваша п'ятниця буде благословенною!",
+            translationEN: "May your Friday be blessed!"
         ),
         .init(
             id: 59,
@@ -469,21 +514,21 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 60,
             text: "Bu til maña — tolğun Ay!",
             attribution: "Remzi Burnaş",
-            translationUA: "«Ця мова для мене — повний Місяць (серед тисячі й однієї зірки)!» (Ремзі Бурнаш)",
-            translationEN: "\"This language is a full Moon to me (among a thousand and one stars)!\" (Remzi Burnaş)"
+            translationUA: "«Ця мова для мене — повний Місяць!» (Ремзі Бурнаш)",
+            translationEN: "\"This language is a full Moon to me!\" (Remzi Burnaş)"
         ),
         .init(
             id: 61,
             text: "Ant etkenmen yaranı sarmağa!",
             attribution: "Noman Çelebicihan",
-            translationUA: "«Я присягнувся перев'язати рани (свого народу)!» (Номан Челебіджихан)",
-            translationEN: "\"I have sworn to bind the wounds (of my people)!\" (Noman Çelebicihan)"
+            translationUA: "«Я присягнувся перев'язати рани свого народу!» (Номан Челебіджихан)",
+            translationEN: "\"I have sworn to bind the wounds of my people!\" (Noman Çelebicihan)"
         ),
         .init(
             id: 62,
             text: "Navrez keldi — yaz keldi!",
             attribution: "Qırımtatar halq yırı",
-            translationUA: "«Наврез прийшов — весна (літо) прийшла!» (Кримськотатарська народна пісня)",
+            translationUA: "«Наврез прийшов — весна прийшла!» (Кримськотатарська народна пісня)",
             translationEN: "\"Navrez has come—spring has arrived!\" (Crimean Tatar folk song)"
         ),
         .init(
@@ -532,7 +577,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 69,
             text: "Allah keçmişlerimizni rahmet eylesin!",
             attribution: nil,
-            translationUA: "Нехай Всевишній помилує душі наших предків (померлих)!",
+            translationUA: "Нехай Всевишній помилує душі наших померлих предків!",
             translationEN: "May God have mercy on the souls of our departed ancestors!"
         ),
         .init(
@@ -560,7 +605,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 73,
             text: "Baardeki areket — küzdeki bereket.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Весняна праця (рух) — осінній достаток (урожай).» (Кримськотатарське прислів'я)",
+            translationUA: "«Весняна праця — осінній достаток.» (Кримськотатарське прислів'я)",
             translationEN: "\"Effort in spring brings abundance in autumn.\" (Crimean Tatar proverb)"
         ),
         .init(
@@ -609,7 +654,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 80,
             text: "İlim — insannıñ kemalıdır!",
             attribution: "Üsein Şamil Tohtarğazı",
-            translationUA: "«Наука (знання) — це досконалість людини!» (Усеїн Шаміль Тохтаргъази)",
+            translationUA: "«Знання — це досконалість людини!» (Усеїн Шаміль Тохтаргази)",
             translationEN: "\"Knowledge is the perfection of humanity!\" (Üsein Şamil Tohtarğazı)"
         ),
         .init(
@@ -630,7 +675,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 83,
             text: "İşiñiz oñ kelsin!",
             attribution: nil,
-            translationUA: "Нехай ваша справа легко вдається (йде на лад)!",
+            translationUA: "Нехай ваша справа легко вдається й іде на лад!",
             translationEN: "May your work go smoothly and succeed!"
         ),
         .init(
@@ -914,11 +959,14 @@ struct NativeAutocompleteToolbar: View {
     }
 
     private var height: CGFloat {
-        isFloating ? 38 : (isDockedPad ? 38 : 42)
+        isFloating ? 38 : (isDockedPad ? 38 : 40)
     }
 
     private var shouldShowGreetingBanner: Bool {
         guard DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext) else { return false }
+        if DemoStyleProvider.effectiveProxyKeyboardType(for: keyboardContext) == .webSearch {
+            return false
+        }
         guard !greetingState.isDismissedForCurrentSession else { return false }
         let suggestions = autocompleteContext.suggestions
         guard suggestions.isEmpty else { return false }
@@ -933,6 +981,42 @@ struct NativeAutocompleteToolbar: View {
 
     private var primaryColor: Color {
         isDark ? .white : .black
+    }
+
+    static func slotWidths(
+        for suggestions: [Autocomplete.Suggestion],
+        totalWidth: CGFloat,
+        slotCount: Int = 3
+    ) -> [CGFloat] {
+        let usableWidth = max(totalWidth - 1.0, CGFloat(slotCount))
+        let equalWidth = usableWidth / CGFloat(slotCount)
+        let lengths = (0..<slotCount).map { idx -> Int in
+            guard idx < suggestions.count else { return 0 }
+            return suggestions[idx].title.count
+        }
+        let maxLen = lengths.max() ?? 0
+        guard maxLen >= 10 else {
+            return Array(repeating: equalWidth, count: slotCount)
+        }
+        let rawWeights = (0..<slotCount).map { idx -> CGFloat in
+            let len = lengths[idx]
+            guard len > 0 else { return 7.0 }
+            let isAutocorrectBonus: CGFloat = (idx < suggestions.count && suggestions[idx].isAutocorrect) ? 2.0 : 0.0
+            return min(max(CGFloat(len) + isAutocorrectBonus, 6.5), 25.0)
+        }
+        let rawSum = max(rawWeights.reduce(0, +), 1.0)
+        var fractions = rawWeights.map { min(max($0 / rawSum, 0.22), 0.52) }
+        let fracSum = max(fractions.reduce(0, +), 0.001)
+        fractions = fractions.map { $0 / fracSum }
+        return fractions.map { max(usableWidth * $0, 1.0) }
+    }
+
+    private func adaptiveSlotWidths(
+        suggestions: [Autocomplete.Suggestion],
+        availableWidth: CGFloat,
+        slotCount: Int = 3
+    ) -> [CGFloat] {
+        Self.slotWidths(for: suggestions, totalWidth: availableWidth, slotCount: slotCount)
     }
 
     @ViewBuilder
@@ -951,16 +1035,19 @@ struct NativeAutocompleteToolbar: View {
                         ? (isMathUnknown ? "«\(suggestion.title)»" : "“\(suggestion.title)”")
                         : suggestion.title
                     let isPad = keyboardContext.deviceType == .pad && !isFloating
+                    let allowTwoLines = displayTitle.count >= 18 || (displayTitle.contains("-") && displayTitle.count >= 13)
                     if suggestion.isAutocorrect {
                         Text(displayTitle)
                             .font(isFloating ? .subheadline.weight(.regular) : .system(size: 17, weight: .regular))
                             .foregroundStyle(primaryColor)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .padding(.horizontal, isFloating ? 8 : 14)
+                            .lineLimit(allowTwoLines ? 2 : 1)
+                            .minimumScaleFactor(0.58)
+                            .allowsTightening(true)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, isFloating ? 6 : 10)
                             .frame(
-                                minWidth: isPad ? 138 : 88,
-                                maxWidth: isPad ? 168 : .infinity,
+                                minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
+                                maxWidth: isPad ? max(168, width - 20) : .infinity,
                                 minHeight: isPad ? 35 : (isFloating ? 28 : 32)
                             )
                             .background(
@@ -968,15 +1055,17 @@ struct NativeAutocompleteToolbar: View {
                                     .fill(isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
                                     .shadow(color: Color.black.opacity(isDark ? 0.18 : 0.06), radius: 1.5, x: 0, y: 0.5)
                             )
-                            .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 14 : 8))
+                            .padding(.horizontal, isFloating ? 3 : (isDockedPad ? 10 : 6))
                     } else {
                         Text(displayTitle)
                             .font(isFloating ? .subheadline : .system(size: 17, weight: .regular))
                             .foregroundStyle(primaryColor)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                            .padding(.horizontal, isFloating ? 6 : 12)
-                            .padding(.vertical, isFloating ? 3 : 5)
+                            .lineLimit(allowTwoLines ? 2 : 1)
+                            .minimumScaleFactor(0.58)
+                            .allowsTightening(true)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, isFloating ? 4 : 8)
+                            .padding(.vertical, isFloating ? 2 : 4)
                     }
                 }
             }
@@ -997,7 +1086,7 @@ struct NativeAutocompleteToolbar: View {
             let totalWidth = max(geo.size.width, 1)
             let sideInset: CGFloat = 0
             let centerWidth = max(totalWidth - (sideInset * 2), 1)
-            let slotWidth = max((centerWidth - 1.0) / CGFloat(slotCount), 1)
+            let slotWidths = adaptiveSlotWidths(suggestions: suggestions, availableWidth: centerWidth, slotCount: slotCount)
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
             let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
             let splitClusterWidth = min(max((totalWidth * (1.0 - minGapFraction)) / 2.0, 1), isPortrait ? 276 : 320)
@@ -1062,7 +1151,7 @@ struct NativeAutocompleteToolbar: View {
                                 suggestionSlotButton(
                                     index: index,
                                     suggestion: suggestion,
-                                    width: slotWidth
+                                    width: slotWidths[index]
                                 )
 
                                 if index < slotCount - 1 {

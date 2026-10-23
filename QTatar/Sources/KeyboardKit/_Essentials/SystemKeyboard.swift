@@ -322,7 +322,7 @@ private extension SystemKeyboard {
                     rowHeight: rowHeight
                 )
             }
-            .id("\(keyboardContext.locale.identifier)-\(keyboardContext.hasDarkColorScheme)-" + itemRow.map { String(describing: $0.action) }.joined())
+            .id("\(keyboardContext.locale.identifier)-\(keyboardContext.hasDarkColorScheme)")
         }
         .frame(height: rowHeight)
     }

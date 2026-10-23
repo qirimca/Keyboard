@@ -1,18 +1,8 @@
-/* A single strings file, whose title is specified in your preferences schema. The strings files provide the localized content to display to the user for each of your preferences. */
-
+/* iOS Settings labels. */
 "Group" = "Group";
 "Name" = "Name";
 "Enabled" = "Enabled";
-"none given" = "None given";
-"settings.cyrillic" = "Cyrillic keyboard";
-"settings.ukrainianCyrillic" = "Ukrainian layout";
-"settings.suggestions" = "Word suggestions";
-"settings.wordLearning" = "Learn words";
-"settings.stats" = "Typing statistics & levels";
-"settings.footer" = "Auto-Correction, Math Results, and Smart Punctuation are managed in iOS Settings → General → Keyboard.";
-"Kirill klaviaturası" = "Cyrillic keyboard";
-"Ukraina tizilişi" = "Ukrainian layout";
+"none given" = "none given";
 "Söz teklifleri" = "Word suggestions";
-"Sözlerni ögrenüv" = "Learn words";
-"Statistika ve yazuv seviyeleri" = "Typing statistics & levels";
-"Avto-tüzetüv, matematik neticeler ve aqıllı tinış sazlamaları: iOS Sazlamaları → Umumiy → Klaviatura." = "Auto-Correction, Math Results, and Smart Punctuation are managed in iOS Settings → General → Keyboard.";
+"Sözlerni ögrenüv" = "Word learning";
+"Statistika ve yazuv seviyeleri" = "Statistics & typing levels";

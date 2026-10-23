@@ -190,21 +190,27 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             || keyboardContext.keyboardType == .alphabetic(.capsLocked)
         let isAllCaps = keyboardContext.keyboardType == .alphabetic(.capsLocked)
         let shouldCap = isUpper || (SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence)
+        let currentClause = String(SuggestionsDataBaseManager.currentSentenceSlice(in: before))
         let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
-        let contextWords = before
+        let contextWords = currentClause
             .components(separatedBy: delimiters)
             .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }
+        let positionContext = SuggestionsDataBaseManager.resolveSentencePositionContext(
+            beforeText: before,
+            contextWords: contextWords
+        )
 
         var suggestions = SuggestionsDataBaseManager.shared.matchSwipePath(
             keySequence: keys,
             isCyrillic: isCyrillic,
             shouldCapitalize: shouldCap,
             contextWords: contextWords,
+            positionContext: positionContext,
             trailPoints: trailPoints,
             timestamps: timestamps,
             keyFrames: keyFrames,
-            limit: 4
+            limit: 10
         )
         if isAllCaps {
             suggestions = suggestions.map {
@@ -214,7 +220,29 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 )
             }
         }
-        guard let best = suggestions.first?.text, !best.isEmpty else { return }
+        guard !suggestions.isEmpty else { return }
+
+        let isSameRepeatSwipeAfterBackspace = isPostSwipeBackspaceState
+            && keys.first?.lowercased() == lastSwipeKeySequence.first?.lowercased()
+            && keys.last?.lowercased() == lastSwipeKeySequence.last?.lowercased()
+            && abs(keys.count - lastSwipeKeySequence.count) <= 2
+            && lastSwipeCandidateQueue.count >= 4
+
+        let best: String
+        let primaryAlternatives: [String]
+        if isSameRepeatSwipeAfterBackspace {
+            best = lastSwipeCandidateQueue[3]
+            primaryAlternatives = Array(lastSwipeCandidateQueue.prefix(3))
+            isPostSwipeBackspaceState = false
+        } else {
+            let candidateTexts = suggestions.map(\.text)
+            lastSwipeCandidateQueue = candidateTexts
+            lastSwipeKeySequence = keys
+            isPostSwipeBackspaceState = false
+            best = candidateTexts[0]
+            primaryAlternatives = Array(candidateTexts.dropFirst().prefix(3))
+        }
+        guard !best.isEmpty else { return }
 
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
@@ -226,6 +254,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             guard let lastChar = before.last else { return false }
             return !lastChar.isWhitespace && lastChar != "\n" && lastChar != "(" && lastChar != "[" && lastChar != "\"" && lastChar != "«"
         }()
+        postSwipeNeedsLeadingSpace = needsLeadingSpace
         let textToInsert = needsLeadingSpace ? (" " + best) : best
         proxy.insertText(textToInsert)
         TextHistoryManager.shared.recordInsert(textToInsert)
@@ -239,18 +268,24 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             keyboardController?.setKeyboardType(.alphabetic(.lowercased))
         }
 
-        // Do not repeat the already-inserted top-1 word in Slot 0; offer alternative swipe candidates + next-word continuations.
-        var toolbarSuggestions: [Autocomplete.Suggestion] = suggestions.dropFirst().map {
+        // Do not repeat the already-inserted word in Slot 0; offer alternative swipe candidates + next-word continuations.
+        var toolbarSuggestions: [Autocomplete.Suggestion] = primaryAlternatives.map {
             Autocomplete.Suggestion(
-                text: $0.text,
+                text: $0,
                 isAutocorrect: false,
                 additionalInfo: ["replaceSwipedWord": true]
             )
         }
         if toolbarSuggestions.count < 3 {
+            let updatedContext = contextWords + [best]
+            let nextPosition = SuggestionsDataBaseManager.resolveSentencePositionContext(
+                beforeText: before + textToInsert,
+                contextWords: updatedContext
+            )
             let continuations = SuggestionsDataBaseManager.shared.nextWordSuggestions(
-                contextWords: contextWords + [best],
-                shouldCapitalize: false
+                contextWords: updatedContext,
+                shouldCapitalize: false,
+                positionContext: nextPosition
             )
             for cont in continuations where toolbarSuggestions.count < 3 {
                 if !toolbarSuggestions.contains(where: { $0.text.caseInsensitiveCompare(cont.text) == .orderedSame })
@@ -300,6 +335,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         resetComposition()
         lastAutoCorrection = nil
         lastSwipedWordInsertion = nil
+        lastSwipeCandidateQueue = []
+        lastSwipeKeySequence = []
+        isPostSwipeBackspaceState = false
         hasActivePostSwipeSuggestions = false
         typedWordBuffer = ""
 
@@ -331,6 +369,20 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         keyboardController?.performAutocomplete()
     }
 
+    func handleSlideFrom123Character(_ character: String) {
+        SwipeTypingState.shared.clearKeyFrames()
+        guard !character.isEmpty else {
+            keyboardController?.setKeyboardType(.alphabetic(.lowercased))
+            return
+        }
+        let action = KeyboardAction.character(character)
+        triggerFeedback(for: .press, on: action)
+        handle(.release, on: action)
+        keyboardController?.setKeyboardType(.alphabetic(.lowercased))
+        SwipeTypingState.shared.clearKeyFrames()
+        keyboardController?.performAutocomplete()
+    }
+
     private func apply(_ edit: CrimeanTatarTransliterator.Edit) {
         let proxy = keyboardContext.textDocumentProxy
         let removed = String((proxy.documentContextBeforeInput ?? "").suffix(edit.deleteCount))
@@ -346,8 +398,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     private static func previousCompletedWord(in proxy: UITextDocumentProxy, excludingCurrentWord: Bool) -> String? {
         guard let before = proxy.documentContextBeforeInput else { return nil }
+        let currentClause = String(SuggestionsDataBaseManager.currentSentenceSlice(in: before))
         let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
-        let tokens = before
+        let tokens = currentClause
             .components(separatedBy: delimiters)
             .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "-")) }
             .filter { !$0.isEmpty }
@@ -374,6 +427,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var lastCompletedTypedWord: String?
     private var lastAutoCorrection: (original: String, corrected: String)?
     private var lastSwipedWordInsertion: String?
+    private var lastSwipeCandidateQueue: [String] = []
+    private var lastSwipeKeySequence: [String] = []
+    private var isPostSwipeBackspaceState = false
+    private var postSwipeNeedsLeadingSpace = false
     private(set) var hasActivePostSwipeSuggestions = false
     private var suppressAutocorrectForCurrentSpaceRelease = false
     private var suppressedAutocorrectWord: String?
@@ -433,7 +490,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 }
             }
             if spaceDragGestureHandler.currentDragTextPositionOffset == 0,
-               !proxy.isCursorAtNewWord,
+                !proxy.isCursorAtNewWord,
                proxy.isCursorAtTheEndOfTheCurrentWord,
                let word = proxy.currentWord,
                !word.isEmpty,
@@ -485,14 +542,56 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
     override func handle(_ suggestion: Autocomplete.Suggestion) {
         let previousSwipedInsertion = lastSwipedWordInsertion
+        let wasPostSwipeNeedsSpace = postSwipeNeedsLeadingSpace
         resetComposition()
         lastAutoCorrection = nil
         lastSwipedWordInsertion = nil
+        lastSwipeCandidateQueue = []
+        lastSwipeKeySequence = []
+        isPostSwipeBackspaceState = false
         hasActivePostSwipeSuggestions = false
         suppressedAutocorrectWord = nil
         GreetingBannerState.shared.dismissForTyping()
         SpaceBarState.shared.fadeToResting()
         let proxy = keyboardContext.textDocumentProxy
+        if suggestion.additionalInfo["insertSwipedAlternative"] as? Bool == true {
+            let leadingSpace = wasPostSwipeNeedsSpace ? " " : ""
+            let replacement = suggestion.text
+            let newInsertion = leadingSpace + replacement
+            KeyboardUsageStats.markInjectedText(replacement)
+            KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(replacement.count, 2))
+            proxy.insertText(newInsertion)
+            proxy.tryInsertSpaceAfterAutocomplete()
+            TextHistoryManager.shared.recordInsert(newInsertion + " ")
+            lastCompletedTypedWord = replacement
+            typedWordBuffer = ""
+            let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: true)
+            SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                replacement,
+                previousWord: prevWord,
+                proxy: proxy,
+                explicitlyConfirmed: true
+            )
+            autocompleteContext.suggestions = []
+            keyboardController?.performAutocomplete()
+            return
+        }
+        if suggestion.additionalInfo["appendAfterCurrentWord"] as? Bool == true {
+            let beforeText = proxy.documentContextBeforeInput ?? ""
+            let leadingSpace = (beforeText.last?.isWhitespace == true) ? "" : " "
+            let replacement = suggestion.text
+            let insertion = leadingSpace + replacement
+            KeyboardUsageStats.markInjectedText(replacement)
+            KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(replacement.count, 2))
+            proxy.insertText(insertion)
+            proxy.tryInsertSpaceAfterAutocomplete()
+            TextHistoryManager.shared.recordInsert(insertion + " ")
+            lastCompletedTypedWord = replacement
+            typedWordBuffer = ""
+            autocompleteContext.suggestions = []
+            keyboardController?.performAutocomplete()
+            return
+        }
         if suggestion.additionalInfo["replaceSwipedWord"] as? Bool == true,
            let swipedInserted = previousSwipedInsertion {
             let beforeText = proxy.documentContextBeforeInput ?? ""
@@ -691,6 +790,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if action == .backspace, gesture == .press {
             didConsumeBackspacePress = false
             hasActivePostSwipeSuggestions = false
+            isPostSwipeBackspaceState = false
         }
         if action == .backspace, gesture == .press,
            let swipedInsertion = lastSwipedWordInsertion {
@@ -707,11 +807,51 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 }
                 TextHistoryManager.shared.recordDelete(swipedInsertion)
                 typedWordBuffer = ""
-                if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
-                    GreetingBannerState.shared.prepareForAppearance()
-                } else {
+
+                // Offer the next 3 swipe candidates [W_5, W_6, W_7] (after W_1 and [W_2, W_3, W_4]) right after Backspace
+                let rotatedCandidates: [String] = {
+                    guard lastSwipeCandidateQueue.count >= 2 else { return [] }
+                    var nextBatch: [String]
+                    if lastSwipeCandidateQueue.count >= 5 {
+                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst(4).prefix(3))
+                    } else if lastSwipeCandidateQueue.count >= 4 {
+                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst(3).prefix(3))
+                    } else {
+                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst().prefix(3))
+                    }
+                    if nextBatch.count < 3 {
+                        for fallback in lastSwipeCandidateQueue.dropFirst() where nextBatch.count < 3 {
+                            if !nextBatch.contains(fallback) {
+                                nextBatch.append(fallback)
+                            }
+                        }
+                    }
+                    return nextBatch
+                }()
+                if !rotatedCandidates.isEmpty {
+                    isPostSwipeBackspaceState = true
+                    hasActivePostSwipeSuggestions = true
                     GreetingBannerState.shared.dismissForTyping()
+                    let rotatedSuggestions = rotatedCandidates.map {
+                        Autocomplete.Suggestion(
+                            text: $0,
+                            isAutocorrect: false,
+                            additionalInfo: ["insertSwipedAlternative": true]
+                        )
+                    }
+                    autocompleteContext.suggestions = rotatedSuggestions
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                        guard let self, self.isPostSwipeBackspaceState else { return }
+                        self.autocompleteContext.suggestions = rotatedSuggestions
+                    }
+                } else {
+                    if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
+                        GreetingBannerState.shared.prepareForAppearance()
+                    } else {
+                        GreetingBannerState.shared.dismissForTyping()
+                    }
                 }
+
                 if SystemKeyboardSettings.isAutoCapitalizationEnabled,
                    proxy.autocapitalizationType != UITextAutocapitalizationType.none,
                    keyboardContext.keyboardType == .alphabetic(.lowercased),
@@ -724,11 +864,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 } else {
                     tryChangeKeyboardType(after: .release, on: action)
                 }
-                keyboardController?.performAutocomplete()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) { [weak self] in
-                    guard let self else { return }
-                    self.tryChangeKeyboardType(after: .release, on: action)
-                    self.keyboardController?.performAutocomplete()
+                if rotatedCandidates.isEmpty {
+                    keyboardController?.performAutocomplete()
                 }
                 return
             }
@@ -764,10 +901,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             SpaceBarState.shared.fadeToResting()
             return
         }
+        if action == .space, gesture == .release, keyboardContext.isSpaceDragGestureActive {
+            super.handle(gesture, on: action, replaced: replaced)
+            return
+        }
         var pendingSpaceWord: (word: String, prevWord: String?)?
         if gesture == .release {
             suppressAutocorrectForCurrentSpaceRelease = (action == .space && (lastSwipedWordInsertion != nil || hasActivePostSwipeSuggestions))
             hasActivePostSwipeSuggestions = false
+            isPostSwipeBackspaceState = false
             SpaceBarState.shared.fadeToResting()
             let proxy = keyboardContext.textDocumentProxy
             switch action {
@@ -775,6 +917,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 guard !ch.isEmpty else { break }
                 lastAutoCorrection = nil
                 lastSwipedWordInsertion = nil
+                lastSwipeCandidateQueue = []
+                lastSwipeKeySequence = []
                 suppressedAutocorrectWord = nil
                 GreetingBannerState.shared.dismissForTyping()
                 SpaceBarState.shared.recordKeystroke()

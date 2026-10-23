@@ -62,7 +62,7 @@ public struct SystemKeyboardItem<Content: View>: View {
             content
         }
         .opacity(contentOpacity)
-        .animation(.default, value: keyboardContext.isSpaceDragGestureActive)
+        .animation(.easeOut(duration: 0.15), value: keyboardContext.isSpaceDragGestureActive)
         .keyboardLayoutItemSize(
             for: item,
             rowWidth: keyboardWidth,
@@ -76,6 +76,7 @@ public struct SystemKeyboardItem<Content: View>: View {
             edgeInsets: item.edgeInsets,
             isPressed: $isPressed
         )
+        .keyboardItemHoverEffect(isEnabled: !item.action.isSpacer)
     }
     
     private var contentOpacity: Double {
@@ -84,6 +85,21 @@ public struct SystemKeyboardItem<Content: View>: View {
     
     private var buttonStyle: Keyboard.ButtonStyle {
         item.action.isSpacer ? .spacer : styleProvider.buttonStyle(for: item.action, isPressed: isPressed)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func keyboardItemHoverEffect(isEnabled: Bool) -> some View {
+        #if os(iOS) || os(visionOS)
+        if #available(iOS 17.0, *) {
+            self.hoverEffect(.highlight, isEnabled: isEnabled)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
     }
 }
 

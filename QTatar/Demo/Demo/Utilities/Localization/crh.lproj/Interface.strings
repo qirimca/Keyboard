@@ -66,14 +66,15 @@
 "stats.volumeTier4" = "Tilni yaşatqan";
 "stats.volumeTier5" = "Qırımtatar tiliniñ ışıqçısı";
 "settings.stats" = "Statistika ve yazuv seviyeleri";
+"settings.stats.desc" = "Yazuv tezligi, sözler ve yeñişlerni közetüv";
 "stats.charsSubtitle" = "Arifler: %d";
 "stats.speedSubtitle" = "Soñki tezlik: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Eñ yüksek yazuv tezligi";
 "stats.manualWordsSubtitle" = "Qolnen arif-arif yazılğan";
 "stats.suggestedWordsSubtitle" = "Qazanılğan arifler: %d";
-"stats.speedNextFormat" = "Soñraki: «%@» — %d %@ (+%d)";
+"stats.speedNextFormat" = "Soñraki: «%@» — %d %@, daa +%d";
 "stats.speedMaxReached" = "Eñ yüksek tezlik seviyesi!";
-"stats.volumeNextFormat" = "Soñraki: «%@» — %d söz (+%d)";
+"stats.volumeNextFormat" = "Soñraki: «%@» — %d söz, daa +%d";
 "stats.volumeMaxReached" = "Eñ yüksek faallik seviyesi!";
 "stats.activeTimeSubtitle" = "Faal yazuv vaqtı";
 "stats.learnedWordsSubtitle" = "Şahsiy luğat";
@@ -84,7 +85,10 @@
 "settings.cyrillicAddAction" = "Sazlamalarda qoşmaq";
 "settings.cyrillicGuideTitle" = "Kirill klaviaturasını nasıl qoşmalı?";
 "settings.ukrainianCyrillic" = "Ukraina tizilişi";
-"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · ї → yi · кʼ → q · нʼ → ñ";
+"settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek";
-"settings.systemKeyboard" = "iOS klaviatura sazlamaları";
-"settings.systemKeyboard.desc" = "Avto-tüzetüv, matematik neticeler, aqıllı tinış";
+"settings.appSettings" = "Qoşulma sazlamaları";
+"settings.appSettings.desc" = "Söz teklifleri, sözlerni ögrenüv, statistika";
+"settings.systemKeyboard" = "Sistem sazlamaları";
+"settings.systemKeyboard.desc" = "Klaviaturalar, avto-tüzetüv, tınış işaretleri";
+
