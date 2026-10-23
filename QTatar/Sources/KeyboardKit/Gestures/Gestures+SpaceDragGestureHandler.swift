@@ -70,6 +70,9 @@ public extension Gestures {
             if textPositionOffset != currentDragTextPositionOffset {
                 let offsetDelta = textPositionOffset - currentDragTextPositionOffset
                 currentDragTextPositionOffset = textPositionOffset
+                #if os(iOS) || os(tvOS) || os(visionOS)
+                UITextDocumentProxyVerticalState.resetPreferredX()
+                #endif
                 action(-offsetDelta)
             }
             let verticalDragDelta = currentLocation.y - startLocation.y
@@ -87,59 +90,200 @@ public extension Gestures {
 #if os(iOS) || os(tvOS) || os(visionOS)
 import UIKit
 
-public extension UITextDocumentProxy {
+enum UITextDocumentProxyVerticalState {
+    static var preferredXPt: CGFloat?
+    static var lastStepTimestamp: TimeInterval = 0
 
-    /// Moves the cursor vertically across lines (hard newlines or soft-wrapped ~42-char visual lines)
-    /// when dragging vertically in 2D spacebar trackpad mode.
-    func adjustVerticalLinePosition(by lineDelta: Int) {
-        guard lineDelta != 0 else { return }
-        let steps = abs(lineDelta)
-        let movingDown = lineDelta > 0
-        for _ in 0..<steps {
-            let before = documentContextBeforeInput ?? ""
-            let after = documentContextAfterInput ?? ""
-            if !movingDown {
-                guard !before.isEmpty else { break }
-                if let lastNewline = before.lastIndex(of: "\n") {
-                    let currentCol = before.distance(from: before.index(after: lastNewline), to: before.endIndex)
-                    if currentCol >= 48 {
-                        adjustTextPosition(byCharacterOffset: -42)
-                    } else {
-                        let prefixBeforeNewline = before[..<lastNewline]
-                        let prevLineStart = prefixBeforeNewline.lastIndex(of: "\n")
-                            .map { prefixBeforeNewline.index(after: $0) }
-                            ?? prefixBeforeNewline.startIndex
-                        let prevLineLen = prefixBeforeNewline.distance(from: prevLineStart, to: prefixBeforeNewline.endIndex)
-                        let targetCol = min(currentCol, prevLineLen)
-                        let charsBack = currentCol + 1 + (prevLineLen - targetCol)
-                        adjustTextPosition(byCharacterOffset: -max(charsBack, 1))
-                    }
+    static func resetPreferredX() {
+        preferredXPt = nil
+        lastStepTimestamp = 0
+    }
+
+    struct VisualLineSpan {
+        let start: Int
+        let end: Int
+        let endsWithHardNewline: Bool
+    }
+
+    static func glyphAdvancePt(for ch: Character) -> CGFloat {
+        if ch == "\n" { return 0 }
+        if ch == " " { return 4.6 }
+        if ch.unicodeScalars.first?.properties.isEmojiPresentation == true { return 18.0 }
+        switch ch {
+        case "i", "l", "ı", "İ", "I", "j", "t", "f", "r", "і", "ї", ".", ",", ":", ";", "!", "|", "'", "ʼ", "’", "-", "(", ")":
+            return 5.1
+        case "m", "w", "M", "W", "Ш", "Щ", "Ю", "Ж", "Ф", "Ы", "ш", "щ", "ю", "ж", "ф", "ы", "Q", "Ğ", "Ö", "Ü":
+            return 12.2
+        default:
+            if ch.isUppercase { return 10.6 }
+            return 8.6
+        }
+    }
+
+    static func visualXOffset(in chars: [Character], from start: Int, to index: Int) -> CGFloat {
+        guard index > start else { return 0 }
+        var x: CGFloat = 0
+        let upper = min(index, chars.count)
+        for i in start..<upper {
+            x += glyphAdvancePt(for: chars[i])
+        }
+        return x
+    }
+
+    static func characterIndex(
+        in chars: [Character],
+        lineStart: Int,
+        lineEnd: Int,
+        matchingVisualXPt targetX: CGFloat
+    ) -> Int {
+        guard lineEnd > lineStart else { return lineStart }
+        var x: CGFloat = 0
+        var bestIdx = lineStart
+        var bestDist = abs(targetX)
+        for i in lineStart..<lineEnd {
+            let adv = glyphAdvancePt(for: chars[i])
+            x += adv
+            let dist = abs(x - targetX)
+            if dist <= bestDist {
+                bestDist = dist
+                bestIdx = i + 1
+            } else {
+                break
+            }
+        }
+        if bestIdx == lineEnd && lineEnd < chars.count && chars[lineEnd - 1] == " " && chars[lineEnd] != "\n" {
+            return max(lineStart, lineEnd - 1)
+        }
+        return bestIdx
+    }
+
+    static func computeWordWrappedVisualLines(
+        chars: [Character],
+        usableWidthPt: CGFloat
+    ) -> [VisualLineSpan] {
+        guard !chars.isEmpty else {
+            return [VisualLineSpan(start: 0, end: 0, endsWithHardNewline: false)]
+        }
+        var lines: [VisualLineSpan] = []
+        var lineStart = 0
+        var lineWidth: CGFloat = 0
+        var lastBreakCandidate: Int? = nil
+        var widthAtLastBreak: CGFloat = 0
+        var i = 0
+
+        while i < chars.count {
+            let ch = chars[i]
+            if ch == "\n" {
+                lines.append(VisualLineSpan(start: lineStart, end: i, endsWithHardNewline: true))
+                i += 1
+                lineStart = i
+                lineWidth = 0
+                lastBreakCandidate = nil
+                widthAtLastBreak = 0
+                continue
+            }
+
+            let adv = glyphAdvancePt(for: ch)
+            if ch == " " || ch == "-" {
+                lastBreakCandidate = i + 1
+                widthAtLastBreak = lineWidth + adv
+            }
+
+            if lineWidth + adv > usableWidthPt && i > lineStart {
+                if let breakIdx = lastBreakCandidate, breakIdx > lineStart && breakIdx <= i {
+                    lines.append(VisualLineSpan(start: lineStart, end: breakIdx, endsWithHardNewline: false))
+                    lineStart = breakIdx
+                    lineWidth = (lineWidth + adv) - widthAtLastBreak
+                    lastBreakCandidate = nil
+                    widthAtLastBreak = 0
+                    i += 1
                 } else {
-                    adjustTextPosition(byCharacterOffset: -min(before.count, 42))
+                    lines.append(VisualLineSpan(start: lineStart, end: i, endsWithHardNewline: false))
+                    lineStart = i
+                    lineWidth = adv
+                    lastBreakCandidate = nil
+                    widthAtLastBreak = 0
+                    i += 1
                 }
             } else {
-                guard !after.isEmpty else { break }
-                let currentCol: Int = {
-                    if let lastNewline = before.lastIndex(of: "\n") {
-                        return before.distance(from: before.index(after: lastNewline), to: before.endIndex)
+                lineWidth += adv
+                i += 1
+            }
+        }
+
+        lines.append(VisualLineSpan(start: lineStart, end: chars.count, endsWithHardNewline: false))
+        return lines
+    }
+}
+
+public extension UITextDocumentProxy {
+
+    /// Moves the cursor vertically across lines (hard newlines and word-wrapped visual lines sized
+    /// dynamically to the active window/container width and proportional glyph advances) when dragging
+    /// vertically in 2D spacebar trackpad mode.
+    func adjustVerticalLinePosition(by lineDelta: Int, containerWidth: CGFloat = 0) {
+        guard lineDelta != 0 else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - UITextDocumentProxyVerticalState.lastStepTimestamp > 1.2 {
+            UITextDocumentProxyVerticalState.preferredXPt = nil
+        }
+        UITextDocumentProxyVerticalState.lastStepTimestamp = now
+
+        let rawWidth = containerWidth > 0 ? containerWidth : UIScreen.main.bounds.width
+        let usableLineWidthPt = max(140.0, rawWidth - 36.0)
+        let steps = abs(lineDelta)
+        let movingDown = lineDelta > 0
+
+        for _ in 0..<steps {
+            let fullBefore = documentContextBeforeInput ?? ""
+            let fullAfter = documentContextAfterInput ?? ""
+            if !movingDown && fullBefore.isEmpty { break }
+            if movingDown && fullAfter.isEmpty { break }
+
+            let beforeSlice = String(fullBefore.suffix(600))
+            let afterSlice = String(fullAfter.prefix(600))
+            let combined = Array(beforeSlice + afterSlice)
+            let cursorIdx = beforeSlice.count
+
+            let lines = UITextDocumentProxyVerticalState.computeWordWrappedVisualLines(chars: combined, usableWidthPt: usableLineWidthPt)
+            guard !lines.isEmpty else { break }
+
+            var currentLineIdx = 0
+            for (idx, line) in lines.enumerated() {
+                if cursorIdx >= line.start && cursorIdx <= line.end {
+                    currentLineIdx = idx
+                    if cursorIdx < line.end || idx == lines.count - 1 || line.endsWithHardNewline {
+                        break
                     }
-                    return before.count
-                }()
-                if let nextNewline = after.firstIndex(of: "\n") {
-                    let charsToNewline = after.distance(from: after.startIndex, to: nextNewline)
-                    if charsToNewline >= 48 {
-                        adjustTextPosition(byCharacterOffset: 42)
-                    } else {
-                        let suffixAfterNewline = after[after.index(after: nextNewline)...]
-                        let nextLineEnd = suffixAfterNewline.firstIndex(of: "\n") ?? suffixAfterNewline.endIndex
-                        let nextLineLen = suffixAfterNewline.distance(from: suffixAfterNewline.startIndex, to: nextLineEnd)
-                        let targetCol = min(currentCol, nextLineLen)
-                        let charsForward = charsToNewline + 1 + targetCol
-                        adjustTextPosition(byCharacterOffset: max(charsForward, 1))
-                    }
-                } else {
-                    adjustTextPosition(byCharacterOffset: min(after.count, 42))
                 }
+            }
+
+            let currentLine = lines[currentLineIdx]
+            let currentXPt = UITextDocumentProxyVerticalState.visualXOffset(in: combined, from: currentLine.start, to: min(cursorIdx, currentLine.end))
+            let targetXPt = UITextDocumentProxyVerticalState.preferredXPt ?? currentXPt
+            UITextDocumentProxyVerticalState.preferredXPt = targetXPt
+
+            let targetLineIdx = movingDown ? (currentLineIdx + 1) : (currentLineIdx - 1)
+            guard targetLineIdx >= 0 && targetLineIdx < lines.count else {
+                let edgeDelta = movingDown ? afterSlice.count : -beforeSlice.count
+                if edgeDelta != 0 {
+                    adjustTextPosition(byCharacterOffset: edgeDelta)
+                }
+                break
+            }
+
+            let targetLine = lines[targetLineIdx]
+            let targetCharIdx = UITextDocumentProxyVerticalState.characterIndex(
+                in: combined,
+                lineStart: targetLine.start,
+                lineEnd: targetLine.end,
+                matchingVisualXPt: targetXPt
+            )
+            let charDelta = targetCharIdx - cursorIdx
+            if charDelta != 0 {
+                adjustTextPosition(byCharacterOffset: charDelta)
+            } else {
+                adjustTextPosition(byCharacterOffset: movingDown ? 1 : -1)
             }
         }
     }
@@ -189,5 +333,8 @@ private extension Gestures.SpaceDragGestureHandler {
         guard isNewDrag else { return }
         currentDragTextPositionOffset = 0
         currentDragVerticalLineOffset = 0
+        #if os(iOS) || os(tvOS) || os(visionOS)
+        UITextDocumentProxyVerticalState.resetPreferredX()
+        #endif
     }
 }

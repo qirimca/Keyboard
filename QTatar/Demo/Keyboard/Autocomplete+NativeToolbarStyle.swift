@@ -218,7 +218,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 18,
-            text: "Muhabbetlik — baht anahtarı.",
+            text: "Muabbetlik — baht anahtarı.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Любов і щирість — ключ до щастя.» (Кримськотатарське прислів'я)",
             translationEN: "\"Love and affection are the key to happiness.\" (Crimean Tatar proverb)"
@@ -235,7 +235,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             text: "Aşnıñ dadı — tuznen, adamnıñ dadı — söznen.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Смак страви — у солі, а суть людини — у слові.» (Кримськотатарське прислів'я)",
-            translationEN: "\"The taste of food is in salt; the essence of a person is in their word.\" (Crimean Tatar proverb)"
+            translationEN: "\"The taste of food is in salt; the worth of a person is in words.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 21,
@@ -256,7 +256,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             text: "Bir filcan qaveniñ qırq yıl hatri bardır.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Одна філіжанка кави має сорок років пошани.» (Кримськотатарське прислів'я)",
-            translationEN: "\"A single cup of coffee is remembered with gratitude for forty years.\" (Crimean Tatar proverb)"
+            translationEN: "\"A single cup of coffee is remembered for forty years.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 24,
@@ -564,7 +564,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             text: "Ana-babaña ürmet etseñ, özüñ ürmet körersiñ.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Шануватимеш батька й матір — сам зазнаєш пошани.» (Кримськотатарське прислів'я)",
-            translationEN: "\"If you honor your mother and father, you yourself will be honored.\" (Crimean Tatar proverb)"
+            translationEN: "\"Honor your mother and father, and you too will be honored.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 68,
@@ -598,8 +598,8 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 72,
             text: "Oquvnı sevgen oqur, soñundan gülday qoqur.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Хто любить навчання, той читає, а згодом квітне й пахне, мов троянда.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Whoever loves learning will study, and later blossom like a rose.\" (Crimean Tatar proverb)"
+            translationUA: "«Хто любить науку — вчиться, а згодом пахне, мов троянда.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Who loves learning will study and later bloom like a rose.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 73,

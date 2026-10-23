@@ -12,12 +12,12 @@ LATİN VE KİRİL TİZİLİŞLERİ (AVTOTRANSLİTERATSİYA İLE)
 • Cihaz içinde şahsiy söz ve söz birikmelerini ögrenüv.
 
 TEZ SVAYP YAZUVI (QIRIMKEY SWIPE V2)
-• iPhone ve iPad yaldavuq (Floating) rejiminde em latin, em de kiril tizilişlerinde parmaqnı dögmeler üzerinde taydırıp tez yazuv.
+• iPhone ve iPad yüzüci (Floating) rejiminde em latin, em de kiril tizilişlerinde parmaqnı dögmeler üzerinde taydırıp tez yazuv.
 • Svaypnen yazılğan sözni Backspace (⌫) dögmesine bir basuvnen bütününen silüv.
 
 iOS VE iPadOS 26/27 İÇÜN YARATILĞAN
 • Apple Liquid Glass üslübi ve bütün sistem qoşulmalarında ve Spotlight içinde yarıq/qaranlıq temanıñ avtomatik sinhronizatsiyası.
-• iPad içün tolu destek: standart (Docked), yaldavuq (Floating) ve bölünmegen/bölüngen (Split) klaviatura rejimleri («⌄⌨» menüsi ve eki parmaq areketi ile).
+• iPad içün tolu destek: standart (Docked), yüzüci (Floating) ve bölünmegen/bölüngen (Split) klaviatura rejimleri («⌄⌨» menüsi ve eki parmaq areketi ile).
 • Yazıp başlamazdan evel klaviaturanıñ yuqarı satırında kündelik qırımtatar atalar sözleri, selâmlaşuvlar ve klassiklerniñ sözleri.
 • Qoşulma içinde interaktiv sınama meydançığı ve yazuv tezligi statistika seviyeleri.
 

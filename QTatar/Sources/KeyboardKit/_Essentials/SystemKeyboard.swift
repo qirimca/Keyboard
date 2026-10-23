@@ -202,6 +202,7 @@ public struct SystemKeyboard<
         return geoContent
             .autocorrectionDisabled(with: autocompleteContext)
             .opacity(shouldShowEmojiKeyboard ? 0 : 1)
+            .allowsHitTesting(!shouldShowEmojiKeyboard)
             .overlay(emojiKeyboard(), alignment: .bottom)
             .foregroundColor(styleProvider.foregroundColor)
             .background(renderBackground ? styleProvider.backgroundStyle : nil)

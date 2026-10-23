@@ -104,7 +104,13 @@ public extension Keyboard.KeyboardServices {
             controller?.adjustTextPosition(by: offset ?? $0)
         }
         spaceDragGestureHandler.verticalLineAction = { [weak controller] lineDelta in
-            controller?.textDocumentProxy.adjustVerticalLinePosition(by: lineDelta)
+            let containerWidth = controller?.view.window?.bounds.width
+                ?? controller?.view.bounds.width
+                ?? 0
+            controller?.textDocumentProxy.adjustVerticalLinePosition(
+                by: lineDelta,
+                containerWidth: containerWidth
+            )
         }
     }
 }

@@ -12,7 +12,7 @@
 "settings.suggestions" = "Söz teklifleri";
 "settings.wordLearning" = "Sözlerni ögrenüv";
 "settings.done" = "Azır";
-"settings.keyboardHelp" = "Kirill klaviaturası metinni latin ariflerinen kirsete. iPad'de bu seçim «абв/abc» dögmesini köstere yaki gizley. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
+"settings.keyboardHelp" = "Kirill klaviaturası metinni latin ariflerinen kirsete. iPad-de bu seçim «абв/abc» dögmesini köstere yaki gizley. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
 "settings.keyboardHelpPhone" = "Kirill klaviaturası metinni latin ariflerinen kirsete. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
@@ -30,7 +30,7 @@
 "stats.activeTime" = "Faal vaqıt";
 "stats.learnedWords" = "Ögrenilgen sözler";
 "stats.wpmUnit" = "söz/daq";
-"stats.cpmUnit" = "arf/daq";
+"stats.cpmUnit" = "arif/daq";
 "stats.minUnit" = "daq";
 "stats.secUnit" = "s";
 "stats.achievements" = "Yeñişler";
@@ -40,11 +40,11 @@
 "stats.ach.speed.desc" = "Tezlik: %d / %d söz/daq";
 "stats.ach.scholar" = "Söz ustası";
 "stats.ach.scholar.desc" = "Luğat: %d / %d söz";
-"stats.ach.wisdom" = "Atalar hikmeti";
-"stats.ach.wisdom.desc" = "Hikmetli söz: %d / %d";
+"stats.ach.wisdom" = "Atalar ikmeti";
+"stats.ach.wisdom.desc" = "İkmetli söz: %d / %d";
 "stats.ach.levelBadge" = "Sev. %d/%d";
 "stats.manualWords" = "Arif-arif yazılğan";
-"stats.suggestedWords" = "Tevsiyelernen";
+"stats.suggestedWords" = "Tekliflernen";
 "stats.suggestionBoost" = "Tekliflernen tezlik artımı: ×%@";
 "stats.reset" = "Statistikanı sıfırla";
 "stats.resetConfirmTitle" = "Statistikanı sıfırlamaq?";

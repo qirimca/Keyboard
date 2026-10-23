@@ -35,7 +35,7 @@ public extension Emoji {
         }
         
         private var rows: [GridItem] {
-            Array(repeating: GridItem(.flexible(), spacing: 2), count: 5)
+            Array(repeating: GridItem(.flexible(), spacing: 1), count: 5)
         }
         
         private var totalHeight: CGFloat {
@@ -45,13 +45,23 @@ public extension Emoji {
             return config.rowHeight * 4
         }
         
+        private static let defaultFrequentEmojis: [Emoji] = [
+            "❤️", "😂", "🥰", "🙏", "👍", "😭", "😊", "🔥", "😍", "😘",
+            "👏", "🎉", "😁", "🥺", "😅", "✨", "🤝", "🇺🇦", "💙", "💛",
+            "🤔", "😎", "🙌", "💪", "😉", "🤗", "🌹", "☀️", "🌙", "⭐️"
+        ].map { Emoji($0) }
+
         private var activeEmojis: [Emoji] {
             if selectedCategory == .frequent {
                 let recents = Emoji.frequentEmojiProvider.emojis
                 if !recents.isEmpty { return recents }
-                return Array(EmojiCategory.smileysAndPeople.emojis.prefix(30))
+                return Self.defaultFrequentEmojis
             }
-            return selectedCategory.emojis
+            let catEmojis = selectedCategory.emojis
+            if !catEmojis.isEmpty { return catEmojis }
+            return selectedCategory.emojisString
+                .replacingOccurrences(of: "\n", with: "")
+                .map { Emoji(String($0)) }
         }
         
         private func categorySystemIcon(for category: EmojiCategory) -> String {
@@ -110,35 +120,44 @@ public extension Emoji {
             let isCyrillic = keyboardContext.locale.identifier.contains("Cyrl")
             let isDark = keyboardContext.hasDarkColorScheme
             let fgColor: Color = isDark ? .white : .black
+            let headerH: CGFloat = 18
+            let footerH: CGFloat = 38
+            let gridAvailH = max(100, totalHeight - headerH - footerH)
+            let cellHeight = max(20, floor((gridAvailH - 8) / 5.0))
+            let emojiFontSize = min(keyboardContext.isKeyboardFloating ? 21 : 25, max(16, cellHeight - 3))
+            let emojisList = activeEmojis
             VStack(spacing: 0) {
                 Text(categoryHeaderTitle(for: selectedCategory))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(fgColor.opacity(0.52))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
-                    .frame(height: 18)
+                    .frame(height: headerH)
                     .accessibilityIdentifier("emoji.categoryHeader")
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHGrid(rows: rows, spacing: 8) {
-                        ForEach(activeEmojis, id: \.char) { emoji in
+                    LazyHGrid(rows: rows, spacing: 6) {
+                        ForEach(Array(emojisList.enumerated()), id: \.offset) { _, emoji in
                             Button {
                                 Emoji.frequentEmojiProvider.registerEmoji(emoji)
                                 actionHandler.handle(.press, on: .character(emoji.char))
                                 actionHandler.handle(.release, on: .character(emoji.char))
                             } label: {
                                 Text(emoji.char)
-                                    .font(.system(size: keyboardContext.isKeyboardFloating ? 24 : 29))
-                                    .frame(width: 38, height: 34)
+                                    .font(.system(size: emojiFontSize))
+                                    .frame(width: 36, height: cellHeight)
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 2)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .id(selectedCategory.id)
+                .frame(maxWidth: .infinity)
+                .frame(height: gridAvailH)
+                .clipped()
                 
                 HStack(spacing: 2) {
                     Button {
@@ -163,19 +182,20 @@ public extension Emoji {
                                 Image(systemName: categorySystemIcon(for: category))
                                     .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
                                     .foregroundColor(isSelected ? fgColor : fgColor.opacity(0.48))
-                                    .frame(maxWidth: .infinity, minHeight: 30)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                                     .background(
                                         Capsule()
                                             .fill(isSelected ? fgColor.opacity(0.14) : Color.clear)
                                             .padding(.horizontal, 2)
-                                            .padding(.vertical, 3)
+                                            .padding(.vertical, 4)
                                     )
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("emoji.category.\(category.id)")
                         }
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
                     Button {
                         actionHandler.handle(.press, on: .backspace)
@@ -191,7 +211,8 @@ public extension Emoji {
                     .accessibilityIdentifier("key.backspace")
                 }
                 .padding(.horizontal, 6)
-                .frame(height: 38)
+                .frame(height: footerH)
+                .zIndex(2)
             }
             .frame(height: totalHeight)
         }

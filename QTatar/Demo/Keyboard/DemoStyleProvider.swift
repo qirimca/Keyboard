@@ -402,12 +402,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let darkInputKeyPressed = useClassicStyle
             ? Color(white: 0.18)
             : Color(red: 0.36, green: 0.36, blue: 0.39).opacity(0.92)
-        let darkSystemKey = useClassicStyle
+        let darkSystemKeyGray = useClassicStyle
             ? Color(white: 0.20)
             : Color(red: 0.21, green: 0.21, blue: 0.23).opacity(0.82)
-        let darkSystemKeyPressed = useClassicStyle
+        let darkSystemKeyGrayPressed = useClassicStyle
             ? Color(white: 0.28)
             : Color(red: 0.31, green: 0.31, blue: 0.34).opacity(0.90)
+        let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
+        let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
         let lightInputKey = useClassicStyle
             ? Color.white
