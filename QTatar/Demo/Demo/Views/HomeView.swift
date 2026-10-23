@@ -2845,6 +2845,29 @@ private struct WalnutBrainIcon: View {
 private struct SettingsLineArtIconShape: Shape {
     let systemName: String
 
+    static func iconFrameSize(for systemName: String) -> CGFloat {
+        switch systemName {
+        case "lang.crh.tamga", "lang.uk.tryzub", "lang.en.unionjack":
+            return 20.0
+        default:
+            return 16.5
+        }
+    }
+
+    static func strokeStyle(for systemName: String, frameSize: CGFloat) -> StrokeStyle {
+        switch systemName {
+        case "lang.crh.tamga":
+            return StrokeStyle(lineWidth: frameSize / 9.0, lineCap: .square, lineJoin: .miter)
+        case "lang.uk.tryzub":
+            let scale = (frameSize / 800.0) * 0.94
+            return StrokeStyle(lineWidth: 38.0 * scale, lineCap: .butt, lineJoin: .miter)
+        case "lang.en.unionjack":
+            return StrokeStyle(lineWidth: frameSize * (1.20 / 20.0), lineCap: .butt, lineJoin: .miter)
+        default:
+            return StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
+        }
+    }
+
     func path(in rect: CGRect) -> Path {
         let w = rect.width
         let h = rect.height
@@ -2852,90 +2875,137 @@ private struct SettingsLineArtIconShape: Shape {
 
         switch systemName {
         case "lang.crh.tamga":
-            // Crimean Tatar Taraq Tamğa heraldic 3-prong vector emblem
-            p.move(to: CGPoint(x: w * 0.14, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.86, y: h * 0.24))
-            // Left prong + outer foot
-            p.move(to: CGPoint(x: w * 0.20, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.20, y: h * 0.70))
-            p.addLine(to: CGPoint(x: w * 0.08, y: h * 0.70))
-            // Right prong + outer foot
-            p.move(to: CGPoint(x: w * 0.80, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.80, y: h * 0.70))
-            p.addLine(to: CGPoint(x: w * 0.92, y: h * 0.70))
-            // Center prong + symmetric base bar
-            p.move(to: CGPoint(x: w * 0.50, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.82))
-            p.move(to: CGPoint(x: w * 0.36, y: h * 0.82))
-            p.addLine(to: CGPoint(x: w * 0.64, y: h * 0.82))
+            // Exact 9:5 Crimean Tatar Taraq Tamğa centerline matching SharedTaraqTamgaShape
+            let scale = min(w / 9.0, h / 5.0)
+            let drawW = scale * 9.0
+            let drawH = scale * 5.0
+            let ox = rect.minX + (w - drawW) * 0.5
+            let oy = rect.minY + (h - drawH) * 0.5
+            func pt(_ gx: CGFloat, _ gy: CGFloat) -> CGPoint {
+                CGPoint(x: ox + gx * scale, y: oy + gy * scale)
+            }
+            // Outer U-frame + left/right feet
+            p.move(to: pt(0.5, 3.5))
+            p.addLine(to: pt(1.5, 3.5))
+            p.addLine(to: pt(1.5, 0.5))
+            p.addLine(to: pt(7.5, 0.5))
+            p.addLine(to: pt(7.5, 3.5))
+            p.addLine(to: pt(8.5, 3.5))
+            // Center vertical prong
+            p.move(to: pt(4.5, 0.5))
+            p.addLine(to: pt(4.5, 4.5))
+            // Center bottom bar
+            p.move(to: pt(3.5, 4.5))
+            p.addLine(to: pt(5.5, 4.5))
 
         case "lang.uk.tryzub":
-            // Ukrainian Tryzub (Тризуб) heraldic vector emblem
-            // Central spear & diamond tip
-            p.move(to: CGPoint(x: w * 0.50, y: h * 0.09))
-            p.addLine(to: CGPoint(x: w * 0.43, y: h * 0.27))
-            p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.43))
-            p.addLine(to: CGPoint(x: w * 0.57, y: h * 0.27))
+            // Exact official Ukrainian Tryzub (Малий Державний Герб України, 480x800 grid)
+            let scale = min(w / 480.0, h / 800.0) * 0.94
+            let ox = rect.midX
+            let oy = rect.midY - (400.0 * scale)
+            func pt(_ dx: CGFloat, _ y: CGFloat, sign: CGFloat = 1.0) -> CGPoint {
+                CGPoint(x: ox + sign * dx * scale, y: oy + (y - 53.0) * scale)
+            }
+            // 1. Continuous central spear & lower trefoil loop with mitered top/bottom tips and open middle diamond
+            p.move(to: pt(88, 673, sign: -1.0))
+            p.addCurve(
+                to: pt(6, 290, sign: -1.0),
+                control1: pt(82, 545, sign: -1.0),
+                control2: pt(6, 415, sign: -1.0)
+            )
+            p.addCurve(
+                to: pt(12, 145, sign: -1.0),
+                control1: pt(6, 245, sign: -1.0),
+                control2: pt(12, 195, sign: -1.0)
+            )
+            p.addCurve(
+                to: pt(0, 68, sign: 1.0),
+                control1: pt(12, 116, sign: -1.0),
+                control2: pt(9, 90, sign: -1.0)
+            )
+            p.addCurve(
+                to: pt(12, 145, sign: 1.0),
+                control1: pt(9, 90, sign: 1.0),
+                control2: pt(12, 116, sign: 1.0)
+            )
+            p.addCurve(
+                to: pt(6, 290, sign: 1.0),
+                control1: pt(12, 195, sign: 1.0),
+                control2: pt(6, 245, sign: 1.0)
+            )
+            p.addCurve(
+                to: pt(88, 673, sign: 1.0),
+                control1: pt(6, 415, sign: 1.0),
+                control2: pt(82, 545, sign: 1.0)
+            )
+            p.addCurve(
+                to: pt(0, 836, sign: 1.0),
+                control1: pt(84, 745, sign: 1.0),
+                control2: pt(48, 800, sign: 1.0)
+            )
+            p.addCurve(
+                to: pt(88, 673, sign: -1.0),
+                control1: pt(48, 800, sign: -1.0),
+                control2: pt(84, 745, sign: -1.0)
+            )
             p.closeSubpath()
-            p.move(to: CGPoint(x: w * 0.50, y: h * 0.43))
-            p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.90))
-            // Left outer wing & inner arch
-            p.move(to: CGPoint(x: w * 0.17, y: h * 0.15))
-            p.addLine(to: CGPoint(x: w * 0.17, y: h * 0.64))
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.35, y: h * 0.73),
-                control: CGPoint(x: w * 0.17, y: h * 0.73)
-            )
-            p.addLine(to: CGPoint(x: w * 0.33, y: h * 0.40))
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.17, y: h * 0.25),
-                control: CGPoint(x: w * 0.31, y: h * 0.27)
-            )
-            // Right outer wing & inner arch
-            p.move(to: CGPoint(x: w * 0.83, y: h * 0.15))
-            p.addLine(to: CGPoint(x: w * 0.83, y: h * 0.64))
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.65, y: h * 0.73),
-                control: CGPoint(x: w * 0.83, y: h * 0.73)
-            )
-            p.addLine(to: CGPoint(x: w * 0.67, y: h * 0.40))
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.83, y: h * 0.25),
-                control: CGPoint(x: w * 0.69, y: h * 0.27)
-            )
-            // Base collar & lower volutes
-            p.move(to: CGPoint(x: w * 0.33, y: h * 0.73))
-            p.addLine(to: CGPoint(x: w * 0.67, y: h * 0.73))
-            p.move(to: CGPoint(x: w * 0.35, y: h * 0.73))
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.50, y: h * 0.90),
-                control: CGPoint(x: w * 0.37, y: h * 0.86)
-            )
-            p.addQuadCurve(
-                to: CGPoint(x: w * 0.65, y: h * 0.73),
-                control: CGPoint(x: w * 0.63, y: h * 0.86)
-            )
+
+            // Solid fill spine inside upper spear blade (y = 85..385) and lower central post (y = 615..832)
+            p.move(to: pt(0, 85))
+            p.addLine(to: pt(0, 385))
+            p.move(to: pt(0, 615))
+            p.addLine(to: pt(0, 832))
+
+            // 2. Left & right outer wings + signature C-scrolls meeting at the central Y-junction
+            for sign: CGFloat in [-1.0, 1.0] {
+                p.move(to: pt(0, 673, sign: sign))
+                p.addLine(to: pt(220, 673, sign: sign))
+                p.addLine(to: pt(220, 136, sign: sign))
+                p.addCurve(
+                    to: pt(104, 474, sign: sign),
+                    control1: pt(122, 210, sign: sign),
+                    control2: pt(114, 345, sign: sign)
+                )
+
+                p.move(to: pt(96, 478, sign: sign))
+                p.addCurve(
+                    to: pt(164, 513, sign: sign),
+                    control1: pt(132, 456, sign: sign),
+                    control2: pt(164, 480, sign: sign)
+                )
+                p.addCurve(
+                    to: pt(0, 625, sign: sign),
+                    control1: pt(164, 566, sign: sign),
+                    control2: pt(26, 568, sign: sign)
+                )
+
+                p.move(to: pt(164, 513, sign: sign))
+                p.addLine(to: pt(220, 513, sign: sign))
+            }
 
         case "lang.en.unionjack":
-            // British Union Jack flag/shield vector emblem
+            // Authentic British Union Jack flag vector emblem (8 triangles + bold St George's Cross + diagonal saltire)
+            let x0 = w * 0.04, x1 = w * 0.96
+            let y0 = h * 0.20, y1 = h * 0.80
+            let cx = w * 0.50, cy = h * 0.50
+
             p.addRoundedRect(
-                in: CGRect(x: w * 0.08, y: h * 0.18, width: w * 0.84, height: h * 0.64),
-                cornerSize: CGSize(width: 2.5, height: 2.5)
+                in: CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0),
+                cornerSize: CGSize(width: w * 0.04, height: w * 0.04)
             )
-            // Central St George cross
-            p.move(to: CGPoint(x: w * 0.50, y: h * 0.18))
-            p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.82))
-            p.move(to: CGPoint(x: w * 0.08, y: h * 0.50))
-            p.addLine(to: CGPoint(x: w * 0.92, y: h * 0.50))
-            // Diagonal saltire rays in 4 quadrants
-            p.move(to: CGPoint(x: w * 0.14, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.37, y: h * 0.40))
-            p.move(to: CGPoint(x: w * 0.86, y: h * 0.24))
-            p.addLine(to: CGPoint(x: w * 0.63, y: h * 0.40))
-            p.move(to: CGPoint(x: w * 0.14, y: h * 0.76))
-            p.addLine(to: CGPoint(x: w * 0.37, y: h * 0.60))
-            p.move(to: CGPoint(x: w * 0.86, y: h * 0.76))
-            p.addLine(to: CGPoint(x: w * 0.63, y: h * 0.60))
+            // Full diagonal St Andrew's / St Patrick's saltire from corner to corner
+            p.move(to: CGPoint(x: x0 + w * 0.02, y: y0 + h * 0.02))
+            p.addLine(to: CGPoint(x: x1 - w * 0.02, y: y1 - h * 0.02))
+            p.move(to: CGPoint(x: x1 - w * 0.02, y: y0 + h * 0.02))
+            p.addLine(to: CGPoint(x: x0 + w * 0.02, y: y1 - h * 0.02))
+            // Bold central St George's Cross
+            let d = w * 0.022
+            for off in [-d, 0.0, d] {
+                p.move(to: CGPoint(x: cx + off, y: y0))
+                p.addLine(to: CGPoint(x: cx + off, y: y1))
+                p.move(to: CGPoint(x: x0, y: cy + off))
+                p.addLine(to: CGPoint(x: x1, y: cy + off))
+            }
 
         case "globe":
             let r = min(w, h) * 0.42
@@ -3223,6 +3293,8 @@ private struct InteractiveSettingsIconBadge: View {
 
     var body: some View {
         let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        let iconFrame = SettingsLineArtIconShape.iconFrameSize(for: systemName)
+        let strokeStyle = SettingsLineArtIconShape.strokeStyle(for: systemName, frameSize: iconFrame)
 
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
@@ -3233,9 +3305,9 @@ private struct InteractiveSettingsIconBadge: View {
                 .trim(from: 0, to: drawProgress)
                 .stroke(
                     Color.white,
-                    style: StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
+                    style: strokeStyle
                 )
-                .frame(width: 16.5, height: 16.5)
+                .frame(width: iconFrame, height: iconFrame)
         }
         .frame(width: 28, height: 28)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
@@ -3397,7 +3469,7 @@ private struct TransliterationKeycapBadge: View {
             }
         }
         // Phase 2: Morph to target Latin glyph "Q" and draw its contour
-        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 0.50) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 0.46) {
             guard currentGen == drawGeneration else { return }
             guard animationsAllowed else {
                 activeGlyphIsTargetQ = false
@@ -3410,12 +3482,15 @@ private struct TransliterationKeycapBadge: View {
                 activeGlyphIsTargetQ = true
                 drawProgress = 0.0
             }
-            withAnimation(.easeInOut(duration: 0.38)) {
-                drawProgress = 1.0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) {
+                guard currentGen == drawGeneration else { return }
+                withAnimation(.easeInOut(duration: 0.34)) {
+                    drawProgress = 1.0
+                }
             }
         }
         // Phase 3: Return smoothly to source glyph (Къ / Кʼ) and draw its contour (Start State == End State)
-        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 1.18) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + startDelay + 0.98) {
             guard currentGen == drawGeneration else { return }
             guard animationsAllowed else {
                 activeGlyphIsTargetQ = false
@@ -3428,8 +3503,11 @@ private struct TransliterationKeycapBadge: View {
                 activeGlyphIsTargetQ = false
                 drawProgress = 0.0
             }
-            withAnimation(.easeInOut(duration: 0.38)) {
-                drawProgress = 1.0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) {
+                guard currentGen == drawGeneration else { return }
+                withAnimation(.easeInOut(duration: 0.36)) {
+                    drawProgress = 1.0
+                }
             }
         }
     }
