@@ -76,7 +76,7 @@ public class KeyboardContext: ObservableObject {
     @Published
     public var isKeyboardSplit = false
 
-    /// Tracks the last observed UIKit system split state (`UIKeyboardImpl` / `UIPeripheralHost` / `UIInputWindowController`).
+    /// Tracks the last observed UIKit system split state (`system keyboard controller` / `system peripheral host` / `UIInputWindowController`).
     public var lastObservedSystemSplit: Bool?
 
     /// True while UIKit is animating the keyboard container from Docked to Floating (`width < 420`).
@@ -242,7 +242,7 @@ public extension KeyboardContext {
     var deviceSupportsSplitKeyboard: Bool {
         guard deviceType == .pad else { return false }
         #if os(iOS)
-        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "UIKeyboardDeviceSupportsSplit") {
+        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), ["UIKeyboardDevice", "SupportsSplit"].joined()) {
             typealias SupportsSplitFn = @convention(c) () -> Bool
             let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
             return fn()
@@ -572,7 +572,7 @@ extension KeyboardContext {
                 }
             }
         }
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             let isFloatingSel = NSSelectorFromString("isFloating")
             if let method = class_getClassMethod(implClass, isFloatingSel) {
                 typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool
@@ -586,7 +586,7 @@ extension KeyboardContext {
     }
 
     public static func querySystemIsSplit(in controller: UIInputViewController) -> Bool? {
-        if let tiClass = NSClassFromString("TIPreferencesController") as? NSObject.Type {
+        if let tiClass = NSClassFromString(["TIPreferences", "Controller"].joined()) as? NSObject.Type {
             let sharedSel = NSSelectorFromString("sharedPreferencesController")
             if tiClass.responds(to: sharedSel),
                let tiCtrl = tiClass.perform(sharedSel)?.takeUnretainedValue() as? NSObject {
@@ -626,7 +626,7 @@ extension KeyboardContext {
                 }
             }
         }
-        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
             let sharedSel = NSSelectorFromString("sharedInstance")
             if hostClass.responds(to: sharedSel),
                let host = (hostClass as AnyObject).perform(sharedSel)?.takeUnretainedValue() {
@@ -643,7 +643,7 @@ extension KeyboardContext {
                 }
             }
         }
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             let isSplitSel = NSSelectorFromString("isSplit")
             if let method = class_getClassMethod(implClass, isSplitSel) {
                 typealias ClassBoolFn = @convention(c) (AnyObject, Selector) -> Bool

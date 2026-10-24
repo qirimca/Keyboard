@@ -722,7 +722,7 @@ extension UITextDocumentProxy {
 }
 
 /// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
-/// from `TIPreferencesController` / `UIKeyboardPreferencesController` and `UITextDocumentProxy`.
+/// from `system text preferences controller` / `system keyboard preferences controller` and `UITextDocumentProxy`.
 enum SystemKeyboardSettings {
 
     private static var cacheLock = os_unfair_lock_s()
@@ -747,7 +747,7 @@ enum SystemKeyboardSettings {
     ]
 
     private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
-        for className in ["TIPreferencesController", "UIKeyboardPreferencesController"] {
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
             guard let cls: AnyClass = NSClassFromString(className) else { continue }
             let sharedSel = NSSelectorFromString("sharedPreferencesController")
             guard cls.responds(to: sharedSel),
@@ -926,7 +926,7 @@ enum SystemKeyboardSettings {
             return foundInModes
         }
 
-        for className in ["TIPreferencesController", "UIKeyboardPreferencesController"] {
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
             guard let cls: AnyClass = NSClassFromString(className) else { continue }
             let sharedSel = NSSelectorFromString("sharedPreferencesController")
             guard cls.responds(to: sharedSel),

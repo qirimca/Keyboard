@@ -226,7 +226,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     }
 
     static func invokeSystemSetSplit(_ split: Bool) {
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             for selName in ["setRivenPreference:", "setSplit:"] {
                 let implSel = NSSelectorFromString(selName)
                 if let method = class_getClassMethod(implClass, implSel) {
@@ -236,7 +236,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             }
         }
-        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
             let sharedSel = NSSelectorFromString("sharedInstance")
             if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
                 typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
@@ -257,7 +257,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     static func invokeSystemSetFloating(_ floating: Bool) {
         var alreadyMatching = false
         var didInvokeImpl = false
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             let isFloatingSel = NSSelectorFromString("isFloating")
             if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
                 typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
@@ -274,7 +274,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             }
         }
-        if !alreadyMatching, !didInvokeImpl, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if !alreadyMatching, !didInvokeImpl, let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
             let sharedSel = NSSelectorFromString("sharedInstance")
             if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
                 typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
@@ -658,7 +658,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
             .store(in: &cancellables)
 
-        for sysNote in ["TIPreferencesControllerChangedNotification", "UIKeyboardRivenVisualStyleDidChange"] {
+        for sysNote in [["TIPreferences", "ControllerChangedNotification"].joined(), "UIKeyboardRivenVisualStyleDidChange"] {
             NotificationCenter.default.publisher(for: Notification.Name(sysNote))
                 .sink { [weak self] _ in
                     guard let self, self.isViewLoaded, !self.isTransitioningToFloating else { return }

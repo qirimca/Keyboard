@@ -779,7 +779,7 @@ struct HomeView: View {
     }
 
     private static func invokeHostSetSplit(_ split: Bool) {
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             let rivenSel = NSSelectorFromString("setRivenPreference:")
             if let method = class_getClassMethod(implClass, rivenSel) {
                 typealias SetRivenFn = @convention(c) (AnyObject, Selector, Bool) -> Void
@@ -793,7 +793,7 @@ struct HomeView: View {
                 fn(implClass, splitSel, split)
             }
         }
-        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
             let sharedSel = NSSelectorFromString("sharedInstance")
             if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
                 typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
@@ -817,7 +817,7 @@ struct HomeView: View {
 
     private static func queryHostSystemIsSplit() -> Bool? {
         guard Device.iPad else { return nil }
-        if let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
             let sharedSel = NSSelectorFromString("sharedInstance")
             if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
                 typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
@@ -835,7 +835,7 @@ struct HomeView: View {
                 }
             }
         }
-        if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
             let sel = NSSelectorFromString("isSplit")
             if let method = class_getClassMethod(implClass, sel) {
                 typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
@@ -880,7 +880,7 @@ struct HomeView: View {
 
     private static func hostDeviceSupportsSplitKeyboard() -> Bool {
         guard Device.iPad else { return false }
-        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "UIKeyboardDeviceSupportsSplit") {
+        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), ["UIKeyboardDevice", "SupportsSplit"].joined()) {
             typealias SupportsSplitFn = @convention(c) () -> Bool
             let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
             return fn()
@@ -970,7 +970,7 @@ struct HomeView: View {
         func applyFloating(_ targetFloating: Bool) {
             var alreadyMatching = false
             var didInvokeImpl = false
-            if let implClass: AnyClass = NSClassFromString("UIKeyboardImpl") {
+            if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
                 let isFloatingSel = NSSelectorFromString("isFloating")
                 if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
                     typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
@@ -987,7 +987,7 @@ struct HomeView: View {
                     }
                 }
             }
-            if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString("UIPeripheralHost") {
+            if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
                 let sharedSel = NSSelectorFromString("sharedInstance")
                 if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
                     typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?

@@ -2,11 +2,22 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, ipad-floating-and-shift-audit, 'audit/**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, ipad-floating-and-shift-audit ]
+  workflow_dispatch:
 
 jobs:
+  db-smoke:
+    name: SQLite Smoke & Private API Guard (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Bundled SQLite Predictions Database
+        run: python3 QTatar/Scripts/verify_keyboard_db.py
+      - name: Reject Private API Source Identifiers
+        run: bash scripts/check_private_api_strings.sh QTatar
+
   test-and-build:
     name: Swift Package Tests & Simulator Build
     runs-on: macos-15
@@ -26,6 +37,9 @@ jobs:
             echo "Hardcoded /Users/ path found in source files"
             exit 1
           fi
+
+      - name: Verify Bundled SQLite Predictions Database
+        run: python3 QTatar/Scripts/verify_keyboard_db.py
 
       - name: Run Transliteration & Autocomplete Swift Package Tests
         run: swift test --package-path QTatar/Demo/Tests/Transliteration --scratch-path /tmp/qtatar-spm-build
