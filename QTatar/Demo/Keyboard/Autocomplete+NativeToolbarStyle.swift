@@ -63,7 +63,15 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         return val.isEmpty ? defaultTranslationEN : val
     }
 
-    var bannerCRH: String { text }
+    /// Text displayed in the top keyboard banner before tapping.
+    /// For riddle #65 (`Közü yoq — körsete, sözü yoq — ögrete: Kitap.`), hides the answer (`: Kitap`)
+    /// in the top bar and reveals it only when inserted into the text field on tap.
+    var bannerCRH: String {
+        if id == 65, let colonRange = text.range(of: ": ") {
+            return String(text[..<colonRange.lowerBound]) + "."
+        }
+        return text
+    }
 
     /// Ready-to-insert text for `textDocumentProxy.insertText(...)`:
     /// automatically wraps `text` in guillemets and appends `(attribution)` when `attribution` is non-nil.
@@ -829,7 +837,9 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
     static func priority3Candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
         var priority3: [KeyboardGreetingPhrase] = []
         let cal = Calendar(identifier: .gregorian)
-        let hour = cal.component(.hour, from: date)
+        let comps = cal.dateComponents([.weekday, .hour], from: date)
+        let weekday = comps.weekday ?? 2 // 1 = Sun, 2 = Mon, ..., 5 = Thu, 6 = Fri, 7 = Sat
+        let hour = comps.hour ?? 12
 
         func appendIfPresent(_ id: Int) {
             if let item = byID[id], !priority3.contains(item) {
@@ -844,11 +854,11 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(52) // 11:00–18:00
         } else if (18..<23).contains(hour) {
             appendIfPresent(53) // 18:00–23:00
-        } else {
-            appendIfPresent(54) // 23:00–05:00
+        } else if hour == 23 || (0..<3).contains(hour) {
+            appendIfPresent(54) // 23:00–03:00: Geceler hayır!
         }
-        if (8..<17).contains(hour) {
-            appendIfPresent(23) // 08:00–17:00
+        if (2...5).contains(weekday), (8..<17).contains(hour) {
+            appendIfPresent(23) // Mon–Thu (08:00–17:00): İşiñizge bereket! (not shown Fri–Sun)
         }
 
         return priority3
