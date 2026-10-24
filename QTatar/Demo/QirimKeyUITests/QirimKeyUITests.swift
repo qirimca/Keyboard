@@ -1418,4 +1418,141 @@ final class QirimKeyUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.35)
         }
     }
+
+    // MARK: - Strict iPad floating transition (cannot pass vacuously)
+
+    private func spaceFrameSamples(duration: TimeInterval, interval: TimeInterval = 0.1) -> [CGRect] {
+        var samples: [CGRect] = []
+        let end = Date().addingTimeInterval(duration)
+        while Date() < end {
+            let space = key("space")
+            if space.exists { samples.append(space.frame) }
+            Thread.sleep(forTimeInterval: interval)
+        }
+        return samples
+    }
+
+    private func requireFloating(timeout: TimeInterval, context: String) {
+        let deadline = Date().addingTimeInterval(timeout)
+        var lastWidth: CGFloat = -1
+        while Date() < deadline {
+            let space = key("space")
+            if space.exists {
+                lastWidth = space.frame.width
+                if lastWidth > 0 && lastWidth < 320 { return }
+            }
+            Thread.sleep(forTimeInterval: 0.15)
+        }
+        capture("FAIL floating not entered - \(context)")
+        XCTFail("Keyboard did not enter floating mode (\(context)); space key width stayed \(lastWidth) pt (docked ≈ \(app.frame.width) pt)")
+    }
+
+    func testIPadFloatingViaDismissMenuStrict() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad-only") }
+        try launch()
+        try selectScript(cyrillic: false)
+        let dockedSpace = key("space")
+        XCTAssertTrue(dockedSpace.waitForExistence(timeout: 3))
+        XCTAssertGreaterThan(dockedSpace.frame.width, 320, "Precondition: keyboard must start docked")
+        capture("floating-strict 0 docked")
+
+        let dismiss = key("dismiss")
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 2))
+        let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let option = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -0.35))
+        start.press(forDuration: 0.55, thenDragTo: option, withVelocity: .default, thenHoldForDuration: 0.15)
+        requireFloating(timeout: 4, context: "dismiss long-press callout")
+        let settled = spaceFrameSamples(duration: 1.6)
+        capture("floating-strict 1 floating via dismiss menu")
+        let widths = settled.map(\.width)
+        let heights = settled.map(\.height)
+        XCTAssertLessThanOrEqual((widths.max() ?? 0) - (widths.min() ?? 0), 2.0, "Floating key width must not keep jumping after the transition: \(widths)")
+        XCTAssertLessThanOrEqual((heights.max() ?? 0) - (heights.min() ?? 0), 2.0, "Floating key height must not keep jumping after the transition: \(heights)")
+        XCTAssertGreaterThanOrEqual(key("space").frame.minX, 0)
+        XCTAssertLessThanOrEqual(key("space").frame.maxX, app.frame.width)
+    }
+
+    func testIPadFloatingViaPinchStrict() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad-only") }
+        try launch()
+        try selectScript(cyrillic: false)
+        let dockedSpace = key("space")
+        XCTAssertTrue(dockedSpace.waitForExistence(timeout: 3))
+        XCTAssertGreaterThan(dockedSpace.frame.width, 320, "Precondition: keyboard must start docked")
+        let target = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch : dockedSpace
+        target.pinch(withScale: 0.45, velocity: -1.5)
+        requireFloating(timeout: 4, context: "two-finger pinch-in")
+        let settled = spaceFrameSamples(duration: 1.6)
+        capture("floating-strict 2 floating via pinch")
+        let widths = settled.map(\.width)
+        XCTAssertLessThanOrEqual((widths.max() ?? 0) - (widths.min() ?? 0), 2.0, "Floating width must be stable after pinch: \(widths)")
+    }
+
+    func testIPadFloatingReopenKeepsStableSize() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("iPad-only") }
+        try launch()
+        try selectScript(cyrillic: false)
+        let dismiss = key("dismiss")
+        XCTAssertTrue(dismiss.waitForExistence(timeout: 2))
+        let start = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let option = dismiss.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: -0.35))
+        start.press(forDuration: 0.55, thenDragTo: option, withVelocity: .default, thenHoldForDuration: 0.15)
+        requireFloating(timeout: 4, context: "enter floating before reopen")
+        // Hide and re-show the keyboard while the system stays in floating mode.
+        app.textViews["sandbox.input"].tap()
+        let hideKey = key("dismiss")
+        if hideKey.exists { hideKey.tap() }
+        Thread.sleep(forTimeInterval: 0.8)
+        field.tap()
+        _ = key("space").waitForExistence(timeout: 4)
+        let samples = spaceFrameSamples(duration: 2.2, interval: 0.08)
+        capture("floating-strict 3 reopened while floating")
+        XCTAssertFalse(samples.isEmpty, "Keyboard did not reappear after re-focusing the field")
+        let widths = samples.map(\.width)
+        let heights = samples.map(\.height)
+        XCTAssertLessThanOrEqual((widths.max() ?? 0) - (widths.min() ?? 0), 2.0, "Reopened floating keyboard must not resize/jump: widths \(widths)")
+        XCTAssertLessThanOrEqual((heights.max() ?? 0) - (heights.min() ?? 0), 2.0, "Reopened floating keyboard must not resize/jump: heights \(heights)")
+    }
+
+    // MARK: - App Store screenshots (PNGs land in /tmp/qk_shots; run once per system appearance)
+
+    private var storeDevice: String { UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone" }
+
+    func testAppStoreScreenshotsLight() throws {
+        try launch(theme: "modernLight")
+        try selectScript(cyrillic: false)
+        typeLetters("qirimtatarca")
+        Thread.sleep(forTimeInterval: 0.8)
+        capture("store_\(storeDevice)_01_latin_light")
+        app.terminate()
+
+        // iPad has an in-place Latin/Cyrillic toggle; iPhone uses a second extension (skipped here).
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            try launch(theme: "modernLight")
+            try selectScript(cyrillic: true)
+            typeLetters("салам")
+            Thread.sleep(forTimeInterval: 0.8)
+            capture("store_\(storeDevice)_03_cyrillic")
+            app.terminate()
+        }
+
+        app.launchArguments = []
+        app.launch()
+        Thread.sleep(forTimeInterval: 2.5)
+        capture("store_\(storeDevice)_04_home_light")
+    }
+
+    func testAppStoreScreenshotsDark() throws {
+        try launch(theme: "modernDark")
+        try selectScript(cyrillic: false)
+        typeLetters("selam")
+        Thread.sleep(forTimeInterval: 0.8)
+        capture("store_\(storeDevice)_02_latin_dark")
+        app.terminate()
+
+        app.launchArguments = []
+        app.launch()
+        Thread.sleep(forTimeInterval: 2.5)
+        capture("store_\(storeDevice)_05_home_dark")
+    }
 }

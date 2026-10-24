@@ -42,6 +42,8 @@ struct AboutView: View {
                     }
                     .padding(.horizontal, Device.iPhone ? 12 : 24)
                     .padding(.vertical, 12)
+                    // iPad: keep a readable column instead of stretching cards/illustrations edge-to-edge.
+                    .frame(maxWidth: Device.iPad ? 720 : .infinity)
                     .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -251,7 +253,8 @@ private extension AboutView {
             Image(illustration)
                 .resizable()
                 .scaledToFit()
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: Device.iPad ? 170 : .infinity)
+                .accessibilityHidden(true)
                 .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.18), lineWidth: 1.5))
             

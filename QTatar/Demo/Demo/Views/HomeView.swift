@@ -220,6 +220,9 @@ struct HomeView: View {
                             keyboardSettingsSection
                         }
                     }
+                    // iPad: single column (portrait / split view) stays at a readable width; very wide
+                    // two-column windows (13" iPad, Stage Manager) are capped and centered.
+                    .frame(maxWidth: Device.iPad ? (twoColumns ? 1180 : 640) : .infinity)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
                     .padding(.top, Device.iPhone ? 8 : 14)

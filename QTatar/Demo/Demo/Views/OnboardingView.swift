@@ -107,6 +107,7 @@ private extension OnboardingView {
             Image(page.rawValue)
                 .resizable()
                 .scaledToFit()
+                .accessibilityHidden(true)
                 .padding(.bottom, 10)
             
             HStack {
@@ -142,6 +143,8 @@ private extension OnboardingView {
                 }
             }
         }
+        .frame(maxWidth: Device.iPad ? 620 : .infinity)
+        .frame(maxWidth: .infinity)
     }
     
     private func navButton(text: String, gradient: Color, action: @escaping () -> Void) -> some View {
