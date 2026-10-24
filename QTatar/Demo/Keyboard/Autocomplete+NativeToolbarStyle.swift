@@ -707,6 +707,23 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
     /// 3. Time-of-day greetings (#50–#54, #23)
     /// 4. General unrestricted wisdom & motivation pool (`dailyPool`: #1–#22, #24–#49)
     /// Returns Priority 1 commemorative / holiday phrases matched for the given date (`ios_verified.md` Section 2, Priority 1).
+    /// Computes whether the given date/time is after astronomical sunset (Maghrib) for Crimea / Ukraine
+    /// (`latitude ≈ 46.5° N`, with +15 min post-sunset safety margin) using the offline NOAA solar declination equation.
+    static func isAfterAstronomicalSunset(on date: Date, calendar cal: Calendar = Calendar(identifier: .gregorian)) -> Bool {
+        let dayOfYear = Double(cal.ordinality(of: .day, in: .year, for: date) ?? 1)
+        let comps = cal.dateComponents([.hour, .minute], from: date)
+        let localHours = Double(comps.hour ?? 12) + Double(comps.minute ?? 0) / 60.0
+        // Solar declination angle δ (radians): -23.45° * cos(2π/365.24 * (N + 10))
+        let declination = -0.40928 * cos((2.0 * .pi / 365.24) * (dayOfYear + 10.0))
+        // Reference latitude φ = 46.5° N (0.811578 rad, midpoint between Aqmescit 44.95° N and Kyiv 50.45° N)
+        let cosOmega = max(-1.0, min(1.0, -tan(0.811578) * tan(declination)))
+        let halfDayHours = (12.0 / .pi) * acos(cosOmega)
+        let isDST = TimeZone.current.isDaylightSavingTime(for: date)
+        let solarNoon = isDST ? 13.15 : 12.15
+        let sunsetHour = solarNoon + halfDayHours + 0.25 // +15 min post-sunset buffer
+        return localHours >= sunsetHour
+    }
+
     static func priority1Candidates(for date: Date = Date()) -> [KeyboardGreetingPhrase] {
         var priority1: [KeyboardGreetingPhrase] = []
         let cal = Calendar(identifier: .gregorian)
@@ -721,15 +738,18 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             }
         }
 
-        // Priority 1A: Hijri (Islamic Umm al-Qura) holidays (#55–#57)
+        // Priority 1A: Hijri (Islamic Umm al-Qura) holidays (#55–#57).
+        // Because crescent sighting can vary by ±1 day from Umm al-Qura and Islamic days begin at sunset (Maghrib),
+        // we trigger on the 2nd day after astronomical sunset AND all of the 3rd day (guaranteed active across all calendars).
         let hijri = Calendar(identifier: .islamicUmmAlQura)
         let hComps = hijri.dateComponents([.month, .day], from: date)
-        if hComps.month == 9, hComps.day == 1 {
-            appendIfPresent(55) // 1 Ramadan: Şehr-u Ramazan, merhaba!
-        } else if hComps.month == 10, let hDay = hComps.day, (1...3).contains(hDay) {
-            appendIfPresent(56) // Oraza Bayram (1–3 Shawwal)
-        } else if hComps.month == 12, let hDay = hComps.day, (10...13).contains(hDay) {
-            appendIfPresent(57) // Qurban Bayram (10–13 Dhu al-Hijjah)
+        let afterSunset = isAfterAstronomicalSunset(on: date, calendar: cal)
+        if hComps.month == 9, let hDay = hComps.day, (hDay == 3 || (hDay == 2 && afterSunset)) {
+            appendIfPresent(55) // Ramadan (day 2 after sunset + all of day 3): Şehr-u Ramazan, merhaba!
+        } else if hComps.month == 10, let hDay = hComps.day, (hDay == 3 || (hDay == 2 && afterSunset)) {
+            appendIfPresent(56) // Oraza Bayram (day 2 of Shawwal after sunset + all of day 3)
+        } else if hComps.month == 12, let hDay = hComps.day, (hDay == 12 || hDay == 13 || (hDay == 11 && afterSunset)) {
+            appendIfPresent(57) // Qurban Bayram (day 2 [11 Dhu al-Hijjah] after sunset + days 3–4 [12–13 Dhu al-Hijjah])
         }
 
         // Priority 1B: Exact Gregorian dates (dd.MM) (#59–#65, #68–#82)
