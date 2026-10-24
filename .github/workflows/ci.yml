@@ -8,6 +8,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  db-smoke:
+    name: SQLite Smoke Test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 QTatar/Scripts/verify_keyboard_db.py
+
   test-and-build:
     name: Swift Package Tests & Simulator Build
     runs-on: macos-15
