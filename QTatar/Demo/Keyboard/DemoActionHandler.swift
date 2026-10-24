@@ -537,7 +537,6 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
             return
         }
-        super.tryApplyAutocorrectSuggestion(before: gesture, on: action)
     }
 
 
