@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2064 2752" width="2064" height="2752">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#090F1C" />
+      <stop offset="100%" stop-color="#050912" />
+    </linearGradient>
+    <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#09111E" stop-opacity="0.70" />
+      <stop offset="35%" stop-color="#0C1729" stop-opacity="0.42" />
+      <stop offset="100%" stop-color="#060B14" stop-opacity="0.88" />
+    </linearGradient>
+    <clipPath id="screenClip">
+      <rect x="206" y="509" width="1651" height="2091" rx="48" ry="48" />
+    </clipPath>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000000" flood-opacity="0.54" />
+    </filter>
+  </defs>
+
+  <!-- Base Layer & Crimean Coast Sunset Photography -->
+  <rect id="layer-background" width="2064" height="2752" fill="url(#bgGrad)" />
+  <image id="layer-crimea-sunset" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" x="0" y="0" width="2064" height="2752" preserveAspectRatio="xMidYMid slice" />
+  <rect id="layer-veil" width="2064" height="2752" fill="url(#sunsetVeil)" />
+
+  <!-- Top Brand Pill & Headline Copy Layer -->
+  <g id="layer-copy">
+    <rect x="455" y="77" width="1155" height="60" rx="30" fill="#0F172A" fill-opacity="0.72" stroke="#38BDF8" stroke-width="2" />
+    <text x="1032" y="117" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="41" font-weight="700" letter-spacing="1.8" fill="#38BDF8">QARANLIQ TEMA &amp; LIQUID GLASS</text>
+
+    <text x="1032" y="225" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="90" font-weight="800" fill="#F8FAFC">Közni Yormaycaq Dizayn</text>
+    <text x="1032" y="313" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="49" font-weight="500" fill="#CBD5E1">Er yerde şık körüniş ve Taraq Tamğa nefes aluvı</text>
+
+    <!-- Feature Pills Row -->
+    <g id="layer-feature-pills">
+      <rect x="183" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="451" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Qaranlıq tema</text>
+
+      <rect x="764" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#F59E0B" stroke-opacity="0.65" stroke-width="1.5" />
+      <text x="1032" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Liquid Glass</text>
+
+      <rect x="1345" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="1613" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Taraq Tamğa</text>
+    </g>
+  </g>
+
+  <!-- iPad Device Frame & Real Build Screenshot Layer -->
+  <g id="layer-device-frame" filter="url(#cardShadow)">
+    <rect x="182" y="485" width="1699" height="2139" rx="72" ry="72" fill="#0B0F17" stroke="#475569" stroke-width="6" />
+    <image href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/AppStoreMetadata/Screenshots/ipad-13-2064x2752/02_latin_dark.png" x="206" y="509" width="1651" height="2091" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
+  </g>
+</svg>

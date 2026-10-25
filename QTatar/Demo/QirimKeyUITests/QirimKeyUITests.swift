@@ -20,22 +20,29 @@ final class QirimKeyUITests: XCTestCase {
         app?.terminate()
     }
 
-    private func launch(fieldMode: String = "standard", theme: String = "modernLight") throws {
-        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"]
+    private var anyCustomKey: XCUIElement {
+        let pred = NSPredicate(format: "identifier IN {'key.space', 'key.numeric', 'key.alphabetic'}")
+        return app.descendants(matching: .any).matching(pred).firstMatch
+    }
+
+    private func launch(fieldMode: String = "standard", theme: String = "modernLight", extraArgs: [String] = []) throws {
+        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"] + extraArgs
         app.launch()
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
-        if !(firstKey.exists || firstKey.waitForExistence(timeout: 4.5) || key("numeric").exists || key("alphabetic").exists) {
+        if !anyCustomKey.waitForExistence(timeout: 3.5) {
             if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
                 field.tap()
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+            if !anyCustomKey.exists {
+                cycleToCustomKeyboard(firstKey: firstKey)
             }
         }
-        if !(firstKey.exists || firstKey.waitForExistence(timeout: 2.5) || key("numeric").exists || key("alphabetic").exists) {
-            cycleToCustomKeyboard(firstKey: firstKey)
-        }
-        if !(firstKey.exists || key("numeric").exists || key("alphabetic").exists) {
+        if !anyCustomKey.exists {
             enableKeyboardInSettingsIfNeeded()
-            app.activate()
+            app.terminate()
+            app.launch()
             if field.waitForExistence(timeout: 5) {
                 if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
                     field.tap()
@@ -44,10 +51,7 @@ final class QirimKeyUITests: XCTestCase {
             }
             cycleToCustomKeyboard(firstKey: firstKey)
         }
-        XCTAssertTrue(firstKey.exists ||
-                      firstKey.waitForExistence(timeout: 6) ||
-                      key("numeric").exists ||
-                      key("alphabetic").exists,
+        XCTAssertTrue(anyCustomKey.waitForExistence(timeout: 4.0),
                       "Enable and select Qırımtatarca in Settings before running keyboard tests.")
     }
 
@@ -65,43 +69,66 @@ final class QirimKeyUITests: XCTestCase {
                 Thread.sleep(forTimeInterval: 0.8)
             }
         }
-        for step in 1...6 {
-            if firstKey.exists || key("numeric").exists || key("alphabetic").exists || key("space").exists {
-                break
-            }
-            if abcBtn.exists && abcBtn.isHittable {
-                abcBtn.tap()
-            } else if nextKeyboard.exists && nextKeyboard.isHittable {
-                for _ in 0..<step where nextKeyboard.exists && nextKeyboard.isHittable {
-                    nextKeyboard.tap()
+        if anyCustomKey.exists { return }
+        if abcBtn.exists && abcBtn.isHittable {
+            abcBtn.tap()
+            if anyCustomKey.waitForExistence(timeout: 1.8) { return }
+        } else if nextKeyboard.exists && nextKeyboard.isHittable {
+            nextKeyboard.tap()
+            if anyCustomKey.waitForExistence(timeout: 1.8) { return }
+        }
+        if nextKeyboard.exists && nextKeyboard.isHittable {
+            for dyOffset in [-2.8, -3.6, -4.4] {
+                let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
+                start.press(forDuration: 0.55, thenDragTo: end)
+                if app.state != .runningForeground {
+                    app.activate()
+                    Thread.sleep(forTimeInterval: 0.6)
                 }
-            } else {
-                break
-            }
-            if firstKey.waitForExistence(timeout: 2.0) || key("numeric").exists || key("alphabetic").exists || key("space").exists {
-                break
+                if anyCustomKey.waitForExistence(timeout: 1.8) { return }
             }
         }
     }
 
     private func enableKeyboardInSettingsIfNeeded() {
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
-        settings.launch()
+        settings.activate()
         guard settings.wait(for: .runningForeground, timeout: 8) else { return }
-        Thread.sleep(forTimeInterval: 1.0)
+        Thread.sleep(forTimeInterval: 0.8)
 
-        let generalBtn = settings.buttons.matching(NSPredicate(format: "identifier == 'com.apple.settings.general' OR label == 'General'")).firstMatch
-        if generalBtn.waitForExistence(timeout: 3.0) {
-            generalBtn.tap()
-            Thread.sleep(forTimeInterval: 0.8)
+        let keyboardPred = NSPredicate(format: "identifier == 'com.apple.settings.general.keyboard' OR label == 'Keyboard'")
+        let keyboardsPred = NSPredicate(format: "label CONTAINS[c] 'Keyboards' OR identifier CONTAINS[c] 'KEYBOARDS'")
+        let generalPred = NSPredicate(format: "identifier == 'com.apple.settings.general' OR label == 'General'")
+
+        if !settings.buttons.matching(keyboardPred).firstMatch.exists &&
+           !settings.cells.matching(keyboardPred).firstMatch.exists &&
+           !settings.buttons.matching(keyboardsPred).firstMatch.exists &&
+           !settings.cells.matching(keyboardsPred).firstMatch.exists {
+            let generalBtn = settings.buttons.matching(generalPred).firstMatch.exists
+                ? settings.buttons.matching(generalPred).firstMatch
+                : settings.cells.matching(generalPred).firstMatch
+            if !generalBtn.exists {
+                settings.swipeUp()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+            if generalBtn.waitForExistence(timeout: 2.0) {
+                generalBtn.tap()
+                Thread.sleep(forTimeInterval: 0.8)
+            }
         }
-        let keyboardBtn = settings.buttons.matching(NSPredicate(format: "identifier == 'com.apple.settings.general.keyboard' OR label == 'Keyboard'")).firstMatch
-        if keyboardBtn.waitForExistence(timeout: 3.0) {
+
+        let keyboardBtn = settings.buttons.matching(keyboardPred).firstMatch.exists
+            ? settings.buttons.matching(keyboardPred).firstMatch
+            : settings.cells.matching(keyboardPred).firstMatch
+        if keyboardBtn.waitForExistence(timeout: 2.5) {
             keyboardBtn.tap()
             Thread.sleep(forTimeInterval: 0.8)
         }
-        let keyboardsBtn = settings.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Keyboards' OR identifier CONTAINS[c] 'KEYBOARDS'")).firstMatch
-        if keyboardsBtn.waitForExistence(timeout: 3.0) {
+        let keyboardsBtn = settings.buttons.matching(keyboardsPred).firstMatch.exists
+            ? settings.buttons.matching(keyboardsPred).firstMatch
+            : settings.cells.matching(keyboardsPred).firstMatch
+        if keyboardsBtn.waitForExistence(timeout: 2.5) {
             keyboardsBtn.tap()
             Thread.sleep(forTimeInterval: 0.8)
         }
@@ -150,6 +177,26 @@ final class QirimKeyUITests: XCTestCase {
                     Thread.sleep(forTimeInterval: 0.5)
                 }
             }
+            let backBtn = settings.navigationBars.buttons.element(boundBy: 0)
+            if backBtn.exists && backBtn.isHittable {
+                backBtn.tap()
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+        let cyrCell = settings.cells.matching(NSPredicate(format: "identifier CONTAINS[c] 'cyrillic' OR label CONTAINS[c] 'Къырымтатарджа'")).firstMatch
+        if cyrCell.waitForExistence(timeout: 1.5) && cyrCell.isHittable {
+            cyrCell.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+            let fullAccessSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Allow Full Access'")).firstMatch
+            if fullAccessSwitch.waitForExistence(timeout: 2.0), ((fullAccessSwitch.value as? String) ?? "") == "0" {
+                fullAccessSwitch.tap()
+                Thread.sleep(forTimeInterval: 0.5)
+                let allowBtn = settings.alerts.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Allow'")).firstMatch
+                if allowBtn.waitForExistence(timeout: 1.5) {
+                    allowBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+            }
         }
     }
 
@@ -171,6 +218,14 @@ final class QirimKeyUITests: XCTestCase {
                 if !recheck.isEmpty && !recheck.hasSuffix(" ") && element.exists {
                     element.tap()
                 }
+            }
+        } else if identifier == "numeric" {
+            if !key("alphabetic").waitForExistence(timeout: 0.8), element.exists {
+                element.tap()
+            }
+        } else if identifier == "alphabetic" {
+            if !key("numeric").waitForExistence(timeout: 0.8), element.exists {
+                element.tap()
             }
         }
     }
@@ -235,33 +290,25 @@ final class QirimKeyUITests: XCTestCase {
         let nextKeyboard = app.buttons["Next keyboard"].exists ? app.buttons["Next keyboard"] : key("next_keyboard")
         let abcBtn = app.buttons["ABC"]
         if nextKeyboard.exists && nextKeyboard.isHittable {
-            nextKeyboard.press(forDuration: 0.65)
-            Thread.sleep(forTimeInterval: 0.5)
-            let targetLabel = cyrillic ? "Къырымтатарджа" : "Qırımtatarca"
-            let menuPred = NSPredicate(format: "label CONTAINS[c] %@", targetLabel)
-            let menuOption = app.tables.cells.matching(menuPred).firstMatch.exists
-                ? app.tables.cells.matching(menuPred).firstMatch
-                : app.descendants(matching: .any).matching(menuPred).firstMatch
-            if menuOption.waitForExistence(timeout: 1.5) && menuOption.isHittable {
-                menuOption.tap()
-                if waitForLetter(wanted, timeout: 2.0) { return }
-            }
-        }
-        for step in 1...6 where (nextKeyboard.exists || abcBtn.exists) {
-            for _ in 0..<step {
-                if nextKeyboard.exists && nextKeyboard.isHittable {
-                    nextKeyboard.tap()
-                } else if abcBtn.exists && abcBtn.isHittable {
-                    abcBtn.tap()
-                } else {
-                    break
-                }
-            }
-            if key("alphabetic").exists { tap("alphabetic") }
+            nextKeyboard.tap()
+            Thread.sleep(forTimeInterval: 0.8)
             if waitForLetter(wanted, timeout: 1.2) { return }
-            if key("toggle_script").exists {
-                tap("toggle_script")
-                if waitForLetter(wanted, timeout: 1.2) { return }
+        } else if abcBtn.exists && abcBtn.isHittable {
+            abcBtn.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+            if waitForLetter(wanted, timeout: 1.2) { return }
+        }
+        if nextKeyboard.exists && nextKeyboard.isHittable {
+            for dyOffset in [-2.8, -3.6, -4.4] {
+                let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
+                start.press(forDuration: 0.55, thenDragTo: end)
+                Thread.sleep(forTimeInterval: 0.8)
+                if app.state != .runningForeground {
+                    app.activate()
+                    Thread.sleep(forTimeInterval: 0.6)
+                }
+                if waitForLetter(wanted, timeout: 1.5) { return }
             }
         }
         throw XCTSkip("Select the other extension with the system globe on iPhone before this test.")
@@ -808,7 +855,8 @@ final class QirimKeyUITests: XCTestCase {
             cycleToCustomKeyboard(firstKey: firstKey)
             if !(firstKey.exists || key("space").exists) {
                 enableKeyboardInSettingsIfNeeded()
-                app.activate()
+                app.terminate()
+                app.launch()
                 if field.waitForExistence(timeout: 5) {
                     if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
                         field.tap()
@@ -1224,10 +1272,21 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(greetingBanner.waitForExistence(timeout: 2.5), "Greeting banner must reappear after clearing sandbox field")
 
         // 3. Switch interface language to Ukrainian ('uk'), enable Ukrainian Cyrillic layout ('ФІВА'), and verify Phase 8 transliteration
-        let ukLangBtn = app.buttons["settings.lang.uk"]
+        let testingToggle = app.buttons["testing.toggle"].exists
+            ? app.buttons["testing.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "testing.toggle").firstMatch
+        if testingToggle.exists && testingToggle.isHittable {
+            testingToggle.tap()
+            Thread.sleep(forTimeInterval: 0.45)
+        }
+        let ukLangBtn = app.buttons["settings.lang.uk"].exists
+            ? app.buttons["settings.lang.uk"]
+            : (app.buttons["Українська"].exists
+                ? app.buttons["Українська"]
+                : app.descendants(matching: .any).matching(identifier: "settings.lang.uk").firstMatch)
         if ukLangBtn.waitForExistence(timeout: 2) {
-            ukLangBtn.tap()
-            Thread.sleep(forTimeInterval: 0.4)
+            tapSwitch(ukLangBtn)
+            Thread.sleep(forTimeInterval: 0.5)
         }
         let ukCyrSwitch = app.switches["settings.ukrainianCyrillic.toggle"].exists
             ? app.switches["settings.ukrainianCyrillic.toggle"]
@@ -1242,21 +1301,34 @@ final class QirimKeyUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.45)
         }
         capture("Ukrainian interface with FIVA layout toggle enabled")
+        if testingToggle.exists && testingToggle.isHittable {
+            testingToggle.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+        }
 
         defer {
+            if testingToggle.exists && testingToggle.isHittable && key("space").exists {
+                testingToggle.tap()
+                Thread.sleep(forTimeInterval: 0.4)
+            }
             if ((ukCyrSwitch.value as? String) ?? "1") == "1" {
                 tapSwitch(ukCyrSwitch)
                 Thread.sleep(forTimeInterval: 0.35)
             }
-            let crhLangBtn = app.buttons["settings.lang.crh"]
+            let crhLangBtn = app.buttons["settings.lang.crh"].exists
+                ? app.buttons["settings.lang.crh"]
+                : (app.buttons["Qırımtatarca"].exists
+                    ? app.buttons["Qırımtatarca"]
+                    : app.descendants(matching: .any).matching(identifier: "settings.lang.crh").firstMatch)
             if crhLangBtn.exists {
-                crhLangBtn.tap()
+                tapSwitch(crhLangBtn)
                 Thread.sleep(forTimeInterval: 0.35)
             }
         }
 
-        if !key("space").exists {
+        if !key("space").exists && field.waitForExistence(timeout: 2) {
             field.tap()
+            Thread.sleep(forTimeInterval: 0.6)
         }
         try selectScript(cyrillic: true)
         XCTAssertTrue(waitForLetter("і", timeout: 3), "Ukrainian Cyrillic layout (ФІВА) must include key 'і'")
@@ -1334,10 +1406,13 @@ final class QirimKeyUITests: XCTestCase {
         clear()
         let numericKey = key("numeric")
         if numericKey.exists && qElem.exists {
-            let startCoord = numericKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let endCoord = qElem.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            startCoord.press(forDuration: 0.08, thenDragTo: endCoord, withVelocity: .slow, thenHoldForDuration: 0.08)
-            Thread.sleep(forTimeInterval: 0.4)
+            let numFrame = numericKey.frame
+            let qFrame = qElem.frame
+            let rootOrigin = app.coordinate(withNormalizedOffset: .zero)
+            let startCoord = rootOrigin.withOffset(CGVector(dx: numFrame.midX, dy: numFrame.midY))
+            let endCoord = rootOrigin.withOffset(CGVector(dx: qFrame.midX, dy: qFrame.midY))
+            startCoord.press(forDuration: 0.10, thenDragTo: endCoord, withVelocity: .slow, thenHoldForDuration: 0.12)
+            Thread.sleep(forTimeInterval: 0.5)
             XCTAssertTrue(waitForLetter("q", timeout: 3.0), "Keyboard must automatically return to alphabetic layout after Slide-from-123 release")
             capture("Phase 13 Slide from 123 returned to alphabetic")
         }
@@ -1458,52 +1533,78 @@ final class QirimKeyUITests: XCTestCase {
     private var storeDevice: String { UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone" }
 
     func testAppStoreScreenshotsLight() throws {
-        try launch(theme: "modernLight")
+        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
         try selectScript(cyrillic: false)
+        clear()
         typeLetters("qirimtatarca")
         Thread.sleep(forTimeInterval: 0.8)
         capture("store_\(storeDevice)_01_latin_light")
         app.terminate()
 
-        try launch(theme: "modernLight")
-        if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
-            typeLetters("салам")
-            Thread.sleep(forTimeInterval: 0.8)
-            capture("store_\(storeDevice)_03_cyrillic")
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
+            if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
+                clear()
+                typeLetters("селям")
+                Thread.sleep(forTimeInterval: 0.8)
+                capture("store_\(storeDevice)_03_cyrillic")
+            }
+            app.terminate()
         }
+
+        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight"]
+        app.launch()
+        Thread.sleep(forTimeInterval: 2.0)
+        capture("store_\(storeDevice)_04_home_light")
         app.terminate()
 
-        app.launchArguments = []
+        app.launchArguments = ["-qt_cyrillic_missing", "-qt_demo_stats", "-qt_theme", "modernLight"]
         app.launch()
-        Thread.sleep(forTimeInterval: 2.5)
-        capture("store_\(storeDevice)_04_home_light")
+        Thread.sleep(forTimeInterval: 1.5)
+        let addHintBtn = app.descendants(matching: .any).matching(identifier: "settings.cyrillic.addHintButton").firstMatch
+        let cyrToggle = app.switches["settings.cyrillic.toggle"].exists
+            ? app.switches["settings.cyrillic.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
+        XCTAssertTrue(addHintBtn.waitForExistence(timeout: 2.5), "Cyrillic row must show settings path instruction subtitle when not added")
+        XCTAssertTrue(cyrToggle.exists, "Cyrillic row must show Toggle switch")
+        XCTAssertEqual(cyrToggle.value as? String, "0", "Cyrillic Toggle must be OFF when Cyrillic is not added")
+        capture("store_\(storeDevice)_04b_home_cyrillic_missing")
     }
 
     func testAppStoreScreenshotCyrillicOnly() throws {
-        try launch(theme: "modernLight")
+        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
         try selectScript(cyrillic: true)
         clear()
-        typeLetters("салам")
+        typeLetters("селям")
         Thread.sleep(forTimeInterval: 0.8)
         capture("store_\(storeDevice)_03_cyrillic")
     }
 
     func testAppStoreScreenshotsDark() throws {
-        try launch(theme: "modernDark")
+        try launch(theme: "modernDark", extraArgs: ["-qt_demo_stats"])
         try selectScript(cyrillic: false)
-        typeLetters("selam")
+        clear()
+        typeLetters("sel")
+        tap("character.â")
+        typeLetters("m")
         Thread.sleep(forTimeInterval: 0.8)
         capture("store_\(storeDevice)_02_latin_dark")
         app.terminate()
 
-        app.launchArguments = []
+        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernDark"]
         app.launch()
         Thread.sleep(forTimeInterval: 2.5)
         capture("store_\(storeDevice)_05_home_dark")
     }
 
     func testAppStorePreviewVideoScenario() throws {
-        try launch(theme: "modernLight")
+        app.launchArguments = ["-qt_field", "standard", "-qt_theme", "modernLight", "-qt_reset_text", "-qt_demo_stats", "-qt_enable_animations", "-qt_cyrillic_added"]
+        app.launch()
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        let firstKey = key("numeric")
+        if !(firstKey.exists || firstKey.waitForExistence(timeout: 3.5)) {
+            cycleToCustomKeyboard(firstKey: firstKey)
+        }
         try selectScript(cyrillic: false)
         clear()
         Thread.sleep(forTimeInterval: 1.0)
@@ -1511,27 +1612,44 @@ final class QirimKeyUITests: XCTestCase {
         tap("space")
         Thread.sleep(forTimeInterval: 0.6)
         typeLetters("qirim")
-        tap("space")
-        Thread.sleep(forTimeInterval: 0.8)
+        Thread.sleep(forTimeInterval: 0.7)
         let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
         if slot1.exists && slot1.isHittable {
             slot1.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        } else {
+            tap("space")
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let sKey = letterElement("s")
+            let mKey = letterElement("m")
+            if sKey.exists && mKey.exists {
+                let cS = sKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                let cM = mKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                cS.press(forDuration: 0.04, thenDragTo: cM, withVelocity: .slow, thenHoldForDuration: 0.05)
+            }
+            Thread.sleep(forTimeInterval: 1.0)
+        } else {
+            typeLetters("vatan")
+            tap("space")
             Thread.sleep(forTimeInterval: 0.8)
         }
         let darkBtn = app.buttons["theme.dark"]
         if darkBtn.exists && darkBtn.isHittable {
             darkBtn.tap()
+            Thread.sleep(forTimeInterval: 1.4)
+        }
+        if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
+            typeLetters("селям")
             Thread.sleep(forTimeInterval: 1.2)
         }
-        typeLetters("vatan")
-        tap("space")
-        Thread.sleep(forTimeInterval: 1.0)
         let statsToggle = app.buttons["stats.expandToggle"].exists
             ? app.buttons["stats.expandToggle"]
             : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
         if statsToggle.exists && statsToggle.isHittable {
             statsToggle.tap()
-            Thread.sleep(forTimeInterval: 2.0)
+            Thread.sleep(forTimeInterval: 2.2)
         }
         capture("store_\(storeDevice)_video_final_frame")
     }

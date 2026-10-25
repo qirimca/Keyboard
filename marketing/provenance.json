@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "QırımKey",
-  "status": "inventory_only",
+  "status": "verified_release_candidate_inventory",
   "note": "This manifest records file identity and known provenance only. Null means the information was not found in the inspected local assets; it must not be inferred.",
   "assets": [
     {
@@ -102,6 +102,258 @@
       },
       "review_status": "existing_brand_asset",
       "review_note": "Catalog declares this PNG as the dark luminosity variant; original editable design source was not found in the inspected tree."
+    },
+    {
+      "id": "crimea_sunset_background",
+      "path": "marketing/templates/assets/crimea_sunset_bg.png",
+      "kind": "marketing_background_photo",
+      "role": "Crimean coast sunset photography used across marketing templates and App Preview video",
+      "format": "PNG",
+      "width_px": 532,
+      "height_px": 531,
+      "sha256": "787077fd92246608c663f24df812f1b2c13529871bee8c2a158993df2e3e84df",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_01_latin_light",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/01_latin_light.png",
+      "kind": "app_store_screenshot",
+      "role": "iPhone 6.3-inch Latin Light keyboard with qırımtatarca autocomplete and pre-seeded Statistika (180 | 38 söz/daq | 7 daq | 18)",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "142ca29d2a974010d4debdcbba30c3add3f79f41861d1a70f8d579c6351356aa",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_02_latin_dark",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/02_latin_dark.png",
+      "kind": "app_store_screenshot",
+      "role": "iPhone 6.3-inch Latin Dark keyboard with selâm and synchronized dark HomeView",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "5cc56107cd016349a40fdcc2da6cef0e97e68d4d5f2a0efc0ea66cc921fd95f3",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_03_cyrillic",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/03_cyrillic.png",
+      "kind": "app_store_screenshot",
+      "role": "iPhone 6.3-inch Cyrillic keyboard typing селям -> selâm with live transliteration",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "38ba65a086a077a051923196c6f054f52afcff8993116d46adcd162b2ec830fb",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_04_home_light",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/04_home_light.png",
+      "kind": "app_store_screenshot",
+      "role": "iPhone 6.3-inch HomeView Light with selâm, Statistika (180 | 38 söz/daq | 7 daq | 18), Cyrillic Toggle ON, and English iOS Settings path «General» → «Keyboard»",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "c470d90e6ae45f98b79bfbee9fd22dd9cef0e295aff2474c3c0a2d48758119ea",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_04b_home_cyrillic_missing",
+      "path": "docs/release/2026-10-25/assets/store_iphone_04b_home_cyrillic_missing.png",
+      "kind": "verification_screenshot",
+      "role": "iPhone 6.3-inch HomeView Light when Cyrillic extension is not yet added, showing Cyrillic Toggle OFF and «General» → «Keyboard» → «Keyboards» bölüginde qoşuñız subtitle",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "d2b1fa0d51c5290253823fb06ea6965cf2a59a1eb857fbf741c40fa015278c10",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_05_home_dark",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/05_home_dark.png",
+      "kind": "app_store_screenshot",
+      "role": "iPhone 6.3-inch HomeView Dark with selâm, Statistika (180 | 38 söz/daq | 7 daq | 18), and Cyrillic Toggle ON",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "34d82dcbdd5337c1e3b789d6a9e1414b2ba326aa2572c4fe6d7a197e6fc6d588",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_ukrainian_fiva_home",
+      "path": "docs/release/2026-10-25/assets/Ukrainian_interface_with_FIVA_layout_toggle_enabled.png",
+      "kind": "verification_screenshot",
+      "role": "iPhone 6.3-inch Ukrainian interface with Tryzub badge, both Кирилична клавіатура and Українська розкладка (ФІВА) toggles ON, selâm, and «Загальні» → «Клавіатура»",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "9d2b8a4beabbf01441a2fdf7e15fe24ca7f12e18bf0fef1bb16cb0cd9c0bfff7",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "iphone_ukrainian_both_toggles_off",
+      "path": "docs/release/2026-10-25/assets/Ukrainian_interface_with_both_toggles_off.png",
+      "kind": "verification_screenshot",
+      "role": "iPhone 6.3-inch Ukrainian interface when Cyrillic is not added, showing both Кирилична клавіатура and Українська розкладка toggles OFF in gray",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "19ab23a9fddae57d72503f7e4e04926b6da2489baaff838ea5decfc418c98eb5",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "comet_overlay_comparison",
+      "path": "docs/release/2026-10-25/assets/comet_overlay_comparison.png",
+      "kind": "verification_screenshot",
+      "role": "Side-by-side and alpha-blended overlay comparison of native iOS QuickPath comet vs QırımKey single-tone comet",
+      "format": "PNG",
+      "width_px": 2400,
+      "height_px": 1350,
+      "sha256": "14c89516c473ec2ebde913daf4df12edab4752baa8b77ee4768499238d19a5d7",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "XCUITest + simctl io screenshot (status_bar 09:41)"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "app_preview_video_iphone",
+      "path": "AppStoreMetadata/Media/preview_iphone_6.9_22s.mp4",
+      "kind": "app_preview_video",
+      "role": "22-second 6-scene App Preview video for iPhone (886x1920, 30 fps)",
+      "format": "MP4",
+      "width_px": 886,
+      "height_px": 1920,
+      "sha256": "3a697d13224891cb1a276abbef8795eabb517df904f7d2f52d2032e1e3374a16",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "AVAssetWriter 30fps compositor"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
+    },
+    {
+      "id": "app_preview_video_ipad",
+      "path": "AppStoreMetadata/Media/preview_ipad_13_22s.mp4",
+      "kind": "app_preview_video",
+      "role": "22-second 6-scene App Preview video for iPad (1200x1600, 30 fps)",
+      "format": "MP4",
+      "width_px": 1200,
+      "height_px": 1600,
+      "sha256": "db4f0384daddce93f5213eca7e5c54b468a3b3f4121233a0d3fd8a6d3b6d154b",
+      "capture_provenance": {
+        "device_model": "iPhone 16 Pro (Simulator 40E3A510-9C39-4E74-B939-1D63400A735F)",
+        "os_version": "iOS 27.0 (24A434)",
+        "app_version": "3.1",
+        "build_number": "13",
+        "commit_sha": "codex/release-public-api-2026-10-25",
+        "captured_at": "2026-10-25",
+        "capture_method": "AVAssetWriter 30fps compositor"
+      },
+      "review_status": "verified_release_candidate",
+      "review_note": "Verified against 2026-10-25 user requirements: selâm orthography, pre-seeded realistic Statistika (180 | 38 söz/daq | 7 daq | 18), English/Ukrainian iOS Settings paths, coupled Cyrillic + Ukrainian Toggle switches with Add/Remove OnboardingView guides, and synchronized Light/Dark theme."
     }
   ]
 }

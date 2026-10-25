@@ -42,9 +42,10 @@
   - **5-Hour Limit Remaining**: **100%** (`0%` used)
   - **Weekly Limit Remaining**: **100%** (`0%` used)
 
-## 4. Prioritized Execution Queue
-1. **P0-A & P0-B**: Fix `KeyboardStateInspector` / `KeyboardStateContext` → `HomeView` tri-state regression (`verifiedInstalled | verifiedMissing | unknown` + App Group extension activation heartbeat) so `HomeView` never displays false *"keyboard not installed"* indicators or a permanent start overlay when bundle-ID enumeration is unavailable via public APIs.
-2. **P0-C**: Run and verify `scripts/tests/test_private_api_guard.py` (`8/8`), `scripts/check_private_api_strings.sh QTatar`, and `QTatar/Scripts/verify_keyboard_db.py`.
-3. **P0-D**: Fix `swift test` Finder/iCloud `xattr` codesign failure in `/tmp/qtatar-spm-build` and execute `TransliterationTests`; fix `xcodebuild` package resolution (`KeyboardKit`) and build Release/Debug cleanly.
-4. **P1-E**: Parallel physical device verification (`iPhone 15 Pro` + `iPad Air 3rd generation`) + simulator verification + standard single-tone swipe trail check.
-5. **P2-G**: Clean App Store screenshots (`1206×2622`, `1179×2556`, `2064×2752`) & App Preview video (`886×1920`, `1200×1600`) with full provenance in `marketing/provenance.json`, plus synchronized handoff documents.
+## 4. Prioritized Execution Queue (Completed 2026-10-25)
+1. **[x] P0-A & P0-B**: Fixed `KeyboardStateInspector` / `KeyboardStateContext` → `HomeView` tri-state regression (`verifiedInstalled | verifiedMissing | unknown` + App Group extension activation heartbeat).
+2. **[x] P0-C**: Verified `scripts/tests/test_private_api_guard.py` (`8/8`), `scripts/check_private_api_strings.sh QTatar` (`0` violations across `333` files), and `QTatar/Scripts/verify_keyboard_db.py` (`PASS`).
+3. **[x] P0-D**: Fixed `swift test` and `xcodebuild` package resolution (`KeyboardKit`) and verified Debug/Release builds.
+4. **[x] P1-E**: Parallel physical device installation (`iPhone 15 Pro` + `iPad Air 3rd generation`) + simulator UI test suite (`testPhase13AdaptiveHeightTrackpadSlideAndSettingsBundle`, `testAppStoreScreenshotsLight`, `testAppStoreScreenshotsDark`, `testAppStoreScreenshotCyrillicOnly`) + true native-matched single-tone comet swipe trail (`comet_overlay_comparison.png`).
+5. **[x] P2-G & Sub-task `17.5.7`**: Coupled `Kirill klaviaturası` and `Українська розкладка` `Toggle` switches with Add/Remove `OnboardingView` guides, recaptured clean App Store & verification screenshots (`selâm` orthography, realistic `180 | 38 söz/daq | 7 daq | 18` stats, English/Ukrainian iOS Settings paths, synchronized Light/Dark theme), rendered 30 SVG templates + 22s 6-scene App Preview MP4 videos, and updated [`marketing/provenance.json`](file:///Users/love/Documents/Documents%20-%20MacBook%20Air%20-%20%D0%92%D1%96%D1%82%D0%B0/GitHub/Keyboard/marketing/provenance.json).
+

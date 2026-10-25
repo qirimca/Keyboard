@@ -16,7 +16,7 @@
 "settings.keyboardHelpPhone" = "Kirill klaviaturası metinni latin ariflerinen kirsete. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
-"settings.enableBothKeyboards" = "Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: iOS Sazlamaları → Umumiy → Klaviatura → Klaviaturalar → Yañı klaviatura qoşmaq → QırımKey.";
+"settings.enableBothKeyboards" = "Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: «Settings» → «General» → «Keyboard» → «Keyboards» → «Add New Keyboard» → QırımKey.";
 "settings.missingCyrillic" = "Kirill klaviaturası tapılmadı. iOS Sazlamalarında Къырымтатарджа klaviaturasını qoşuñız.";
 "settings.cyrillicUnverified" = "iOS klaviaturanıñ yazı sistemi aqqında malümat bermey, onıñ içün Kirill klaviaturasınıñ qoşulğanını tasdıqlap olamaymız. Sazlamalarda eki klaviaturanı da teşkeriñiz.";
 "sandbox.undo" = "Keri al";
@@ -92,4 +92,5 @@
 "settings.appSettings.desc" = "Söz teklifleri, sözlerni ögrenüv";
 "settings.systemKeyboard" = "Sistem sazlamaları";
 "settings.systemKeyboard.desc" = "Avto-büyük arifler, avto-tüzetüv, matematika";
-"settings.systemKeyboard.ios26Desc" = "«Umumiy» → «Klaviatura» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";
+"settings.systemKeyboard.ios26Desc" = "«General» → «Keyboard» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";
+"settings.cyrillic.addHint" = "«General» → «Keyboard» → «Keyboards» bölüginde qoşuñız";

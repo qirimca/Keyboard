@@ -511,13 +511,12 @@ private extension Gestures.KeyboardButtonGestures {
 
     func handleGestureEnded(in geo: GeometryProxy) {
         if SwipeTypingState.shared.isSlideFrom123Active {
-            if let targetChar = SwipeTypingState.shared.endSlideFrom123(), !targetChar.isEmpty {
-                NotificationCenter.default.post(
-                    name: SwipeTypingState.didCompleteSlideFrom123Notification,
-                    object: nil,
-                    userInfo: ["char": targetChar]
-                )
-            }
+            let targetChar = SwipeTypingState.shared.endSlideFrom123() ?? ""
+            NotificationCenter.default.post(
+                name: SwipeTypingState.didCompleteSlideFrom123Notification,
+                object: nil,
+                userInfo: ["char": targetChar]
+            )
         } else {
             SwipeTypingState.shared.resetSlideFrom123()
         }

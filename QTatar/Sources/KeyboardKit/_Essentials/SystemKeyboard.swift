@@ -409,8 +409,9 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
-    private let tailDuration: TimeInterval = 0.28
-    private let strokeWidth: CGFloat = 6.0
+    private let tailDuration: TimeInterval = 0.22
+    private let maxCometArcLength: CGFloat = 210.0
+    private let maxHeadRadius: CGFloat = 7.0
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
@@ -419,56 +420,168 @@ private struct SwipeTrailOverlay: View {
                 Canvas { context, _ in
                     let now = ProcessInfo.processInfo.systemUptime
                     let live = swipeState.activeTrailSamples.filter { now - $0.timestamp <= tailDuration }
-                    guard live.count >= 2, let tail = live.first, let head = live.last else { return }
+                    guard live.count >= 2, let head = live.last else { return }
 
                     let headAge = max(0, now - head.timestamp)
                     let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
                     guard headFade > 0.01 else { return }
 
-                    var path = Path()
-                    path.move(to: tail.point)
+                    // 1. Build a dense quadratic-smoothed spine from live samples.
+                    var rawSpine: [CGPoint] = [live[0].point]
                     if live.count == 2 {
-                        path.addLine(to: head.point)
-                    } else {
-                        for i in 1..<(live.count - 1) {
-                            let curr = live[i].point
-                            let next = live[i + 1].point
-                            let mid = CGPoint(x: (curr.x + next.x) * 0.5, y: (curr.y + next.y) * 0.5)
-                            path.addQuadCurve(to: mid, control: curr)
+                        let p0 = live[0].point
+                        let p1 = live[1].point
+                        let dist = hypot(p1.x - p0.x, p1.y - p0.y)
+                        let steps = max(1, Int(ceil(dist / 2.0)))
+                        for s in 1...steps {
+                            let t = CGFloat(s) / CGFloat(steps)
+                            rawSpine.append(CGPoint(x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t))
                         }
-                        path.addLine(to: head.point)
+                    } else {
+                        var prev = live[0].point
+                        for i in 1..<(live.count - 1) {
+                            let ctrl = live[i].point
+                            let next = live[i + 1].point
+                            let end = CGPoint(x: (ctrl.x + next.x) * 0.5, y: (ctrl.y + next.y) * 0.5)
+                            let segEst = hypot(ctrl.x - prev.x, ctrl.y - prev.y) + hypot(end.x - ctrl.x, end.y - ctrl.y)
+                            let steps = max(2, min(12, Int(ceil(segEst / 2.0))))
+                            for step in 1...steps {
+                                let t = CGFloat(step) / CGFloat(steps)
+                                let omt = 1.0 - t
+                                let px = omt * omt * prev.x + 2 * omt * t * ctrl.x + t * t * end.x
+                                let py = omt * omt * prev.y + 2 * omt * t * ctrl.y + t * t * end.y
+                                let pt = CGPoint(x: px, y: py)
+                                if hypot(pt.x - rawSpine.last!.x, pt.y - rawSpine.last!.y) >= 1.2 {
+                                    rawSpine.append(pt)
+                                }
+                            }
+                            prev = end
+                        }
+                        let endDist = hypot(head.point.x - prev.x, head.point.y - prev.y)
+                        let endSteps = max(1, min(10, Int(ceil(endDist / 2.0))))
+                        for step in 1...endSteps {
+                            let t = CGFloat(step) / CGFloat(endSteps)
+                            let pt = CGPoint(x: prev.x + (head.point.x - prev.x) * t, y: prev.y + (head.point.y - prev.y) * t)
+                            if hypot(pt.x - rawSpine.last!.x, pt.y - rawSpine.last!.y) >= 0.8 {
+                                rawSpine.append(pt)
+                            }
+                        }
                     }
+                    guard rawSpine.count >= 2 else { return }
+
+                    // 2. Trim the tail to maxCometArcLength so the comet never stretches into a long worm.
+                    var reverseSpine: [CGPoint] = [rawSpine.last!]
+                    var accumulatedLen: CGFloat = 0
+                    for idx in stride(from: rawSpine.count - 2, through: 0, by: -1) {
+                        let p = rawSpine[idx]
+                        let prevP = reverseSpine.last!
+                        let d = hypot(prevP.x - p.x, prevP.y - p.y)
+                        if accumulatedLen + d >= maxCometArcLength {
+                            let remain = maxCometArcLength - accumulatedLen
+                            if d > 0.001 {
+                                let ratio = remain / d
+                                let tip = CGPoint(x: prevP.x + (p.x - prevP.x) * ratio, y: prevP.y + (p.y - prevP.y) * ratio)
+                                reverseSpine.append(tip)
+                            }
+                            accumulatedLen = maxCometArcLength
+                            break
+                        }
+                        accumulatedLen += d
+                        reverseSpine.append(p)
+                    }
+                    let spine = Array(reverseSpine.reversed())
+                    guard spine.count >= 2, accumulatedLen > 1.0 else { return }
+
+                    // 3. Compute cumulative arc-length progress s in [0, 1] and comet normal offsets.
+                    let count = spine.count
+                    var arcProgress = [CGFloat](repeating: 0, count: count)
+                    var running: CGFloat = 0
+                    for i in 1..<count {
+                        running += hypot(spine[i].x - spine[i - 1].x, spine[i].y - spine[i - 1].y)
+                        arcProgress[i] = min(1.0, running / max(1.0, accumulatedLen))
+                    }
+
+                    let headRadius = maxHeadRadius * (0.42 + 0.58 * headFade)
+                    var leftSide = [CGPoint](repeating: spine[0], count: count)
+                    var rightSide = [CGPoint](repeating: spine[0], count: count)
+                    var radii = [CGFloat](repeating: 0, count: count)
+
+                    let lastIdx = count - 1
+                    for i in 0...lastIdx {
+                        let s = arcProgress[i]
+                        // Razor-sharp 0.0 pt tail tip flaring with pow(s, 1.55) into a 14 pt rounded comet head.
+                        let r = (i == 0) ? 0.0 : (headRadius * pow(s, 1.55))
+                        radii[i] = r
+                        let pPrev = spine[max(0, i - 1)]
+                        let pNext = spine[min(lastIdx, i + 1)]
+                        let dx = pNext.x - pPrev.x
+                        let dy = pNext.y - pPrev.y
+                        let len = max(0.001, hypot(dx, dy))
+                        let nx = -dy / len
+                        let ny = dx / len
+                        let p = spine[i]
+                        leftSide[i] = CGPoint(x: p.x + nx * r, y: p.y + ny * r)
+                        rightSide[i] = CGPoint(x: p.x - nx * r, y: p.y - ny * r)
+                    }
+
+                    // 4. Construct a single unified comet silhouette path (0 pt tip -> flared body -> semicircular head).
+                    var cometPath = Path()
+                    cometPath.move(to: spine[0])
+                    for i in 1...lastIdx {
+                        cometPath.addLine(to: leftSide[i])
+                    }
+                    let headPt = spine[lastIdx]
+                    let prevPt = spine[max(0, lastIdx - 1)]
+                    let headAngle = atan2(headPt.y - prevPt.y, headPt.x - prevPt.x)
+                    cometPath.addArc(
+                        center: headPt,
+                        radius: headRadius,
+                        startAngle: .radians(Double(headAngle - .pi / 2)),
+                        endAngle: .radians(Double(headAngle + .pi / 2)),
+                        clockwise: false
+                    )
+                    for i in stride(from: lastIdx, through: 1, by: -1) {
+                        cometPath.addLine(to: rightSide[i])
+                    }
+                    cometPath.closeSubpath()
 
                     let baseTone = isDark
-                        ? Color.white
-                        : Color(red: 0.38, green: 0.40, blue: 0.45)
-                    let maxAlpha = (isDark ? 0.58 : 0.46) * headFade
-                    let tailAlpha = maxAlpha * 0.18
-                    let span = hypot(head.point.x - tail.point.x, head.point.y - tail.point.y)
+                        ? Color(red: 0.88, green: 0.90, blue: 0.95)
+                        : Color(red: 0.42, green: 0.45, blue: 0.50)
+                    let maxAlpha = (isDark ? 0.56 : 0.50) * headFade
 
-                    let shading: GraphicsContext.Shading
-                    if span > 8.0 {
-                        shading = .linearGradient(
-                            Gradient(colors: [
-                                baseTone.opacity(tailAlpha),
-                                baseTone.opacity(maxAlpha)
-                            ]),
-                            startPoint: tail.point,
-                            endPoint: head.point
+                    // 5. Render inside an isolated layer clipped to cometPath using .copy blendMode so
+                    //    opacity follows the curve (even on loops) with zero internal rings or joint seams.
+                    context.drawLayer { layerCtx in
+                        layerCtx.clip(to: cometPath)
+                        layerCtx.blendMode = .copy
+                        for i in 1...lastIdx {
+                            let s = arcProgress[i]
+                            let alpha = maxAlpha * (0.04 + 0.96 * pow(s, 1.30))
+                            let p0 = spine[i - 1]
+                            let p1 = spine[i]
+                            let dx = p1.x - p0.x
+                            let dy = p1.y - p0.y
+                            let segLen = max(0.001, hypot(dx, dy))
+                            let tx = (dx / segLen) * 0.9
+                            let ty = (dy / segLen) * 0.9
+
+                            var quad = Path()
+                            quad.move(to: CGPoint(x: leftSide[i - 1].x - tx, y: leftSide[i - 1].y - ty))
+                            quad.addLine(to: CGPoint(x: leftSide[i].x + tx, y: leftSide[i].y + ty))
+                            quad.addLine(to: CGPoint(x: rightSide[i].x + tx, y: rightSide[i].y + ty))
+                            quad.addLine(to: CGPoint(x: rightSide[i - 1].x - tx, y: rightSide[i - 1].y - ty))
+                            quad.closeSubpath()
+                            layerCtx.fill(quad, with: .color(baseTone.opacity(alpha)))
+                        }
+                        let headRect = CGRect(
+                            x: headPt.x - headRadius - 0.5,
+                            y: headPt.y - headRadius - 0.5,
+                            width: (headRadius + 0.5) * 2,
+                            height: (headRadius + 0.5) * 2
                         )
-                    } else {
-                        shading = .color(baseTone.opacity(maxAlpha))
+                        layerCtx.fill(Path(ellipseIn: headRect), with: .color(baseTone.opacity(maxAlpha)))
                     }
-
-                    context.stroke(
-                        path,
-                        with: shading,
-                        style: StrokeStyle(
-                            lineWidth: strokeWidth,
-                            lineCap: .round,
-                            lineJoin: .round
-                        )
-                    )
                 }
             }
             .allowsHitTesting(false)

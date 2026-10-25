@@ -1,8 +1,9 @@
 {
-  "template_version": "1.0.0",
+  "template_version": "1.1.0",
   "project": "QırımKey",
   "app_version": "3.1",
   "build_number": "5",
+  "background_asset": "marketing/templates/assets/crimea_sunset_bg.png",
   "typography": {
     "headline_font": "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
     "body_font": "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
@@ -10,20 +11,24 @@
   },
   "themes": {
     "light": {
-      "bg_start": "#F4F7FB",
-      "bg_end": "#E6EEF8",
-      "accent": "#0A66C2",
-      "headline": "#0F172A",
-      "subtitle": "#475569",
-      "frame_border": "#CBD5E1"
+      "bg_start": "#16243A",
+      "bg_end": "#0C1524",
+      "veil_opacity": "0.52",
+      "accent": "#F59E0B",
+      "accent_secondary": "#38BDF8",
+      "headline": "#F8FAFC",
+      "subtitle": "#E2E8F0",
+      "frame_border": "#94A3B8"
     },
     "dark": {
-      "bg_start": "#0B1120",
-      "bg_end": "#152238",
+      "bg_start": "#090F1C",
+      "bg_end": "#050912",
+      "veil_opacity": "0.70",
       "accent": "#38BDF8",
+      "accent_secondary": "#F59E0B",
       "headline": "#F8FAFC",
-      "subtitle": "#94A3B8",
-      "frame_border": "#334155"
+      "subtitle": "#CBD5E1",
+      "frame_border": "#475569"
     }
   },
   "device_classes": {
@@ -64,71 +69,155 @@
       "template": "marketing/templates/ipad/template.svg"
     }
   },
+  "video_storyboard_22s": {
+    "duration_seconds": 22,
+    "narrative_acts": ["Welcome", "Discovery", "Action", "Success"],
+    "scenes": [
+      {
+        "scene": 1,
+        "act": "Welcome",
+        "window_sec": "1-2",
+        "crh": "QırımKey — Qırımtatar klaviaturası. Öz tilimiz — er yerde.",
+        "uk": "QırımKey — Кримськотатарська клавіатура. Рідна мова — всюди.",
+        "en": "QırımKey — Crimean Tatar Keyboard. Our language — everywhere."
+      },
+      {
+        "scene": 2,
+        "act": "Discovery",
+        "window_sec": "3-6",
+        "crh": "Qolay ve tez yazuv: Lâtin ve Kirill elifbeleri",
+        "uk": "Зручний і швидкий набір: латиниця та кирилиця",
+        "en": "Fast & natural typing: Latin and Cyrillic scripts"
+      },
+      {
+        "scene": 3,
+        "act": "Action",
+        "window_sec": "7-10",
+        "crh": "Aqıllı söz teklifleri, avto-tüzetüv ve svayp",
+        "uk": "Розумні пропозиції слів, автовиправлення та свайп",
+        "en": "Smart word suggestions, autocorrect & swipe-to-type"
+      },
+      {
+        "scene": 4,
+        "act": "Action",
+        "window_sec": "11-14",
+        "crh": "iPad imkânları: tam ekran ve yüzücü (Floating) rejim",
+        "uk": "Можливості iPad: повноекранний і плаваючий (Floating) режим",
+        "en": "iPad versatility: full-width Docked and Floating modes"
+      },
+      {
+        "scene": 5,
+        "act": "Action",
+        "window_sec": "15-18",
+        "crh": "Aydınlıq ve Qaranlıq tema, Ukraina ФІВА tizilişi",
+        "uk": "Світла й темна теми, українська розкладка ФІВА",
+        "en": "Light & Dark themes, Ukrainian FIVA layout"
+      },
+      {
+        "scene": 6,
+        "act": "Success",
+        "window_sec": "19-22",
+        "crh": "Tam hususiylik — 100% cihazda. App Store-dan indiriñiz!",
+        "uk": "100% приватність — усі дані на пристрої. Завантажуйте в App Store!",
+        "en": "100% on-device privacy. Download on the App Store!"
+      }
+    ]
+  },
   "copy": {
     "crh": {
       "01_latin_light": {
-        "title": "Qırımtatarca Lâtin Klaviaturası",
-        "subtitle": "2024/2025 imlâ qaideleri, aqıllı söz teklifleri ve svayp"
+        "badge": "ÖZ TİLİMİZ — ER YERDE",
+        "title": "Qırımtatar Klaviaturası",
+        "subtitle": "2024/2025 imlâ qaideleri, aqıllı söz teklifleri ve svayp",
+        "pills": ["Lâtin & Kirill", "Söz teklifleri", "Zengin luğat"]
       },
       "02_latin_dark": {
-        "title": "Qaranlıq Rejim ve Liquid Glass",
-        "subtitle": "Közni yormaycaq zamanağay dizayn ve tamğa nefes aluvı"
+        "badge": "QARANLIQ TEMA & LIQUID GLASS",
+        "title": "Közni Yormaycaq Dizayn",
+        "subtitle": "Er yerde şık körüniş ve Taraq Tamğa nefes aluvı",
+        "pills": ["Qaranlıq tema", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
-        "title": "Kirill ve Ukraina Розкладка (ФІВА)",
-        "subtitle": "Къырымтатарджа ve Кʼиримтатарджа — eki elifbe bir yerde"
+        "badge": "EKİ ELİFBE BİR YERDE",
+        "title": "Kirill ve Ukraina Tizilişi",
+        "subtitle": "Къырымтатарджа ve Кʼиримтатарджа (ґ→g · г→ğ · кʼ→q · нʼ→ñ)",
+        "pills": ["Къырымтатарджа", "Українська ФІВА", "Avto-tüzetüv"]
       },
       "04_home_light": {
-        "title": "100% Mahremiyet ve Oflayn İşlev",
-        "subtitle": " İnternetke bağlanmadan çalışa, şahsiy malümat toplamay"
+        "badge": "TAM HUSUSİYLİK",
+        "title": "Malümatıñız Emniyette",
+        "subtitle": "100% oflayn işley — şahsiy malümat ve yazuvlar cihazda qala",
+        "pills": ["100% Oflayn", "Malümat toplanmay", "iPhone & iPad"]
       },
       "05_home_dark": {
-        "title": "Statistika ve 5 Dereceli Yeñişler",
-        "subtitle": "Yazuv tezligiñizni ve ögrenilgen sözlerni közetiñiz"
+        "badge": "STATİSTİKA & YEÑİŞLER",
+        "title": "Yazuv Tezligi ve Ösüv",
+        "subtitle": "5 dereceli yeñişler, künlik hikmetler ve ögrenilgen sözler",
+        "pills": ["Statistika", "5 derece", "Відомі вислови"]
       }
     },
     "uk": {
       "01_latin_light": {
-        "title": "Кримськотатарська латиниця",
-        "subtitle": "Правопис ДЕСС 2024/2025, розумні підказки та свайп"
+        "badge": "РІДНА МОВА — ВСЮДИ",
+        "title": "Кримськотатарська клавіатура",
+        "subtitle": "Правопис ДЕСС 2024/2025, розумні пропозиції слів і свайп",
+        "pills": ["Латиниця й кирилиця", "Пропозиції слів", "Багатий словник"]
       },
       "02_latin_dark": {
-        "title": "Темна тема та Liquid Glass",
-        "subtitle": "Сучасний дизайн iOS і живе дихання Тарак-Тамги"
+        "badge": "ТЕМНА ТЕМА & LIQUID GLASS",
+        "title": "Сучасний і витончений дизайн",
+        "subtitle": "Комфортний набір удень і вночі з живим диханням Тарак-Тамги",
+        "pills": ["Темна тема", "Liquid Glass", "Тарак-Тамга"]
       },
       "03_cyrillic": {
+        "badge": "ДВА АЛФАВІТИ РАЗОМ",
         "title": "Кирилиця та українська ФІВА",
-        "subtitle": "Зручний набір із автоматичною транслітерацією (кʼ → q, нʼ → ñ)"
+        "subtitle": "Къырымтатарджа і Кʼиримтатарджа (ґ→g · г→ğ · кʼ→q · нʼ→ñ)",
+        "pills": ["Къырымтатарджа", "Українська ФІВА", "Автовиправлення"]
       },
       "04_home_light": {
-        "title": "100% приватність і робота офлайн",
-        "subtitle": "Усі словники та алгоритми працюють локально на пристрої"
+        "badge": "ПОВНА ПРИВАТНІСТЬ",
+        "title": "Ваші дані у безпеці",
+        "subtitle": "100% робота офлайн — жодні тексти не покидають ваш пристрій",
+        "pills": ["100% Офлайн", "Без збору даних", "iPhone та iPad"]
       },
       "05_home_dark": {
-        "title": "Статистика та 5 рівнів досягнень",
-        "subtitle": "Відстежуйте швидкість друку та вивчені слова"
+        "badge": "СТАТИСТИКА Й ДОСЯГНЕННЯ",
+        "title": "Швидкість друку та прогрес",
+        "subtitle": "5 рівнів досягнень, відомі вислови та особистий словник",
+        "pills": ["Статистика", "5 рівнів", "Відомі вислови"]
       }
     },
     "en": {
       "01_latin_light": {
-        "title": "Crimean Tatar Latin Keyboard",
-        "subtitle": "Official 2024/2025 orthography, smart predictions & swipe"
+        "badge": "OUR LANGUAGE — EVERYWHERE",
+        "title": "Crimean Tatar Keyboard",
+        "subtitle": "Official 2024/2025 orthography, smart word suggestions & swipe",
+        "pills": ["Latin & Cyrillic", "Smart Suggestions", "Rich Lexicon"]
       },
       "02_latin_dark": {
-        "title": "Dark Mode & Liquid Glass",
-        "subtitle": "Native iOS aesthetics with breathing Taraq Tamğa emblem"
+        "badge": "DARK THEME & LIQUID GLASS",
+        "title": "Refined Native iOS Design",
+        "subtitle": "Effortless day & night typing with breathing Taraq Tamğa emblem",
+        "pills": ["Dark Theme", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
-        "title": "Cyrillic & Ukrainian FIVA Layout",
-        "subtitle": "Seamless Cyrillic typing and smart transliteration"
+        "badge": "TWO SCRIPTS IN ONE",
+        "title": "Cyrillic & Ukrainian FIVA",
+        "subtitle": "Seamless Cyrillic typing and smart transliteration (кʼ→q · нʼ→ñ)",
+        "pills": ["Cyrillic Script", "Ukrainian FIVA", "Autocorrect"]
       },
       "04_home_light": {
-        "title": "100% Private & Fully Offline",
-        "subtitle": "Zero network requests — all language models stay on device"
+        "badge": "TOTAL PRIVACY",
+        "title": "Your Data Stays Yours",
+        "subtitle": "100% offline engine — all dictionaries and learning stay on device",
+        "pills": ["100% Offline", "Zero Data Collected", "iPhone & iPad"]
       },
       "05_home_dark": {
-        "title": "Typing Stats & 5-Tier Achievements",
-        "subtitle": "Track your WPM speed and personal vocabulary growth"
+        "badge": "STATS & ACHIEVEMENTS",
+        "title": "Track Speed & Vocabulary",
+        "subtitle": "5-tier typing milestones, cultural quotes & personal lexicon",
+        "pills": ["Statistics", "5 Tiers", "Cultural Quotes"]
       }
     }
   }

@@ -35,3 +35,6 @@
 /* (No Comment) */
 "onb_settings_key" = "Keyboard Settings";
 
+"onb_remove_cyrillic_title" = "Remove Cyrillic Keyboard";
+"onb_remove_cyrillic_desc" = "Remove the Cyrillic Keyboard: In “Settings” → “General” → “Keyboard” → “Keyboards”, swipe left on “Qırımtatarca (Kirill)” and tap “Delete”";
+

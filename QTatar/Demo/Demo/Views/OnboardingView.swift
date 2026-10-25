@@ -9,6 +9,13 @@
 import SwiftUI
 
 struct OnboardingView: View {
+    enum Mode: String {
+        case add
+        case removeCyrillic
+    }
+
+    var mode: Mode = .add
+
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) var openURL
     @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
@@ -47,16 +54,22 @@ struct OnboardingView: View {
         let _ = language
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
-            TabView(selection: $selected) {
-                ForEach(Page.allCases, id: \.rawValue) { page in
-                    onboardingPage(page)
-                        .tag(page.rawValue)
-                        .padding(12)
+            if mode == .removeCyrillic {
+                removeCyrillicGuideView
+                    .padding(16)
+            } else {
+                TabView(selection: $selected) {
+                    ForEach(Page.allCases, id: \.rawValue) { page in
+                        onboardingPage(page)
+                            .tag(page.rawValue)
+                            .padding(12)
+                    }
                 }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.easeInOut(duration: 0.25), value: selected)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut(duration: 0.25), value: selected)
         }
+        .accessibilityIdentifier(mode == .removeCyrillic ? "onboarding.removeCyrillic.view" : "onboarding.add.view")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .toolbar {
@@ -64,12 +77,40 @@ struct OnboardingView: View {
                 dismiss()
             }
             ToolbarItem(placement: .principal) {
-                Text(Onboarding.onb_settings_key.localized)
+                Text(mode == .removeCyrillic ? L10n.tr("onb_remove_cyrillic_title", table: "Onboarding") : Onboarding.onb_settings_key.localized)
                     .titleText()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }
         }
+    }
+
+    private var removeCyrillicGuideView: some View {
+        VStack(spacing: 16) {
+            formattedInstructionText(for: L10n.tr("onb_remove_cyrillic_desc", table: "Onboarding"))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+
+            navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
+                HomeView.openKeyboardSettings()
+            }
+            .padding(.horizontal, 20)
+            .accessibilityIdentifier("onboarding.openSettings.button")
+
+            Image("Onboard2")
+                .resizable()
+                .scaledToFit()
+                .accessibilityHidden(true)
+                .padding(.bottom, 8)
+
+            navButton(text: Onboarding.onb_finish_key.localized, gradient: Color.crayola) {
+                dismiss()
+            }
+            .padding(.horizontal, 20)
+            .accessibilityIdentifier("onboarding.finish.button")
+        }
+        .frame(maxWidth: Device.iPad ? 620 : .infinity)
+        .frame(maxWidth: .infinity)
     }
 }
 

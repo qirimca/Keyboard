@@ -232,7 +232,7 @@ final class BreathingTamgaUIView: UIView {
     }
 
     private func startContinuousBreathIfNeeded() {
-        if isActivelyUITesting {
+        if isActivelyUITesting || UIAccessibility.isReduceMotionEnabled {
             exertionTimer?.invalidate()
             exertionTimer = nil
             idleStopWorkItem?.cancel()

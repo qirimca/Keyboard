@@ -142,20 +142,26 @@ struct HomeView: View {
         return .standard
     }()
     @State private var selectedThemeMode: KeyboardTestThemeMode = {
-        if let value = UserDefaults.standard.string(forKey: "qt_theme") {
+        if ProcessInfo.processInfo.arguments.contains("-qt_theme"),
+           let value = UserDefaults.standard.string(forKey: "qt_theme") {
             return value.lowercased().contains("dark") ? .dark : .ios26White
         }
-        return UITraitCollection.current.userInterfaceStyle == .dark ? .dark : .ios26White
+        return UIScreen.main.traitCollection.userInterfaceStyle == .dark ? .dark : .ios26White
     }()
-    @State private var hasManualThemeOverride: Bool = (UserDefaults.standard.string(forKey: "qt_theme") != nil)
+    @State private var hasManualThemeOverride: Bool = (ProcessInfo.processInfo.arguments.contains("-qt_theme") && UserDefaults.standard.string(forKey: "qt_theme") != nil)
 
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
 
     @State private var showIndicatorSheet = false
+    @State private var onboardingSheetMode: OnboardingView.Mode = .add
+    @State private var pendingCyrillicRemovalCheck = false
     @State private var showCyrillicGuideAlert = false
     @State private var isTestingExpanded = true
     @State private var shouldAutoFocusSandbox: Bool = {
         let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_demo_stats") && !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
+            return false
+        }
         return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || args.contains("-qt_focus_sandbox_live")
     }()
     @State private var isKeyboardVisible = false
@@ -327,17 +333,23 @@ struct HomeView: View {
                 }
             }
         }
-        .sheet(isPresented: $showIndicatorSheet) {
-            OnboardingView()
-                .presentationCornerRadius(20)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showIndicatorSheet, onDismiss: {
+            refreshCyrillicStatus()
+        }) {
+            NavigationStack {
+                OnboardingView(mode: onboardingSheetMode)
+            }
+            .presentationCornerRadius(20)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
+        .preferredColorScheme(selectedThemeMode.isDark ? .dark : .light)
         .alert(localizedInterfaceString("settings.cyrillicGuideTitle"), isPresented: $showCyrillicGuideAlert) {
             Button(localizedInterfaceString("settings.cyrillicAddAction")) {
                 Self.openKeyboardSettings()
             }
             Button(Home.home_start_key.localized) {
+                onboardingSheetMode = .add
                 showIndicatorSheet = true
             }
             Button(localizedInterfaceString("stats.resetCancel"), role: .cancel) {}
@@ -354,7 +366,9 @@ struct HomeView: View {
             Self.enforceFullScreenWindowIfNeeded()
             if !didInitializeThemeFromSystem {
                 didInitializeThemeFromSystem = true
-                selectedThemeMode = .mode(isDark: colorScheme == .dark)
+                if !ProcessInfo.processInfo.arguments.contains("-qt_theme") {
+                    selectedThemeMode = .mode(isDark: UIScreen.main.traitCollection.userInterfaceStyle == .dark)
+                }
             }
             applyLaunchArguments()
             syncPreferencesFromSettingsBundleAndAppGroup()
@@ -367,6 +381,9 @@ struct HomeView: View {
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             AppStoreReviewManager.recordForegroundSession()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
+            refreshCyrillicStatus()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -405,8 +422,7 @@ struct HomeView: View {
         }
         .onChange(of: colorScheme) { _, newScheme in
             let args = ProcessInfo.processInfo.arguments
-            if !args.contains("-qt_theme") {
-                hasManualThemeOverride = false
+            if !args.contains("-qt_theme") && !hasManualThemeOverride {
                 selectedThemeMode = .mode(isDark: newScheme == .dark)
                 if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox) {
                     syncThemeToAppGroup(selectedThemeMode)
@@ -726,9 +742,21 @@ struct HomeView: View {
         }
         let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
-        // Public input-mode languages can provide positive evidence, but absence
-        // cannot establish that a particular extension is not installed.
-        cyrillicStatus = languages.contains { $0.hasPrefix("crh-cyrl") } ? .enabled : .unknown
+        let hasActiveCyrillicMode = languages.contains { $0.hasPrefix("crh-cyrl") }
+        if hasActiveCyrillicMode {
+            pendingCyrillicRemovalCheck = false
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+            cyrillicStatus = .enabled
+            return
+        }
+        if !languages.isEmpty || pendingCyrillicRemovalCheck {
+            pendingCyrillicRemovalCheck = false
+            KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
+            cyrillicStatus = .missing
+            return
+        }
+        let hasSeenCyrillic = KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        cyrillicStatus = hasSeenCyrillic ? .enabled : .missing
     }
 
     private func notifySandboxTraitsChanged() {
@@ -867,6 +895,10 @@ struct HomeView: View {
             }
             #if targetEnvironment(simulator)
             if args.contains("-qt_demo_stats") {
+                if !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
+                    text = "selâm"
+                    shouldAutoFocusSandbox = false
+                }
                 totalWords = 180
                 manualWords = 120
                 suggestedWords = 60
@@ -877,6 +909,18 @@ struct HomeView: View {
                 activeSeconds = 420
                 learnedWordsCount = 18
                 phrasesInserted = 7
+                let d = KeyboardPreferences.defaults
+                d.set(180, forKey: KeyboardUsageStats.totalWordsKey)
+                d.set(120, forKey: KeyboardUsageStats.manualWordsKey)
+                d.set(60, forKey: KeyboardUsageStats.suggestedWordsKey)
+                d.set(1140, forKey: KeyboardUsageStats.totalCharsKey)
+                d.set(390, forKey: KeyboardUsageStats.suggestedCharsKey)
+                d.set(38, forKey: KeyboardUsageStats.peakWPMKey)
+                d.set(38, forKey: KeyboardUsageStats.lastWPMKey)
+                d.set(420.0, forKey: KeyboardUsageStats.activeSecondsKey)
+                d.set(18, forKey: KeyboardUsageStats.learnedWordsKey)
+                d.set(7, forKey: KeyboardUsageStats.phrasesInsertedKey)
+                d.synchronize()
             }
             #endif
             if args.contains("-qt_open_about") {
@@ -1154,142 +1198,117 @@ private extension HomeView {
 
             Divider().padding(.leading, 54)
 
-            // Cyrillic row: iPad has an in-place script key (абв/abc) toggle;
-            // iPhone has no in-keyboard script key and shows a status row with a "Додати" button when missing, or a static "✓ Додано" badge when added.
-            if Device.iPad {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 12) {
-                        cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: cyrillicEnabled)
+            let isCyrillicEffectiveOn = Device.iPad ? (isCyrillicKeyboardAdded && cyrillicEnabled) : isCyrillicKeyboardAdded
+            let isUkrainianEffectiveOn = isCyrillicEffectiveOn && ukrainianCyrillicLayout
+            let cyrillicToggleBinding = Binding<Bool>(
+                get: { isCyrillicEffectiveOn },
+                set: { wantOn in
+                    HapticFeedback.playSelection()
+                    if wantOn {
+                        if Device.iPad {
+                            cyrillicEnabled = true
+                        }
+                        if !isCyrillicKeyboardAdded {
+                            onboardingSheetMode = .add
+                            showIndicatorSheet = true
+                        }
+                    } else {
+                        if Device.iPad {
+                            cyrillicEnabled = false
+                        }
+                        if isCyrillicKeyboardAdded {
+                            pendingCyrillicRemovalCheck = true
+                            onboardingSheetMode = .removeCyrillic
+                            showIndicatorSheet = true
+                        }
+                    }
+                }
+            )
+            let ukrainianToggleBinding = Binding<Bool>(
+                get: { isUkrainianEffectiveOn },
+                set: { wantOn in
+                    HapticFeedback.playSelection()
+                    if !isCyrillicEffectiveOn {
+                        ukrainianCyrillicLayout = true
+                        if Device.iPad {
+                            cyrillicEnabled = true
+                        }
+                        onboardingSheetMode = .add
+                        showIndicatorSheet = true
+                    } else {
+                        ukrainianCyrillicLayout = wantOn
+                    }
+                }
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: isCyrillicEffectiveOn)
+                    VStack(alignment: .leading, spacing: 2) {
                         interfaceLabel("settings.cyrillic")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 8)
-                        Toggle("", isOn: animationsAllowed ? $cyrillicEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $cyrillicEnabled)
-                            .labelsHidden()
-                            .toggleStyle(.switch)
-                            .accessibilityIdentifier("settings.cyrillic.toggle")
-                    }
-
-                    if cyrillicEnabled && !isCyrillicKeyboardAdded {
-                        HStack(alignment: .center, spacing: 8) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(brandBlue)
-                            StableLocalizedText(
-                                key: "settings.cyrillic.ipadFloatingNote",
-                                font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                                color: secondaryInk
-                            )
-                            Spacer(minLength: 6)
+                        if !isCyrillicEffectiveOn {
                             Button {
-                                Self.openKeyboardSettings()
+                                HapticFeedback.playSelection()
+                                onboardingSheetMode = .add
+                                showIndicatorSheet = true
                             } label: {
-                                interfaceLabel("settings.cyrillicAddAction")
-                                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 12))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(brandBlue, in: Capsule())
+                                interfaceLabel("settings.cyrillic.addHint")
+                                    .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                                    .foregroundStyle(secondaryInk)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityIdentifier("settings.cyrillic.addButton")
+                            .accessibilityIdentifier("settings.cyrillic.addHintButton")
                         }
-                        .padding(.leading, 40)
-                        .padding(.top, 2)
                     }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-            } else {
-                HStack(spacing: 12) {
-                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: cyrillicStatus != .missing)
-                    interfaceLabel("settings.cyrillic")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                        .foregroundStyle(primaryInk)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 8)
-                    if isCyrillicKeyboardAdded {
-                        HStack(spacing: 5) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(appleGreen)
-                            interfaceLabel("settings.cyrillicStatusAdded")
-                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 13))
-                                .foregroundStyle(appleGreen)
-                                .lineLimit(1)
-                        }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(
-                            appleGreen.opacity(0.12),
-                            in: Capsule()
-                        )
-                    } else {
-                        Button {
-                            Self.openKeyboardSettings()
-                        } label: {
-                            interfaceLabel("settings.cyrillicAddAction")
-                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(brandBlue, in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("settings.cyrillic.addButton")
-                    }
+                    Toggle("", isOn: animationsAllowed ? cyrillicToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : cyrillicToggleBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("settings.cyrillic.toggle")
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("settings.cyrillic.statusRow")
-            }
 
-            if !Device.iPad && cyrillicStatus == .missing {
-                Button {
-                    showCyrillicGuideAlert = true
-                } label: {
+                if Device.iPad && cyrillicEnabled && !isCyrillicKeyboardAdded {
                     HStack(alignment: .center, spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.orange)
+                        Image(systemName: "globe")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(brandBlue)
                         StableLocalizedText(
-                            key: "settings.missingCyrillic",
+                            key: "settings.cyrillic.ipadFloatingNote",
                             font: InterfaceFont.font("GeneralSans-Regular", size: 12),
                             color: secondaryInk
                         )
                     }
-                    .padding(.leading, 54)
-                    .padding(.trailing, 14)
-                    .padding(.bottom, 8)
-                    .contentShape(Rectangle())
+                    .padding(.leading, 40)
+                    .padding(.top, 2)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("settings.cyrillicWarning")
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("settings.cyrillic.statusRow")
 
-            if (cyrillicEnabled || !Device.iPad) && (language == "uk" || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true) {
+            if language == "uk" || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true {
                 Divider().padding(.leading, 54)
 
                 HStack(spacing: 12) {
-                    ukrainianKeycapIconBadge(isEnabled: ukrainianCyrillicLayout)
+                    ukrainianKeycapIconBadge(isEnabled: isUkrainianEffectiveOn)
                     VStack(alignment: .leading, spacing: 4) {
                         interfaceLabel("settings.ukrainianCyrillic")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        ukrainianTransliterationMiniCapsules(isEnabled: ukrainianCyrillicLayout)
+                        ukrainianTransliterationMiniCapsules(isEnabled: isUkrainianEffectiveOn)
                     }
                     Spacer(minLength: 8)
-                    Toggle("", isOn: animationsAllowed ? $ukrainianCyrillicLayout.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $ukrainianCyrillicLayout)
+                    Toggle("", isOn: animationsAllowed ? ukrainianToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : ukrainianToggleBinding)
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .accessibilityIdentifier("settings.ukrainianCyrillic.toggle")
@@ -2308,16 +2327,36 @@ private final class AccessibleUISegmentedControl: UISegmentedControl {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        configureSegmentLabels(in: self)
         applySegmentAccessibilityIdentifiers()
+    }
+
+    private func configureSegmentLabels(in view: UIView) {
+        for subview in view.subviews {
+            if let label = subview as? UILabel {
+                label.adjustsFontSizeToFitWidth = true
+                label.minimumScaleFactor = 0.82
+                label.allowsDefaultTighteningForTruncation = true
+            }
+            configureSegmentLabels(in: subview)
+        }
     }
 
     func applySegmentAccessibilityIdentifiers() {
         let count = accessibilityElementCount()
-        guard count == segmentIdentifiers.count else { return }
-        for index in segmentIdentifiers.indices {
-            if let element = accessibilityElement(at: index) as? UIAccessibilityIdentification {
-                element.accessibilityIdentifier = segmentIdentifiers[index]
+        if count == segmentIdentifiers.count {
+            for index in segmentIdentifiers.indices {
+                if let element = accessibilityElement(at: index) as? UIAccessibilityIdentification {
+                    element.accessibilityIdentifier = segmentIdentifiers[index]
+                }
             }
+        }
+        let segmentViews = subviews
+            .filter { $0.frame.width > 10 }
+            .sorted { $0.frame.minX < $1.frame.minX }
+        guard segmentViews.count == segmentIdentifiers.count else { return }
+        for (index, segView) in segmentViews.enumerated() {
+            segView.accessibilityIdentifier = segmentIdentifiers[index]
         }
     }
 

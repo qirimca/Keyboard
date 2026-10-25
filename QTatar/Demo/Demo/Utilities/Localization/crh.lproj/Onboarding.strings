@@ -15,13 +15,13 @@
 
   Created by Mustafa Bekirov on 01.02.2025.
   Copyright © 2025 Daniel Saidi. All rights reserved. */
-"onb_onb1_key" = "Tam irişim beriñiz: Sazlamalar > İlâveler > QırımKey > Klaviaturalar > Tam irişimge ruhset beriñiz";
+"onb_onb1_key" = "Tam irişim beriñiz: «Settings» > «Apps» > QırımKey > «Keyboards» > «Allow Full Access»";
 
 /* (No Comment) */
-"onb_onb2_key" = "Klaviaturanı qoşuñız: Sazlamalar > Umumiy > Klaviatura > Klaviaturalar > Yañı klaviatura qoşmaq > QırımKey";
+"onb_onb2_key" = "Klaviaturanı qoşuñız: «Settings» > «General» > «Keyboard» > «Keyboards» > «Add New Keyboard» > QırımKey";
 
 /* (No Comment) */
-"onb_onb2_ios26_key" = "Klaviaturanı qoşuñız: «Sazlamalar» > «Umumiy» > «Klaviatura» > «Klaviaturalar» > «Yañı klaviatura qoşmaq» > QırımKey";
+"onb_onb2_ios26_key" = "Klaviaturanı qoşuñız: «Settings» > «General» > «Keyboard» > «Keyboards» > «Add New Keyboard» > QırımKey";
 
 /* (No Comment) */
 "onb_onb3_key" = "Yazğanda klaviaturanı saylañız: 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız";
@@ -34,4 +34,7 @@
 
 /* (No Comment) */
 "onb_settings_key" = "Klaviatura sazlamaları";
+
+"onb_remove_cyrillic_title" = "Kirill klaviaturasını söndürüv";
+"onb_remove_cyrillic_desc" = "Kirill klaviaturasını söndürüñiz: «Settings» → «General» → «Keyboard» → «Keyboards» bölüginde «Qırımtatarca (Kirill)» satırını solğa çekip «Delete» basıñız";
 

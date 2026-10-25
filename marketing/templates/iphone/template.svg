@@ -1,33 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="{{BG_START}}" />
       <stop offset="100%" stop-color="{{BG_END}}" />
     </linearGradient>
-    <clipPath id="deviceScreenClip">
-      <rect x="78" y="380" width="1050" height="2180" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" />
+    <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#09111E" stop-opacity="{{VEIL_OPACITY}}" />
+      <stop offset="35%" stop-color="#0C1729" stop-opacity="0.42" />
+      <stop offset="100%" stop-color="#060B14" stop-opacity="0.88" />
+    </linearGradient>
+    <clipPath id="screenClip">
+      <rect x="{{SCREEN_X}}" y="{{SCREEN_Y}}" width="{{SCREEN_W}}" height="{{SCREEN_H}}" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" />
     </clipPath>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="26" stdDeviation="34" flood-color="#000000" flood-opacity="0.52" />
+    </filter>
   </defs>
 
-  <!-- Layer 1: Independent Backdrop -->
-  <g id="layer-backdrop">
-    <rect width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bgGrad)" />
-  </g>
+  <!-- Base Layer & Crimean Coast Sunset Photography -->
+  <rect id="layer-background" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bgGrad)" />
+  <image id="layer-crimea-sunset" href="{{CRIMEA_BG_URI}}" x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" preserveAspectRatio="xMidYMid slice" />
+  <rect id="layer-veil" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#sunsetVeil)" />
 
-  <!-- Layer 2: Independent Brand / Crimea-Inspired Geometric Ornament -->
-  <g id="layer-ornament" opacity="0.08">
-    <path d="M960 60 H1140 V100 H1070 V180 H1030 V100 H960 Z" fill="{{ACCENT}}" />
-  </g>
-
-  <!-- Layer 3: Independent Editable Headline & Subtitle Copy -->
+  <!-- Top Brand Pill & Headline Copy Layer -->
   <g id="layer-copy">
-    <text x="603" y="165" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="56" font-weight="700" fill="{{HEADLINE_COLOR}}">{{TITLE}}</text>
-    <text x="603" y="245" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="34" font-weight="500" fill="{{SUBTITLE_COLOR}}">{{SUBTITLE}}</text>
+    <rect x="{{BADGE_X}}" y="{{BADGE_Y}}" width="{{BADGE_W}}" height="{{BADGE_H}}" rx="{{BADGE_RX}}" fill="#0F172A" fill-opacity="0.72" stroke="{{ACCENT}}" stroke-width="2" />
+    <text x="{{CENTER_X}}" y="{{BADGE_TEXT_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{BADGE_SIZE}}" font-weight="700" letter-spacing="1.6" fill="{{ACCENT}}">{{BADGE_TEXT}}</text>
+
+    <text x="{{CENTER_X}}" y="{{TITLE_Y}}" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="{{TITLE_SIZE}}" font-weight="800" fill="{{HEADLINE_COLOR}}">{{TITLE}}</text>
+    <text x="{{CENTER_X}}" y="{{SUBTITLE_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{SUBTITLE_SIZE}}" font-weight="500" fill="{{SUBTITLE_COLOR}}">{{SUBTITLE}}</text>
+
+    <!-- Feature Pills Row -->
+    <g id="layer-feature-pills">
+      <rect x="{{PILL1_X}}" y="{{PILL_Y}}" width="{{PILL_W}}" height="{{PILL_H}}" rx="{{PILL_RX}}" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="{{PILL1_CX}}" y="{{PILL_TEXT_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{PILL_FONT_SIZE}}" font-weight="600" fill="#F8FAFC">{{PILL1_TEXT}}</text>
+
+      <rect x="{{PILL2_X}}" y="{{PILL_Y}}" width="{{PILL_W}}" height="{{PILL_H}}" rx="{{PILL_RX}}" fill="#0F172A" fill-opacity="0.68" stroke="#F59E0B" stroke-opacity="0.65" stroke-width="1.5" />
+      <text x="{{PILL2_CX}}" y="{{PILL_TEXT_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{PILL_FONT_SIZE}}" font-weight="600" fill="#F8FAFC">{{PILL2_TEXT}}</text>
+
+      <rect x="{{PILL3_X}}" y="{{PILL_Y}}" width="{{PILL_W}}" height="{{PILL_H}}" rx="{{PILL_RX}}" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="{{PILL3_CX}}" y="{{PILL_TEXT_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{PILL_FONT_SIZE}}" font-weight="600" fill="#F8FAFC">{{PILL3_TEXT}}</text>
+    </g>
   </g>
 
-  <!-- Layer 4: Independent Device Frame & Real Screenshot Reference -->
-  <g id="layer-device-frame">
-    <rect x="72" y="374" width="1062" height="2192" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" fill="none" stroke="{{FRAME_BORDER}}" stroke-width="6" />
-    <image id="layer-screenshot" href="{{SCREENSHOT_HREF}}" x="78" y="380" width="1050" height="2180" preserveAspectRatio="xMidYMid slice" clip-path="url(#deviceScreenClip)" />
+  <!-- Device Frame & Real Build Screenshot Layer -->
+  <g id="layer-device-frame" filter="url(#cardShadow)">
+    <rect x="{{FRAME_X}}" y="{{FRAME_Y}}" width="{{FRAME_W}}" height="{{FRAME_H}}" rx="{{FRAME_RADIUS}}" ry="{{FRAME_RADIUS}}" fill="#0B0F17" stroke="{{FRAME_BORDER}}" stroke-width="5" />
+    <image href="{{SCREENSHOT_URI}}" x="{{SCREEN_X}}" y="{{SCREEN_Y}}" width="{{SCREEN_W}}" height="{{SCREEN_H}}" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
   </g>
 </svg>

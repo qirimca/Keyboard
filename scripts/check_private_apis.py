@@ -24,6 +24,8 @@ DENIED = (
     'UIKeyboardDeviceSupportsSplit', 'PKService', '_hostBundleID', '_hostPID',
     '_xpcConnection', 'xpc_connection_copy_bundle_id',
     'com.apple.keyboard', 'com.apple.TextInput',
+    'App-Prefs:', 'prefs:root=', 'UIInputSetHostView', 'UIKBInputBackdrop',
+    'UITextEffectsWindow', 'setFloating:', 'setSplit:', 'setRivenPreference:',
 )
 APPLE_SYMBOL = re.compile(r'^(?:_?(?:UI|TI|CF|CG|CA|NS|AV|AX|IO|Sec)[A-Z_]|_?OBJC_(?:CLASS|METACLASS)_\$_|_?xpc_)')
 

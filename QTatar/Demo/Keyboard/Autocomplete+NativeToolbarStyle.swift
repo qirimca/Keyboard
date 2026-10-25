@@ -1106,6 +1106,7 @@ struct NativeAutocompleteToolbar: View {
         .frame(width: width, height: height)
         .contentShape(Rectangle())
         .accessibilityIdentifier("autocomplete.slot.\(index)")
+        .accessibilityHidden(suggestion == nil)
     }
 
     var body: some View {

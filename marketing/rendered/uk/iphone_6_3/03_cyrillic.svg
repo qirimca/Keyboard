@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1206 2622" width="1206" height="2622">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#16243A" />
+      <stop offset="100%" stop-color="#0C1524" />
+    </linearGradient>
+    <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#09111E" stop-opacity="0.52" />
+      <stop offset="35%" stop-color="#0C1729" stop-opacity="0.42" />
+      <stop offset="100%" stop-color="#060B14" stop-opacity="0.88" />
+    </linearGradient>
+    <clipPath id="screenClip">
+      <rect x="121" y="485" width="964" height="1992" rx="72" ry="72" />
+    </clipPath>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="26" stdDeviation="34" flood-color="#000000" flood-opacity="0.52" />
+    </filter>
+  </defs>
+
+  <!-- Base Layer & Crimean Coast Sunset Photography -->
+  <rect id="layer-background" width="1206" height="2622" fill="url(#bgGrad)" />
+  <image id="layer-crimea-sunset" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" x="0" y="0" width="1206" height="2622" preserveAspectRatio="xMidYMid slice" />
+  <rect id="layer-veil" width="1206" height="2622" fill="url(#sunsetVeil)" />
+
+  <!-- Top Brand Pill & Headline Copy Layer -->
+  <g id="layer-copy">
+    <rect x="266" y="73" width="675" height="57" rx="28" fill="#0F172A" fill-opacity="0.72" stroke="#F59E0B" stroke-width="2" />
+    <text x="603" y="111" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="24" font-weight="700" letter-spacing="1.6" fill="#F59E0B">ДВА АЛФАВІТИ РАЗОМ</text>
+
+    <text x="603" y="215" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="53" font-weight="800" fill="#F8FAFC">Кирилиця та українська ФІВА</text>
+    <text x="603" y="298" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="28" font-weight="500" fill="#E2E8F0">Къырымтатарджа і Кʼиримтатарджа (ґ→g · г→ğ · кʼ→q · нʼ→ñ)</text>
+
+    <!-- Feature Pills Row -->
+    <g id="layer-feature-pills">
+      <rect x="108" y="346" width="313" height="57" rx="28" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="264" y="384" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="21" font-weight="600" fill="#F8FAFC">Къырымтатарджа</text>
+
+      <rect x="447" y="346" width="313" height="57" rx="28" fill="#0F172A" fill-opacity="0.68" stroke="#F59E0B" stroke-opacity="0.65" stroke-width="1.5" />
+      <text x="603" y="384" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="21" font-weight="600" fill="#F8FAFC">Українська ФІВА</text>
+
+      <rect x="786" y="346" width="313" height="57" rx="28" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
+      <text x="942" y="384" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="21" font-weight="600" fill="#F8FAFC">Автовиправлення</text>
+    </g>
+  </g>
+
+  <!-- Device Frame & Real Build Screenshot Layer -->
+  <g id="layer-device-frame" filter="url(#cardShadow)">
+    <rect x="107" y="471" width="992" height="2020" rx="86" ry="86" fill="#0B0F17" stroke="#94A3B8" stroke-width="5" />
+    <image href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/03_cyrillic.png" x="121" y="485" width="964" height="1992" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
+  </g>
+</svg>
