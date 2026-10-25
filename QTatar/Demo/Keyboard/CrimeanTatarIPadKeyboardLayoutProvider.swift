@@ -130,7 +130,6 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
 
     /// Returns whether a layout item is a character key on the bottom (spacebar) row.
     static func isBottomRowCharacterItem(_ item: KeyboardLayout.Item, context: KeyboardContext) -> Bool {
-        if abs(item.edgeInsets.bottom - 2.0) < 0.01 { return true }
         guard case .character(let char) = item.action else { return false }
         if context.keyboardType.isAlphabetic && char == "/" { return true }
         if case .percentage(let pct) = item.size.width {
@@ -310,7 +309,15 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> Alignment {
-        return .center
+        let screen = context.screenSize
+        let minDim = min(screen.width, screen.height)
+        let maxDim = max(screen.width, screen.height)
+        let isHomeButtonPad = (abs(minDim - 834.0) < 1.0 && abs(maxDim - 1112.0) < 1.0)
+            || (abs(minDim - 768.0) < 1.0 && abs(maxDim - 1024.0) < 1.0)
+        if isHomeButtonPad || DemoStyleProvider.usesClassicSystemKeyStyle || action == .dictation {
+            return .center
+        }
+        return super.itemAlignment(for: action, in: actions, row: row, index: index, context: context)
     }
     
     override func itemSizeWidth(
@@ -419,10 +426,13 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
         if action == .space || action == .custom(named: "url_domain") { return .available }
         if case .character = action { return isURLContext(context) ? .percentage(0.115) : .percentage(0.07) }
-        if action == .nextKeyboard || action == .dismissKeyboard || action == .keyboardType(.emojis) {
-            return .percentage(0.085)
+        if action == .nextKeyboard || action == .keyboardType(.emojis) {
+            return .percentage(0.092)
         }
-        return .percentage(0.10)
+        if action == .dismissKeyboard {
+            return .percentage(0.131)
+        }
+        return .percentage(index <= 1 ? 0.092 : 0.131)
     }
     
     override func keyboardReturnAction(

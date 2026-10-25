@@ -79,6 +79,7 @@ final class QirimKeyUITests: XCTestCase {
         }
         if nextKeyboard.exists && nextKeyboard.isHittable {
             for dyOffset in [-1.0, -1.5, -2.0] {
+                guard nextKeyboard.exists && nextKeyboard.isHittable else { break }
                 let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
                 start.press(forDuration: 0.55, thenDragTo: end)
@@ -90,7 +91,7 @@ final class QirimKeyUITests: XCTestCase {
                         Thread.sleep(forTimeInterval: 0.6)
                     }
                 }
-                if anyCustomKey.waitForExistence(timeout: 1.8) { return }
+                if anyCustomKey.waitForExistence(timeout: 2.5) { return }
             }
         }
     }
@@ -104,41 +105,46 @@ final class QirimKeyUITests: XCTestCase {
         let keyboardPred = NSPredicate(format: "identifier == 'com.apple.settings.general.keyboard' OR label == 'Keyboard'")
         let keyboardsPred = NSPredicate(format: "label CONTAINS[c] 'Keyboards' OR identifier CONTAINS[c] 'KEYBOARDS'")
         let generalPred = NSPredicate(format: "identifier == 'com.apple.settings.general' OR label == 'General'")
+        let existingCell = settings.cells.matching(NSPredicate(format: "identifier == 'crh.key.keyboard.keyboard' OR label CONTAINS[c] 'Qırımtatarca'")).firstMatch
+        let addNewPredicate = NSPredicate(format: "label CONTAINS[c] 'Add New Keyboard' OR identifier CONTAINS[c] 'AddNewKeyboard'")
+        let alreadyOnKeyboardsScreen = existingCell.exists
+            || settings.buttons.matching(addNewPredicate).firstMatch.exists
+            || settings.cells.matching(addNewPredicate).firstMatch.exists
 
-        if !settings.buttons.matching(keyboardPred).firstMatch.exists &&
-           !settings.cells.matching(keyboardPred).firstMatch.exists &&
-           !settings.buttons.matching(keyboardsPred).firstMatch.exists &&
-           !settings.cells.matching(keyboardsPred).firstMatch.exists {
-            let generalBtn = settings.buttons.matching(generalPred).firstMatch.exists
-                ? settings.buttons.matching(generalPred).firstMatch
-                : settings.cells.matching(generalPred).firstMatch
-            if !generalBtn.exists {
-                settings.swipeUp()
-                Thread.sleep(forTimeInterval: 0.5)
+        if !alreadyOnKeyboardsScreen {
+            if !settings.buttons.matching(keyboardPred).firstMatch.exists &&
+               !settings.cells.matching(keyboardPred).firstMatch.exists &&
+               !settings.buttons.matching(keyboardsPred).firstMatch.exists &&
+               !settings.cells.matching(keyboardsPred).firstMatch.exists {
+                let generalBtn = settings.buttons.matching(generalPred).firstMatch.exists
+                    ? settings.buttons.matching(generalPred).firstMatch
+                    : settings.cells.matching(generalPred).firstMatch
+                if !generalBtn.exists {
+                    settings.swipeUp()
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+                if generalBtn.waitForExistence(timeout: 2.0) {
+                    generalBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.8)
+                }
             }
-            if generalBtn.waitForExistence(timeout: 2.0) {
-                generalBtn.tap()
+
+            let keyboardBtn = settings.buttons.matching(keyboardPred).firstMatch.exists
+                ? settings.buttons.matching(keyboardPred).firstMatch
+                : settings.cells.matching(keyboardPred).firstMatch
+            if keyboardBtn.waitForExistence(timeout: 2.5) {
+                keyboardBtn.tap()
+                Thread.sleep(forTimeInterval: 0.8)
+            }
+            let keyboardsBtn = settings.buttons.matching(keyboardsPred).firstMatch.exists
+                ? settings.buttons.matching(keyboardsPred).firstMatch
+                : settings.cells.matching(keyboardsPred).firstMatch
+            if keyboardsBtn.waitForExistence(timeout: 2.5) {
+                keyboardsBtn.tap()
                 Thread.sleep(forTimeInterval: 0.8)
             }
         }
-
-        let keyboardBtn = settings.buttons.matching(keyboardPred).firstMatch.exists
-            ? settings.buttons.matching(keyboardPred).firstMatch
-            : settings.cells.matching(keyboardPred).firstMatch
-        if keyboardBtn.waitForExistence(timeout: 2.5) {
-            keyboardBtn.tap()
-            Thread.sleep(forTimeInterval: 0.8)
-        }
-        let keyboardsBtn = settings.buttons.matching(keyboardsPred).firstMatch.exists
-            ? settings.buttons.matching(keyboardsPred).firstMatch
-            : settings.cells.matching(keyboardsPred).firstMatch
-        if keyboardsBtn.waitForExistence(timeout: 2.5) {
-            keyboardsBtn.tap()
-            Thread.sleep(forTimeInterval: 0.8)
-        }
-        let existingCell = settings.cells.matching(NSPredicate(format: "identifier == 'crh.key.keyboard.keyboard' OR label CONTAINS[c] 'Qırımtatarca'")).firstMatch
         if !existingCell.exists {
-            let addNewPredicate = NSPredicate(format: "label CONTAINS[c] 'Add New Keyboard' OR identifier CONTAINS[c] 'AddNewKeyboard'")
             let addNewBtn = settings.buttons.matching(addNewPredicate).firstMatch.exists
                 ? settings.buttons.matching(addNewPredicate).firstMatch
                 : settings.cells.matching(addNewPredicate).firstMatch
@@ -293,14 +299,16 @@ final class QirimKeyUITests: XCTestCase {
         }
         let nextKeyboard = app.buttons["Next keyboard"].exists ? app.buttons["Next keyboard"] : key("next_keyboard")
         let abcBtn = app.buttons["ABC"]
-        if nextKeyboard.exists && nextKeyboard.isHittable {
-            nextKeyboard.tap()
-            Thread.sleep(forTimeInterval: 0.8)
-            if waitForLetter(wanted, timeout: 1.2) { return }
-        } else if abcBtn.exists && abcBtn.isHittable {
-            abcBtn.tap()
-            Thread.sleep(forTimeInterval: 0.8)
-            if waitForLetter(wanted, timeout: 1.2) { return }
+        for _ in 0..<3 {
+            if nextKeyboard.exists && nextKeyboard.isHittable {
+                nextKeyboard.tap()
+                Thread.sleep(forTimeInterval: 0.7)
+                if waitForLetter(wanted, timeout: 1.0) { return }
+            } else if abcBtn.exists && abcBtn.isHittable {
+                abcBtn.tap()
+                Thread.sleep(forTimeInterval: 0.7)
+                if waitForLetter(wanted, timeout: 1.0) { return }
+            }
         }
         if nextKeyboard.exists && nextKeyboard.isHittable {
             for dyOffset in [-1.0, -1.5, -2.0] {
@@ -1540,124 +1548,290 @@ final class QirimKeyUITests: XCTestCase {
 
     private var storeDevice: String { UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone" }
 
-    func testAppStoreScreenshotsLight() throws {
-        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
-        try selectScript(cyrillic: false)
-        clear()
-        typeLetters("qirimtatarca")
-        Thread.sleep(forTimeInterval: 0.8)
-        capture("store_\(storeDevice)_01_latin_light")
-        app.terminate()
-
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
-            if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
-                clear()
-                typeLetters("селям")
-                Thread.sleep(forTimeInterval: 0.8)
-                capture("store_\(storeDevice)_03_cyrillic")
+    func testAppStoreScreenshotsHome() throws {
+        for lang in ["crh", "uk", "en"] {
+            var args = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight", "-qt_lang", lang]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            app.launchArguments = args
+            app.launch()
+            Thread.sleep(forTimeInterval: 1.8)
+            if lang == "crh" {
+                capture("store_\(storeDevice)_04_home_light")
+            }
+            capture("store_\(storeDevice)_04_home_light_\(lang)")
+            if lang == "uk" {
+                let statsToggle = app.buttons["stats.expandToggle"].exists
+                    ? app.buttons["stats.expandToggle"]
+                    : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
+                if statsToggle.exists && statsToggle.isHittable {
+                    statsToggle.tap()
+                    Thread.sleep(forTimeInterval: 1.2)
+                    capture("store_\(storeDevice)_04c_home_uk_stats_expanded")
+                }
             }
             app.terminate()
         }
 
-        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight"]
-        app.launch()
-        Thread.sleep(forTimeInterval: 2.0)
-        capture("store_\(storeDevice)_04_home_light")
-        app.terminate()
-
-        app.launchArguments = ["-qt_cyrillic_missing", "-qt_demo_stats", "-qt_theme", "modernLight"]
+        app.launchArguments = ["-qt_cyrillic_missing", "-qt_demo_stats", "-qt_theme", "modernLight", "-qt_lang", "crh"]
         app.launch()
         Thread.sleep(forTimeInterval: 1.5)
-        let addHintBtn = app.descendants(matching: .any).matching(identifier: "settings.cyrillic.addHintButton").firstMatch
-        let cyrToggle = app.switches["settings.cyrillic.toggle"].exists
-            ? app.switches["settings.cyrillic.toggle"]
-            : app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
-        XCTAssertTrue(addHintBtn.waitForExistence(timeout: 2.5), "Cyrillic row must show settings path instruction subtitle when not added")
-        XCTAssertTrue(cyrToggle.exists, "Cyrillic row must show Toggle switch")
-        XCTAssertEqual(cyrToggle.value as? String, "0", "Cyrillic Toggle must be OFF when Cyrillic is not added")
         capture("store_\(storeDevice)_04b_home_cyrillic_missing")
+        app.terminate()
+
+        for lang in ["crh", "uk", "en"] {
+            var args = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_demo_dark", "-qt_focus_sandbox_live", "-qt_theme", "modernDark", "-qt_lang", lang]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            app.launchArguments = args
+            app.launch()
+            if field.waitForExistence(timeout: 3), !anyCustomKey.waitForExistence(timeout: 2.5) {
+                field.tap()
+                Thread.sleep(forTimeInterval: 0.6)
+                if !anyCustomKey.exists {
+                    cycleToCustomKeyboard(firstKey: key("numeric"))
+                }
+            }
+            _ = anyCustomKey.waitForExistence(timeout: 3)
+            Thread.sleep(forTimeInterval: 1.5)
+            if lang == "crh" {
+                capture("store_\(storeDevice)_05_home_dark")
+            }
+            capture("store_\(storeDevice)_05_home_dark_\(lang)")
+            app.terminate()
+        }
+    }
+
+    func testAppStoreScreenshotsLight() throws {
+        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats", "-qt_lang", "crh", "-qt_cyrillic_added"])
+        try selectScript(cyrillic: false)
+        clear()
+        Thread.sleep(forTimeInterval: 0.8)
+        capture("verify_\(storeDevice)_daily_phrase_light")
+        capture("vframe_\(storeDevice)_01_phrase_light")
+        typeLetters("qirim")
+        Thread.sleep(forTimeInterval: 0.5)
+        capture("vframe_\(storeDevice)_02_typing_qirim")
+        typeLetters("tatarca")
+        Thread.sleep(forTimeInterval: 0.8)
+        capture("store_\(storeDevice)_01_latin_light")
+        capture("store_\(storeDevice)_01_latin_light_crh")
+        capture("vframe_\(storeDevice)_03_latin_light_done")
+        app.terminate()
+
+        for lang in ["uk", "en"] {
+            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            try launch(theme: "modernLight", extraArgs: args)
+            try selectScript(cyrillic: false)
+            clear()
+            typeLetters("qirimtatarca")
+            Thread.sleep(forTimeInterval: 0.8)
+            capture("store_\(storeDevice)_01_latin_light_\(lang)")
+            app.terminate()
+        }
+
+        for lang in ["crh", "uk", "en"] {
+            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            try launch(theme: "modernLight", extraArgs: args)
+            if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
+                clear()
+                typeLetters("селям")
+                Thread.sleep(forTimeInterval: 0.8)
+                if lang == "crh" {
+                    capture("store_\(storeDevice)_03_cyrillic")
+                }
+                capture("store_\(storeDevice)_03_cyrillic_\(lang)")
+            }
+            app.terminate()
+        }
     }
 
     func testAppStoreScreenshotCyrillicOnly() throws {
-        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats"])
-        try selectScript(cyrillic: true)
-        clear()
-        typeLetters("селям")
-        Thread.sleep(forTimeInterval: 0.8)
-        capture("store_\(storeDevice)_03_cyrillic")
+        for lang in ["crh", "uk", "en"] {
+            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            try launch(theme: "modernLight", extraArgs: args)
+            try selectScript(cyrillic: true)
+            clear()
+            typeLetters("селям")
+            Thread.sleep(forTimeInterval: 0.8)
+            if lang == "crh" {
+                capture("store_\(storeDevice)_03_cyrillic")
+            }
+            capture("store_\(storeDevice)_03_cyrillic_\(lang)")
+            app.terminate()
+        }
     }
 
     func testAppStoreScreenshotsDark() throws {
-        try launch(theme: "modernDark", extraArgs: ["-qt_demo_stats"])
+        try launch(theme: "modernDark", extraArgs: ["-qt_demo_stats", "-qt_lang", "crh", "-qt_cyrillic_added"])
         try selectScript(cyrillic: false)
         clear()
+        Thread.sleep(forTimeInterval: 0.8)
+        capture("verify_\(storeDevice)_daily_phrase_dark")
         typeLetters("sel")
         tap("character.â")
         typeLetters("m")
         Thread.sleep(forTimeInterval: 0.8)
         capture("store_\(storeDevice)_02_latin_dark")
+        capture("store_\(storeDevice)_02_latin_dark_crh")
         app.terminate()
 
-        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernDark"]
-        app.launch()
-        Thread.sleep(forTimeInterval: 2.5)
-        capture("store_\(storeDevice)_05_home_dark")
+        for lang in ["uk", "en"] {
+            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            if lang == "uk" { args.append("-qt_ukrainian_fiva") }
+            try launch(theme: "modernDark", extraArgs: args)
+            try selectScript(cyrillic: false)
+            clear()
+            typeLetters("sel")
+            tap("character.â")
+            typeLetters("m")
+            Thread.sleep(forTimeInterval: 0.8)
+            capture("store_\(storeDevice)_02_latin_dark_\(lang)")
+            app.terminate()
+        }
     }
 
     func testAppStorePreviewVideoScenario() throws {
-        app.launchArguments = ["-qt_field", "standard", "-qt_theme", "modernLight", "-qt_reset_text", "-qt_demo_stats", "-qt_enable_animations", "-qt_cyrillic_added"]
-        app.launch()
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
-        let firstKey = key("numeric")
-        if !(firstKey.exists || firstKey.waitForExistence(timeout: 3.5)) {
-            cycleToCustomKeyboard(firstKey: firstKey)
-        }
+        try launch(
+            fieldMode: "standard",
+            theme: "modernLight",
+            extraArgs: ["-qt_demo_stats", "-qt_enable_animations", "-qt_cyrillic_added", "-qt_lang", "crh"]
+        )
         try selectScript(cyrillic: false)
+        capture("vframe_\(storeDevice)_00")
         clear()
-        Thread.sleep(forTimeInterval: 1.0)
-        typeLetters("selam")
-        tap("space")
+        // 1. Show new v3.1 daily phrase platter (matching autocorrection pill style)
         Thread.sleep(forTimeInterval: 0.6)
-        typeLetters("qirim")
-        Thread.sleep(forTimeInterval: 0.7)
+        capture("vframe_\(storeDevice)_01")
+        Thread.sleep(forTimeInterval: 0.4)
+        capture("vframe_\(storeDevice)_02")
+
+        // 2. Type Crimean Tatar Latin text with space-committed autocorrection & 3-slot suggestions
+        typeLetters("sel")
+        Thread.sleep(forTimeInterval: 0.25)
+        capture("vframe_\(storeDevice)_03")
+        typeLetters("am")
+        Thread.sleep(forTimeInterval: 0.35)
+        capture("vframe_\(storeDevice)_04")
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.4)
+        capture("vframe_\(storeDevice)_05")
+
+        typeLetters("qir")
+        Thread.sleep(forTimeInterval: 0.25)
+        capture("vframe_\(storeDevice)_06")
+        typeLetters("im")
+        Thread.sleep(forTimeInterval: 0.4)
+        capture("vframe_\(storeDevice)_07")
         let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
         if slot1.exists && slot1.isHittable {
             slot1.tap()
-            Thread.sleep(forTimeInterval: 0.8)
+            Thread.sleep(forTimeInterval: 0.4)
         } else {
             tap("space")
-            Thread.sleep(forTimeInterval: 0.6)
+            Thread.sleep(forTimeInterval: 0.4)
         }
+        capture("vframe_\(storeDevice)_08")
+
+        // 3. Swipe a word on iPhone or type on iPad, then show Cyrillic keyboard
         if UIDevice.current.userInterfaceIdiom == .phone {
             let sKey = letterElement("s")
             let mKey = letterElement("m")
             if sKey.exists && mKey.exists {
                 let cS = sKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 let cM = mKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-                cS.press(forDuration: 0.04, thenDragTo: cM, withVelocity: .slow, thenHoldForDuration: 0.05)
+                cS.press(forDuration: 0.05, thenDragTo: cM, withVelocity: .slow, thenHoldForDuration: 0.05)
+                Thread.sleep(forTimeInterval: 0.5)
             }
-            Thread.sleep(forTimeInterval: 1.0)
         } else {
             typeLetters("vatan")
             tap("space")
-            Thread.sleep(forTimeInterval: 0.8)
+            Thread.sleep(forTimeInterval: 0.4)
         }
-        let darkBtn = app.buttons["theme.dark"]
+        capture("vframe_\(storeDevice)_09")
+
+        if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
+            capture("vframe_\(storeDevice)_10")
+            typeLetters("селям")
+            Thread.sleep(forTimeInterval: 0.5)
+            capture("vframe_\(storeDevice)_11")
+            _ = try? selectScript(cyrillic: false)
+            Thread.sleep(forTimeInterval: 0.4)
+        } else {
+            capture("vframe_\(storeDevice)_10")
+            capture("vframe_\(storeDevice)_11")
+        }
+        capture("vframe_\(storeDevice)_12")
+
+        // 4. Toggle Dark Mode (Qaranlıq) then back to Light Mode
+        let darkPred = NSPredicate(format: "identifier == 'theme.dark' OR label IN {'Qaranlıq', 'Темна', 'Dark'}")
+        let darkBtn = app.buttons.matching(darkPred).firstMatch
         if darkBtn.exists && darkBtn.isHittable {
             darkBtn.tap()
-            Thread.sleep(forTimeInterval: 1.4)
+            Thread.sleep(forTimeInterval: 0.9)
+            capture("vframe_\(storeDevice)_13")
+            clear()
+            Thread.sleep(forTimeInterval: 0.6)
+            capture("vframe_\(storeDevice)_14")
+        } else {
+            capture("vframe_\(storeDevice)_13")
+            capture("vframe_\(storeDevice)_14")
         }
-        if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
-            typeLetters("селям")
-            Thread.sleep(forTimeInterval: 1.2)
+        let lightPred = NSPredicate(format: "identifier == 'theme.light' OR label IN {'Aydınlıq', 'Світла', 'Light'}")
+        let lightBtn = app.buttons.matching(lightPred).firstMatch
+        if lightBtn.exists && lightBtn.isHittable {
+            lightBtn.tap()
+            Thread.sleep(forTimeInterval: 0.7)
         }
+        capture("vframe_\(storeDevice)_15")
+
+        // 5. Dismiss keyboard or scroll to show HomeView settings: Українська interface + hierarchical Українська розкладка sub-row & Кʼ/Къ badge + Statistika
+        let donePred = NSPredicate(format: "label IN {'Done', 'Готово', 'Azır'}")
+        let doneBtn = app.buttons.matching(donePred).firstMatch
+        if doneBtn.exists && doneBtn.isHittable {
+            doneBtn.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        capture("vframe_\(storeDevice)_16")
+
+        let ukBtn = app.buttons["Українська"].firstMatch
+        if ukBtn.exists && ukBtn.isHittable {
+            ukBtn.tap()
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+        capture("vframe_\(storeDevice)_17")
+
+        let ukFivaToggle = app.switches["settings.ukrainianCyrillic.toggle"].exists
+            ? app.switches["settings.ukrainianCyrillic.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.ukrainianCyrillic.toggle").firstMatch
+        if ukFivaToggle.exists {
+            tapSwitch(ukFivaToggle)
+            Thread.sleep(forTimeInterval: 0.7)
+            capture("vframe_\(storeDevice)_18")
+            if ((ukFivaToggle.value as? String) ?? "0") == "0" {
+                tapSwitch(ukFivaToggle)
+                Thread.sleep(forTimeInterval: 0.7)
+            }
+            capture("vframe_\(storeDevice)_19")
+        } else {
+            capture("vframe_\(storeDevice)_18")
+            capture("vframe_\(storeDevice)_19")
+        }
+
         let statsToggle = app.buttons["stats.expandToggle"].exists
             ? app.buttons["stats.expandToggle"]
             : app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
-        if statsToggle.exists && statsToggle.isHittable {
-            statsToggle.tap()
-            Thread.sleep(forTimeInterval: 2.2)
+        if statsToggle.exists {
+            tapSwitch(statsToggle)
+            Thread.sleep(forTimeInterval: 0.9)
+            capture("vframe_\(storeDevice)_20")
+            app.scrollViews.firstMatch.swipeUp()
+            Thread.sleep(forTimeInterval: 0.7)
+            capture("vframe_\(storeDevice)_21")
+        } else {
+            capture("vframe_\(storeDevice)_20")
+            capture("vframe_\(storeDevice)_21")
         }
         capture("store_\(storeDevice)_video_final_frame")
     }

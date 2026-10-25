@@ -1,5 +1,5 @@
 {
-  "template_version": "1.1.0",
+  "template_version": "1.2.0",
   "project": "QırımKey",
   "app_version": "3.1",
   "build_number": "5",
@@ -14,9 +14,9 @@
       "bg_start": "#16243A",
       "bg_end": "#0C1524",
       "veil_opacity": "0.52",
-      "accent": "#F59E0B",
+      "accent": "#FBBF24",
       "accent_secondary": "#38BDF8",
-      "headline": "#F8FAFC",
+      "headline": "#FFFFFF",
       "subtitle": "#E2E8F0",
       "frame_border": "#94A3B8"
     },
@@ -25,8 +25,8 @@
       "bg_end": "#050912",
       "veil_opacity": "0.70",
       "accent": "#38BDF8",
-      "accent_secondary": "#F59E0B",
-      "headline": "#F8FAFC",
+      "accent_secondary": "#FBBF24",
+      "headline": "#FFFFFF",
       "subtitle": "#CBD5E1",
       "frame_border": "#475569"
     }
@@ -47,7 +47,7 @@
     "ipad_13": {
       "width_px": 2064,
       "height_px": 2752,
-      "corner_radius": 48,
+      "corner_radius": 44,
       "template": "marketing/templates/ipad/template.svg"
     },
     "social_portrait": {
@@ -117,7 +117,7 @@
         "scene": 6,
         "act": "Success",
         "window_sec": "19-22",
-        "crh": "Tam hususiylik — 100% cihazda. App Store-dan indiriñiz!",
+        "crh": "Tam hususiylik — 100% cihazda işley. App Store-dan indiriñiz!",
         "uk": "100% приватність — усі дані на пристрої. Завантажуйте в App Store!",
         "en": "100% on-device privacy. Download on the App Store!"
       }
@@ -126,98 +126,98 @@
   "copy": {
     "crh": {
       "01_latin_light": {
-        "badge": "ÖZ TİLİMİZ — ER YERDE",
+        "badge": "QIRIMKEY • ÖZ TİLİMİZ ER YERDE",
         "title": "Qırımtatar Klaviaturası",
-        "subtitle": "2024/2025 imlâ qaideleri, aqıllı söz teklifleri ve svayp",
+        "subtitle": "Lâtin ve Kirill elifbeleri, aqıllı söz teklifleri ve svayp",
         "pills": ["Lâtin & Kirill", "Söz teklifleri", "Zengin luğat"]
       },
       "02_latin_dark": {
         "badge": "QARANLIQ TEMA & LIQUID GLASS",
-        "title": "Közni Yormaycaq Dizayn",
-        "subtitle": "Er yerde şık körüniş ve Taraq Tamğa nefes aluvı",
+        "title": "Zarif Gece Körünişi",
+        "subtitle": "Közni yormayğan dizayn ve canlı Taraq Tamğa nefes aluvı",
         "pills": ["Qaranlıq tema", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
-        "badge": "EKİ ELİFBE BİR YERDE",
-        "title": "Kirill ve Ukraina Tizilişi",
-        "subtitle": "Къырымтатарджа ve Кʼиримтатарджа (ґ→g · г→ğ · кʼ→q · нʼ→ñ)",
+        "badge": "EKİ ELİFBE — BİR YERDE",
+        "title": "Kirill ve Canlı Transliteratsiya",
+        "subtitle": "селям → selâm • Ukraina ФІВА ve klassik tizilişleri",
         "pills": ["Къырымтатарджа", "Українська ФІВА", "Avto-tüzetüv"]
       },
       "04_home_light": {
-        "badge": "TAM HUSUSİYLİK",
-        "title": "Malümatıñız Emniyette",
-        "subtitle": "100% oflayn işley — şahsiy malümat ve yazuvlar cihazda qala",
-        "pills": ["100% Oflayn", "Malümat toplanmay", "iPhone & iPad"]
+        "badge": "STATİSTİKA & SAZLAMALAR",
+        "title": "Öz Üslübiñizge Köre Sazlañız",
+        "subtitle": "Yazuv statistika kartası, künlik hikmetler ve qolay idare",
+        "pills": ["Statistika", "Künlik hikmetler", "iPhone & iPad"]
       },
       "05_home_dark": {
-        "badge": "STATİSTİKA & YEÑİŞLER",
-        "title": "Yazuv Tezligi ve Ösüv",
-        "subtitle": "5 dereceli yeñişler, künlik hikmetler ve ögrenilgen sözler",
-        "pills": ["Statistika", "5 derece", "Відомі вислови"]
+        "badge": "100% CİHAZDA • TAM HUSUSİYLİK",
+        "title": "Malümatıñız Emniyette",
+        "subtitle": "İnternetsiz işley • Şahsiy yazuvlarıñız cihazdan tışqa çıqmay",
+        "pills": ["İnternetsiz işley", "Sıfır telemetriya", "Tam emniyet"]
       }
     },
     "uk": {
       "01_latin_light": {
-        "badge": "РІДНА МОВА — ВСЮДИ",
+        "badge": "QIRIMKEY • РІДНА МОВА ВСЮДИ",
         "title": "Кримськотатарська клавіатура",
-        "subtitle": "Правопис ДЕСС 2024/2025, розумні пропозиції слів і свайп",
+        "subtitle": "Латиниця та кирилиця, розумні підказки слів і свайп",
         "pills": ["Латиниця й кирилиця", "Пропозиції слів", "Багатий словник"]
       },
       "02_latin_dark": {
         "badge": "ТЕМНА ТЕМА & LIQUID GLASS",
-        "title": "Сучасний і витончений дизайн",
+        "title": "Витончений нічний дизайн",
         "subtitle": "Комфортний набір удень і вночі з живим диханням Тарак-Тамги",
         "pills": ["Темна тема", "Liquid Glass", "Тарак-Тамга"]
       },
       "03_cyrillic": {
         "badge": "ДВА АЛФАВІТИ РАЗОМ",
-        "title": "Кирилиця та українська ФІВА",
-        "subtitle": "Къырымтатарджа і Кʼиримтатарджа (ґ→g · г→ğ · кʼ→q · нʼ→ñ)",
+        "title": "Кирилиця та миттєва транслітерація",
+        "subtitle": "селям → selâm • Українська розкладка ФІВА та класична",
         "pills": ["Къырымтатарджа", "Українська ФІВА", "Автовиправлення"]
       },
       "04_home_light": {
-        "badge": "ПОВНА ПРИВАТНІСТЬ",
-        "title": "Ваші дані у безпеці",
-        "subtitle": "100% робота офлайн — жодні тексти не покидають ваш пристрій",
-        "pills": ["100% Офлайн", "Без збору даних", "iPhone та iPad"]
+        "badge": "СТАТИСТИКА Й НАЛАШТУВАННЯ",
+        "title": "Зручне керування та прогрес",
+        "subtitle": "Статистика швидкості друку, відомі вислови та гнучкі опції",
+        "pills": ["Статистика", "Відомі вислови", "iPhone та iPad"]
       },
       "05_home_dark": {
-        "badge": "СТАТИСТИКА Й ДОСЯГНЕННЯ",
-        "title": "Швидкість друку та прогрес",
-        "subtitle": "5 рівнів досягнень, відомі вислови та особистий словник",
-        "pills": ["Статистика", "5 рівнів", "Відомі вислови"]
+        "badge": "100% НА ПРИСТРОЇ • ПОВНА ПРИВАТНІСТЬ",
+        "title": "Ваші дані у безпеці",
+        "subtitle": "Працює повністю офлайн • Жодні тексти не передаються в мережу",
+        "pills": ["100% Офлайн", "Без телеметрії", "Повний захист"]
       }
     },
     "en": {
       "01_latin_light": {
-        "badge": "OUR LANGUAGE — EVERYWHERE",
+        "badge": "QIRIMKEY • OUR LANGUAGE EVERYWHERE",
         "title": "Crimean Tatar Keyboard",
-        "subtitle": "Official 2024/2025 orthography, smart word suggestions & swipe",
+        "subtitle": "Latin & Cyrillic scripts, smart word predictions and swipe",
         "pills": ["Latin & Cyrillic", "Smart Suggestions", "Rich Lexicon"]
       },
       "02_latin_dark": {
         "badge": "DARK THEME & LIQUID GLASS",
-        "title": "Refined Native iOS Design",
+        "title": "Refined Night Experience",
         "subtitle": "Effortless day & night typing with breathing Taraq Tamğa emblem",
         "pills": ["Dark Theme", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
         "badge": "TWO SCRIPTS IN ONE",
-        "title": "Cyrillic & Ukrainian FIVA",
-        "subtitle": "Seamless Cyrillic typing and smart transliteration (кʼ→q · нʼ→ñ)",
+        "title": "Cyrillic & Live Transliteration",
+        "subtitle": "селям → selâm • Ukrainian FIVA and classic Cyrillic layouts",
         "pills": ["Cyrillic Script", "Ukrainian FIVA", "Autocorrect"]
       },
       "04_home_light": {
-        "badge": "TOTAL PRIVACY",
-        "title": "Your Data Stays Yours",
-        "subtitle": "100% offline engine — all dictionaries and learning stay on device",
-        "pills": ["100% Offline", "Zero Data Collected", "iPhone & iPad"]
+        "badge": "STATISTICS & CUSTOMIZATION",
+        "title": "Tailored to Your Typing Style",
+        "subtitle": "Personal typing milestones, cultural quotes & intuitive controls",
+        "pills": ["Statistics", "Cultural Quotes", "iPhone & iPad"]
       },
       "05_home_dark": {
-        "badge": "STATS & ACHIEVEMENTS",
-        "title": "Track Speed & Vocabulary",
-        "subtitle": "5-tier typing milestones, cultural quotes & personal lexicon",
-        "pills": ["Statistics", "5 Tiers", "Cultural Quotes"]
+        "badge": "100% ON-DEVICE • TOTAL PRIVACY",
+        "title": "Your Data Stays Yours",
+        "subtitle": "Works completely offline • Zero telemetry or cloud tracking",
+        "pills": ["100% Offline", "Zero Telemetry", "Full Privacy"]
       }
     }
   }

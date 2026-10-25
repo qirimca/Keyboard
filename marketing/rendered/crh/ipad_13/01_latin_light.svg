@@ -5,15 +5,23 @@
       <stop offset="100%" stop-color="#0C1524" />
     </linearGradient>
     <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#09111E" stop-opacity="0.52" />
-      <stop offset="35%" stop-color="#0C1729" stop-opacity="0.42" />
-      <stop offset="100%" stop-color="#060B14" stop-opacity="0.88" />
+      <stop offset="0%" stop-color="#07101E" stop-opacity="0.72" />
+      <stop offset="28%" stop-color="#0B1628" stop-opacity="0.46" />
+      <stop offset="100%" stop-color="#050912" stop-opacity="0.86" />
+    </linearGradient>
+    <linearGradient id="aluminumRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94A3B8" />
+      <stop offset="50%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#64748B" />
     </linearGradient>
     <clipPath id="screenClip">
-      <rect x="206" y="509" width="1651" height="2091" rx="48" ry="48" />
+      <rect x="227" y="509" width="1609" height="2091" rx="44" ry="44" />
     </clipPath>
-    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="125%">
-      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000000" flood-opacity="0.54" />
+    <filter id="deviceShadow" x="-10%" y="-8%" width="120%" height="122%">
+      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000000" flood-opacity="0.62" />
+    </filter>
+    <filter id="textShadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000000" flood-opacity="0.45" />
     </filter>
   </defs>
 
@@ -22,30 +30,28 @@
   <image id="layer-crimea-sunset" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" x="0" y="0" width="2064" height="2752" preserveAspectRatio="xMidYMid slice" />
   <rect id="layer-veil" width="2064" height="2752" fill="url(#sunsetVeil)" />
 
-  <!-- Top Brand Pill & Headline Copy Layer -->
-  <g id="layer-copy">
-    <rect x="455" y="77" width="1155" height="60" rx="30" fill="#0F172A" fill-opacity="0.72" stroke="#F59E0B" stroke-width="2" />
-    <text x="1032" y="117" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="41" font-weight="700" letter-spacing="1.8" fill="#F59E0B">ÖZ TİLİMİZ — ER YERDE</text>
-
-    <text x="1032" y="225" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="90" font-weight="800" fill="#F8FAFC">Qırımtatar Klaviaturası</text>
-    <text x="1032" y="313" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="49" font-weight="500" fill="#E2E8F0">2024/2025 imlâ qaideleri, aqıllı söz teklifleri ve svayp</text>
-
-    <!-- Feature Pills Row -->
-    <g id="layer-feature-pills">
-      <rect x="183" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
-      <text x="451" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Lâtin &amp; Kirill</text>
-
-      <rect x="764" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#F59E0B" stroke-opacity="0.65" stroke-width="1.5" />
-      <text x="1032" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Söz teklifleri</text>
-
-      <rect x="1345" y="363" width="536" height="60" rx="30" fill="#0F172A" fill-opacity="0.68" stroke="#38BDF8" stroke-opacity="0.55" stroke-width="1.5" />
-      <text x="1613" y="403" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="37" font-weight="600" fill="#F8FAFC">Zengin luğat</text>
-    </g>
+  <!-- Clean Apple-Grade Headline & Subheadline Copy Layer -->
+  <g id="layer-copy" filter="url(#textShadow)">
+    <text x="1032" y="159" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="35" font-weight="700" letter-spacing="2.4" fill="#FBBF24">QIRIMKEY • ÖZ TİLİMİZ ER YERDE</text>
+    <text x="1032" y="291" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="74" font-weight="800" letter-spacing="-0.5" fill="#FFFFFF">Qırımtatar Klaviaturası</text>
+    <text x="1032" y="396" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="43" font-weight="500" fill="#E2E8F0">Lâtin ve Kirill elifbeleri, aqıllı söz teklifleri ve svayp</text>
   </g>
 
-  <!-- iPad Device Frame & Real Build Screenshot Layer -->
-  <g id="layer-device-frame" filter="url(#cardShadow)">
-    <rect x="182" y="485" width="1699" height="2139" rx="72" ry="72" fill="#0B0F17" stroke="#94A3B8" stroke-width="6" />
-    <image href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/AppStoreMetadata/Screenshots/ipad-13-2064x2752/01_latin_light.png" x="206" y="509" width="1651" height="2091" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
+  <!-- Realistic iPad Pro Hardware Chassis & Screen Layer -->
+  <g id="layer-device-frame" filter="url(#deviceShadow)">
+    <!-- Top Power & Side Volume Buttons -->
+    <rect x="1674" y="461" width="76" height="10" rx="3" fill="#64748B" />
+    <rect x="1874" y="881" width="10" height="99" rx="3" fill="#64748B" />
+    <rect x="1874" y="1011" width="10" height="99" rx="3" fill="#64748B" />
+
+    <!-- Outer Aluminum Rim & Inner Black Bezel -->
+    <rect x="187" y="469" width="1689" height="2171" rx="79" ry="79" fill="url(#aluminumRim)" />
+    <rect x="197" y="479" width="1669" height="2151" rx="69" ry="69" fill="#080A0F" />
+
+    <!-- Front TrueDepth Camera Lens in Top Bezel -->
+    <circle cx="1032" cy="494" r="6" fill="#111827" stroke="#1E293B" stroke-width="2" />
+
+    <!-- Real Build Screenshot -->
+    <image href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png" x="227" y="509" width="1609" height="2091" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
   </g>
 </svg>

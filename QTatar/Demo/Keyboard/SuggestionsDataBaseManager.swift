@@ -4335,15 +4335,15 @@ struct KeyboardAdaptiveGeometry: Equatable {
     ) -> KeyboardAdaptiveGeometry {
         if isFloating {
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 43.0,
-                bottomRowHeight: 43.0,
-                letterTopBottomInset: 3.0,
-                bottomTopBottomInset: 3.0,
-                horizontalItemInset: 1.8,
-                edgeTopBottomInset: 2.0,
-                edgeHorizontalInset: 6.0,
+                letterRowHeight: hasToolbar ? 45.0 : 54.0,
+                bottomRowHeight: hasToolbar ? 44.0 : 55.0,
+                letterTopBottomInset: hasToolbar ? 3.5 : 8.0,
+                bottomTopBottomInset: hasToolbar ? 3.5 : 8.0,
+                horizontalItemInset: 2.75,
+                edgeTopBottomInset: 5.0,
+                edgeHorizontalInset: 0.0,
                 toolbarHeight: hasToolbar ? 38.0 : 0.0,
-                cornerRadius: 7.5
+                cornerRadius: 10.0
             )
         }
 
@@ -4363,41 +4363,41 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 if portraitWidth >= 960.0 {
                     // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 64.0,
-                        bottomRowHeight: 62.0,
+                        letterRowHeight: hasToolbar ? 64.0 : 73.5,
+                        bottomRowHeight: hasToolbar ? 62.0 : 71.5,
                         letterTopBottomInset: 4.5,
                         bottomTopBottomInset: 4.5,
                         horizontalItemInset: 6.0,
                         edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeHorizontalInset: 6.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 7.5
+                        cornerRadius: 9.5
                     )
                 } else if portraitWidth <= 768.0 {
                     // iPad mini (744 pt) & 9.7" iPad (768 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 56.5,
-                        bottomRowHeight: 54.5,
+                        letterRowHeight: hasToolbar ? 56.5 : 66.0,
+                        bottomRowHeight: hasToolbar ? 54.5 : 64.0,
                         letterTopBottomInset: 4.25,
                         bottomTopBottomInset: 4.25,
                         horizontalItemInset: 5.5,
                         edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeHorizontalInset: 6.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 7.0
+                        cornerRadius: 9.0
                     )
                 } else {
                     // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 58.5,
-                        bottomRowHeight: 56.5,
-                        letterTopBottomInset: 4.25,
-                        bottomTopBottomInset: 4.25,
+                        letterRowHeight: hasToolbar ? 58.5 : 68.0,
+                        bottomRowHeight: hasToolbar ? 56.5 : 66.0,
+                        letterTopBottomInset: 4.5,
+                        bottomTopBottomInset: 4.5,
                         horizontalItemInset: 6.0,
                         edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeHorizontalInset: 6.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 7.0
+                        cornerRadius: 9.5
                     )
                 }
             } else {
@@ -4405,41 +4405,41 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 if portraitWidth >= 960.0 {
                     // 12.9" / 13" iPad Pro Landscape (1366-1376 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 84.0,
-                        bottomRowHeight: 84.0,
-                        letterTopBottomInset: 6.0,
-                        bottomTopBottomInset: 6.0,
+                        letterRowHeight: hasToolbar ? 84.0 : 93.5,
+                        bottomRowHeight: hasToolbar ? 84.0 : 93.5,
+                        letterTopBottomInset: hasToolbar ? 6.0 : 5.5,
+                        bottomTopBottomInset: hasToolbar ? 6.0 : 5.5,
                         horizontalItemInset: 7.0,
                         edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeHorizontalInset: 8.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 8.5
+                        cornerRadius: 11.0
                     )
                 } else if portraitWidth <= 768.0 {
                     // iPad mini / 9.7" Landscape
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 74.0,
-                        bottomRowHeight: 74.0,
+                        letterRowHeight: hasToolbar ? 74.0 : 83.5,
+                        bottomRowHeight: hasToolbar ? 74.0 : 83.5,
                         letterTopBottomInset: 5.5,
                         bottomTopBottomInset: 5.5,
                         horizontalItemInset: 6.5,
                         edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeHorizontalInset: 8.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 8.0
+                        cornerRadius: 10.0
                     )
                 } else {
                     // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 75.0,
-                        bottomRowHeight: 75.0,
-                        letterTopBottomInset: 6.0,
-                        bottomTopBottomInset: 6.0,
+                        letterRowHeight: hasToolbar ? 75.0 : 83.0,
+                        bottomRowHeight: hasToolbar ? 78.0 : 91.0,
+                        letterTopBottomInset: hasToolbar ? 6.0 : 7.0,
+                        bottomTopBottomInset: hasToolbar ? 6.0 : 7.0,
                         horizontalItemInset: 7.0,
-                        edgeTopBottomInset: 2.0,
-                        edgeHorizontalInset: 3.0,
+                        edgeTopBottomInset: hasToolbar ? 3.0 : 3.5,
+                        edgeHorizontalInset: 8.0,
                         toolbarHeight: toolbarH,
-                        cornerRadius: 8.0
+                        cornerRadius: 10.5
                     )
                 }
             }

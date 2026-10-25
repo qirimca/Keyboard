@@ -1,4 +1,4 @@
 App Review Notes (Qırımtatarca):
 1. Klaviaturanı qoşuv: «Settings → General → Keyboard → Keyboards → Add New Keyboard…» bölügini açıp «QırımKey» saylañız.
-2. Mahremiyet: ekisi de (`crh.key.keyboard.keyboard` ve `crh.key.keyboard.keyboard.cyrillic`) `RequestsOpenAccess = YES` sazlamasınen tek cihaz içindeki App Group (`group.crh.key.keyboardplus`) vastasınen sazlamalar ve statistikanı sinhronizatsiya ete ve internetsiz çalışa (iç bir ağ sorğusı yapılmay).
+2. Mahremiyet: ekisi de (`crh.key.keyboard.keyboard` ve `crh.key.keyboard.keyboard.cyrillic`) `RequestsOpenAccess = YES` sazlamasınen tek cihaz içindeki App Group (`group.crh.key.keyboardplus`) vastasınen sazlamalar ve statistikanı sinhronizatsiya ete ve internetsiz işley (iç bir ağ sorğusı yapılmay).
 3. Qoşulma sazlamaları (`Settings.bundle`): Söz teklifleri ve Sözlerni ögrenüv «Settings → Apps → QırımKey» bölüginde yerleşe, Statistika ise baş ekrandaki «Statistika» kartasınıñ başlığında açıla/qapatıla.

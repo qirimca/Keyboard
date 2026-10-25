@@ -167,10 +167,14 @@ struct HomeView: View {
     @State private var isTestingExpanded = true
     @State private var shouldAutoFocusSandbox: Bool = {
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-qt_demo_stats") && !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
+        if args.contains("-qt_demo_stats")
+            && !args.contains("-qt_reset_text")
+            && !args.contains("-qt_field")
+            && !args.contains("-qt_focus_sandbox_live")
+            && !args.contains("-qt_demo_dark") {
             return false
         }
-        return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || args.contains("-qt_focus_sandbox_live")
+        return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || args.contains("-qt_focus_sandbox_live") || args.contains("-qt_demo_dark")
     }()
     @State private var isKeyboardVisible = false
     @State private var cyrillicStatus = CyrillicStatus.unknown
@@ -342,6 +346,7 @@ struct HomeView: View {
                 }
             }
         }
+        .preferredColorScheme(hasManualThemeOverride ? (selectedThemeMode == .dark ? .dark : .light) : nil)
         .sheet(item: $activeOnboardingSheet, onDismiss: {
             refreshCyrillicStatus()
         }) { request in
@@ -379,7 +384,7 @@ struct HomeView: View {
             }
             applyLaunchArguments()
             syncPreferencesFromSettingsBundleAndAppGroup()
-            if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox) {
+            if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride) {
                 syncThemeToAppGroup(selectedThemeMode)
             } else {
                 clearThemeOverride()
@@ -537,7 +542,7 @@ struct HomeView: View {
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
                 Self.enforceFullScreenWindowIfNeeded()
                 syncPreferencesFromSettingsBundleAndAppGroup()
-                if isWritingFieldFocused || shouldAutoFocusSandbox {
+                if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
                     syncThemeToAppGroup(selectedThemeMode)
                 } else {
                     clearThemeOverride()
@@ -808,10 +813,32 @@ struct HomeView: View {
         notifySandboxTraitsChanged()
     }
 
+    private func applyWindowUserInterfaceStyle(_ theme: KeyboardTestThemeMode) {
+        guard hasManualThemeOverride else { return }
+        let style: UIUserInterfaceStyle = theme.isDark ? .dark : .light
+        let apply = {
+            for scene in UIApplication.shared.connectedScenes {
+                if let windowScene = scene as? UIWindowScene {
+                    for window in windowScene.windows {
+                        if window.overrideUserInterfaceStyle != style {
+                            window.overrideUserInterfaceStyle = style
+                        }
+                        if window.rootViewController?.overrideUserInterfaceStyle != style {
+                            window.rootViewController?.overrideUserInterfaceStyle = style
+                        }
+                    }
+                }
+            }
+        }
+        apply()
+        DispatchQueue.main.async(execute: apply)
+    }
+
     private func syncThemeToAppGroup(_ theme: KeyboardTestThemeMode) {
+        applyWindowUserInterfaceStyle(theme)
         guard UIApplication.shared.applicationState == .active else { return }
         let defaults = KeyboardPreferences.defaults
-        if isWritingFieldFocused || shouldAutoFocusSandbox {
+        if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
             defaults.set(theme.isDark, forKey: "crh.key.test.isDark")
             defaults.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
             defaults.set(true, forKey: "crh.key.test.sandboxFocused")
@@ -849,6 +876,11 @@ struct HomeView: View {
                 isTestingExpanded = true
                 shouldAutoFocusSandbox = true
             }
+            if args.contains("-qt_demo_dark") {
+                hasManualThemeOverride = true
+                selectedThemeMode = .dark
+            }
+            applyWindowUserInterfaceStyle(selectedThemeMode)
             let isXCTestRun = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || args.contains("-UITesting")
             let isUITestLaunch = args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || isXCTestRun
             KeyboardPreferences.defaults.set(isUITestLaunch, forKey: "crh.key.test.isUITesting")
@@ -898,7 +930,15 @@ struct HomeView: View {
                 }
             }
             if let langIdx = args.firstIndex(of: "-qt_lang"), langIdx + 1 < args.count {
-                let requestedLang = args[langIdx + 1]
+                let rawLang = args[langIdx + 1].lowercased()
+                let requestedLang: String
+                if rawLang.hasPrefix("en") {
+                    requestedLang = "en"
+                } else if rawLang.hasPrefix("uk") {
+                    requestedLang = "uk"
+                } else {
+                    requestedLang = "crh"
+                }
                 language = requestedLang
                 KeyboardPreferences.defaults.set(requestedLang, forKey: KeyboardPreferences.languageKey)
                 KeyboardPreferences.defaults.synchronize()
@@ -919,6 +959,11 @@ struct HomeView: View {
                 KeyboardPreferences.defaults.synchronize()
                 defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
                 defaults.set(true, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
+            } else if args.contains("-qt_cyrillic_added") {
+                ukrainianCyrillicLayout = false
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+                KeyboardPreferences.defaults.synchronize()
+                defaults.set(false, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
             }
             if args.contains("-qt_stats_disabled") {
                 statsEnabled = false
@@ -931,11 +976,36 @@ struct HomeView: View {
                 shouldAutoFocusSandbox = false
                 isStatsExpanded = true
             }
-            #if targetEnvironment(simulator)
             if args.contains("-qt_demo_stats") {
-                if !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
-                    text = "selâm"
-                    if !args.contains("-qt_focus_sandbox_live") {
+                let demoLang: String = {
+                    if let idx = args.firstIndex(of: "-qt_lang"), idx + 1 < args.count {
+                        let raw = args[idx + 1].lowercased()
+                        if raw.hasPrefix("en") { return "en" }
+                        if raw.hasPrefix("uk") { return "uk" }
+                        return "crh"
+                    }
+                    return language
+                }()
+                if args.contains("-qt_prefill_phrase_prefix") {
+                    switch demoLang {
+                    case "uk":
+                        text = "Selâm! Qırım — Ukraynadır. Til — milletniñ "
+                    case "en":
+                        text = "Selâm, dünya! Qırımtatar tili — Qırımnıñ canlı "
+                    default:
+                        text = "Selâm! Til — milletniñ ruhudır. Ana tilimizni "
+                    }
+                } else if !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
+                    switch demoLang {
+                    case "uk":
+                        text = "Selâm! Qırım — Ukraynadır. Til — milletniñ ruhudır."
+                    case "en":
+                        text = "Selâm, dünya! Qırımtatar tili — Qırımnıñ canlı mirasıdır."
+                    default:
+                        text = "Selâm! Til — milletniñ ruhudır. Ana tilimizni seveyik!"
+                    }
+                    let isDarkLaunch = args.contains("-qt_demo_dark") || (args.contains("-qt_theme") && args.contains("modernDark"))
+                    if !args.contains("-qt_focus_sandbox_live") && !isDarkLaunch {
                         shouldAutoFocusSandbox = false
                     }
                 }
@@ -962,7 +1032,6 @@ struct HomeView: View {
                 d.set(7, forKey: KeyboardUsageStats.phrasesInsertedKey)
                 d.synchronize()
             }
-            #endif
             if args.contains("-qt_open_about") {
                 shouldAutoFocusSandbox = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -1130,25 +1199,14 @@ private extension HomeView {
         )
     }
 
-    func cyrillicKeycapIconBadge(color: Color, isEnabled: Bool = true) -> some View {
+    func cyrillicKeycapIconBadge(color: Color, isEnabled: Bool = true, isUkrainianStyle: Bool = false) -> some View {
         TransliterationKeycapBadge(
             badgeID: "settings.cyrillic.keycap",
-            sourceLabel: "Къ",
+            sourceLabel: isUkrainianStyle ? "К\u{02BC}" : "Къ",
             targetLabel: "Q",
             isEnabled: isEnabled,
-            isUkrainianStyle: false,
+            isUkrainianStyle: isUkrainianStyle,
             accentColor: color
-        )
-    }
-
-    func ukrainianKeycapIconBadge(isEnabled: Bool) -> some View {
-        TransliterationKeycapBadge(
-            badgeID: "settings.ukrainianCyrillic.keycap",
-            sourceLabel: "К\u{02BC}",
-            targetLabel: "Q",
-            isEnabled: isEnabled,
-            isUkrainianStyle: true,
-            accentColor: brandBlue
         )
     }
 
@@ -1325,8 +1383,12 @@ private extension HomeView {
 
             Divider().padding(.leading, 54)
 
+            let shouldOfferUkrainianCyrillicOption = ProcessInfo.processInfo.arguments.contains("-qt_lang")
+                ? (language == "uk")
+                : (language == "uk" || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true)
             let isCyrillicEffectiveOn = Device.iPad ? (isCyrillicKeyboardAdded && cyrillicEnabled) : isCyrillicKeyboardAdded
             let isUkrainianEffectiveOn = isCyrillicEffectiveOn && ukrainianCyrillicLayout
+            let usesUkrainianParentBadge = shouldOfferUkrainianCyrillicOption && isUkrainianEffectiveOn
             let cyrillicToggleBinding = Binding<Bool>(
                 get: { isCyrillicEffectiveOn },
                 set: { wantOn in
@@ -1370,7 +1432,11 @@ private extension HomeView {
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 12) {
-                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: isCyrillicEffectiveOn)
+                    cyrillicKeycapIconBadge(
+                        color: Color(red: 0.35, green: 0.34, blue: 0.84),
+                        isEnabled: isCyrillicEffectiveOn,
+                        isUkrainianStyle: usesUkrainianParentBadge
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         Button {
                             HapticFeedback.playSelection()
@@ -1441,11 +1507,14 @@ private extension HomeView {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("settings.cyrillic.statusRow")
 
-            if language == "uk" || Locale.preferredLanguages.first?.lowercased().hasPrefix("uk") == true {
+            if shouldOfferUkrainianCyrillicOption {
                 Divider().padding(.leading, 54)
 
-                HStack(spacing: 12) {
-                    ukrainianKeycapIconBadge(isEnabled: isUkrainianEffectiveOn)
+                HStack(spacing: 10) {
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(isUkrainianEffectiveOn ? brandBlue.opacity(0.75) : Color.secondary.opacity(0.28))
+                        .frame(width: 2.5, height: 30)
+
                     VStack(alignment: .leading, spacing: 4) {
                         interfaceLabel("settings.ukrainianCyrillic")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
@@ -1460,10 +1529,10 @@ private extension HomeView {
                         .toggleStyle(.switch)
                         .accessibilityIdentifier("settings.ukrainianCyrillic.toggle")
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.leading, 54)
+                .padding(.trailing, 14)
+                .padding(.vertical, 9)
                 .onDisappear {
-                    Self.appearedBadgeIDs.remove("settings.ukrainianCyrillic.keycap")
                     Self.appearedBadgeIDs.remove("settings.ukrainianCyrillic.capsules")
                 }
             }
@@ -3483,6 +3552,7 @@ private struct TransliterationKeycapBadge: View {
         }
         .frame(width: 28, height: 28)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: isUkrainianStyle)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
@@ -3503,6 +3573,9 @@ private struct TransliterationKeycapBadge: View {
                 activeGlyphIsTargetQ = false
                 drawProgress = 1.0
             }
+        }
+        .onChange(of: isUkrainianStyle) { _, _ in
+            triggerLineDraw(forceAllowWhenDisabled: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -3673,8 +3746,12 @@ private struct SandboxTextView: UIViewRepresentable {
                 guard coordinator.parent.autoFocusOnAppear, !coordinator.didPerformInitialAutoFocus else { return }
                 if textView.window != nil && !textView.isFirstResponder {
                     textView.becomeFirstResponder()
+                    let endPos = (textView.text as NSString).length
+                    if endPos > 0 { textView.selectedRange = NSRange(location: endPos, length: 0) }
                 }
                 if textView.isFirstResponder {
+                    let endPos = (textView.text as NSString).length
+                    if endPos > 0 { textView.selectedRange = NSRange(location: endPos, length: 0) }
                     coordinator.didPerformInitialAutoFocus = true
                     coordinator.parent.onDidAutoFocus()
                 }
@@ -3683,6 +3760,8 @@ private struct SandboxTextView: UIViewRepresentable {
                 guard coordinator.parent.autoFocusOnAppear, !coordinator.didPerformInitialAutoFocus else { return }
                 if textView.window != nil && !textView.isFirstResponder {
                     textView.becomeFirstResponder()
+                    let endPos = (textView.text as NSString).length
+                    if endPos > 0 { textView.selectedRange = NSRange(location: endPos, length: 0) }
                 }
                 coordinator.didPerformInitialAutoFocus = true
                 coordinator.parent.onDidAutoFocus()

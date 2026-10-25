@@ -84,10 +84,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // Always include .nextKeyboard in floating mode so users can switch keyboards in all host apps (e.g. Gmail, Home-button iPads).
-        // On Face ID iPhones where the system Globe button sits on the bottom chin bar, include the Emoji (.emojis) button only when the system Emoji keyboard is enabled.
-        let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
-        let canShowPhoneEmoji = context.deviceType == .phone && !context.isKeyboardFloating && SystemKeyboardSettings.isEmojiKeyboardEnabled
+        // In iPad Floating mode, the system floating platter already renders a native Globe button next to the bottom grabber pill.
+        // Include the Emoji (.emojis) button when the system Emoji keyboard is enabled (both on Face ID iPhone and in iPad Floating mode).
+        let shouldIncludeGlobe = !context.isKeyboardFloating && context.needsInputModeSwitchKey
+        let canShowPhoneEmoji = (context.deviceType == .phone || context.isKeyboardFloating) && SystemKeyboardSettings.isEmojiKeyboardEnabled
 
         #if os(iOS) || os(tvOS) || os(visionOS)
         let proxy = context.textDocumentProxy
@@ -152,7 +152,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
     
     override func bottomSystemButtonWidth(for context: KeyboardContext) -> KeyboardLayout.ItemWidth {
         if context.isKeyboardFloating {
-            return .percentage(0.21)
+            return .percentage(SystemKeyboardSettings.isEmojiKeyboardEnabled ? 0.13 : 0.235)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
         return .percentage(isPortrait ? 0.118 : 0.11)
@@ -177,7 +177,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 return lowerSystemButtonWidth(for: context)
             }
             if context.isKeyboardFloating {
-                return .percentage(0.21)
+                if type == .emojis {
+                    return .percentage(0.13)
+                }
+                return .percentage(SystemKeyboardSettings.isEmojiKeyboardEnabled ? 0.13 : 0.235)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {
@@ -186,7 +189,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             return .percentage(isPortrait ? 0.118 : 0.11)
         case .primary:
             if context.isKeyboardFloating {
-                return .percentage(0.21)
+                return .percentage(0.235)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             return .percentage(isPortrait ? 0.242 : 0.195)
@@ -415,17 +418,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
 private extension KeyboardLayout {
     
     func applyNativeRowInsets(for context: KeyboardContext) {
-        guard !context.isKeyboardFloating && context.deviceType != .phone else { return }
-        let bottomIndex = bottomRowIndex
-        guard bottomIndex >= 0 else { return }
-        
-        // Pad bottom-row buttons with standard insets on docked iPad
-        for index in itemRows[bottomIndex].indices {
-            var item = itemRows[bottomIndex][index]
-            var insets = item.edgeInsets
-            insets.bottom = 2
-            item.edgeInsets = insets
-            itemRows[bottomIndex][index] = item
-        }
+        // Row 3 on Docked iPad now uses KeyboardAdaptiveGeometry.bottomTopBottomInset directly
+        // so the bottom keycap margin matches Native iPadOS (10.0 pt total bottom margin).
     }
 }

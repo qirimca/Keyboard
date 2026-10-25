@@ -168,10 +168,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func rowHeight(forRowAt rowIndex: Int, context: KeyboardContext) -> CGFloat {
-        if context.isKeyboardFloating {
-            return 43
-        }
-        return resolvedMetrics(for: context).rowHeight(forRowAt: rowIndex)
+        resolvedMetrics(for: context).rowHeight(forRowAt: rowIndex)
     }
 
     static func itemEdgeInsets(forRowAt rowIndex: Int, context: KeyboardContext) -> EdgeInsets {
@@ -206,7 +203,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     override func buttonCornerRadius(for action: KeyboardAction) -> CGFloat {
-        Self.resolvedMetrics(for: keyboardContext).cornerRadius
+        if Self.usesClassicSystemKeyStyle {
+            return (keyboardContext.deviceType == .pad && !keyboardContext.isKeyboardFloating) ? 6.0 : 5.0
+        }
+        return Self.resolvedMetrics(for: keyboardContext).cornerRadius
     }
     
     override var keyboardEdgeInsets: EdgeInsets {
@@ -411,28 +411,28 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
 
         let darkInputKey = useClassicStyle
             ? Color(white: 0.28)
-            : Color(red: 0.27, green: 0.27, blue: 0.29).opacity(0.88)
+            : Color(white: 0.71).opacity(0.24)
         let darkInputKeyPressed = useClassicStyle
             ? Color(white: 0.18)
-            : Color(red: 0.36, green: 0.36, blue: 0.39).opacity(0.92)
+            : Color(white: 0.85).opacity(0.38)
         let darkSystemKeyGray = useClassicStyle
             ? Color(white: 0.20)
-            : Color(red: 0.21, green: 0.21, blue: 0.23).opacity(0.82)
+            : Color(white: 0.71).opacity(0.24)
         let darkSystemKeyGrayPressed = useClassicStyle
             ? Color(white: 0.28)
-            : Color(red: 0.31, green: 0.31, blue: 0.34).opacity(0.90)
+            : Color(white: 0.85).opacity(0.38)
         let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
         let lightInputKey = useClassicStyle
             ? Color.white
-            : Color.white.opacity(0.92)
+            : Color.white.opacity(0.84)
         let lightInputKeyPressed = useClassicStyle
             ? Color(white: 0.85)
-            : Color(white: 0.72).opacity(0.68)
+            : Color(white: 0.82).opacity(0.92)
         let lightSystemKeyGray = useClassicStyle
             ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0) // #ACB3BE
-            : Color(red: 0.68, green: 0.70, blue: 0.75).opacity(0.46)
+            : Color.black.opacity(0.17)
         let lightSystemKeyGrayPressed = lightInputKey
 
         let lightSystemKey = useClassicStyle ? lightSystemKeyGray : lightInputKey
@@ -447,6 +447,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                     : (isDark ? darkSystemKey : lightSystemKey)
             default:
                 guard isPrimaryActionEnabled else {
+                    if !useClassicStyle {
+                        return isDark ? Color.white.opacity(0.41) : lightSystemKeyGray
+                    }
                     return isPressed
                         ? (isDark ? darkSystemKeyPressed : lightSystemKeyGrayPressed)
                         : (isDark ? darkSystemKey : lightSystemKeyGray)
@@ -576,6 +579,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
     
     override func buttonShadowStyle(for action: KeyboardAction) -> Keyboard.ButtonShadowStyle {
-        .noShadow
+        switch action {
+        case .characterMargin, .none: return .noShadow
+        default:
+            return Self.usesClassicSystemKeyStyle
+                ? Keyboard.ButtonShadowStyle(color: .black.opacity(0.30), size: 0.85)
+                : .noShadow
+        }
     }
 }

@@ -1,0 +1,335 @@
+{
+  "template_version": "1.2.0",
+  "background_asset": "marketing/templates/assets/crimea_sunset_bg.png",
+  "video_storyboard_22s": {
+    "duration_seconds": 22,
+    "narrative_acts": [
+      "Welcome",
+      "Discovery",
+      "Action",
+      "Success"
+    ],
+    "scenes": [
+      {
+        "scene": 1,
+        "act": "Welcome",
+        "window_sec": "1-2",
+        "crh": "QırımKey — Qırımtatar klaviaturası. Öz tilimiz — er yerde.",
+        "uk": "QırımKey — Кримськотатарська клавіатура. Рідна мова — всюди.",
+        "en": "QırımKey — Crimean Tatar Keyboard. Our language — everywhere."
+      },
+      {
+        "scene": 2,
+        "act": "Discovery",
+        "window_sec": "3-6",
+        "crh": "Qolay ve tez yazuv: Lâtin ve Kirill elifbeleri",
+        "uk": "Зручний і швидкий набір: латиниця та кирилиця",
+        "en": "Fast & natural typing: Latin and Cyrillic scripts"
+      },
+      {
+        "scene": 3,
+        "act": "Action",
+        "window_sec": "7-10",
+        "crh": "Aqıllı söz teklifleri, avto-tüzetüv ve svayp",
+        "uk": "Розумні пропозиції слів, автовиправлення та свайп",
+        "en": "Smart word suggestions, autocorrect & swipe-to-type"
+      },
+      {
+        "scene": 4,
+        "act": "Action",
+        "window_sec": "11-14",
+        "crh": "iPad imkânları: tam ekran ve yüzücü (Floating) rejim",
+        "uk": "Можливості iPad: повноекранний і плаваючий (Floating) режим",
+        "en": "iPad versatility: full-width Docked and Floating modes"
+      },
+      {
+        "scene": 5,
+        "act": "Action",
+        "window_sec": "15-18",
+        "crh": "Aydınlıq ve Qaranlıq tema, Ukraina ФІВА tizilişi",
+        "uk": "Світла й темна теми, українська розкладка ФІВА",
+        "en": "Light & Dark themes, Ukrainian FIVA layout"
+      },
+      {
+        "scene": 6,
+        "act": "Success",
+        "window_sec": "19-22",
+        "crh": "Tam hususiylik — 100% cihazda işley. App Store-dan indiriñiz!",
+        "uk": "100% приватність — усі дані на пристрої. Завантажуйте в App Store!",
+        "en": "100% on-device privacy. Download on the App Store!"
+      }
+    ]
+  },
+  "rendered_files": [
+    {
+      "locale": "crh",
+      "device_class": "iphone_6_3",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/crh/iphone_6_3/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_crh.png",
+      "source_exists": true,
+      "sha256": "e85512e694af7f8f8c313079301ce581c53f274306d7dcef21211e25c6151260"
+    },
+    {
+      "locale": "crh",
+      "device_class": "iphone_6_3",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/crh/iphone_6_3/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_crh.png",
+      "source_exists": true,
+      "sha256": "5054eae4d4fa0a1f2bf28a2ab958cfbeb979a7bc493936d2798a0dc24de4d763"
+    },
+    {
+      "locale": "crh",
+      "device_class": "iphone_6_3",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/crh/iphone_6_3/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_crh.png",
+      "source_exists": true,
+      "sha256": "fffd8fa57c1f5f1de213af52e63185308f0e59b671cc17291efaa37171102339"
+    },
+    {
+      "locale": "crh",
+      "device_class": "iphone_6_3",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/crh/iphone_6_3/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_crh.png",
+      "source_exists": true,
+      "sha256": "2b6b2a6d328466aa816cc1c169e6622a583b51c79c6c1034a2df990fb857d447"
+    },
+    {
+      "locale": "crh",
+      "device_class": "iphone_6_3",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/crh/iphone_6_3/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_crh.png",
+      "source_exists": true,
+      "sha256": "3952d4935ce811b4fc7daac999ad6d009dea090675f38d62ca0fa10dee1ecbfd"
+    },
+    {
+      "locale": "crh",
+      "device_class": "ipad_13",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/crh/ipad_13/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png",
+      "source_exists": true,
+      "sha256": "c2f4c6a83a44d3812736a9b40901c7c8a44b0a7880dd9b05439b536346c1099e"
+    },
+    {
+      "locale": "crh",
+      "device_class": "ipad_13",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/crh/ipad_13/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_crh.png",
+      "source_exists": true,
+      "sha256": "caae23c00b2ca30c8daa5fa9ef544fcf0db9b5bb3b112500cb3871a87da017a6"
+    },
+    {
+      "locale": "crh",
+      "device_class": "ipad_13",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/crh/ipad_13/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_crh.png",
+      "source_exists": true,
+      "sha256": "1d007fe05a10fd0bf0068dd24f53d6321543421dc8dd74397721a692709aaf1d"
+    },
+    {
+      "locale": "crh",
+      "device_class": "ipad_13",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/crh/ipad_13/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_crh.png",
+      "source_exists": true,
+      "sha256": "8aa5cb1e842e8ed09fee4c78495e89038becfe7823f2f72bad6fa0d7b5a327e8"
+    },
+    {
+      "locale": "crh",
+      "device_class": "ipad_13",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/crh/ipad_13/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_crh.png",
+      "source_exists": true,
+      "sha256": "7bf993e02bc67b8dc44b19e329078b779951de53a27343c192cdc52dbd6458a3"
+    },
+    {
+      "locale": "uk",
+      "device_class": "iphone_6_3",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/uk/iphone_6_3/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_uk.png",
+      "source_exists": true,
+      "sha256": "ffb007b09bb39748528ace5983bdeb4c95df0f7b743cce7816077c63b0859141"
+    },
+    {
+      "locale": "uk",
+      "device_class": "iphone_6_3",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/uk/iphone_6_3/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_uk.png",
+      "source_exists": true,
+      "sha256": "76ea7ca96d358f3afb753dcdb6ab661f2a7aa624e323d6aaaaf03373e7126da2"
+    },
+    {
+      "locale": "uk",
+      "device_class": "iphone_6_3",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/uk/iphone_6_3/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_uk.png",
+      "source_exists": true,
+      "sha256": "c2b2ab5887a41e4804cc750e4e626d826921b305e2e76ceb9aff6feb262945fb"
+    },
+    {
+      "locale": "uk",
+      "device_class": "iphone_6_3",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/uk/iphone_6_3/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_uk.png",
+      "source_exists": true,
+      "sha256": "0b431e92305f137b21b7ba392f8fc174c479ab00691f3c35aa659cbb7b17c3be"
+    },
+    {
+      "locale": "uk",
+      "device_class": "iphone_6_3",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/uk/iphone_6_3/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_uk.png",
+      "source_exists": true,
+      "sha256": "91bc782a814a4a59c98f4eddefc3290a6627388c278c3d9e2efb9139caaeb5dd"
+    },
+    {
+      "locale": "uk",
+      "device_class": "ipad_13",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/uk/ipad_13/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_uk.png",
+      "source_exists": true,
+      "sha256": "c4e3b812519b6f81f550795ee0acb2feb626e81a39ea2ac116f4575d73d795a5"
+    },
+    {
+      "locale": "uk",
+      "device_class": "ipad_13",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/uk/ipad_13/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_uk.png",
+      "source_exists": true,
+      "sha256": "1c1ffc30a0c42927a877d26c23749f87a6163fc24d099a975dd985f69668dd2e"
+    },
+    {
+      "locale": "uk",
+      "device_class": "ipad_13",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/uk/ipad_13/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_uk.png",
+      "source_exists": true,
+      "sha256": "34a59e8948ce50fb174484410a4a764baa17149bfa2e9828af02093e74b2d138"
+    },
+    {
+      "locale": "uk",
+      "device_class": "ipad_13",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/uk/ipad_13/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_uk.png",
+      "source_exists": true,
+      "sha256": "16e813bb2e01f5ec8c8c2a87525a616d63b2ff836badbf8fde93f5c588849096"
+    },
+    {
+      "locale": "uk",
+      "device_class": "ipad_13",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/uk/ipad_13/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_uk.png",
+      "source_exists": true,
+      "sha256": "4654696d2983e53d443b4519b9315971ff09731158da276f49c150a3f8b48a6d"
+    },
+    {
+      "locale": "en",
+      "device_class": "iphone_6_3",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/en/iphone_6_3/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_en.png",
+      "source_exists": true,
+      "sha256": "0001951cfa2954a9a06ffbe6de6ba96758958a5cb5165fd39fb0f219659a756c"
+    },
+    {
+      "locale": "en",
+      "device_class": "iphone_6_3",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/en/iphone_6_3/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_en.png",
+      "source_exists": true,
+      "sha256": "9013fd3c80d4e4ea6daccab3c31835c093aab186db1ed84d2c0fea5838487e52"
+    },
+    {
+      "locale": "en",
+      "device_class": "iphone_6_3",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/en/iphone_6_3/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_en.png",
+      "source_exists": true,
+      "sha256": "a032103e7ff9ead3fcafee1105111fc1fa49f4373591f5b3dc6fff88a46aa450"
+    },
+    {
+      "locale": "en",
+      "device_class": "iphone_6_3",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/en/iphone_6_3/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_en.png",
+      "source_exists": true,
+      "sha256": "d040a2d97bafb6e1e37b4ef5b06068799df2363e3af969d8ce26f511e0cdc4cb"
+    },
+    {
+      "locale": "en",
+      "device_class": "iphone_6_3",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/en/iphone_6_3/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_en.png",
+      "source_exists": true,
+      "sha256": "eeccf32ba75a1eed4c83d467e4b4c9cf069efa77c8f2220d82fc4d41fd935951"
+    },
+    {
+      "locale": "en",
+      "device_class": "ipad_13",
+      "shot_id": "01_latin_light",
+      "svg_path": "marketing/rendered/en/ipad_13/01_latin_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_en.png",
+      "source_exists": true,
+      "sha256": "f1fa14d2c5420e946ff02f3bd4efc0b9cf0b2715386603b017135d0e02ef39eb"
+    },
+    {
+      "locale": "en",
+      "device_class": "ipad_13",
+      "shot_id": "02_latin_dark",
+      "svg_path": "marketing/rendered/en/ipad_13/02_latin_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_en.png",
+      "source_exists": true,
+      "sha256": "1cb7f0d4276414744d7072fa691cf33b88648a2d96e99c0ad0cce0918e49e2d7"
+    },
+    {
+      "locale": "en",
+      "device_class": "ipad_13",
+      "shot_id": "03_cyrillic",
+      "svg_path": "marketing/rendered/en/ipad_13/03_cyrillic.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_en.png",
+      "source_exists": true,
+      "sha256": "bd1f72691a2af8676793cbf3d87c182ee10533b48cbde59d7fe6e22feb83a6a9"
+    },
+    {
+      "locale": "en",
+      "device_class": "ipad_13",
+      "shot_id": "04_home_light",
+      "svg_path": "marketing/rendered/en/ipad_13/04_home_light.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_en.png",
+      "source_exists": true,
+      "sha256": "717cebaf4e03896bf2d40790c2ce363e883baeb3100d2f1f6370e147a85a931f"
+    },
+    {
+      "locale": "en",
+      "device_class": "ipad_13",
+      "shot_id": "05_home_dark",
+      "svg_path": "marketing/rendered/en/ipad_13/05_home_dark.svg",
+      "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_en.png",
+      "source_exists": true,
+      "sha256": "694986e6b922fde08ee4d0815346d82a9df6165f5d5de573b9f92946f290c4ee"
+    }
+  ]
+}

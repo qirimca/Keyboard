@@ -1,0 +1,7 @@
+QırımKey büyük yañartuvı:
+• Qırımtatar latin ve kiril tizilişleri içün tez svayp yazuvı (QırımKey Swipe v2) ve svaypnen yazılğan sözni «⌫» dögmesine bir basuvnen silüv qoşuldı.
+• Kiril klaviaturası içün uyğunlaştırılğan «Ukraina tizilişi» (ФІВА) qoşuldı (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e).
+• Luğat ve avtotüzetüv 2024/2025 resmiy qırımtatar imlâ qaidelerine (ДЕСС № 1722/04-03/25) köre yañartıldı: defisli sözler, -mı/-mi sualukları, Qırım toponimleri ve avtotüzetüvni «⌫» ile qaytaruv.
+• iOS ve iPadOS 26/27 (Liquid Glass) üslübi, iPad Split ve Floating klaviatura rejimleri qoşuldı.
+• Kündelik qırımtatar atalar sözleri, klassik ikmetler ve yazuv tezligi statistikası qoşuldı.
+• Qoşulma interfeysi ve iOS sistem sazlamaları («Settings → Apps → QırımKey») yañartıldı.

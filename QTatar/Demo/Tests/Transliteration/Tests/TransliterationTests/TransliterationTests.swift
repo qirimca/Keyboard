@@ -1189,16 +1189,25 @@ struct DatabaseAndSwipeTests {
         #expect(l.totalKeyboardHeight == 200.0)
     }
 
-    // 4. iPad Floating (all iPad screen sizes -> uniform 214.0 pt compact floating card)
+    // 4. iPad Floating (all iPad screen sizes -> uniform 227.0 pt compact floating card with or without toolbar)
     for size in [CGSize(width: 744, height: 1133), CGSize(width: 820, height: 1180), CGSize(width: 834, height: 1112), CGSize(width: 1024, height: 1366)] {
         let fPortrait = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: size, hasToolbar: true)
         let fLandscape = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
-        #expect(fPortrait.letterRowHeight == 43.0 && fPortrait.bottomRowHeight == 43.0)
-        #expect(fPortrait.visibleKeyHeight(forRowAt: 0) == 37.0)
+        #expect(fPortrait.letterRowHeight == 45.0 && fPortrait.bottomRowHeight == 44.0)
+        #expect(fPortrait.visibleKeyHeight(forRowAt: 0) == 38.0)
+        #expect(fPortrait.visibleKeyHeight(forRowAt: 3) == 37.0)
         #expect(fPortrait.toolbarHeight == 38.0)
-        #expect(fPortrait.edgeTopBottomInset == 2.0)
-        #expect(fPortrait.totalKeyboardHeight == 214.0)
-        #expect(fLandscape.totalKeyboardHeight == 214.0)
+        #expect(fPortrait.edgeTopBottomInset == 5.0)
+        #expect(fPortrait.cornerRadius == 10.0)
+        #expect(fPortrait.totalKeyboardHeight == 227.0)
+        #expect(fLandscape.totalKeyboardHeight == 227.0)
+
+        let fNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: size, hasToolbar: false)
+        #expect(fNoToolbar.letterRowHeight == 54.0 && fNoToolbar.bottomRowHeight == 55.0)
+        #expect(fNoToolbar.visibleKeyHeight(forRowAt: 0) == 38.0)
+        #expect(fNoToolbar.visibleKeyHeight(forRowAt: 3) == 39.0)
+        #expect(fNoToolbar.toolbarHeight == 0.0)
+        #expect(fNoToolbar.totalKeyboardHeight == 227.0)
     }
 
     // 5. iPad Docked — Mini / 9.7" (<= 768 pt: 744x1133, 768x1024)
@@ -1209,6 +1218,13 @@ struct DatabaseAndSwipeTests {
         #expect(p.totalKeyboardHeight == 266.0)
         #expect(l.letterRowHeight == 74.0 && l.bottomRowHeight == 74.0)
         #expect(l.totalKeyboardHeight == 338.0)
+
+        let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
+        let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
+        #expect(pNoToolbar.letterRowHeight == 66.0 && pNoToolbar.bottomRowHeight == 64.0)
+        #expect(pNoToolbar.totalKeyboardHeight == 266.0)
+        #expect(lNoToolbar.letterRowHeight == 83.5 && lNoToolbar.bottomRowHeight == 83.5)
+        #expect(lNoToolbar.totalKeyboardHeight == 338.0)
     }
 
     // 6. iPad Docked — 10.5" Air 3 (834 pt) / 11" A16 (820 pt) / 11" Pro (769...959 pt)
@@ -1217,8 +1233,17 @@ struct DatabaseAndSwipeTests {
         let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
         #expect(p.letterRowHeight == 58.5 && p.bottomRowHeight == 56.5)
         #expect(p.totalKeyboardHeight == 274.0)
-        #expect(l.letterRowHeight == 75.0 && l.bottomRowHeight == 75.0)
-        #expect(l.totalKeyboardHeight == 342.0)
+        #expect(l.letterRowHeight == 75.0 && l.bottomRowHeight == 78.0)
+        #expect(l.totalKeyboardHeight == 347.0)
+
+        let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
+        let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
+        #expect(pNoToolbar.letterRowHeight == 68.0 && pNoToolbar.bottomRowHeight == 66.0)
+        #expect(pNoToolbar.totalKeyboardHeight == 274.0)
+        #expect(lNoToolbar.letterRowHeight == 83.0 && lNoToolbar.bottomRowHeight == 91.0)
+        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 0) == 69.0)
+        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 3) == 77.0)
+        #expect(lNoToolbar.totalKeyboardHeight == 347.0)
     }
 
     // 7. iPad Docked — 12.9" / 13" iPad Pro (>= 960 pt: 1024x1366, 1032x1376)
@@ -1229,6 +1254,13 @@ struct DatabaseAndSwipeTests {
         #expect(p.totalKeyboardHeight == 296.0)
         #expect(l.letterRowHeight == 84.0 && l.bottomRowHeight == 84.0)
         #expect(l.totalKeyboardHeight == 378.0)
+
+        let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
+        let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
+        #expect(pNoToolbar.letterRowHeight == 73.5 && pNoToolbar.bottomRowHeight == 71.5)
+        #expect(pNoToolbar.totalKeyboardHeight == 296.0)
+        #expect(lNoToolbar.letterRowHeight == 93.5 && lNoToolbar.bottomRowHeight == 93.5)
+        #expect(lNoToolbar.totalKeyboardHeight == 378.0)
     }
 }
 

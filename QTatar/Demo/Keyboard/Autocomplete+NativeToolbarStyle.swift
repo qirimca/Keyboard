@@ -1090,11 +1090,7 @@ struct NativeAutocompleteToolbar: View {
                                 maxWidth: isPad ? max(168, width - 20) : .infinity,
                                 minHeight: isPad ? 35 : (isFloating ? 28 : 32)
                             )
-                            .background(
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .fill(isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
-                                    .shadow(color: Color.black.opacity(isDark ? 0.18 : 0.06), radius: 1.5, x: 0, y: 0.5)
-                            )
+                            .background(greetingPlatterBackground)
                             .padding(.horizontal, isFloating ? 3 : (isDockedPad ? 10 : 6))
                     } else {
                         Text(displayTitle)
@@ -1230,30 +1226,43 @@ struct NativeAutocompleteToolbar: View {
     }
 
     @ViewBuilder
+    private var greetingPlatterBackground: some View {
+        let useClassic = DemoStyleProvider.usesClassicSystemKeyStyle
+        let fillColor: Color = useClassic
+            ? (isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
+            : (isDark ? Color(white: 0.71).opacity(0.24) : Color.white.opacity(0.84))
+        RoundedRectangle(cornerRadius: 9, style: .continuous)
+            .fill(fillColor)
+            .shadow(color: Color.black.opacity(useClassic ? (isDark ? 0.18 : 0.06) : 0.0), radius: 1.5, x: 0, y: 0.5)
+    }
+
+    private var greetingPillHeight: CGFloat {
+        isDockedPad ? 35 : (isFloating ? 28 : 32)
+    }
+
+    @ViewBuilder
     private func splitLeftGreetingBannerView(clusterWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
+        let pillHeight = greetingPillHeight
         Button {
             insertCurrentPhrase(phrase)
         } label: {
             HStack(spacing: 5) {
-                BreathingTamgaView(isDark: isDark, minOpacity: 0.45, maxOpacity: 0.85)
+                BreathingTamgaView(isDark: isDark, minOpacity: 0.55, maxOpacity: 0.92)
                     .frame(width: 12.5, height: 7.0)
 
                 Text(phrase.bannerCRH)
-                    .font(.system(size: 12.0, weight: .medium))
-                    .foregroundStyle(primaryColor.opacity(0.88))
+                    .font(.system(size: 12.5, weight: .regular))
+                    .foregroundStyle(primaryColor)
                     .lineLimit(2)
                     .minimumScaleFactor(0.55)
                     .allowsTightening(true)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3.0)
-            .frame(maxWidth: max(clusterWidth - 12, 120), maxHeight: height - 4)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(primaryColor.opacity(0.08))
-            )
+            .padding(.horizontal, 9)
+            .padding(.vertical, 3.5)
+            .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: height - 4)
+            .background(greetingPlatterBackground)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("autocomplete.greetingBanner")
@@ -1262,6 +1271,7 @@ struct NativeAutocompleteToolbar: View {
     @ViewBuilder
     private func splitRightGreetingControlsView(clusterWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
+        let pillHeight = greetingPillHeight
         HStack(spacing: 6) {
             if let attributionText = phrase.attribution, !attributionText.isEmpty {
                 Button {
@@ -1269,21 +1279,19 @@ struct NativeAutocompleteToolbar: View {
                 } label: {
                     HStack(spacing: 5) {
                         Text(attributionText)
-                            .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(primaryColor.opacity(0.65))
+                            .font(.system(size: 12.0, weight: .regular))
+                            .foregroundStyle(primaryColor)
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
 
                         Image(systemName: "arrow.up.left.circle.fill")
                             .font(.system(size: 11.5, weight: .medium))
-                            .foregroundStyle(primaryColor.opacity(0.55))
+                            .foregroundStyle(primaryColor.opacity(0.72))
                     }
                     .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(primaryColor.opacity(0.06))
-                    )
+                    .padding(.vertical, 4.5)
+                    .frame(minHeight: pillHeight)
+                    .background(greetingPlatterBackground)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -1292,9 +1300,9 @@ struct NativeAutocompleteToolbar: View {
                 } label: {
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 13.0, weight: .medium))
-                        .foregroundStyle(primaryColor.opacity(0.58))
-                        .frame(width: 26, height: 26)
-                        .background(Circle().fill(primaryColor.opacity(0.06)))
+                        .foregroundStyle(primaryColor.opacity(0.75))
+                        .frame(width: pillHeight, height: pillHeight)
+                        .background(greetingPlatterBackground)
                 }
                 .buttonStyle(.plain)
             }
@@ -1303,10 +1311,10 @@ struct NativeAutocompleteToolbar: View {
                 greetingState.cycleNext()
             } label: {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(primaryColor.opacity(0.62))
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(primaryColor.opacity(0.06)))
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(primaryColor)
+                    .frame(width: pillHeight, height: pillHeight)
+                    .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("autocomplete.greetingNext")
@@ -1318,36 +1326,34 @@ struct NativeAutocompleteToolbar: View {
     @ViewBuilder
     private func greetingBannerView(centerWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
+        let pillHeight = greetingPillHeight
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
         let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
 
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             Button {
                 insertCurrentPhrase(phrase)
             } label: {
                 HStack(spacing: 6) {
-                    BreathingTamgaView(isDark: isDark, minOpacity: 0.45, maxOpacity: 0.85)
+                    BreathingTamgaView(isDark: isDark, minOpacity: 0.55, maxOpacity: 0.92)
                         .frame(width: 13.5, height: 7.5)
 
                     Text(phrase.bannerCRH)
-                        .font(.system(size: isFloating ? 12.5 : 14.0, weight: .medium))
-                        .foregroundStyle(primaryColor.opacity(0.88))
+                        .font(.system(size: isFloating ? 13.0 : (isDockedPad ? 15.5 : 14.5), weight: .regular))
+                        .foregroundStyle(primaryColor)
                         .lineLimit(2)
                         .minimumScaleFactor(0.62)
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
 
                     Image(systemName: "arrow.up.left.circle.fill")
-                        .font(.system(size: 12.0, weight: .medium))
-                        .foregroundStyle(primaryColor.opacity(0.58))
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(primaryColor.opacity(0.72))
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, isDockedPad ? 3.5 : 3.5)
-                .frame(maxHeight: height - 4)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(primaryColor.opacity(0.08))
-                )
+                .padding(.vertical, isDockedPad ? 4.0 : 3.5)
+                .frame(minHeight: pillHeight, maxHeight: height - 4)
+                .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("autocomplete.greetingBanner")
@@ -1356,10 +1362,10 @@ struct NativeAutocompleteToolbar: View {
                 greetingState.cycleNext()
             } label: {
                 Image(systemName: "sparkles")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(primaryColor.opacity(0.62))
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(primaryColor.opacity(0.06)))
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(primaryColor)
+                    .frame(width: pillHeight, height: pillHeight)
+                    .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("autocomplete.greetingNext")
