@@ -1,0 +1,135 @@
+{
+  "template_version": "1.0.0",
+  "project": "QırımKey",
+  "app_version": "3.1",
+  "build_number": "5",
+  "typography": {
+    "headline_font": "-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif",
+    "body_font": "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
+    "verified_glyphs": "ı İ ş Ş ğ Ğ ñ Ñ ö Ö ü Ü ç Ç â Â"
+  },
+  "themes": {
+    "light": {
+      "bg_start": "#F4F7FB",
+      "bg_end": "#E6EEF8",
+      "accent": "#0A66C2",
+      "headline": "#0F172A",
+      "subtitle": "#475569",
+      "frame_border": "#CBD5E1"
+    },
+    "dark": {
+      "bg_start": "#0B1120",
+      "bg_end": "#152238",
+      "accent": "#38BDF8",
+      "headline": "#F8FAFC",
+      "subtitle": "#94A3B8",
+      "frame_border": "#334155"
+    }
+  },
+  "device_classes": {
+    "iphone_6_3": {
+      "width_px": 1206,
+      "height_px": 2622,
+      "corner_radius": 72,
+      "template": "marketing/templates/iphone/template.svg"
+    },
+    "iphone_6_9": {
+      "width_px": 1320,
+      "height_px": 2868,
+      "corner_radius": 78,
+      "template": "marketing/templates/iphone/template.svg"
+    },
+    "ipad_13": {
+      "width_px": 2064,
+      "height_px": 2752,
+      "corner_radius": 48,
+      "template": "marketing/templates/ipad/template.svg"
+    },
+    "social_portrait": {
+      "width_px": 1080,
+      "height_px": 1350,
+      "corner_radius": 44,
+      "template": "marketing/templates/iphone/template.svg"
+    },
+    "social_story": {
+      "width_px": 1080,
+      "height_px": 1920,
+      "corner_radius": 52,
+      "template": "marketing/templates/iphone/template.svg"
+    },
+    "social_landscape": {
+      "width_px": 1920,
+      "height_px": 1080,
+      "corner_radius": 36,
+      "template": "marketing/templates/ipad/template.svg"
+    }
+  },
+  "copy": {
+    "crh": {
+      "01_latin_light": {
+        "title": "Qırımtatarca Lâtin Klaviaturası",
+        "subtitle": "2024/2025 imlâ qaideleri, aqıllı söz teklifleri ve svayp"
+      },
+      "02_latin_dark": {
+        "title": "Qaranlıq Rejim ve Liquid Glass",
+        "subtitle": "Közni yormaycaq zamanağay dizayn ve tamğa nefes aluvı"
+      },
+      "03_cyrillic": {
+        "title": "Kirill ve Ukraina Розкладка (ФІВА)",
+        "subtitle": "Къырымтатарджа ve Кʼиримтатарджа — eki elifbe bir yerde"
+      },
+      "04_home_light": {
+        "title": "100% Mahremiyet ve Oflayn İşlev",
+        "subtitle": " İnternetke bağlanmadan çalışa, şahsiy malümat toplamay"
+      },
+      "05_home_dark": {
+        "title": "Statistika ve 5 Dereceli Yeñişler",
+        "subtitle": "Yazuv tezligiñizni ve ögrenilgen sözlerni közetiñiz"
+      }
+    },
+    "uk": {
+      "01_latin_light": {
+        "title": "Кримськотатарська латиниця",
+        "subtitle": "Правопис ДЕСС 2024/2025, розумні підказки та свайп"
+      },
+      "02_latin_dark": {
+        "title": "Темна тема та Liquid Glass",
+        "subtitle": "Сучасний дизайн iOS і живе дихання Тарак-Тамги"
+      },
+      "03_cyrillic": {
+        "title": "Кирилиця та українська ФІВА",
+        "subtitle": "Зручний набір із автоматичною транслітерацією (кʼ → q, нʼ → ñ)"
+      },
+      "04_home_light": {
+        "title": "100% приватність і робота офлайн",
+        "subtitle": "Усі словники та алгоритми працюють локально на пристрої"
+      },
+      "05_home_dark": {
+        "title": "Статистика та 5 рівнів досягнень",
+        "subtitle": "Відстежуйте швидкість друку та вивчені слова"
+      }
+    },
+    "en": {
+      "01_latin_light": {
+        "title": "Crimean Tatar Latin Keyboard",
+        "subtitle": "Official 2024/2025 orthography, smart predictions & swipe"
+      },
+      "02_latin_dark": {
+        "title": "Dark Mode & Liquid Glass",
+        "subtitle": "Native iOS aesthetics with breathing Taraq Tamğa emblem"
+      },
+      "03_cyrillic": {
+        "title": "Cyrillic & Ukrainian FIVA Layout",
+        "subtitle": "Seamless Cyrillic typing and smart transliteration"
+      },
+      "04_home_light": {
+        "title": "100% Private & Fully Offline",
+        "subtitle": "Zero network requests — all language models stay on device"
+      },
+      "05_home_dark": {
+        "title": "Typing Stats & 5-Tier Achievements",
+        "subtitle": "Track your WPM speed and personal vocabulary growth"
+      }
+    }
+  }
+}

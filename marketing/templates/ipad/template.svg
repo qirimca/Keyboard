@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="{{BG_START}}" />
+      <stop offset="100%" stop-color="{{BG_END}}" />
+    </linearGradient>
+    <clipPath id="deviceScreenClip">
+      <rect x="132" y="360" width="1800" height="2320" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" />
+    </clipPath>
+  </defs>
+
+  <!-- Layer 1: Independent Backdrop -->
+  <g id="layer-backdrop">
+    <rect width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bgGrad)" />
+  </g>
+
+  <!-- Layer 2: Independent Brand / Crimea-Inspired Geometric Ornament -->
+  <g id="layer-ornament" opacity="0.08">
+    <path d="M1740 70 H1960 V118 H1870 V210 H1830 V118 H1740 Z" fill="{{ACCENT}}" />
+  </g>
+
+  <!-- Layer 3: Independent Editable Headline & Subtitle Copy -->
+  <g id="layer-copy">
+    <text x="1032" y="175" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="68" font-weight="700" fill="{{HEADLINE_COLOR}}">{{TITLE}}</text>
+    <text x="1032" y="260" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="40" font-weight="500" fill="{{SUBTITLE_COLOR}}">{{SUBTITLE}}</text>
+  </g>
+
+  <!-- Layer 4: Independent Device Frame & Real Screenshot Reference -->
+  <g id="layer-device-frame">
+    <rect x="124" y="352" width="1816" height="2336" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" fill="none" stroke="{{FRAME_BORDER}}" stroke-width="8" />
+    <image id="layer-screenshot" href="{{SCREENSHOT_HREF}}" x="132" y="360" width="1800" height="2320" preserveAspectRatio="xMidYMid slice" clip-path="url(#deviceScreenClip)" />
+  </g>
+</svg>

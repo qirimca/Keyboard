@@ -409,7 +409,8 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
-    private let tailDuration: TimeInterval = 0.36
+    private let tailDuration: TimeInterval = 0.28
+    private let strokeWidth: CGFloat = 6.0
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
@@ -418,56 +419,56 @@ private struct SwipeTrailOverlay: View {
                 Canvas { context, _ in
                     let now = ProcessInfo.processInfo.systemUptime
                     let live = swipeState.activeTrailSamples.filter { now - $0.timestamp <= tailDuration }
-                    guard live.count >= 2 else { return }
+                    guard live.count >= 2, let tail = live.first, let head = live.last else { return }
 
-                    for i in 1..<live.count {
-                        let prev = live[i - 1]
-                        let curr = live[i]
-                        let age = max(0, now - curr.timestamp)
-                        let timeProgress = max(0, min(1, 1.0 - (age / tailDuration)))
-                        let indexProgress = Double(i) / Double(max(live.count - 1, 1))
-                        let fade = timeProgress * (0.20 + 0.80 * indexProgress)
-                        guard fade > 0.01 else { continue }
+                    let headAge = max(0, now - head.timestamp)
+                    let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
+                    guard headFade > 0.01 else { return }
 
-                        let outerWidth = CGFloat(1.8 + 11.2 * pow(fade, 1.15))
-                        let outerAlpha = (isDark ? 0.62 : 0.50) * pow(fade, 1.18)
-                        let outerColor = (isDark ? Color.white : Color(red: 0.36, green: 0.38, blue: 0.43)).opacity(outerAlpha)
-
-                        var seg = Path()
-                        seg.move(to: prev.point)
-                        seg.addLine(to: curr.point)
-                        context.stroke(
-                            seg,
-                            with: .color(outerColor),
-                            style: StrokeStyle(lineWidth: outerWidth, lineCap: .round, lineJoin: .round)
-                        )
-
-                        let coreWidth = max(1.1, outerWidth * 0.56)
-                        let coreAlpha = (isDark ? 0.82 : 0.68) * pow(fade, 1.28)
-                        let coreColor = (isDark ? Color.white : Color(white: 0.96)).opacity(coreAlpha)
-                        context.stroke(
-                            seg,
-                            with: .color(coreColor),
-                            style: StrokeStyle(lineWidth: coreWidth, lineCap: .round, lineJoin: .round)
-                        )
-                    }
-
-                    if let head = live.last {
-                        let headAge = max(0, now - head.timestamp)
-                        let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
-                        if headFade > 0.05 {
-                            let radius = CGFloat(5.8 * pow(headFade, 0.85))
-                            let headRect = CGRect(
-                                x: head.point.x - radius,
-                                y: head.point.y - radius,
-                                width: radius * 2,
-                                height: radius * 2
-                            )
-                            let headAlpha = (isDark ? 0.84 : 0.66) * headFade
-                            let headColor = (isDark ? Color.white : Color(red: 0.40, green: 0.42, blue: 0.47)).opacity(headAlpha)
-                            context.fill(Path(ellipseIn: headRect), with: .color(headColor))
+                    var path = Path()
+                    path.move(to: tail.point)
+                    if live.count == 2 {
+                        path.addLine(to: head.point)
+                    } else {
+                        for i in 1..<(live.count - 1) {
+                            let curr = live[i].point
+                            let next = live[i + 1].point
+                            let mid = CGPoint(x: (curr.x + next.x) * 0.5, y: (curr.y + next.y) * 0.5)
+                            path.addQuadCurve(to: mid, control: curr)
                         }
+                        path.addLine(to: head.point)
                     }
+
+                    let baseTone = isDark
+                        ? Color.white
+                        : Color(red: 0.38, green: 0.40, blue: 0.45)
+                    let maxAlpha = (isDark ? 0.58 : 0.46) * headFade
+                    let tailAlpha = maxAlpha * 0.18
+                    let span = hypot(head.point.x - tail.point.x, head.point.y - tail.point.y)
+
+                    let shading: GraphicsContext.Shading
+                    if span > 8.0 {
+                        shading = .linearGradient(
+                            Gradient(colors: [
+                                baseTone.opacity(tailAlpha),
+                                baseTone.opacity(maxAlpha)
+                            ]),
+                            startPoint: tail.point,
+                            endPoint: head.point
+                        )
+                    } else {
+                        shading = .color(baseTone.opacity(maxAlpha))
+                    }
+
+                    context.stroke(
+                        path,
+                        with: shading,
+                        style: StrokeStyle(
+                            lineWidth: strokeWidth,
+                            lineCap: .round,
+                            lineJoin: .round
+                        )
+                    )
                 }
             }
             .allowsHitTesting(false)
