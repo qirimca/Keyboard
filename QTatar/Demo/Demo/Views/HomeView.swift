@@ -150,12 +150,19 @@ struct HomeView: View {
     }()
     @State private var hasManualThemeOverride: Bool = (ProcessInfo.processInfo.arguments.contains("-qt_theme") && UserDefaults.standard.string(forKey: "qt_theme") != nil)
 
+    private struct OnboardingSheetRequest: Identifiable, Equatable {
+        let mode: OnboardingView.Mode
+        let initialPage: String
+        var id: String { "\(mode.rawValue)-\(initialPage)" }
+    }
+
     @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
 
-    @State private var showIndicatorSheet = false
-    @State private var onboardingSheetMode: OnboardingView.Mode = .add
-    @State private var onboardingInitialPage: String = "Onboard1"
+    @AppStorage("crh.key.primaryExtensionSeen", store: KeyboardPreferences.defaults) private var primaryExtensionSeen = false
+    @AppStorage("crh.key.cyrillicExtensionSeen", store: KeyboardPreferences.defaults) private var cyrillicExtensionSeen = false
+    @State private var activeOnboardingSheet: OnboardingSheetRequest?
     @State private var pendingCyrillicRemovalCheck = false
+    @State private var didEnterBackgroundForCyrillicCheck = false
     @State private var showCyrillicGuideAlert = false
     @State private var isTestingExpanded = true
     @State private var shouldAutoFocusSandbox: Bool = {
@@ -335,11 +342,11 @@ struct HomeView: View {
                 }
             }
         }
-        .sheet(isPresented: $showIndicatorSheet, onDismiss: {
+        .sheet(item: $activeOnboardingSheet, onDismiss: {
             refreshCyrillicStatus()
-        }) {
+        }) { request in
             NavigationStack {
-                OnboardingView(mode: onboardingSheetMode, initialPage: onboardingInitialPage)
+                OnboardingView(mode: request.mode, initialPage: request.initialPage)
             }
             .presentationCornerRadius(20)
             .presentationDetents([.large])
@@ -350,9 +357,7 @@ struct HomeView: View {
                 Self.openKeyboardSettings()
             }
             Button(Home.home_start_key.localized) {
-                onboardingSheetMode = .add
-                onboardingInitialPage = "Onboard1"
-                showIndicatorSheet = true
+                activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
             }
             Button(localizedInterfaceString("stats.resetCancel"), role: .cancel) {}
         } message: {
@@ -438,6 +443,9 @@ struct HomeView: View {
             clearThemeOverride()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            if pendingCyrillicRemovalCheck {
+                didEnterBackgroundForCyrillicCheck = true
+            }
             shouldAutoFocusSandbox = false
             clearThemeOverride()
         }
@@ -542,6 +550,9 @@ struct HomeView: View {
                 clearThemeOverride()
                 refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
             } else {
+                if pendingCyrillicRemovalCheck {
+                    didEnterBackgroundForCyrillicCheck = true
+                }
                 shouldAutoFocusSandbox = false
                 clearThemeOverride()
             }
@@ -737,6 +748,7 @@ struct HomeView: View {
         let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
         if languages.contains(where: { $0.hasPrefix("crh") }) && !args.contains("-qt_keyboard_missing") {
+            primaryExtensionSeen = true
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
         }
         if args.contains("-qt_cyrillic_missing") {
@@ -750,17 +762,21 @@ struct HomeView: View {
         let hasActiveCyrillicMode = languages.contains { $0.hasPrefix("crh-cyrl") }
         if hasActiveCyrillicMode {
             pendingCyrillicRemovalCheck = false
+            didEnterBackgroundForCyrillicCheck = false
+            cyrillicExtensionSeen = true
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
             cyrillicStatus = .enabled
             return
         }
-        if !languages.isEmpty || pendingCyrillicRemovalCheck {
+        if pendingCyrillicRemovalCheck && didEnterBackgroundForCyrillicCheck {
             pendingCyrillicRemovalCheck = false
+            didEnterBackgroundForCyrillicCheck = false
+            cyrillicExtensionSeen = false
             KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
             cyrillicStatus = .missing
             return
         }
-        let hasSeenCyrillic = KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        let hasSeenCyrillic = cyrillicExtensionSeen || KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
         cyrillicStatus = hasSeenCyrillic ? .enabled : .missing
     }
 
@@ -1161,18 +1177,14 @@ private extension HomeView {
             get: { isPrimaryKeyboardAdded },
             set: { _ in
                 HapticFeedback.playSelection()
-                onboardingSheetMode = .add
-                onboardingInitialPage = "Onboard1"
-                showIndicatorSheet = true
+                activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
             }
         )
         let fullAccessToggleBinding = Binding<Bool>(
             get: { isFullAccessGranted },
             set: { _ in
                 HapticFeedback.playSelection()
-                onboardingSheetMode = .add
-                onboardingInitialPage = "Onboard2"
-                showIndicatorSheet = true
+                activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard2")
             }
         )
 
@@ -1180,9 +1192,7 @@ private extension HomeView {
             HStack(spacing: 12) {
                 Button {
                     HapticFeedback.playSelection()
-                    onboardingSheetMode = .add
-                    onboardingInitialPage = "Onboard1"
-                    showIndicatorSheet = true
+                    activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
                 } label: {
                     HStack(spacing: 12) {
                         settingsIconBadge(
@@ -1227,9 +1237,7 @@ private extension HomeView {
             HStack(spacing: 12) {
                 Button {
                     HapticFeedback.playSelection()
-                    onboardingSheetMode = .add
-                    onboardingInitialPage = "Onboard2"
-                    showIndicatorSheet = true
+                    activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard2")
                 } label: {
                     HStack(spacing: 12) {
                         settingsIconBadge(
@@ -1328,9 +1336,7 @@ private extension HomeView {
                             cyrillicEnabled = true
                         }
                         if !isCyrillicKeyboardAdded {
-                            onboardingSheetMode = .add
-                            onboardingInitialPage = "Onboard1"
-                            showIndicatorSheet = true
+                            activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
                         }
                     } else {
                         if Device.iPad {
@@ -1338,8 +1344,8 @@ private extension HomeView {
                         }
                         if isCyrillicKeyboardAdded {
                             pendingCyrillicRemovalCheck = true
-                            onboardingSheetMode = .removeCyrillic
-                            showIndicatorSheet = true
+                            didEnterBackgroundForCyrillicCheck = false
+                            activeOnboardingSheet = OnboardingSheetRequest(mode: .removeCyrillic, initialPage: "Onboard1")
                         }
                     }
                 }
@@ -1353,9 +1359,9 @@ private extension HomeView {
                         if Device.iPad {
                             cyrillicEnabled = true
                         }
-                        onboardingSheetMode = .add
-                        onboardingInitialPage = "Onboard1"
-                        showIndicatorSheet = true
+                        if !isCyrillicKeyboardAdded {
+                            activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
+                        }
                     } else {
                         ukrainianCyrillicLayout = wantOn
                     }
@@ -1366,17 +1372,36 @@ private extension HomeView {
                 HStack(spacing: 12) {
                     cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: isCyrillicEffectiveOn)
                     VStack(alignment: .leading, spacing: 2) {
-                        interfaceLabel("settings.cyrillic")
-                            .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
-                            .foregroundStyle(primaryInk)
-                            .lineLimit(2)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Button {
+                            HapticFeedback.playSelection()
+                            if isCyrillicEffectiveOn {
+                                if Device.iPad {
+                                    cyrillicEnabled = false
+                                }
+                                pendingCyrillicRemovalCheck = true
+                                didEnterBackgroundForCyrillicCheck = false
+                                activeOnboardingSheet = OnboardingSheetRequest(mode: .removeCyrillic, initialPage: "Onboard1")
+                            } else {
+                                if Device.iPad {
+                                    cyrillicEnabled = true
+                                }
+                                if !isCyrillicKeyboardAdded {
+                                    activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
+                                }
+                            }
+                        } label: {
+                            interfaceLabel("settings.cyrillic")
+                                .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                                .foregroundStyle(primaryInk)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .buttonStyle(.plain)
                         if !isCyrillicEffectiveOn {
                             Button {
                                 HapticFeedback.playSelection()
-                                onboardingSheetMode = .add
-                                onboardingInitialPage = "Onboard1"
-                                showIndicatorSheet = true
+                                activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard1")
                             } label: {
                                 interfaceLabel("settings.cyrillic.addHint")
                                     .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
@@ -1549,9 +1574,7 @@ private extension HomeView {
                 HStack(spacing: 8) {
                     Button {
                         HapticFeedback.playSelection()
-                        onboardingSheetMode = .add
-                        onboardingInitialPage = "Onboard3"
-                        showIndicatorSheet = true
+                        activeOnboardingSheet = OnboardingSheetRequest(mode: .add, initialPage: "Onboard3")
                     } label: {
                         HStack(spacing: 12) {
                             settingsIconBadge(
@@ -1560,7 +1583,7 @@ private extension HomeView {
                                 badgeID: "testing.header.warningBadge"
                             )
                             interfaceLabel("sandbox.wrongKeyboardWarning")
-                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 14))
+                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
                                 .foregroundStyle(primaryInk)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -2414,7 +2437,8 @@ private extension HomeView {
         if languages.contains(where: { $0.hasPrefix("crh") }) {
             return true
         }
-        if KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+        if primaryExtensionSeen
+            || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
             || cachedIsFullAccessEnabled
             || Self.isUITestingEnvironment
             || args.contains("-qt_demo_stats") {
@@ -3694,19 +3718,22 @@ private struct SandboxTextView: UIViewRepresentable {
         }
         context.coordinator.updateInlineMathPreview(for: uiView)
 
-        let fieldOrThemeChanged = context.coordinator.lastFieldMode != fieldMode ||
-                                  context.coordinator.lastThemeMode != themeMode ||
-                                  context.coordinator.lastManualThemeOverride != hasManualThemeOverride
+        let fieldChanged = context.coordinator.lastFieldMode != nil && context.coordinator.lastFieldMode != fieldMode
+        let themeChanged = context.coordinator.lastThemeMode != nil && context.coordinator.lastThemeMode != themeMode
+        let manualOverrideChanged = context.coordinator.lastManualThemeOverride != nil && context.coordinator.lastManualThemeOverride != hasManualThemeOverride
+        let fieldOrThemeChanged = fieldChanged || themeChanged || manualOverrideChanged
         let focusChanged = context.coordinator.lastIsFocused != isFocused
         let prefsChanged = context.coordinator.lastPreferencesToken != preferencesToken
 
         if fieldOrThemeChanged || (focusChanged && isFocused) {
             applyTraits(to: uiView, coordinator: context.coordinator)
             if fieldOrThemeChanged && uiView.isFirstResponder {
+                context.coordinator.isReloadingTraits = true
                 UIView.performWithoutAnimation {
                     uiView.reloadInputViews()
                 }
-            } else if autoFocusOnAppear && uiView.window != nil && UIApplication.shared.applicationState == .active {
+                context.coordinator.isReloadingTraits = false
+            } else if autoFocusOnAppear && uiView.window != nil && UIApplication.shared.applicationState == .active && !uiView.isFirstResponder {
                 let coordinator = context.coordinator
                 DispatchQueue.main.async {
                     uiView.becomeFirstResponder()
@@ -3721,6 +3748,17 @@ private struct SandboxTextView: UIViewRepresentable {
                 nil,
                 true
             )
+            if fieldOrThemeChanged {
+                DispatchQueue.main.async {
+                    CFNotificationCenterPostNotification(
+                        CFNotificationCenterGetDarwinNotifyCenter(),
+                        CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                        nil,
+                        nil,
+                        true
+                    )
+                }
+            }
         } else {
             if focusChanged {
                 context.coordinator.lastIsFocused = isFocused

@@ -25,7 +25,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     private static let sandboxPreviewContexts = NSHashTable<KeyboardContext>.weakObjects()
 
     static func registerSandboxPreview(_ context: KeyboardContext) {
-        guard Bundle.main.bundleIdentifier == AppConfiguration.appBundleId else { return }
         sandboxPreviewContexts.add(context)
     }
 
@@ -34,9 +33,26 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func isSandboxOverrideActive(for context: KeyboardContext) -> Bool {
-        Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
-            && sandboxPreviewContexts.contains(context)
-            && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused")
+        if sandboxPreviewContexts.contains(context) {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused")
+        }
+        if let host = context.hostApplicationBundleId,
+           !host.isEmpty,
+           host != AppConfiguration.appBundleId {
+            return false
+        }
+        guard KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused") else {
+            return false
+        }
+        let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
+        if ts > 0 {
+            let age = Date().timeIntervalSince1970 - ts
+            if age < -5.0 || age > 1800.0 {
+                return false
+            }
+            return true
+        }
+        return true
     }
 
     static func effectiveProxyKeyboardType(for context: KeyboardContext) -> UIKeyboardType {
@@ -51,7 +67,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             default: break
             }
         }
-        return context.textDocumentProxy.keyboardType ?? .default
+        return context.proxyKeyboardTypeOverride ?? context.textDocumentProxy.keyboardType ?? .default
     }
 
     static func effectiveReturnKeyType(for context: KeyboardContext) -> UIReturnKeyType? {
@@ -67,6 +83,17 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             }
         }
         return context.textDocumentProxy.returnKeyType
+    }
+
+    static func isSearchField(for context: KeyboardContext) -> Bool {
+        let kbType = effectiveProxyKeyboardType(for: context)
+        if kbType == .webSearch {
+            return true
+        }
+        if effectiveReturnKeyType(for: context) == .search {
+            return true
+        }
+        return false
     }
 
     static func effectiveEnablesReturnKeyAutomatically(for context: KeyboardContext) -> Bool {
@@ -88,11 +115,11 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if context.keyboardAppearance == .light {
             return false
         }
-        if context.traitCollection.userInterfaceStyle == .dark
-            || context.colorScheme == .dark
-            || UITraitCollection.current.userInterfaceStyle == .dark
-            || UIScreen.main.traitCollection.userInterfaceStyle == .dark {
+        if context.traitCollection.userInterfaceStyle == .dark || context.colorScheme == .dark {
             return true
+        }
+        if context.traitCollection.userInterfaceStyle == .light || context.colorScheme == .light {
+            return false
         }
         return context.hasDarkColorScheme
     }

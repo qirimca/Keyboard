@@ -9,7 +9,7 @@
 import SwiftUI
 
 struct OnboardingView: View {
-    enum Mode: String {
+    enum Mode: String, Equatable, Hashable {
         case add
         case removeCyrillic
     }
@@ -85,6 +85,12 @@ struct OnboardingView: View {
         }
         .onChange(of: initialPage) { _, newValue in
             let validPage = Page(rawValue: newValue)?.rawValue ?? Page.onboard1.rawValue
+            if selected != validPage {
+                selected = validPage
+            }
+        }
+        .onChange(of: mode) { _, _ in
+            let validPage = Page(rawValue: initialPage)?.rawValue ?? Page.onboard1.rawValue
             if selected != validPage {
                 selected = validPage
             }

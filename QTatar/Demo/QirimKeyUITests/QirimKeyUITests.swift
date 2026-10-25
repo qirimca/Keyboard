@@ -78,13 +78,17 @@ final class QirimKeyUITests: XCTestCase {
             if anyCustomKey.waitForExistence(timeout: 1.8) { return }
         }
         if nextKeyboard.exists && nextKeyboard.isHittable {
-            for dyOffset in [-2.8, -3.6, -4.4] {
+            for dyOffset in [-1.0, -1.5, -2.0] {
                 let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
                 start.press(forDuration: 0.55, thenDragTo: end)
                 if app.state != .runningForeground {
                     app.activate()
                     Thread.sleep(forTimeInterval: 0.6)
+                    if field.exists && field.isHittable {
+                        field.tap()
+                        Thread.sleep(forTimeInterval: 0.6)
+                    }
                 }
                 if anyCustomKey.waitForExistence(timeout: 1.8) { return }
             }
@@ -299,7 +303,7 @@ final class QirimKeyUITests: XCTestCase {
             if waitForLetter(wanted, timeout: 1.2) { return }
         }
         if nextKeyboard.exists && nextKeyboard.isHittable {
-            for dyOffset in [-2.8, -3.6, -4.4] {
+            for dyOffset in [-1.0, -1.5, -2.0] {
                 let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                 let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
                 start.press(forDuration: 0.55, thenDragTo: end)
@@ -307,6 +311,10 @@ final class QirimKeyUITests: XCTestCase {
                 if app.state != .runningForeground {
                     app.activate()
                     Thread.sleep(forTimeInterval: 0.6)
+                    if field.exists && field.isHittable {
+                        field.tap()
+                        Thread.sleep(forTimeInterval: 0.6)
+                    }
                 }
                 if waitForLetter(wanted, timeout: 1.5) { return }
             }
@@ -1652,5 +1660,105 @@ final class QirimKeyUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 2.2)
         }
         capture("store_\(storeDevice)_video_final_frame")
+    }
+
+    func testSandboxFieldThemeSyncAndCyrillicDisableInstructions() throws {
+        // 1. Verify turning OFF settings.cyrillic.toggle when Cyrillic is added opens .removeCyrillic instructions
+        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight"]
+        app.launch()
+        let cyrToggle = app.switches["settings.cyrillic.toggle"].exists
+            ? app.switches["settings.cyrillic.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "settings.cyrillic.toggle").firstMatch
+        XCTAssertTrue(cyrToggle.waitForExistence(timeout: 5.0))
+        XCTAssertEqual(cyrToggle.value as? String, "1")
+        cyrToggle.tap()
+        let removeView = app.descendants(matching: .any).matching(identifier: "onboarding.removeCyrillic.view").firstMatch
+        let finishBtn = app.descendants(matching: .any).matching(identifier: "onboarding.finish.button").firstMatch
+        XCTAssertTrue(removeView.waitForExistence(timeout: 3.0) || finishBtn.waitForExistence(timeout: 3.0),
+                      "Turning OFF Kirill klaviaturası must present OnboardingView(mode: .removeCyrillic), not .add")
+        capture("verify_01_cyrillic_remove_sheet")
+        if finishBtn.exists && finishBtn.isHittable {
+            finishBtn.tap()
+        }
+        app.terminate()
+
+        // 2. Verify Text (empty -> daily phrase, non-empty -> 3 suggestions) vs Search (empty -> 3 suggestions, no daily phrase)
+        try launch(fieldMode: "standard", theme: "modernLight", extraArgs: ["-qt_cyrillic_added"])
+        clear()
+        Thread.sleep(forTimeInterval: 0.5)
+        let banner = app.descendants(matching: .any).matching(identifier: "autocomplete.greetingBanner").firstMatch
+        let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        let slot2 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.2").firstMatch
+        XCTAssertTrue(banner.waitForExistence(timeout: 2.5), "Empty Text field must display daily greeting phrase")
+        XCTAssertFalse(slot0.exists && !slot0.label.isEmpty, "Empty Text field must not overlap suggestions with daily phrase")
+        capture("verify_02_text_empty_phrase_light")
+
+        // Type a character in Text mode -> daily phrase must disappear immediately and 3 suggestions must appear without overlap
+        if hasLetter("q") {
+            typeLetters("q")
+        } else if hasLetter("ф") {
+            typeLetters("ф")
+        }
+        Thread.sleep(forTimeInterval: 0.5)
+        XCTAssertFalse(banner.exists, "Daily phrase must disappear immediately when typing in Text field")
+        XCTAssertTrue(slot0.waitForExistence(timeout: 2.5) && !slot0.label.isEmpty, "Non-empty Text field must show 3 suggestions (slot 0)")
+        XCTAssertTrue(slot1.exists && !slot1.label.isEmpty, "Non-empty Text field must show 3 suggestions (slot 1)")
+        XCTAssertTrue(slot2.exists && !slot2.label.isEmpty, "Non-empty Text field must show 3 suggestions (slot 2)")
+        capture("verify_02b_text_typed_3_suggestions")
+        clear()
+        Thread.sleep(forTimeInterval: 0.5)
+
+        func segmentButton(_ names: [String]) -> XCUIElement {
+            let pred = NSPredicate(format: "identifier IN %@ OR label IN %@", names, names)
+            return app.buttons.matching(pred).firstMatch
+        }
+
+        // Switch to Search while empty -> must show 3 suggestions and NO daily phrase
+        let searchSeg = segmentButton(["field.search", "Qıdıruv", "Пошук", "Search"])
+        XCTAssertTrue(searchSeg.waitForExistence(timeout: 2.0))
+        searchSeg.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(banner.exists, "Search field must NEVER show daily greeting phrase")
+        XCTAssertTrue(slot0.waitForExistence(timeout: 2.5) && !slot0.label.isEmpty, "Empty Search field must show 3 starter suggestions (slot 0)")
+        XCTAssertTrue(slot1.exists && !slot1.label.isEmpty, "Empty Search field must show 3 starter suggestions (slot 1)")
+        XCTAssertTrue(slot2.exists && !slot2.label.isEmpty, "Empty Search field must show 3 starter suggestions (slot 2)")
+        capture("verify_03_search_empty_3_suggestions")
+
+        // Switch to Numbers -> must show numeric layout
+        let numbersSeg = segmentButton(["field.numbers", "Raqamlar", "Числа", "Numbers"])
+        XCTAssertTrue(numbersSeg.waitForExistence(timeout: 2.0))
+        numbersSeg.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(waitForLetter("1", timeout: 2.5), "Selecting Numbers in sandbox must switch keyboard to numeric page")
+        capture("verify_04_numbers_mode")
+
+        // Switch to Email -> must show @ key on bottom row and hide top toolbar
+        let emailSeg = segmentButton(["field.email", "E-poçta", "Пошта", "Email"])
+        XCTAssertTrue(emailSeg.waitForExistence(timeout: 2.0))
+        emailSeg.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(waitForLetter("@", timeout: 2.5), "Selecting Email in sandbox must show @ key")
+        XCTAssertFalse(banner.exists, "Email field must not show daily phrase")
+        capture("verify_05_email_mode")
+
+        // Switch back to Text, toggle Dark -> Light -> verify light keyboard with no black keys
+        let textSeg = segmentButton(["field.standard", "Yazı", "Текст", "Text"])
+        if textSeg.exists {
+            textSeg.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        let darkSeg = segmentButton(["theme.dark", "Qaranlıq", "Темна", "Dark"])
+        let lightSeg = segmentButton(["theme.light", "Aydınlıq", "Світла", "Light"])
+        if darkSeg.exists {
+            darkSeg.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            capture("verify_06_theme_dark")
+        }
+        if lightSeg.exists {
+            lightSeg.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            capture("verify_07_theme_light_after_dark")
+        }
     }
 }

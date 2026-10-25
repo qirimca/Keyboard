@@ -351,7 +351,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         TextHistoryManager.shared.recordDelete(deletedString)
 
         if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
-            GreetingBannerState.shared.prepareForAppearance()
+            if !DemoStyleProvider.isSearchField(for: keyboardContext) {
+                autocompleteContext.suggestions = []
+                GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
+            } else {
+                GreetingBannerState.shared.dismissForTyping()
+            }
         } else {
             GreetingBannerState.shared.dismissForTyping()
         }
@@ -831,7 +836,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     }
                 } else {
                     if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
-                        GreetingBannerState.shared.prepareForAppearance()
+                        if !DemoStyleProvider.isSearchField(for: keyboardContext) {
+                            autocompleteContext.suggestions = []
+                            GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
+                        } else {
+                            GreetingBannerState.shared.dismissForTyping()
+                        }
                     } else {
                         GreetingBannerState.shared.dismissForTyping()
                     }
@@ -978,7 +988,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     typedWordBuffer.removeLast()
                 }
                 if (proxy.documentContextBeforeInput ?? "").isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
-                    GreetingBannerState.shared.prepareForAppearance()
+                    if !DemoStyleProvider.isSearchField(for: keyboardContext) {
+                        autocompleteContext.suggestions = []
+                        GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
+                    } else {
+                        GreetingBannerState.shared.dismissForTyping()
+                    }
                 } else {
                     GreetingBannerState.shared.dismissForTyping()
                 }

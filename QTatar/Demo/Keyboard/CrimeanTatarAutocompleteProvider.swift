@@ -82,6 +82,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         let mathEvaluation: (expression: String, result: String)?
         let shouldCapitalize: Bool
         let isDocumentEmpty: Bool
+        let isSearchField: Bool
         let completedContextWords: [String]
         let positionContext: SuggestionsDataBaseManager.SentencePositionContext
         let isAutocorrectEnabled: Bool
@@ -108,8 +109,9 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             keyboardContext: keyboardContext
         )
         let isEmpty = query.isEmpty ? Self.isDocumentEmpty(proxy) : false
-        if isEmpty && GreetingBannerState.shared.isDismissedForCurrentSession {
-            GreetingBannerState.shared.prepareForAppearance()
+        let isSearchField = DemoStyleProvider.isSearchField(for: keyboardContext)
+        if isEmpty && !isSearchField && GreetingBannerState.shared.isDismissedForCurrentSession {
+            GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
         }
         let rawContextWords = !isEmpty ? Self.completedContextWords(before: proxy) : []
         let contextWords = query.isEmpty ? rawContextWords : Array(rawContextWords.dropLast())
@@ -125,6 +127,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
             mathEvaluation: mathEvaluation,
             shouldCapitalize: shouldCapitalize,
             isDocumentEmpty: isEmpty,
+            isSearchField: isSearchField,
             completedContextWords: contextWords,
             positionContext: positionContext,
             isAutocorrectEnabled: autocorrectAllowed
@@ -171,7 +174,14 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         var suggestions: [Autocomplete.Suggestion]
         if snapshot.query.isEmpty {
             if snapshot.isDocumentEmpty {
-                suggestions = []
+                if snapshot.isSearchField {
+                    suggestions = manager.starterSuggestions(
+                        shouldCapitalize: snapshot.shouldCapitalize,
+                        positionContext: snapshot.positionContext
+                    )
+                } else {
+                    suggestions = []
+                }
             } else if !snapshot.completedContextWords.isEmpty {
                 suggestions = manager.nextWordSuggestions(
                     contextWords: snapshot.completedContextWords,
@@ -261,6 +271,9 @@ private extension CrimeanTatarAutocompleteProvider {
     }
 
     static func isDocumentEmpty(_ proxy: UITextDocumentProxy) -> Bool {
+        if proxy.hasText {
+            return false
+        }
         let before = proxy.documentContextBeforeInput?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let after = proxy.documentContextAfterInput?

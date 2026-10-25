@@ -513,17 +513,18 @@ class KeyboardViewController: KeyboardInputViewController {
         resetToExtensionDefaultScript()
         syncPreferredKeyboardTypeWithProxy()
 
-        KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
         if isCyrillicExtension {
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+        } else {
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
         }
         applyPreferences(syncDisk: true)
-        super.viewWillAppear(animated)
-        refreshProxyState(forceRender: true)
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
         SpaceBarState.shared.prepareForAppearance()
-        GreetingBannerState.shared.prepareForAppearance()
+        GreetingBannerState.shared.prepareForAppearance(reshuffle: true)
+        refreshProxyState(forceRender: true)
+        super.viewWillAppear(animated)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -564,6 +565,9 @@ class KeyboardViewController: KeyboardInputViewController {
         isResettingDocumentState = true
         autocompletePending = false
         super.textWillChange(textInput)
+        DispatchQueue.main.async { [weak self] in
+            self?.isResettingDocumentState = false
+        }
     }
 
     /// Identifier of the text field the user last typed in (to detect a field switch without `viewWillAppear`).
@@ -607,6 +611,9 @@ class KeyboardViewController: KeyboardInputViewController {
     }
 
     private func refreshProxyState(forceRender: Bool = false) {
+        if forceRender {
+            isResettingDocumentState = false
+        }
         guard !isResettingDocumentState else { return }
         let documentID = textDocumentProxy.safeDocumentIdentifier
         if let last = lastDocumentIdentifier, last != documentID {
@@ -621,6 +628,17 @@ class KeyboardViewController: KeyboardInputViewController {
         context.proxyKeyboardTypeOverride = isSandboxActive
             ? DemoStyleProvider.effectiveProxyKeyboardType(for: context)
             : nil
+        if isSandboxActive,
+           let mode = KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") {
+            switch mode {
+            case "field.email", "field.url", "field.numbers", "field.search":
+                context.autocapitalizationTypeOverride = Keyboard.AutocapitalizationType.none
+            default:
+                context.autocapitalizationTypeOverride = .sentences
+            }
+        } else {
+            context.autocapitalizationTypeOverride = nil
+        }
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: context)
         let suggestionsOn = KeyboardPreferences.suggestionsEnabled
             && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy)
@@ -641,8 +659,10 @@ class KeyboardViewController: KeyboardInputViewController {
         if context.isAutoCapitalizationEnabled != targetCapitalize {
             context.isAutoCapitalizationEnabled = targetCapitalize
         }
+        if overrideUserInterfaceStyle != .unspecified {
+            overrideUserInterfaceStyle = .unspecified
+        }
         let systemDark = traitCollection.userInterfaceStyle == .dark
-            || UIScreen.main.traitCollection.userInterfaceStyle == .dark
         let baseTraits = UITraitCollection(traitsFrom: [
             traitCollection,
             UITraitCollection(userInterfaceStyle: systemDark ? .dark : .light)
@@ -658,19 +678,48 @@ class KeyboardViewController: KeyboardInputViewController {
         if context.traitCollection != resolvedTraits {
             context.traitCollection = resolvedTraits
         }
-        if overrideUserInterfaceStyle != .unspecified {
-            overrideUserInterfaceStyle = .unspecified
-        }
         let targetViewStyle: UIUserInterfaceStyle = effectiveDark ? .dark : .light
         if view.overrideUserInterfaceStyle != targetViewStyle {
             view.overrideUserInterfaceStyle = targetViewStyle
         }
+        children.forEach { child in
+            if child.overrideUserInterfaceStyle != targetViewStyle {
+                child.overrideUserInterfaceStyle = targetViewStyle
+            }
+        }
         syncPreferredKeyboardTypeWithProxy()
-        // Re-render only when a trait the UI depends on changed (field traits, empty <-> non-empty for the Return key).
         let signature = currentRenderSignature
-        if !signature.hasText && (textDocumentProxy.documentContextBeforeInput ?? "").isEmpty && (textDocumentProxy.documentContextAfterInput ?? "").isEmpty {
-            if lastRenderSignature?.hasText == true || GreetingBannerState.shared.isDismissedForCurrentSession {
-                GreetingBannerState.shared.prepareForAppearance()
+        let isSearchField = DemoStyleProvider.isSearchField(for: context)
+        let isDocEmpty = !signature.hasText
+            && (textDocumentProxy.documentContextBeforeInput ?? "").isEmpty
+            && (textDocumentProxy.documentContextAfterInput ?? "").isEmpty
+        if !isDocEmpty || isSearchField {
+            GreetingBannerState.shared.dismissForTyping()
+            if suggestionsOn {
+                if isSearchField && isDocEmpty {
+                    let starter = (services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: "") ?? []
+                    if !starter.isEmpty {
+                        state.autocompleteContext.suggestions = starter
+                    } else {
+                        performAutocomplete()
+                    }
+                } else if forceRender || lastRenderSignature?.hasText != signature.hasText || lastRenderSignature?.keyboardType != signature.keyboardType {
+                    let immediate = (services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: autocompleteText ?? "") ?? []
+                    if !immediate.isEmpty {
+                        state.autocompleteContext.suggestions = immediate
+                    } else {
+                        performAutocomplete()
+                    }
+                }
+            }
+        } else {
+            if !state.autocompleteContext.suggestions.isEmpty {
+                state.autocompleteContext.suggestions = []
+            }
+            if lastRenderSignature?.hasText == true
+                || lastRenderSignature?.keyboardType != signature.keyboardType
+                || GreetingBannerState.shared.isDismissedForCurrentSession {
+                GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
             }
         }
         if signature != lastRenderSignature || forceRender {
@@ -680,7 +729,7 @@ class KeyboardViewController: KeyboardInputViewController {
                 || lastRenderSignature?.suggestionsEnabled != signature.suggestionsEnabled
                 || lastRenderSignature?.splitEnabled != signature.splitEnabled
             if prefsChanged {
-                applyPreferences(syncDisk: forceRender)
+                applyPreferences(syncDisk: false)
             } else {
                 updateKeyboardHeightConstraint()
                 state.keyboardContext.renderVersion &+= 1
@@ -764,7 +813,8 @@ class KeyboardViewController: KeyboardInputViewController {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
                 guard let self, self.isViewLoaded, self.view.window != nil else { return }
                 let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
-                if hasText {
+                let isSearch = DemoStyleProvider.isSearchField(for: self.state.keyboardContext)
+                if hasText || isSearch {
                     self.performAutocomplete()
                 }
             }
@@ -774,7 +824,8 @@ class KeyboardViewController: KeyboardInputViewController {
         updateKeyboardHeightConstraint()
         refreshProxyState()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
-        if hasText {
+        let isSearch = DemoStyleProvider.isSearchField(for: state.keyboardContext)
+        if hasText || isSearch {
             performAutocomplete()
         } else {
             state.autocompleteContext.suggestions = []

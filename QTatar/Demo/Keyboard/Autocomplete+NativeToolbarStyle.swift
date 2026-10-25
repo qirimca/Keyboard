@@ -932,30 +932,32 @@ final class GreetingBannerState: ObservableObject {
         lastPickedID = shuffled.first?.id
     }
 
-    func prepareForAppearance() {
+    func prepareForAppearance(reshuffle: Bool = true) {
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             isDismissedForCurrentSession = false
-            reshufflePool()
+            if reshuffle || shuffledPool.isEmpty {
+                reshufflePool()
+            }
         }
     }
 
     func dismissForTyping() {
         guard !isDismissedForCurrentSession else { return }
-        withAnimation(.easeOut(duration: 0.2)) {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             isDismissedForCurrentSession = true
         }
     }
 
     func cycleNext() {
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
-            if shuffledPool.isEmpty {
-                reshufflePool()
-            } else {
-                candidateIndex = (candidateIndex + 1) % max(shuffledPool.count, 1)
-                lastPickedID = shuffledPool[candidateIndex].id
-            }
+        if shuffledPool.isEmpty {
+            reshufflePool()
+        } else {
+            candidateIndex = (candidateIndex + 1) % max(shuffledPool.count, 1)
+            lastPickedID = shuffledPool[candidateIndex].id
         }
     }
 
@@ -994,12 +996,20 @@ struct NativeAutocompleteToolbar: View {
 
     private var shouldShowGreetingBanner: Bool {
         guard DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext) else { return false }
-        if DemoStyleProvider.effectiveProxyKeyboardType(for: keyboardContext) == .webSearch {
+        if DemoStyleProvider.effectiveProxyKeyboardType(for: keyboardContext) == .webSearch
+            || DemoStyleProvider.isSearchField(for: keyboardContext) {
+            return false
+        }
+        if let returnType = DemoStyleProvider.effectiveReturnKeyType(for: keyboardContext),
+           returnType == .search || returnType == .go {
             return false
         }
         guard !greetingState.isDismissedForCurrentSession else { return false }
         let suggestions = autocompleteContext.suggestions
         guard suggestions.isEmpty else { return false }
+        if keyboardContext.textDocumentProxy.hasText == true {
+            return false
+        }
         let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
         let after = keyboardContext.textDocumentProxy.documentContextAfterInput ?? ""
         return before.isEmpty && after.isEmpty
@@ -1133,11 +1143,9 @@ struct NativeAutocompleteToolbar: View {
                                 .frame(width: splitClusterWidth, height: height)
                         }
                         .frame(width: totalWidth, height: height)
-                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     } else {
                         greetingBannerView(centerWidth: centerWidth)
                             .frame(width: totalWidth, height: height)
-                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
                     }
                 } else {
                     if isSplitPad {
@@ -1171,7 +1179,6 @@ struct NativeAutocompleteToolbar: View {
                             )
                         }
                         .frame(width: totalWidth, height: height)
-                        .transition(.opacity)
                     } else {
                         HStack(spacing: 0) {
                             ForEach(0..<slotCount, id: \.self) { index in
@@ -1192,14 +1199,13 @@ struct NativeAutocompleteToolbar: View {
                             }
                         }
                         .frame(width: totalWidth, height: height)
-                        .transition(.opacity)
                     }
                 }
             }
-            .animation(.easeInOut(duration: 0.2), value: shouldShowGreetingBanner)
         }
         .frame(height: height)
         .frame(maxWidth: .infinity)
+        .clipped()
         .environment(\.colorScheme, isDark ? .dark : .light)
     }
 
@@ -1238,12 +1244,12 @@ struct NativeAutocompleteToolbar: View {
                     .foregroundStyle(primaryColor.opacity(0.88))
                     .lineLimit(2)
                     .minimumScaleFactor(0.55)
+                    .allowsTightening(true)
                     .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 3.5)
-            .frame(maxWidth: max(clusterWidth - 12, 120))
+            .padding(.vertical, 3.0)
+            .frame(maxWidth: max(clusterWidth - 12, 120), maxHeight: height - 4)
             .background(
                 Capsule(style: .continuous)
                     .fill(primaryColor.opacity(0.08))
@@ -1327,16 +1333,17 @@ struct NativeAutocompleteToolbar: View {
                         .font(.system(size: isFloating ? 12.5 : 14.0, weight: .medium))
                         .foregroundStyle(primaryColor.opacity(0.88))
                         .lineLimit(2)
-                        .minimumScaleFactor(0.68)
+                        .minimumScaleFactor(0.62)
+                        .allowsTightening(true)
                         .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
 
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 12.0, weight: .medium))
                         .foregroundStyle(primaryColor.opacity(0.58))
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, isDockedPad ? 4.0 : 4.5)
+                .padding(.vertical, isDockedPad ? 3.5 : 3.5)
+                .frame(maxHeight: height - 4)
                 .background(
                     Capsule(style: .continuous)
                         .fill(primaryColor.opacity(0.08))

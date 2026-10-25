@@ -18,7 +18,10 @@ extension KeyboardInputViewController {
     func setup<Content: View>(
         withRootView view: Content
     ) {
-        self.children.forEach { $0.removeFromParent() }
+        self.children.forEach {
+            $0.willMove(toParent: nil)
+            $0.removeFromParent()
+        }
         self.view.subviews.forEach { $0.removeFromSuperview() }
         let view = view.keyboardState(from: self)
         let host = KeyboardHostingController(rootView: view)
@@ -56,12 +59,16 @@ extension KeyboardInputViewController {
     
     /// Setup locale observation to handle locale changes.
     func setupLocaleObservation() {
-        state.keyboardContext.$locale.sink { [weak self] in
-            guard let self = self else { return }
-            let locale = $0
-            self.primaryLanguage = locale.identifier
-            self.services.autocompleteProvider.locale = locale
-        }.store(in: &cancellables)
+        state.keyboardContext.$locale
+            .removeDuplicates()
+            .sink { [weak self] in
+                guard let self = self else { return }
+                let locale = $0
+                if self.primaryLanguage != locale.identifier {
+                    self.primaryLanguage = locale.identifier
+                }
+                self.services.autocompleteProvider.locale = locale
+            }.store(in: &cancellables)
     }
 }
 #endif

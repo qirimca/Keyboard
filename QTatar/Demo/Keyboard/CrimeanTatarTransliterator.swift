@@ -68,7 +68,10 @@ struct CrimeanTatarTransliterator {
             steps: [],
             fallback: [:]
         )
-        guard let url = bundle.url(forResource: "TransliterationRules", withExtension: "json"),
+        let fallbackURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("TransliterationRules.json")
+        guard let url = bundle.url(forResource: "TransliterationRules", withExtension: "json") ?? fallbackURL as URL?,
               let data = try? Data(contentsOf: url),
               let dataset = try? JSONDecoder().decode(Dataset.self, from: data),
               let runRegex = try? NSRegularExpression(pattern: "[" + dataset.lettersCyrl + "]+") else {

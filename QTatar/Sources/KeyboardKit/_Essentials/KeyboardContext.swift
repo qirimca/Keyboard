@@ -368,6 +368,9 @@ extension KeyboardContext {
         }
 
         let resolvedStyle: UIUserInterfaceStyle = {
+            if let childStyle = controller.children.first?.overrideUserInterfaceStyle, childStyle != .unspecified {
+                return childStyle
+            }
             if let viewStyle = controller.viewIfLoaded?.overrideUserInterfaceStyle, viewStyle != .unspecified {
                 return viewStyle
             }
@@ -376,6 +379,9 @@ extension KeyboardContext {
             }
             if controller.textDocumentProxy.keyboardAppearance == .dark {
                 return .dark
+            }
+            if controller.textDocumentProxy.keyboardAppearance == .light {
+                return .light
             }
             return controller.traitCollection.userInterfaceStyle
         }()
