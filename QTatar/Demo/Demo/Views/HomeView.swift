@@ -350,7 +350,6 @@ struct HomeView: View {
         }
         .onAppear {
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-            Self.registerFloatingRequestObserverIfNeeded()
             Self.registerStatsSyncObserverIfNeeded()
             Self.enforceFullScreenWindowIfNeeded()
             if !didInitializeThemeFromSystem {
@@ -368,7 +367,6 @@ struct HomeView: View {
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             AppStoreReviewManager.recordForegroundSession()
-            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -397,7 +395,6 @@ struct HomeView: View {
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             AppStoreReviewManager.recordForegroundSession()
-            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -405,7 +402,6 @@ struct HomeView: View {
             refreshCyrillicStatus()
             keyboardState.refresh()
             refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-            Self.updateHostSplitBackdropMask()
         }
         .onChange(of: colorScheme) { _, newScheme in
             let args = ProcessInfo.processInfo.arguments
@@ -431,22 +427,11 @@ struct HomeView: View {
             withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                 isKeyboardVisible = true
             }
-            Self.syncHostSystemSplitStateIfNeeded()
-            Self.updateHostSplitBackdropMask()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { _ in
-            Self.syncHostSystemSplitStateIfNeeded()
-            Self.updateHostSplitBackdropMask()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidChangeFrameNotification)) { _ in
-            Self.syncHostSystemSplitStateIfNeeded()
-            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                 isKeyboardVisible = false
             }
-            Self.updateHostSplitBackdropMask()
         }
         .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
             refreshCyrillicStatus()
@@ -550,7 +535,6 @@ struct HomeView: View {
     }
 
     private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
-    private static var didRegisterFloatingObserver = false
     private static var didRegisterStatsObserver = false
     private static var lastPreferencesSyncTime: CFAbsoluteTime = 0
     private static var isTrailingPreferencesSyncPending = false
@@ -713,232 +697,8 @@ struct HomeView: View {
         )
     }
 
-    private static func registerFloatingRequestObserverIfNeeded() {
-        guard !didRegisterFloatingObserver else { return }
-        didRegisterFloatingObserver = true
-        let center = CFNotificationCenterGetDarwinNotifyCenter()
-        CFNotificationCenterAddObserver(
-            center,
-            nil,
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    HomeView.invokeHostSetFloating(true)
-                }
-            },
-            "crh.key.requestFloatingKeyboard" as CFString,
-            nil,
-            .deliverImmediately
-        )
-        CFNotificationCenterAddObserver(
-            center,
-            nil,
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    HomeView.invokeHostSetFloating(false)
-                }
-            },
-            "crh.key.requestDockedKeyboard" as CFString,
-            nil,
-            .deliverImmediately
-        )
-        CFNotificationCenterAddObserver(
-            center,
-            nil,
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    HomeView.invokeHostSetSplit(true)
-                }
-            },
-            "crh.key.requestSplitKeyboard" as CFString,
-            nil,
-            .deliverImmediately
-        )
-        CFNotificationCenterAddObserver(
-            center,
-            nil,
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    HomeView.invokeHostSetSplit(false)
-                }
-            },
-            "crh.key.requestMergedKeyboard" as CFString,
-            nil,
-            .deliverImmediately
-        )
-        CFNotificationCenterAddObserver(
-            center,
-            nil,
-            { _, _, _, _, _ in
-                DispatchQueue.main.async {
-                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                    KeyboardPreferences.refreshCachedPreferences()
-                    HomeView.updateHostSplitBackdropMask()
-                }
-            },
-            KeyboardPreferences.splitModeChangedNotification as CFString,
-            nil,
-            .deliverImmediately
-        )
-    }
-
-    private static func invokeHostSetSplit(_ split: Bool) {
-        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
-            let rivenSel = NSSelectorFromString("setRivenPreference:")
-            if let method = class_getClassMethod(implClass, rivenSel) {
-                typealias SetRivenFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                let fn = unsafeBitCast(method_getImplementation(method), to: SetRivenFn.self)
-                fn(implClass, rivenSel, split)
-            }
-            let splitSel = NSSelectorFromString("setSplit:")
-            if let method = class_getClassMethod(implClass, splitSel) {
-                typealias SetSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                let fn = unsafeBitCast(method_getImplementation(method), to: SetSplitFn.self)
-                fn(implClass, splitSel, split)
-            }
-        }
-        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
-            let sharedSel = NSSelectorFromString("sharedInstance")
-            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
-                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
-                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
-                if let hostInstance = sharedFn(hostClass, sharedSel) {
-                    let setSplitSel = NSSelectorFromString("setSplit:")
-                    if hostInstance.responds(to: setSplitSel),
-                       let m = class_getInstanceMethod(type(of: hostInstance), setSplitSel) {
-                        typealias SetInstSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                        let fn = unsafeBitCast(method_getImplementation(m), to: SetInstSplitFn.self)
-                        fn(hostInstance, setSplitSel, split)
-                    }
-                }
-            }
-        }
-        updateHostSplitBackdropMask()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            updateHostSplitBackdropMask()
-        }
-    }
-
-    private static func queryHostSystemIsSplit() -> Bool? {
-        guard Device.iPad else { return nil }
-        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
-            let sharedSel = NSSelectorFromString("sharedInstance")
-            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
-                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
-                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
-                if let hostInstance = sharedFn(hostClass, sharedSel) {
-                    for selName in ["isSplit", "isSplitting"] {
-                        let sel = NSSelectorFromString(selName)
-                        if hostInstance.responds(to: sel),
-                           let m = class_getInstanceMethod(type(of: hostInstance), sel) {
-                            typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                            let fn = unsafeBitCast(method_getImplementation(m), to: BoolFn.self)
-                            if fn(hostInstance, sel) { return true }
-                        }
-                    }
-                }
-            }
-        }
-        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
-            let sel = NSSelectorFromString("isSplit")
-            if let method = class_getClassMethod(implClass, sel) {
-                typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                let fn = unsafeBitCast(method_getImplementation(method), to: BoolFn.self)
-                if fn(implClass, sel) { return true }
-            }
-        }
-        var windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
-            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
-            if let method = class_getClassMethod(effectsClass, sharedSel) {
-                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
-                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
-                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
-                    windows.append(win)
-                }
-            }
-        }
-        for win in windows {
-            if let rootVC = win.rootViewController {
-                let placementSel = NSSelectorFromString("placement")
-                if rootVC.responds(to: placementSel),
-                   let placementObj = rootVC.perform(placementSel)?.takeUnretainedValue() {
-                    let placementClassName = String(describing: type(of: placementObj))
-                    if placementClassName.contains("Split") {
-                        return true
-                    }
-                    let isSplitSel = NSSelectorFromString("isSplit")
-                    if placementObj.responds(to: isSplitSel),
-                       let m = class_getInstanceMethod(type(of: placementObj), isSplitSel) {
-                        typealias BoolFn = @convention(c) (AnyObject, Selector) -> Bool
-                        let fn = unsafeBitCast(method_getImplementation(m), to: BoolFn.self)
-                        if fn(placementObj, isSplitSel) { return true }
-                    }
-                }
-            }
-        }
-        return nil
-    }
-
-    private static func hostDeviceSupportsSplitKeyboard() -> Bool {
-        guard Device.iPad else { return false }
-        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), ["UIKeyboardDevice", "SupportsSplit"].joined()) {
-            typealias SupportsSplitFn = @convention(c) () -> Bool
-            let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
-            return fn()
-        }
-        let modelIdentifier: String = {
-            if let simModel = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !simModel.isEmpty {
-                return simModel
-            }
-            var sysinfo = utsname()
-            uname(&sysinfo)
-            return withUnsafePointer(to: &sysinfo.machine) {
-                $0.withMemoryRebound(to: CChar.self, capacity: 1) {
-                    String(cString: $0)
-                }
-            }
-        }()
-        let supportedModels: Set<String> = [
-            "iPad11,3", "iPad11,4",
-            "iPad11,1", "iPad11,2", "iPad14,1", "iPad14,2", "iPad16,1", "iPad16,2",
-            "iPad6,11", "iPad6,12", "iPad7,5", "iPad7,6", "iPad7,11", "iPad7,12",
-            "iPad11,6", "iPad11,7", "iPad12,1", "iPad12,2",
-            "iPad6,3", "iPad6,4", "iPad7,3", "iPad7,4",
-            "iPad5,1", "iPad5,2", "iPad5,3", "iPad5,4"
-        ]
-        return supportedModels.contains(modelIdentifier)
-    }
-
-    private static func syncHostSystemSplitStateIfNeeded() {
-        // Split state is managed directly by the keyboard extension via `⌄⌨` callout and pinch gesture.
-    }
-
     static func openKeyboardSettings() {
-        if #unavailable(iOS 26.0) {
-            let legacyCandidates = [
-                "App-Prefs:root=General&path=Keyboard/KEYBOARDS",
-                "App-Prefs:root=General&path=Keyboard",
-                UIApplication.openSettingsURLString
-            ]
-            openFirstWorkingSettingsURL(legacyCandidates)
-            return
-        }
         openAppSettings()
-    }
-
-    private static func openFirstWorkingSettingsURL(_ candidates: [String], index: Int = 0) {
-        guard index < candidates.count else { return }
-        guard let url = URL(string: candidates[index]) else {
-            openFirstWorkingSettingsURL(candidates, index: index + 1)
-            return
-        }
-        UIApplication.shared.open(url, options: [:]) { success in
-            if !success {
-                openFirstWorkingSettingsURL(candidates, index: index + 1)
-            }
-        }
     }
 
     static func openAppSettings() {
@@ -947,124 +707,9 @@ struct HomeView: View {
     }
 
     static func openSystemKeyboardSettings() {
-        if #unavailable(iOS 26.0) {
-            openFirstWorkingSettingsURL([
-                "App-Prefs:root=General&path=Keyboard",
-                "prefs:root=General&path=Keyboard",
-                UIApplication.openSettingsURLString
-            ])
-            return
-        }
-        openFirstWorkingSettingsURL([
-            "App-Prefs:root=General&path=Keyboard",
-            "App-Prefs:",
-            UIApplication.openSettingsURLString
-        ])
-    }
-
-    private static func updateHostSplitBackdropMask() {
-        // Do not alter or unhide system keyboard backdrop/platter views.
-    }
-
-    private static func invokeHostSetFloating(_ floating: Bool) {
-        if floating {
-            invokeHostSetSplit(false)
-        }
-        func applyFloating(_ targetFloating: Bool) {
-            var alreadyMatching = false
-            var didInvokeImpl = false
-            if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
-                let isFloatingSel = NSSelectorFromString("isFloating")
-                if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
-                    typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
-                    let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
-                    alreadyMatching = (checkFn(implClass, isFloatingSel) == targetFloating)
-                }
-                if !alreadyMatching {
-                    let implSel = NSSelectorFromString("setFloating:")
-                    if let method = class_getClassMethod(implClass, implSel) {
-                        typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                        let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
-                        fn(implClass, implSel, targetFloating)
-                        didInvokeImpl = true
-                    }
-                }
-            }
-            if !alreadyMatching && !didInvokeImpl, let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
-                let sharedSel = NSSelectorFromString("sharedInstance")
-                if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
-                    typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
-                    let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
-                    if let hostInstance = sharedFn(hostClass, sharedSel) {
-                        let hostSel = NSSelectorFromString("setFloating:onCompletion:")
-                        if hostInstance.responds(to: hostSel),
-                           let method = class_getInstanceMethod(type(of: hostInstance), hostSel) {
-                            typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
-                            let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
-                            fn(hostInstance, hostSel, targetFloating, nil)
-                        }
-                    }
-                }
-            }
-        }
-        applyFloating(floating)
-        updateHostSplitBackdropMask()
-        if floating {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                applyFloating(true)
-            }
-            for delay in [0.15, 0.35] {
-                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    clampFloatingKeyboardToScreenBounds()
-                }
-            }
-        }
-    }
-
-    private static func clampFloatingKeyboardToScreenBounds() {
-        guard Device.iPad else { return }
-        let screenBounds = (UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene)?.screen.bounds ?? (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds ?? UIScreen.main.bounds
-        let margin: CGFloat = 12
-        var windows = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-        if let effectsClass: AnyClass = NSClassFromString("UITextEffectsWindow") {
-            let sharedSel = NSSelectorFromString("sharedTextEffectsWindow")
-            if let method = class_getClassMethod(effectsClass, sharedSel) {
-                typealias SharedWinFn = @convention(c) (AnyObject, Selector) -> UIWindow?
-                let fn = unsafeBitCast(method_getImplementation(method), to: SharedWinFn.self)
-                if let win = fn(effectsClass, sharedSel), !windows.contains(win) {
-                    windows.append(win)
-                }
-            }
-        }
-        func clampView(_ view: UIView, bottomMargin: CGFloat) {
-            let className = NSStringFromClass(type(of: view))
-            if className.contains("UIInputSetHostView") {
-                let f = view.frame
-                if f.width > 200 && f.width < 420 && f.height > 150 && f.height < 420 {
-                    var clampedX = f.origin.x
-                    var clampedY = f.origin.y
-                    if f.minX < margin { clampedX = margin }
-                    if f.maxX > screenBounds.width - margin { clampedX = max(margin, screenBounds.width - f.width - margin) }
-                    if f.minY < margin { clampedY = margin }
-                    if f.maxY > screenBounds.height - bottomMargin { clampedY = max(margin, screenBounds.height - f.height - bottomMargin) }
-                    if abs(clampedX - f.origin.x) > 0.5 || abs(clampedY - f.origin.y) > 0.5 {
-                        view.frame.origin = CGPoint(x: clampedX, y: clampedY)
-                    }
-                }
-            }
-            for sub in view.subviews {
-                clampView(sub, bottomMargin: bottomMargin)
-            }
-        }
-        for win in windows {
-            let winName = NSStringFromClass(type(of: win))
-            if winName.contains("RemoteKeyboard") || winName.contains("TextEffects") {
-                let bottomMargin = max(win.safeAreaInsets.bottom + 38, 52)
-                clampView(win, bottomMargin: bottomMargin)
-            }
-        }
+        // The system keyboard pane has no documented direct URL. The row displays
+        // the General → Keyboard path before opening the app's Settings page.
+        openAppSettings()
     }
 
     private func refreshCyrillicStatus() {
@@ -1079,30 +724,11 @@ struct HomeView: View {
             cyrillicStatus = .enabled
             return
         }
-        let appleKeyboards = (UserDefaults.standard.object(forKey: "AppleKeyboards") as? [String]) ?? []
-        let modes = UITextInputMode.activeInputModes
-        let modeIdentifiers = modes.compactMap { $0.value(forKey: "identifier") as? String }
-        let extensionIdentifiers = modes.compactMap {
-            ($0.value(forKey: "extension") as? NSObject)?.value(forKey: "identifier") as? String
-        }
-        let identifiers = appleKeyboards + modeIdentifiers + extensionIdentifiers
-        let languages = modes.compactMap(\.primaryLanguage)
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
-        let cyrillicByIdentifier = identifiers.contains {
-            $0.contains(AppConfiguration.cyrillicKeyboardBundleId) || $0.localizedCaseInsensitiveContains("KeyboardCyrillic")
-        }
-        let cyrillicByLanguage = languages.contains { $0.hasPrefix("crh-cyrl") }
-        if cyrillicByIdentifier || cyrillicByLanguage {
-            cyrillicStatus = .enabled
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
-        } else if !modes.isEmpty || !appleKeyboards.isEmpty {
-            cyrillicStatus = .missing
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
-        } else if KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
-            cyrillicStatus = .enabled
-        } else {
-            cyrillicStatus = .missing
-        }
+        // Public input-mode languages can provide positive evidence, but absence
+        // cannot establish that a particular extension is not installed.
+        cyrillicStatus = languages.contains { $0.hasPrefix("crh-cyrl") } ? .enabled : .unknown
     }
 
     private func notifySandboxTraitsChanged() {
@@ -1189,7 +815,6 @@ struct HomeView: View {
                 shouldAutoFocusSandbox = true
             }
             if args.contains("-qt_reset_text") {
-                let startSplit = args.contains("-qt_split")
                 text = ""
                 language = "crh"
                 suggestionsEnabled = true
@@ -1202,7 +827,6 @@ struct HomeView: View {
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
                 KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
-                KeyboardPreferences.defaults.set(startSplit, forKey: KeyboardPreferences.splitKeyboardKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
                 KeyboardPreferences.defaults.set(args.contains("-qt_cyrillic_added"), forKey: "crh.key.cyrillicExtensionSeen")
                 KeyboardPreferences.defaults.synchronize()
@@ -1214,8 +838,6 @@ struct HomeView: View {
                 KeyboardPreferences.refreshCachedPreferences()
                 KeyboardUsageStats.resetAll()
                 refreshStatsFromAppGroup(syncSQLite: false)
-            } else if args.contains("-qt_split") {
-                KeyboardPreferences.setSplitKeyboardEnabled(true)
             }
             if args.contains("-qt_focus_sandbox_live") {
                 isTestingExpanded = true
@@ -1467,16 +1089,20 @@ private extension HomeView {
 
     var statusIndicatorsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            let states: [KeyboardState] = [
-                .active(keyboardState.isKeyboardActive),
-                .enable(keyboardState.isKeyboardEnabled),
-                .fullAccess(cachedIsFullAccessEnabled)
-            ]
-            KeyboardStateIndicatorsRow(states: states) {
-                showIndicatorSheet = true
+            let states: [KeyboardState] = keyboardState.canInspectKeyboardBundleIds
+                ? [
+                    .active(keyboardState.activeState == .verifiedInstalled),
+                    .enable(keyboardState.enabledState == .verifiedInstalled),
+                    .fullAccess(cachedIsFullAccessEnabled)
+                ]
+                : []
+            if !states.isEmpty {
+                KeyboardStateIndicatorsRow(states: states) {
+                    showIndicatorSheet = true
+                }
             }
 
-            if !keyboardState.isKeyboardActive {
+            if keyboardState.activeState == .verifiedMissing {
                 StableLocalizedText(
                     key: Home.home_getkeyboard_key.rawValue,
                     table: "Home",
@@ -1580,7 +1206,7 @@ private extension HomeView {
                 .padding(.vertical, 10)
             } else {
                 HStack(spacing: 12) {
-                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: isCyrillicKeyboardAdded)
+                    cyrillicKeycapIconBadge(color: Color(red: 0.35, green: 0.34, blue: 0.84), isEnabled: cyrillicStatus != .missing)
                     interfaceLabel("settings.cyrillic")
                         .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
                         .foregroundStyle(primaryInk)
@@ -1724,13 +1350,7 @@ private extension HomeView {
                             .foregroundStyle(primaryInk)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        Group {
-                            if #available(iOS 26.0, *) {
-                                interfaceLabel("settings.systemKeyboard.ios26Desc")
-                            } else {
-                                interfaceLabel("settings.systemKeyboard.desc")
-                            }
-                        }
+                        interfaceLabel("settings.systemKeyboard.ios26Desc")
                         .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
                         .foregroundStyle(secondaryInk)
                         .lineLimit(2)
@@ -2584,8 +2204,11 @@ private extension HomeView {
     }
 
     var areAllIndicatorsEnabled: Bool {
-        keyboardState.isKeyboardActive &&
-            keyboardState.isKeyboardEnabled &&
+        guard keyboardState.canInspectKeyboardBundleIds else {
+            return true
+        }
+        return keyboardState.activeState == .verifiedInstalled &&
+            keyboardState.enabledState == .verifiedInstalled &&
             cachedIsFullAccessEnabled
     }
 }
@@ -2689,41 +2312,15 @@ private final class AccessibleUISegmentedControl: UISegmentedControl {
     }
 
     func applySegmentAccessibilityIdentifiers() {
-        for label in Self.collectLabels(in: self) {
-            label.adjustsFontSizeToFitWidth = true
-            label.minimumScaleFactor = 0.82
-            label.lineBreakMode = .byTruncatingTail
-        }
-        let segments = Self.collectSegments(in: self)
-            .sorted { $0.convert($0.bounds, to: self).minX < $1.convert($1.bounds, to: self).minX }
-        guard segments.count == segmentIdentifiers.count else { return }
-        for (segment, id) in zip(segments, segmentIdentifiers) {
-            segment.accessibilityIdentifier = id
+        let count = accessibilityElementCount()
+        guard count == segmentIdentifiers.count else { return }
+        for index in segmentIdentifiers.indices {
+            if let element = accessibilityElement(at: index) as? UIAccessibilityIdentification {
+                element.accessibilityIdentifier = segmentIdentifiers[index]
+            }
         }
     }
 
-    private static func collectSegments(in root: UIView) -> [UIView] {
-        var result: [UIView] = []
-        for subview in root.subviews {
-            if NSStringFromClass(type(of: subview)) == "UISegment" {
-                result.append(subview)
-            } else {
-                result.append(contentsOf: collectSegments(in: subview))
-            }
-        }
-        return result
-    }
-
-    private static func collectLabels(in root: UIView) -> [UILabel] {
-        var result: [UILabel] = []
-        for subview in root.subviews {
-            if let label = subview as? UILabel {
-                result.append(label)
-            }
-            result.append(contentsOf: collectLabels(in: subview))
-        }
-        return result
-    }
 }
 
 /// Renders a localized text whose height is the tallest of all interface languages at the current width,

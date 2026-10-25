@@ -18,15 +18,9 @@ import Combine
  ("Settings/General/Keyboards"). It needs full access to get
  access to features like haptic feedback.
  */
-class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDelegate {
+class KeyboardViewController: KeyboardInputViewController {
 
     private var didSetupKeyboard = false
-    private var didInstallSplitGesture = false
-    private var didTriggerPinchInCurrentGesture = false
-    private var isTransitioningToFloating: Bool {
-        get { state.keyboardContext.isTransitioningToFloating }
-        set { state.keyboardContext.isTransitioningToFloating = newValue }
-    }
     private var keyboardHeightConstraint: NSLayoutConstraint?
     private var cancellables = Set<AnyCancellable>()
     private var lastObservedUkrainianCyrillic = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
@@ -76,222 +70,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         SpaceBarState.shared.triggerSwitchAnimation()
     }
 
-    func requestFloatingKeyboardMode() {
-        guard !isTransitioningToFloating else { return }
-        isTransitioningToFloating = true
-        state.keyboardContext.isTransitioningSplit = true
-        SwipeTypingState.shared.clearKeyFrames()
-        let wasSplit = state.keyboardContext.isKeyboardSplit
-        KeyboardPreferences.setSplitKeyboardEnabled(false)
-        state.keyboardContext.lastObservedSystemSplit = false
-        Self.invokeSystemSetSplit(false)
-        if wasSplit {
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName("crh.key.requestMergedKeyboard" as CFString),
-                nil,
-                nil,
-                true
-            )
-        }
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName("crh.key.requestFloatingKeyboard" as CFString),
-            nil,
-            nil,
-            true
-        )
-        Self.invokeSystemSetFloating(true)
-        if wasSplit {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                Self.invokeSystemSetFloating(true)
-            }
-        }
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            state.keyboardContext.isKeyboardSplit = false
-            state.keyboardContext.isKeyboardFloating = true
-            state.keyboardContext.renderVersion &+= 1
-        }
-        let floatingHeight = expectedKeyboardHeight()
-        updateKeyboardHeightConstraint(targetSize: CGSize(width: 320, height: floatingHeight))
-        children.first?.view.invalidateIntrinsicContentSize()
-        view.setNeedsLayout()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-            self?.clampFloatingHostContainerIfNeeded(initialLift: true)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
-            guard let self else { return }
-            self.isTransitioningToFloating = false
-            self.state.keyboardContext.isTransitioningSplit = false
-            self.state.keyboardContext.syncIsFloating(with: self)
-            self.updateKeyboardHeightConstraint()
-            self.clampFloatingHostContainerIfNeeded(initialLift: false)
-        }
-    }
-
-    /// Ensures the iPad floating keyboard platter and its bottom system grabber handle remain fully
-    /// inside `UIScreen.main.bounds` above the bottom safe-area / home indicator margin.
-    private func clampFloatingHostContainerIfNeeded(initialLift: Bool = false) {
-        guard state.keyboardContext.deviceType == .pad,
-              state.keyboardContext.isKeyboardFloating || isTransitioningToFloating,
-              let window = view.window else { return }
-        let screenBounds = window.windowScene?.screen.bounds ?? UIScreen.main.bounds
-        let safeBottom = max(window.safeAreaInsets.bottom + 38.0, initialLift ? 72.0 : 52.0)
-        let maxAllowedMaxY = screenBounds.height - safeBottom
-        var candidateView: UIView? = view
-        while let current = candidateView {
-            let className = NSStringFromClass(type(of: current))
-            if className.contains("UIInputSetHostView") || className.contains("UIKBInputBackdrop") || current == window.rootViewController?.view {
-                let frameInScreen = current.superview?.convert(current.frame, to: nil) ?? current.frame
-                if frameInScreen.maxY > maxAllowedMaxY && frameInScreen.height > 100 && frameInScreen.height < 360 {
-                    let deltaY = frameInScreen.maxY - maxAllowedMaxY
-                    current.frame.origin.y -= deltaY
-                }
-                break
-            }
-            candidateView = current.superview
-        }
-    }
-
-    func requestDockedKeyboardMode() {
-        isTransitioningToFloating = false
-        SwipeTypingState.shared.clearKeyFrames()
-        preferredContentSize = .zero
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            state.keyboardContext.isKeyboardFloating = false
-            state.keyboardContext.renderVersion &+= 1
-        }
-        updateKeyboardHeightConstraint()
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName("crh.key.requestDockedKeyboard" as CFString),
-            nil,
-            nil,
-            true
-        )
-        DispatchQueue.main.async {
-            Self.invokeSystemSetFloating(false)
-        }
-    }
-
-    func setSplitKeyboardMode(_ enabled: Bool) {
-        guard state.keyboardContext.deviceSupportsSplitKeyboard else {
-            if state.keyboardContext.isKeyboardSplit {
-                state.keyboardContext.isKeyboardSplit = false
-            }
-            KeyboardPreferences.setSplitKeyboardEnabled(false)
-            return
-        }
-        SwipeTypingState.shared.clearKeyFrames()
-        state.keyboardContext.isTransitioningSplit = true
-        state.keyboardContext.lastObservedSystemSplit = enabled
-        KeyboardPreferences.setSplitKeyboardEnabled(enabled)
-        if !enabled {
-            isTransitioningToFloating = false
-        }
-        var transaction = Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            if !enabled && state.keyboardContext.isKeyboardFloating {
-                state.keyboardContext.isKeyboardFloating = false
-            }
-            if state.keyboardContext.isKeyboardSplit != enabled {
-                state.keyboardContext.isKeyboardSplit = enabled
-            }
-            state.keyboardContext.renderVersion &+= 1
-        }
-        if state.keyboardContext.isKeyboardFloating {
-            requestDockedKeyboardMode()
-        }
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName((enabled ? "crh.key.requestSplitKeyboard" : "crh.key.requestMergedKeyboard") as CFString),
-            nil,
-            nil,
-            true
-        )
-        Self.invokeSystemSetSplit(enabled)
-        updateKeyboardHeightConstraint()
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) { [weak self] in
-            guard let self else { return }
-            self.state.keyboardContext.isTransitioningSplit = false
-            self.state.keyboardContext.lastObservedSystemSplit = enabled
-        }
-    }
-
-    static func invokeSystemSetSplit(_ split: Bool) {
-        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
-            for selName in ["setRivenPreference:", "setSplit:"] {
-                let implSel = NSSelectorFromString(selName)
-                if let method = class_getClassMethod(implClass, implSel) {
-                    typealias SetSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                    let fn = unsafeBitCast(method_getImplementation(method), to: SetSplitFn.self)
-                    fn(implClass, implSel, split)
-                }
-            }
-        }
-        if let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
-            let sharedSel = NSSelectorFromString("sharedInstance")
-            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
-                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
-                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
-                if let hostInstance = sharedFn(hostClass, sharedSel) {
-                    let hostSel = NSSelectorFromString("setSplit:")
-                    if hostInstance.responds(to: hostSel),
-                       let method = class_getInstanceMethod(type(of: hostInstance), hostSel) {
-                        typealias SetHostSplitFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                        let fn = unsafeBitCast(method_getImplementation(method), to: SetHostSplitFn.self)
-                        fn(hostInstance, hostSel, split)
-                    }
-                }
-            }
-        }
-    }
-
-    static func invokeSystemSetFloating(_ floating: Bool) {
-        var alreadyMatching = false
-        var didInvokeImpl = false
-        if let implClass: AnyClass = NSClassFromString(["UIKeyboard", "Impl"].joined()) {
-            let isFloatingSel = NSSelectorFromString("isFloating")
-            if let checkMethod = class_getClassMethod(implClass, isFloatingSel) {
-                typealias IsFloatingFn = @convention(c) (AnyObject, Selector) -> Bool
-                let checkFn = unsafeBitCast(method_getImplementation(checkMethod), to: IsFloatingFn.self)
-                alreadyMatching = (checkFn(implClass, isFloatingSel) == floating)
-            }
-            if !alreadyMatching {
-                let implSel = NSSelectorFromString("setFloating:")
-                if let method = class_getClassMethod(implClass, implSel) {
-                    typealias SetFloatingFn = @convention(c) (AnyObject, Selector, Bool) -> Void
-                    let fn = unsafeBitCast(method_getImplementation(method), to: SetFloatingFn.self)
-                    fn(implClass, implSel, floating)
-                    didInvokeImpl = true
-                }
-            }
-        }
-        if !alreadyMatching, !didInvokeImpl, let hostClass: AnyClass = NSClassFromString(["UIPeripheral", "Host"].joined()) {
-            let sharedSel = NSSelectorFromString("sharedInstance")
-            if let sharedMethod = class_getClassMethod(hostClass, sharedSel) {
-                typealias SharedFn = @convention(c) (AnyObject, Selector) -> AnyObject?
-                let sharedFn = unsafeBitCast(method_getImplementation(sharedMethod), to: SharedFn.self)
-                if let hostInstance = sharedFn(hostClass, sharedSel) {
-                    let hostSel = NSSelectorFromString("setFloating:onCompletion:")
-                    if hostInstance.responds(to: hostSel),
-                       let method = class_getInstanceMethod(type(of: hostInstance), hostSel) {
-                        typealias SetHostFloatingFn = @convention(c) (AnyObject, Selector, Bool, AnyObject?) -> Void
-                        let fn = unsafeBitCast(method_getImplementation(method), to: SetHostFloatingFn.self)
-                        fn(hostInstance, hostSel, floating, nil)
-                    }
-                }
-            }
-        }
-    }
-
     private static var didWarmTransliterator = false
 
     /// The transliteration rules compile ~50 regular expressions on first use. Do that off the main thread,
@@ -309,8 +87,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     private func expectedKeyboardHeight(targetSize: CGSize? = nil) -> CGFloat {
         let context = state.keyboardContext
         let isPad = context.deviceType == .pad
-        let isTargetFloating = targetSize.map { $0.width > 0 && $0.width < 420 } ?? false
-        let isFloating = context.isKeyboardFloating || isTransitioningToFloating || isTargetFloating || (isPad && view.bounds.width > 0 && view.bounds.width < 420)
+        let width = targetSize?.width ?? view.bounds.width
+        let isFloating = isPad && width.isFinite && width > 0 && width < 420
         let hasToolbar = state.autocompleteContext.isAutocompleteEnabled && DemoStyleProvider.shouldShowTopToolbar(for: context)
         let isLandscape: Bool = {
             if let sceneOrientation = view.window?.windowScene?.interfaceOrientation, sceneOrientation != .unknown {
@@ -345,12 +123,10 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             keyboardHeightConstraint = constraint
         }
         guard let constraint = keyboardHeightConstraint else { return }
-        let isTargetFloating = targetSize.map { $0.width > 0 && $0.width < 420 } ?? false
-        let isFloatingOrTransitioning = state.keyboardContext.isKeyboardFloating
-            || isTransitioningToFloating
-            || isTargetFloating
-            || (state.keyboardContext.deviceType == .pad && view.bounds.width > 0 && view.bounds.width < 420)
-        if !isFloatingOrTransitioning && preferredContentSize != .zero {
+        let width = targetSize?.width ?? view.bounds.width
+        let usesCompactLayout = state.keyboardContext.deviceType == .pad
+            && width.isFinite && width > 0 && width < 420
+        if !usesCompactLayout && preferredContentSize != .zero {
             preferredContentSize = .zero
         }
         let targetH = expectedKeyboardHeight(targetSize: targetSize)
@@ -377,14 +153,14 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         }
         KeyboardPreferences.refreshCachedPreferences()
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: state.keyboardContext)
-        let suggestionsMasterOn = KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled
+        let suggestionsMasterOn = KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy)
         let suggestionsOn = suggestionsMasterOn && topBarAllowed
         let autocorrectOn = suggestionsOn
             && (textDocumentProxy.autocorrectionType != .no)
-            && SystemKeyboardSettings.isAutoCorrectionEnabled
+            && SystemKeyboardSettings.isAutoCorrectionEnabled(for: textDocumentProxy)
         state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
         state.autocompleteContext.isAutocorrectEnabled = autocorrectOn
-        state.keyboardContext.isAutoCapitalizationEnabled = SystemKeyboardSettings.isAutoCapitalizationEnabled
+        state.keyboardContext.isAutoCapitalizationEnabled = SystemKeyboardSettings.isAutoCapitalizationEnabled(for: textDocumentProxy)
         if !suggestionsOn { state.autocompleteContext.suggestions = [] }
         if !KeyboardPreferences.statsEnabled {
             KeyboardUsageStats.reclaimResourcesWhenDisabled()
@@ -392,7 +168,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         SuggestionsDataBaseManager.shared.reclaimResourcesForDisabledFeatures(
             suggestionsActive: suggestionsMasterOn,
             wordLearningActive: KeyboardPreferences.wordLearningEnabled,
-            autocorrectActive: KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled
+            autocorrectActive: KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled(for: textDocumentProxy)
         )
         if suggestionsMasterOn {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
@@ -403,14 +179,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             }
         }
-        let supportsSplit = state.keyboardContext.deviceSupportsSplitKeyboard
-        if !supportsSplit && KeyboardPreferences.splitKeyboardEnabled {
-            KeyboardPreferences.setSplitKeyboardEnabled(false)
-        }
-        let splitEnabled = supportsSplit && KeyboardPreferences.splitKeyboardEnabled
-        if state.keyboardContext.isKeyboardSplit != splitEnabled {
-            state.keyboardContext.isKeyboardSplit = splitEnabled
-        }
+        // UIKit owns keyboard modes. Old app preferences must not fabricate split geometry.
+        state.keyboardContext.isKeyboardSplit = false
         let ukCyrNow = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
         let ukCyrChanged = (ukCyrNow != lastObservedUkrainianCyrillic)
         lastObservedUkrainianCyrillic = ukCyrNow
@@ -449,7 +219,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         warmTransliteratorIfNeeded()
         SwipeTypingState.shared.isSlideToTypeSettingEnabled = SystemKeyboardSettings.isSlideToTypeEnabled
             && KeyboardPreferences.suggestionsEnabled
-            && SystemKeyboardSettings.isPredictiveTextEnabled
+            && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy)
         updateKeyboardHeightConstraint()
         state.keyboardContext.renderVersion &+= 1
     }
@@ -459,7 +229,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     /// Here, we make demo-specific service keyboard configs.
     override func viewDidLoad() {
         QirimKeyDiagnosticsSubscriber.shared.start()
-        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
+        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy) {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
                 guard let self, self.isViewLoaded, self.view.window != nil else { return }
                 let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
@@ -633,41 +403,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
             .store(in: &cancellables)
 
-        NotificationCenter.default.publisher(for: Notification.Name("crh.key.systemSplitStateDidChange"))
-            .sink { [weak self] note in
-                guard let self else { return }
-                let split = (note.object as? NSNumber)?.boolValue ?? self.state.keyboardContext.isKeyboardSplit
-                KeyboardPreferences.setSplitKeyboardEnabled(split)
-                CFNotificationCenterPostNotification(
-                    CFNotificationCenterGetDarwinNotifyCenter(),
-                    CFNotificationName(KeyboardPreferences.splitModeChangedNotification as CFString),
-                    nil,
-                    nil,
-                    true
-                )
-                CFNotificationCenterPostNotification(
-                    CFNotificationCenterGetDarwinNotifyCenter(),
-                    CFNotificationName((split ? "crh.key.requestSplitKeyboard" : "crh.key.requestMergedKeyboard") as CFString),
-                    nil,
-                    nil,
-                    true
-                )
-                self.updateKeyboardHeightConstraint()
-                self.view.setNeedsLayout()
-                self.view.layoutIfNeeded()
-            }
-            .store(in: &cancellables)
-
-        for sysNote in [["TIPreferences", "ControllerChangedNotification"].joined(), "UIKeyboardRivenVisualStyleDidChange"] {
-            NotificationCenter.default.publisher(for: Notification.Name(sysNote))
-                .sink { [weak self] _ in
-                    guard let self, self.isViewLoaded, !self.isTransitioningToFloating else { return }
-                    self.state.keyboardContext.syncIsFloating(with: self)
-                    self.updateKeyboardHeightConstraint()
-                }
-                .store(in: &cancellables)
-        }
-
         let observer = UnsafeRawPointer(Unmanaged.passUnretained(self).toOpaque())
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(),
@@ -685,21 +420,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             },
             "crh.key.sandboxTraitsChanged" as CFString,
-            nil,
-            .deliverImmediately
-        )
-        CFNotificationCenterAddObserver(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            observer,
-            { _, observer, _, _, _ in
-                guard let observer else { return }
-                let controller = Unmanaged<KeyboardViewController>.fromOpaque(observer).takeUnretainedValue()
-                DispatchQueue.main.async { [weak controller] in
-                    guard let controller, controller.isViewLoaded else { return }
-                    controller.applyPreferences(syncDisk: true)
-                }
-            },
-            KeyboardPreferences.splitModeChangedNotification as CFString,
             nil,
             .deliverImmediately
         )
@@ -737,8 +457,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         /// 💡 Call super to perform the base initialization.
         super.viewDidLoad()
         self.hasDictationKey = true
-        Self.installPinchPassthroughIfNeeded()
-        installSplitPinchGestureIfNeeded()
         resetToExtensionDefaultScript()
         applyPreferences(syncDisk: false)
     }
@@ -748,74 +466,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         SuggestionsDataBaseManager.shared.releaseMemory()
     }
 
-    private func installSplitPinchGestureIfNeeded() {
-        guard !didInstallSplitGesture, state.keyboardContext.deviceSupportsSplitKeyboard else { return }
-        didInstallSplitGesture = true
-        let pinch = UIPinchGestureRecognizer(target: self, action: #selector(handleSplitPinchGesture(_:)))
-        pinch.cancelsTouchesInView = false
-        pinch.delaysTouchesBegan = false
-        pinch.delaysTouchesEnded = false
-        pinch.delegate = self
-        view.addGestureRecognizer(pinch)
-    }
-
-    @objc private func handleSplitPinchGesture(_ gesture: UIPinchGestureRecognizer) {
-        guard state.keyboardContext.deviceSupportsSplitKeyboard else { return }
-        if gesture.state == .began {
-            didTriggerPinchInCurrentGesture = false
-        }
-        defer {
-            if gesture.state == .ended || gesture.state == .cancelled || gesture.state == .failed {
-                didTriggerPinchInCurrentGesture = false
-            }
-        }
-        guard !didTriggerPinchInCurrentGesture else { return }
-
-        if state.keyboardContext.isKeyboardFloating {
-            if (gesture.state == .changed || gesture.state == .ended) && gesture.scale > 1.28 {
-                didTriggerPinchInCurrentGesture = true
-                state.calloutContext.inputContext.reset()
-                state.calloutContext.actionContext.reset()
-                KeyFlickState.shared.reset()
-                NotificationCenter.default.post(name: Notification.Name("crh.key.gestureEnded"), object: nil)
-                requestDockedKeyboardMode()
-            }
-            return
-        }
-        if gesture.state == .changed || gesture.state == .ended {
-            if !state.keyboardContext.isKeyboardSplit && gesture.scale > 1.32 {
-                didTriggerPinchInCurrentGesture = true
-                state.calloutContext.inputContext.reset()
-                state.calloutContext.actionContext.reset()
-                KeyFlickState.shared.reset()
-                NotificationCenter.default.post(name: Notification.Name("crh.key.gestureEnded"), object: nil)
-                setSplitKeyboardMode(true)
-            } else if state.keyboardContext.isKeyboardSplit && gesture.scale < 0.75 {
-                didTriggerPinchInCurrentGesture = true
-                state.calloutContext.inputContext.reset()
-                state.calloutContext.actionContext.reset()
-                KeyFlickState.shared.reset()
-                NotificationCenter.default.post(name: Notification.Name("crh.key.gestureEnded"), object: nil)
-                setSplitKeyboardMode(false)
-            } else if !state.keyboardContext.isKeyboardSplit && gesture.state == .ended && gesture.scale < 0.68 {
-                didTriggerPinchInCurrentGesture = true
-                state.calloutContext.inputContext.reset()
-                state.calloutContext.actionContext.reset()
-                KeyFlickState.shared.reset()
-                NotificationCenter.default.post(name: Notification.Name("crh.key.gestureEnded"), object: nil)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { [weak self] in
-                    guard let self,
-                          !self.state.keyboardContext.isKeyboardFloating,
-                          KeyboardContext.querySystemIsFloating(in: self) != true,
-                          !KeyboardContext.hasActiveSystemFloatingGesture(in: self.view) else { return }
-                    self.requestFloatingKeyboardMode()
-                }
-            }
-        }
-    }
-
     private func refreshSupplementaryLexicon() {
-        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled else {
+        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled(for: textDocumentProxy) else {
             SuggestionsDataBaseManager.shared.updateSupplementaryLexicon([:])
             return
         }
@@ -828,31 +480,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 map[key] = val
             }
             SuggestionsDataBaseManager.shared.updateSupplementaryLexicon(map)
-        }
-    }
-
-    func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-    ) -> Bool {
-        true
-    }
-
-    private static var didInstallPinchPassthrough = false
-
-    /// Ensures SwiftUI's zero-distance drag gesture recognizer on key buttons never blocks
-    /// the system's two-finger pinch-to-floating gesture recognizer on iPad.
-    private static func installPinchPassthroughIfNeeded() {
-        guard !didInstallPinchPassthrough else { return }
-        didInstallPinchPassthrough = true
-
-        if let origCanPrevent = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.canPrevent(_:))),
-           let swizCanPrevent = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.qirim_canPrevent(_:))) {
-            method_exchangeImplementations(origCanPrevent, swizCanPrevent)
-        }
-        if let origCanBePrevented = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.canBePrevented(by:))),
-           let swizCanBePrevented = class_getInstanceMethod(UIGestureRecognizer.self, #selector(UIGestureRecognizer.qirim_canBePrevented(by:))) {
-            method_exchangeImplementations(origCanBePrevented, swizCanBePrevented)
         }
     }
 
@@ -995,7 +622,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             : nil
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: context)
         let suggestionsOn = KeyboardPreferences.suggestionsEnabled
-            && SystemKeyboardSettings.isPredictiveTextEnabled
+            && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy)
             && topBarAllowed
         if state.autocompleteContext.isAutocompleteEnabled != suggestionsOn {
             state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
@@ -1004,12 +631,12 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             state.autocompleteContext.suggestions = []
         }
         let shouldAutocorrect = suggestionsOn
-            && SystemKeyboardSettings.isAutoCorrectionEnabled
+            && SystemKeyboardSettings.isAutoCorrectionEnabled(for: textDocumentProxy)
             && (textDocumentProxy.autocorrectionType != .no)
         if state.autocompleteContext.isAutocorrectEnabled != shouldAutocorrect {
             state.autocompleteContext.isAutocorrectEnabled = shouldAutocorrect
         }
-        let targetCapitalize = SystemKeyboardSettings.isAutoCapitalizationEnabled
+        let targetCapitalize = SystemKeyboardSettings.isAutoCapitalizationEnabled(for: textDocumentProxy)
         if context.isAutoCapitalizationEnabled != targetCapitalize {
             context.isAutoCapitalizationEnabled = targetCapitalize
         }
@@ -1117,18 +744,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        if !isTransitioningToFloating {
-            state.keyboardContext.syncIsFloating(with: self)
-        }
+        state.keyboardContext.syncIsFloating(with: self)
         updateKeyboardHeightConstraint()
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateKeyboardHeightConstraint()
-        if state.keyboardContext.isKeyboardFloating || isTransitioningToFloating {
-            clampFloatingHostContainerIfNeeded(initialLift: false)
-        }
         let shouldEnableInputCallout = state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating
         if state.calloutContext.inputContext.isEnabled != shouldEnableInputCallout {
             state.calloutContext.inputContext.isEnabled = shouldEnableInputCallout
@@ -1137,7 +759,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled {
+        if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy) {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
                 guard let self, self.isViewLoaded, self.view.window != nil else { return }
                 let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
@@ -1146,12 +768,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 }
             }
         }
-        if !isTransitioningToFloating {
-            state.keyboardContext.syncIsFloating(with: self)
-        }
+        state.keyboardContext.syncIsFloating(with: self)
         SpaceBarState.shared.triggerSwitchAnimation()
         updateKeyboardHeightConstraint()
-        clampFloatingHostContainerIfNeeded(initialLift: false)
         refreshProxyState()
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
         if hasText {
@@ -1171,24 +790,18 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         SwipeTypingState.shared.clearKeyFrames()
-        if !isTransitioningToFloating {
-            state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
-        }
+        state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
         updateKeyboardHeightConstraint(targetSize: size)
         coordinator.animate(alongsideTransition: { [weak self] _ in
             guard let self else { return }
-            if !self.isTransitioningToFloating {
-                self.state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
-            }
+            self.state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
             self.updateKeyboardHeightConstraint(targetSize: size)
             self.view.setNeedsLayout()
             self.view.layoutIfNeeded()
         }, completion: { [weak self] _ in
             guard let self else { return }
             SwipeTypingState.shared.clearKeyFrames()
-            if !self.isTransitioningToFloating {
-                self.state.keyboardContext.syncIsFloating(with: self)
-            }
+            self.state.keyboardContext.syncIsFloating(with: self)
             self.updateKeyboardHeightConstraint()
         })
     }
@@ -1408,25 +1021,5 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
         .onChange(of: action) { _ in
             progress = 0
         }
-    }
-}
-
-private extension UIGestureRecognizer {
-    var qirim_isSystemFloatingGesture: Bool {
-        self is UIPinchGestureRecognizer && self.view?.window != nil
-    }
-
-    @objc func qirim_canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
-        if preventedGestureRecognizer.qirim_isSystemFloatingGesture {
-            return false
-        }
-        return qirim_canPrevent(preventedGestureRecognizer)
-    }
-
-    @objc func qirim_canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
-        if qirim_isSystemFloatingGesture {
-            return false
-        }
-        return qirim_canBePrevented(by: preventingGestureRecognizer)
     }
 }

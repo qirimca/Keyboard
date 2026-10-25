@@ -721,253 +721,80 @@ extension UITextDocumentProxy {
     }
 }
 
-/// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
-/// from `system text preferences controller` / `system keyboard preferences controller` and `UITextDocumentProxy`.
+/// Resolves QırımKey feature preferences and public traits of the current text field.
+///
+/// UIKit does not expose global Apple keyboard switches to extensions. The
+/// historical type name is retained for callers; these are app-owned defaults,
+/// never a claim about Settings → General → Keyboard. Missing field traits use
+/// the app preference; explicit `.no` / `.none` field traits take precedence.
 enum SystemKeyboardSettings {
 
-    private static var cacheLock = os_unfair_lock_s()
-    private static var cachedValues: [String: Bool] = [:]
-    private static var lastSyncTimestamp: TimeInterval = 0
-    private static var isRefreshing = false
-    private static let refreshQueue = DispatchQueue(label: "crh.key.sysPrefsRefresh", qos: .utility)
+    /// App-owned settings in QırımKey's App Group. Features default to on to
+    /// preserve existing behavior when no app preference has been saved.
+    enum Feature: String {
+        case capsLock, periodShortcut, keyFlicks, slideToType
+        case smartPunctuation, predictiveText, autoCorrection, autoCapitalization
+        case mathResults, emojiPicker
 
-    private static let knownKeyGroups: [([String], Bool)] = [
-        (["KeyboardCapsLock", "UIKeyboardCapsLock"], true),
-        (["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], true),
-        (["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], true),
-        (["KeyboardAutocorrection", "UIKeyboardAutocorrection"], true),
-        (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions"], true),
-        (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
-        (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
-        (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
-        (["SmartQuotesEnabled", "KeyboardSmartQuotesEnabled", "UIKeyboardSmartQuotesEnabled"], true),
-        (["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled"], true),
-        (["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], true),
-        (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
-    ]
-
-    private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let syncSel = NSSelectorFromString("synchronizePreferences")
-            if shouldSync, controller.responds(to: syncSel) {
-                _ = controller.perform(syncSel)
-            }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in keys {
-                if controller.responds(to: valSel),
-                   let raw = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() {
-                    if let num = raw as? NSNumber {
-                        return num.boolValue
-                    }
-                }
-            }
-        }
-        let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
-            "com.apple.Preferences" as CFString,
-            kCFPreferencesAnyApplication
-        ]
-        for key in keys {
-            for domain in domains {
-                if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
-                    return val.boolValue
-                }
-            }
-            if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
-                return num.boolValue
-            }
-        }
-        return defaultValue
+        var preferenceKey: String { "crh.key.feature.\(rawValue)" }
     }
 
-    private static func triggerAsyncRefreshIfNeeded() {
-        let now = ProcessInfo.processInfo.systemUptime
-        os_unfair_lock_lock(&cacheLock)
-        let needsRefresh = !isRefreshing && (cachedValues.isEmpty || (now - lastSyncTimestamp) >= 2.0)
-        if needsRefresh {
-            isRefreshing = true
-            lastSyncTimestamp = now
-        }
-        os_unfair_lock_unlock(&cacheLock)
-        guard needsRefresh else { return }
-
-        refreshQueue.async {
-            var updated: [String: Bool] = [:]
-            for (index, entry) in knownKeyGroups.enumerated() {
-                if let primaryKey = entry.0.first {
-                    updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: index == 0, default: entry.1)
-                }
-            }
-            os_unfair_lock_lock(&cacheLock)
-            for (k, v) in updated {
-                cachedValues[k] = v
-            }
-            isRefreshing = false
-            os_unfair_lock_unlock(&cacheLock)
-        }
+    static func isFeatureEnabled(_ feature: Feature) -> Bool {
+        KeyboardPreferences.defaults.object(forKey: feature.preferenceKey) as? Bool ?? true
     }
 
-    private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
-        for key in keys {
-            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
-                return testOverride
-            }
-        }
-        guard let primaryKey = keys.first else { return defaultValue }
-        os_unfair_lock_lock(&cacheLock)
-        let cached = cachedValues[primaryKey]
-        os_unfair_lock_unlock(&cacheLock)
-        triggerAsyncRefreshIfNeeded()
-        return cached ?? defaultValue
+    static func setFeature(_ feature: Feature, enabled: Bool) {
+        KeyboardPreferences.defaults.set(enabled, forKey: feature.preferenceKey)
     }
 
-    static var isCapsLockEnabled: Bool {
-        readSystemPreferenceBool(["KeyboardCapsLock", "UIKeyboardCapsLock"], default: true)
-    }
+    static var isCapsLockEnabled: Bool { isFeatureEnabled(.capsLock) }
+    static var isPeriodShortcutEnabled: Bool { isFeatureEnabled(.periodShortcut) }
+    static var isKeyFlicksEnabled: Bool { isFeatureEnabled(.keyFlicks) }
+    static var isSlideToTypeEnabled: Bool { isFeatureEnabled(.slideToType) }
 
-    static var isPeriodShortcutEnabled: Bool {
-        readSystemPreferenceBool(["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], default: true)
-    }
-
-    static var isKeyFlicksEnabled: Bool {
-        readSystemPreferenceBool(["KeyboardPullDown", "UIKeyboardGesturePullDown"], default: true)
-    }
-
-    static var isSlideToTypeEnabled: Bool {
-        readSystemPreferenceBool(["KeyboardContinuousPathEnabled", "KeyboardFloatingContinuousPathEnabled"], default: true)
-    }
-
-    static var isSmartPunctuationEnabled: Bool {
-        isSmartPunctuationEnabled(for: nil)
-    }
+    static var isSmartPunctuationEnabled: Bool { isSmartPunctuationEnabled(for: nil) }
 
     static func isSmartPunctuationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        if let proxy {
-            if proxy.smartQuotesType == .no && proxy.smartDashesType == .no {
-                return false
-            }
-        }
-        return readSystemPreferenceBool(["KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation"], default: true)
+        guard isFeatureEnabled(.smartPunctuation) else { return false }
+        // The caller must also respect the individual quote or dash trait.
+        return !(proxy?.smartQuotesType == .no && proxy?.smartDashesType == .no)
     }
 
-    static var isPredictiveTextEnabled: Bool {
-        isPredictiveTextEnabled(for: nil)
-    }
+    static var isPredictiveTextEnabled: Bool { isPredictiveTextEnabled(for: nil) }
 
     static func isPredictiveTextEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        guard KeyboardPreferences.suggestionsEnabled else { return false }
-        return readSystemPreferenceBool(["KeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
+        guard KeyboardPreferences.suggestionsEnabled, isFeatureEnabled(.predictiveText) else { return false }
+        return proxy?.isSecureTextEntry != true
     }
 
-    static var isAutoCorrectionEnabled: Bool {
-        isAutoCorrectionEnabled(for: nil)
-    }
+    static var isAutoCorrectionEnabled: Bool { isAutoCorrectionEnabled(for: nil) }
 
     static func isAutoCorrectionEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        guard KeyboardPreferences.suggestionsEnabled else { return false }
-        if let proxy, proxy.autocorrectionType == .no { return false }
-        return readSystemPreferenceBool(["KeyboardAutocorrection", "UIKeyboardAutocorrection"], default: true)
+        guard isPredictiveTextEnabled(for: proxy), isFeatureEnabled(.autoCorrection) else { return false }
+        return proxy?.autocorrectionType != .no
     }
 
-    static var isAutoCapitalizationEnabled: Bool {
-        isAutoCapitalizationEnabled(for: nil)
-    }
+    static var isAutoCapitalizationEnabled: Bool { isAutoCapitalizationEnabled(for: nil) }
 
     static func isAutoCapitalizationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        if let proxy, let cap = proxy.autocapitalizationType, cap == .none { return false }
-        return readSystemPreferenceBool(["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], default: true)
+        guard isFeatureEnabled(.autoCapitalization) else { return false }
+        return proxy?.autocapitalizationType != UITextAutocapitalizationType.none
     }
 
-    static var isShowMathResultsEnabled: Bool {
-        isShowMathResultsEnabled(for: nil)
-    }
+    static var isShowMathResultsEnabled: Bool { isShowMathResultsEnabled(for: nil) }
 
     static func isShowMathResultsEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        if #available(iOS 18.0, *), let proxy, proxy.mathExpressionCompletionType == .no {
+        guard isFeatureEnabled(.mathResults), proxy?.isSecureTextEntry != true else { return false }
+        if #available(iOS 18.0, *), proxy?.mathExpressionCompletionType == .no {
             return false
         }
-        return readSystemPreferenceBool(["KeyboardMathExpressionCompletion", "ShowMathResults"], default: true)
+        return true
     }
 
-    private static var lastEmojiCheckTime: TimeInterval = 0
-    private static var cachedEmojiEnabled: Bool?
-    static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
-
-    /// Checks whether the iOS Emoji keyboard (`com.apple.keyboard.emoji`) is enabled in `Settings → General → Keyboard → Keyboards`.
-    /// Caches the result in the shared App Group so the keyboard extension can read it even when sandboxed.
-    static var isEmojiKeyboardEnabled: Bool {
-        if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.EmojiEnabled") as? Bool {
-            return testOverride
-        }
-        let now = ProcessInfo.processInfo.systemUptime
-        if let cached = cachedEmojiEnabled, (now - lastEmojiCheckTime) < 2.5 {
-            return cached
-        }
-        lastEmojiCheckTime = now
-
-        let activeModes = UITextInputMode.activeInputModes
-        if activeModes.count > 1 {
-            let foundInModes = activeModes.contains { mode in
-                if let lang = mode.primaryLanguage?.lowercased(), lang.contains("emoji") {
-                    return true
-                }
-                if let id = (mode as AnyObject).value(forKey: "identifier") as? String,
-                   id.localizedCaseInsensitiveContains("emoji") {
-                    return true
-                }
-                return false
-            }
-            cachedEmojiEnabled = foundInModes
-            KeyboardPreferences.defaults.set(foundInModes, forKey: cachedEmojiKeyboardEnabledKey)
-            return foundInModes
-        }
-
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in ["Keyboards", "AppleKeyboards"] {
-                if controller.responds(to: valSel),
-                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
-                   !list.isEmpty {
-                    let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
-                    cachedEmojiEnabled = hasEmoji
-                    KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
-                    return hasEmoji
-                }
-            }
-        }
-
-        let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
-            "com.apple.Preferences" as CFString,
-            kCFPreferencesAnyApplication
-        ]
-        for domain in domains {
-            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
-                let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
-                cachedEmojiEnabled = hasEmoji
-                KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
-                return hasEmoji
-            }
-        }
-        if let list = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !list.isEmpty {
-            let hasEmoji = list.contains { $0.localizedCaseInsensitiveContains("emoji") }
-            cachedEmojiEnabled = hasEmoji
-            KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
-            return hasEmoji
-        }
-
-        let fallback = KeyboardPreferences.defaults.object(forKey: cachedEmojiKeyboardEnabledKey) as? Bool ?? true
-        cachedEmojiEnabled = fallback
-        return fallback
-    }
+    /// Controls QırımKey's built-in emoji picker. Public language observations
+    /// cannot establish whether Apple's Emoji keyboard is installed; its
+    /// installation does not determine availability of this app-owned picker.
+    static var isEmojiKeyboardEnabled: Bool { isFeatureEnabled(.emojiPicker) }
 }
 
 #if canImport(MetricKit) && os(iOS)

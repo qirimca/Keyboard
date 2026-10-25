@@ -61,6 +61,18 @@ public class KeyboardStateContext: KeyboardStateInspector, ObservableObject {
     private let notificationCenter: NotificationCenter
 
     /**
+     Tri-state observation of whether the keyboard extension is currently active.
+     */
+    @Published
+    public var activeState: KeyboardBundleState = .unknown
+
+    /**
+     Tri-state observation of whether the keyboard extension is enabled in System Settings.
+     */
+    @Published
+    public var enabledState: KeyboardBundleState = .unknown
+
+    /**
      Whether or not a keyboard extension with the ``bundleId``
      is currently being used.
      */
@@ -78,8 +90,14 @@ public class KeyboardStateContext: KeyboardStateInspector, ObservableObject {
      Refresh state for the currently used keyboard extension.
      */
     public func refresh() {
-        isKeyboardActive = isKeyboardActive(withBundleId: bundleId)
-        isKeyboardEnabled = isKeyboardEnabled(withBundleId: bundleId)
+        let newActiveState = keyboardActiveState(withBundleId: bundleId)
+        let newEnabledState = keyboardEnabledState(withBundleId: bundleId)
+        if activeState != newActiveState { activeState = newActiveState }
+        if enabledState != newEnabledState { enabledState = newEnabledState }
+        let newActive = (newActiveState == .verifiedInstalled)
+        let newEnabled = (newEnabledState == .verifiedInstalled)
+        if isKeyboardActive != newActive { isKeyboardActive = newActive }
+        if isKeyboardEnabled != newEnabled { isKeyboardEnabled = newEnabled }
     }
 }
 

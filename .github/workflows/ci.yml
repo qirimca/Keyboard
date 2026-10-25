@@ -15,6 +15,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Bundled SQLite Predictions Database
         run: python3 QTatar/Scripts/verify_keyboard_db.py
+      - name: Test Private API Guard
+        run: python3 -m unittest discover -s scripts/tests -p 'test_private_api_guard.py' -v
       - name: Reject Private API Source Identifiers
         run: bash scripts/check_private_api_strings.sh QTatar
 

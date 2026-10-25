@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "project": "QırımKey",
+  "status": "inventory_only",
+  "note": "This manifest records file identity and known provenance only. Null means the information was not found in the inspected local assets; it must not be inferred.",
+  "assets": [
+    {
+      "id": "iphone_latin_light_draft",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/draft/01_latin_light_NEEDS_RETAKE_status_bar.png",
+      "kind": "app_store_screenshot_draft",
+      "role": "iPhone light Latin keyboard",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "dfb35ea17f054f2a07150481c1d767c708ec5f9464fbee38ca0df3e80bcd4d08",
+      "capture_provenance": {
+        "device_model": null,
+        "os_version": null,
+        "app_version": null,
+        "build_number": null,
+        "commit_sha": null,
+        "captured_at": null,
+        "capture_method": null
+      },
+      "review_status": "retake_required",
+      "review_note": "Filename flags a status-bar retake. Prior visual audit also noted a Messages back affordance; do not use as a final marketing screenshot until recaptured and reviewed."
+    },
+    {
+      "id": "iphone_latin_dark_draft",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/draft/02_latin_dark.png",
+      "kind": "app_store_screenshot_draft",
+      "role": "iPhone dark Latin keyboard",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "2d022560b9fc96821c32d3f49b41f52bedaad3a6418e2679d629a3c3986d0573",
+      "capture_provenance": {
+        "device_model": null,
+        "os_version": null,
+        "app_version": null,
+        "build_number": null,
+        "commit_sha": null,
+        "captured_at": null,
+        "capture_method": null
+      },
+      "review_status": "draft_review_required",
+      "review_note": "Prior visual audit described this as a usable starting point. Its capture provenance is absent, so it is not verified against a release build."
+    },
+    {
+      "id": "iphone_home_dark_draft",
+      "path": "AppStoreMetadata/Screenshots/iphone-6.3-1206x2622/draft/04_home_dark.png",
+      "kind": "app_store_screenshot_draft",
+      "role": "iPhone app home screen in dark appearance",
+      "format": "PNG",
+      "width_px": 1206,
+      "height_px": 2622,
+      "sha256": "134a835487ab87f9e0d184ffb9e7cbd80b6fcfbedb6181795270fd776b298388",
+      "capture_provenance": {
+        "device_model": null,
+        "os_version": null,
+        "app_version": null,
+        "build_number": null,
+        "commit_sha": null,
+        "captured_at": null,
+        "capture_method": null
+      },
+      "review_status": "draft_review_required",
+      "review_note": "Prior visual audit described this as a useful functional home-screen draft. Its capture provenance is absent, so it is not verified against a release build."
+    },
+    {
+      "id": "qirimkey_logo_light",
+      "path": "QTatar/Demo/Demo/Assets.xcassets/Projects/logo.imageset/qirim_logo.png",
+      "kind": "brand_logo",
+      "role": "QırımKey light appearance logo; asset catalog universal image",
+      "format": "PNG",
+      "width_px": 1024,
+      "height_px": 1024,
+      "sha256": "4ac75e386d8ab6304974b27683b8b601aac3c405383471a20473502ae29c1f0d",
+      "capture_provenance": {
+        "source_design_file": null,
+        "created_at": null,
+        "author_or_source": null,
+        "commit_sha": null
+      },
+      "review_status": "existing_brand_asset",
+      "review_note": "The identical hash is also used by the AppIcon asset at QTatar/Demo/Demo/Assets.xcassets/AppIcon.appiconset/qirimlogo.png."
+    },
+    {
+      "id": "qirimkey_logo_dark",
+      "path": "QTatar/Demo/Demo/Assets.xcassets/Projects/logo.imageset/qirim_logo_dark.png",
+      "kind": "brand_logo",
+      "role": "QırımKey dark appearance logo; asset catalog dark luminosity variant",
+      "format": "PNG",
+      "width_px": 1024,
+      "height_px": 1024,
+      "sha256": "8c5303f93c12f994c27e423bdc8079a8e11348acc51bcb2f94adf659d747864a",
+      "capture_provenance": {
+        "source_design_file": null,
+        "created_at": null,
+        "author_or_source": null,
+        "commit_sha": null
+      },
+      "review_status": "existing_brand_asset",
+      "review_note": "Catalog declares this PNG as the dark luminosity variant; original editable design source was not found in the inspected tree."
+    }
+  ]
+}

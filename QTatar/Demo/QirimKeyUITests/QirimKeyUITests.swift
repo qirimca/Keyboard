@@ -828,11 +828,6 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     private static var currentIPadSupportsSplitKeyboard: Bool {
-        if let sym = dlsym(UnsafeMutableRawPointer(bitPattern: -2), ["UIKeyboardDevice", "SupportsSplit"].joined()) {
-            typealias SupportsSplitFn = @convention(c) () -> Bool
-            let fn = unsafeBitCast(sym, to: SupportsSplitFn.self)
-            return fn()
-        }
         let modelIdentifier: String = {
             if let simModel = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"], !simModel.isEmpty {
                 return simModel

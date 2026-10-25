@@ -189,7 +189,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         let isUpper = keyboardContext.keyboardType == .alphabetic(.uppercased)
             || keyboardContext.keyboardType == .alphabetic(.capsLocked)
         let isAllCaps = keyboardContext.keyboardType == .alphabetic(.capsLocked)
-        let shouldCap = isUpper || (SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence)
+        let shouldCap = isUpper || (SystemKeyboardSettings.isAutoCapitalizationEnabled(for: keyboardContext.textDocumentProxy) && proxy.isCursorAtNewSentence)
         let currentClause = String(SuggestionsDataBaseManager.currentSentenceSlice(in: before))
         let delimiters = CharacterSet(charactersIn: String.wordDelimiters.filter { $0 != "-" }.joined())
         let contextWords = currentClause
@@ -355,7 +355,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         } else {
             GreetingBannerState.shared.dismissForTyping()
         }
-        if SystemKeyboardSettings.isAutoCapitalizationEnabled,
+        if SystemKeyboardSettings.isAutoCapitalizationEnabled(for: keyboardContext.textDocumentProxy),
            proxy.autocapitalizationType != UITextAutocapitalizationType.none,
            keyboardContext.keyboardType == .alphabetic(.lowercased),
            remainingBefore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -466,16 +466,16 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 suppressAutocorrectForCurrentSpaceRelease = false
                 return
             }
-            guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled else {
+            guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: keyboardContext.textDocumentProxy) else {
                 return
             }
             let proxy = keyboardContext.textDocumentProxy
-            let isAutocorrectAllowed = proxy.autocorrectionType != .no && SystemKeyboardSettings.isAutoCorrectionEnabled
+            let isAutocorrectAllowed = proxy.autocorrectionType != .no && SystemKeyboardSettings.isAutoCorrectionEnabled(for: keyboardContext.textDocumentProxy)
             autocompleteContext.isAutocorrectEnabled = isAutocorrectAllowed
             guard isAutocorrectAllowed else { return }
             if spaceDragGestureHandler.currentDragTextPositionOffset == 0 {
                 let mathAllowed: Bool = {
-                    guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+                    guard SystemKeyboardSettings.isShowMathResultsEnabled(for: keyboardContext.textDocumentProxy) else { return false }
                     if #available(iOS 18.0, *) {
                         return proxy.mathExpressionCompletionType != .no
                     }
@@ -624,7 +624,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             return
         }
         let mathAllowed: Bool = {
-            guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+            guard SystemKeyboardSettings.isShowMathResultsEnabled(for: keyboardContext.textDocumentProxy) else { return false }
             if #available(iOS 18.0, *) {
                 return proxy.mathExpressionCompletionType != .no
             }
@@ -764,27 +764,6 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             super.handle(gesture, on: action, replaced: false)
             return
         }
-        if action == .custom(named: "floating_keyboard") {
-            if gesture == .release {
-                triggerFeedback(for: .press, on: action)
-                (keyboardController as? KeyboardViewController)?.requestFloatingKeyboardMode()
-            }
-            return
-        }
-        if action == .custom(named: "split_keyboard") {
-            if gesture == .release {
-                triggerFeedback(for: .press, on: action)
-                (keyboardController as? KeyboardViewController)?.setSplitKeyboardMode(true)
-            }
-            return
-        }
-        if action == .custom(named: "merge_keyboard") || action == .custom(named: "dock_keyboard") {
-            if gesture == .release {
-                triggerFeedback(for: .press, on: action)
-                (keyboardController as? KeyboardViewController)?.setSplitKeyboardMode(false)
-            }
-            return
-        }
         if action == .custom(named: "toggle_script") {
             if gesture == .press {
                 triggerFeedback(for: gesture, on: action)
@@ -858,7 +837,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     }
                 }
 
-                if SystemKeyboardSettings.isAutoCapitalizationEnabled,
+                if SystemKeyboardSettings.isAutoCapitalizationEnabled(for: keyboardContext.textDocumentProxy),
                    proxy.autocapitalizationType != UITextAutocapitalizationType.none,
                    keyboardContext.keyboardType == .alphabetic(.lowercased),
                    remainingBefore.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

@@ -93,7 +93,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         let query = AutocompleteQueryResolver.queryText(for: proxy) ?? fallbackText
         latestQuery = query
         let mathAllowed: Bool = {
-            guard SystemKeyboardSettings.isShowMathResultsEnabled else { return false }
+            guard SystemKeyboardSettings.isShowMathResultsEnabled(for: proxy) else { return false }
             if #available(iOS 18.0, *) {
                 return proxy.mathExpressionCompletionType != .no
             }
@@ -119,7 +119,7 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
         )
         let autocorrectAllowed = context.isAutocorrectEnabled
             && proxy.autocorrectionType != .no
-            && SystemKeyboardSettings.isAutoCorrectionEnabled
+            && SystemKeyboardSettings.isAutoCorrectionEnabled(for: proxy)
         return QuerySnapshot(
             query: query,
             mathEvaluation: mathEvaluation,
@@ -286,7 +286,7 @@ private extension CrimeanTatarAutocompleteProvider {
         }
 
         // 3. Fallback for non-alphabetic or auto modes:
-        if SystemKeyboardSettings.isAutoCapitalizationEnabled && proxy.isCursorAtNewSentence {
+        if SystemKeyboardSettings.isAutoCapitalizationEnabled(for: proxy) && proxy.isCursorAtNewSentence {
             return true
         }
         return false

@@ -22,20 +22,6 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
     override func calloutActions(
         for action: KeyboardAction
     ) -> [KeyboardAction] {
-        if action == .dismissKeyboard,
-           keyboardContext.deviceType == .pad,
-           !keyboardContext.isKeyboardFloating {
-            if keyboardContext.deviceSupportsSplitKeyboard {
-                let splitOrMerge = keyboardContext.isKeyboardSplit ? "merge_keyboard" : "split_keyboard"
-                return [
-                    .custom(named: "floating_keyboard"),
-                    .custom(named: splitOrMerge)
-                ]
-            }
-            return [
-                .custom(named: "floating_keyboard")
-            ]
-        }
         if action == .custom(named: "url_domain") {
             return [".com", ".ua", ".org", ".net", ".edu"].map { .character($0) }
         }

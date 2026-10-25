@@ -10,67 +10,65 @@
 import Foundation
 import UIKit
 
-/// This protocol can be implemented by classes that must be
-/// able to check the enabled state of a keyboard extension.
-///
-/// It can check if a keyboard is enabled in System Settings,
-/// if Full Access is enabled, if a keyboard is active, etc.
-///
-/// This type supports bundle ID wildcards, which means that
-/// it can inspect multiple keyboards at once, for instance:
-///
-/// ```
-/// @StateObject
-/// var state = KeyboardStateContext(bundleId: "com.myapp.*")
-/// ```
-///
-/// The easiest way to observe a keyboard's enabled state is
-/// to use an observable ``KeyboardStateContext``.
+/// Tri-state observation for keyboard extension installation or activation.
+/// When UIKit does not expose extension bundle identifiers (`canInspectKeyboardBundleIds == false`),
+/// the state is `.unknown` rather than `.verifiedMissing`.
+public enum KeyboardBundleState: String, Equatable, Sendable {
+    case verifiedInstalled
+    case verifiedMissing
+    case unknown
+}
+
+/// Inspects public keyboard capabilities. UIKit does not expose installed or
+/// currently displayed extension bundle IDs. Bundle-ID methods are retained for
+/// compatibility and report no verified IDs; false means unverified, not proof
+/// that a keyboard is absent. A language cannot identify a particular extension.
+/// Use ``KeyboardStateContext`` for observable compatibility values.
 public protocol KeyboardStateInspector {}
 
 public extension KeyboardStateInspector {
 
-    /// Get a list of all active keyboard bundle IDs.
-    var activeKeyboardBundleIds: [String] {
-        let modes = UITextInputMode.activeInputModes
-        let displayed = modes.filter { ($0.value(forKey: "isDisplayed") as? Int) == 1 }
-        var ids = displayed.compactMap { $0.value(forKey: "identifier") as? String }
-        if ids.isEmpty {
-            for mode in modes {
-                if mode.primaryLanguage?.hasPrefix("crh") == true {
-                    if let id = mode.value(forKey: "identifier") as? String {
-                        ids.append(id)
-                    } else {
-                        ids.append("crh.key.keyboard.keyboard")
-                    }
-                }
-            }
-        }
-        return ids
+    /// Public language observations, with nil/undetermined languages omitted.
+    /// These do not prove installation or activation of a specific bundle.
+    var availableKeyboardLanguages: [String] {
+        Array(Set(UITextInputMode.activeInputModes.compactMap(\.primaryLanguage))).sorted()
     }
 
-    /// Get a list of all enabled keyboard bundle IDs.
+    /// False because UIKit provides no public extension bundle-ID enumeration.
+    var canInspectKeyboardBundleIds: Bool { false }
+
+    /// No active bundle IDs can be verified through public APIs.
+    var activeKeyboardBundleIds: [String] { [] }
+
+    /// No enabled bundle IDs can be verified through public APIs. The argument
+    /// remains for source compatibility; Apple preferences are never queried.
     func enabledKeyboardBundleIds(
         defaults: UserDefaults = .standard
-    ) -> [String] {
-        var ids = defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
-        let modeIds = UITextInputMode.activeInputModes.compactMap { $0.value(forKey: "identifier") as? String }
-        ids.append(contentsOf: modeIds)
-        for mode in UITextInputMode.activeInputModes {
-            if mode.primaryLanguage?.hasPrefix("crh") == true {
-                ids.append("crh.key.keyboard.keyboard")
-                ids.append("crh.key.keyboard")
-            }
-        }
-        return Array(Set(ids))
-    }
-    
+    ) -> [String] { [] }
+
     /// Whether the full access is enabled in System Settings.
     var isFullAccessEnabled: Bool {
         FullAccessInspector().hasFullAccess
     }
+
+    /// Tri-state active status for a keyboard extension bundle identifier.
+    func keyboardActiveState(
+        withBundleId bundleId: String
+    ) -> KeyboardBundleState {
+        guard canInspectKeyboardBundleIds else { return .unknown }
+        return isKeyboardActive(withBundleId: bundleId) ? .verifiedInstalled : .verifiedMissing
+    }
+
+    /// Tri-state enabled status for a keyboard extension bundle identifier.
+    func keyboardEnabledState(
+        withBundleId bundleId: String,
+        defaults: UserDefaults = .standard
+    ) -> KeyboardBundleState {
+        guard canInspectKeyboardBundleIds else { return .unknown }
+        return isKeyboardEnabled(withBundleId: bundleId, defaults: defaults) ? .verifiedInstalled : .verifiedMissing
+    }
     
-    /// Whether a certain keyboard extension is active.
+    /// Whether an active extension bundle ID has been verified (currently false).
     func isKeyboardActive(
         withBundleId bundleId: String
     ) -> Bool {
@@ -78,7 +76,7 @@ public extension KeyboardStateInspector {
         return isKeyboardActive(withId: bundleId, in: ids)
     }
     
-    /// Whether a certain keyboard extension is enabled.
+    /// Whether an enabled extension bundle ID has been verified (currently false).
     func isKeyboardEnabled(
         withBundleId bundleId: String,
         defaults: UserDefaults = .standard

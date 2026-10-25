@@ -20,37 +20,23 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         keyboardContext.deviceType == .pad
     }
     
+    /// Preview overrides require explicit registration of an in-process context.
+    /// Shared defaults and an unknown host cannot authenticate a sandbox session.
+    private static let sandboxPreviewContexts = NSHashTable<KeyboardContext>.weakObjects()
+
+    static func registerSandboxPreview(_ context: KeyboardContext) {
+        guard Bundle.main.bundleIdentifier == AppConfiguration.appBundleId else { return }
+        sandboxPreviewContexts.add(context)
+    }
+
+    static func unregisterSandboxPreview(_ context: KeyboardContext) {
+        sandboxPreviewContexts.remove(context)
+    }
+
     static func isSandboxOverrideActive(for context: KeyboardContext) -> Bool {
-        if let bundleId = context.hostApplicationBundleId,
-           bundleId != AppConfiguration.appBundleId,
-           bundleId != "com.apple.springboard",
-           bundleId != "none" {
-            return false
-        }
-        guard KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused") else {
-            return false
-        }
-        let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
-        let isUITesting = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
-        let age = ts > 0 ? (Date().timeIntervalSince1970 - ts) : 0
-        if !isUITesting && ts > 0 && age > 1800.0 {
-            return false
-        }
-        let recentlyActiveInSandbox = isUITesting || (ts > 0 && age < 600.0)
-        if context.hostApplicationBundleId == nil && !recentlyActiveInSandbox {
-            let appearance = context.textDocumentProxy.keyboardAppearance ?? .default
-            if KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
-                let expectedAppearance: UIKeyboardAppearance = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark") ? .dark : .light
-                if appearance != expectedAppearance && appearance != .default {
-                    return false
-                }
-            } else {
-                guard KeyboardPreferences.defaults.string(forKey: "crh.key.test.fieldMode") != nil else {
-                    return false
-                }
-            }
-        }
-        return true
+        Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
+            && sandboxPreviewContexts.contains(context)
+            && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.sandboxFocused")
     }
 
     static func effectiveProxyKeyboardType(for context: KeyboardContext) -> UIKeyboardType {
@@ -112,7 +98,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func shouldShowTopToolbar(for context: KeyboardContext) -> Bool {
-        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled else {
+        guard KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: context.textDocumentProxy) else {
             return false
         }
         if context.textDocumentProxy.isSecureTextEntry == true {
