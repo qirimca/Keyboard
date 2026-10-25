@@ -15,12 +15,20 @@ struct OnboardingView: View {
     }
 
     var mode: Mode = .add
+    var initialPage: String = "Onboard1"
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) var openURL
     @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
-    @State private var selected = Page.onboard1.rawValue
+    @State private var selected: String
     @State private var text = ""
+
+    init(mode: Mode = .add, initialPage: String = "Onboard1") {
+        self.mode = mode
+        self.initialPage = initialPage
+        let validPage = Page(rawValue: initialPage)?.rawValue ?? Page.onboard1.rawValue
+        self._selected = State(initialValue: validPage)
+    }
     
     private enum Page: String, CaseIterable {
         case onboard1 = "Onboard1"
@@ -67,6 +75,18 @@ struct OnboardingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.25), value: selected)
+            }
+        }
+        .onAppear {
+            let validPage = Page(rawValue: initialPage)?.rawValue ?? Page.onboard1.rawValue
+            if selected != validPage {
+                selected = validPage
+            }
+        }
+        .onChange(of: initialPage) { _, newValue in
+            let validPage = Page(rawValue: newValue)?.rawValue ?? Page.onboard1.rawValue
+            if selected != validPage {
+                selected = validPage
             }
         }
         .accessibilityIdentifier(mode == .removeCyrillic ? "onboarding.removeCyrillic.view" : "onboarding.add.view")

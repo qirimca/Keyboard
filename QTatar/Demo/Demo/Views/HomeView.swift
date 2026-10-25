@@ -154,6 +154,7 @@ struct HomeView: View {
 
     @State private var showIndicatorSheet = false
     @State private var onboardingSheetMode: OnboardingView.Mode = .add
+    @State private var onboardingInitialPage: String = "Onboard1"
     @State private var pendingCyrillicRemovalCheck = false
     @State private var showCyrillicGuideAlert = false
     @State private var isTestingExpanded = true
@@ -171,6 +172,7 @@ struct HomeView: View {
     @State private var viewportSize = CGSize.zero
     @State private var containerSize = CGSize.zero
     @State private var isWritingFieldFocused = false
+    @State private var isSandboxCrimeanTatarKeyboardActive: Bool = !ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard")
     @State private var didInitializeThemeFromSystem = false
     @State private var lastKnownSettingsSnapshot: [String: Bool] = [:]
     @State private var settingsSyncRevision: Int = 0
@@ -185,7 +187,7 @@ struct HomeView: View {
     }
 
     private var shouldShowStartOverlay: Bool {
-        !areAllIndicatorsEnabled && !isWritingFieldFocused && !isKeyboardVisible
+        false
     }
 
     var body: some View {
@@ -337,19 +339,19 @@ struct HomeView: View {
             refreshCyrillicStatus()
         }) {
             NavigationStack {
-                OnboardingView(mode: onboardingSheetMode)
+                OnboardingView(mode: onboardingSheetMode, initialPage: onboardingInitialPage)
             }
             .presentationCornerRadius(20)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
-        .preferredColorScheme(selectedThemeMode.isDark ? .dark : .light)
         .alert(localizedInterfaceString("settings.cyrillicGuideTitle"), isPresented: $showCyrillicGuideAlert) {
             Button(localizedInterfaceString("settings.cyrillicAddAction")) {
                 Self.openKeyboardSettings()
             }
             Button(Home.home_start_key.localized) {
                 onboardingSheetMode = .add
+                onboardingInitialPage = "Onboard1"
                 showIndicatorSheet = true
             }
             Button(localizedInterfaceString("stats.resetCancel"), role: .cancel) {}
@@ -732,6 +734,11 @@ struct HomeView: View {
         cachedIsFullAccessEnabled = keyboardState.isFullAccessEnabled
         cachedIsRtl = keyboardState.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
         let args = ProcessInfo.processInfo.arguments
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        if languages.contains(where: { $0.hasPrefix("crh") }) && !args.contains("-qt_keyboard_missing") {
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
+        }
         if args.contains("-qt_cyrillic_missing") {
             cyrillicStatus = .missing
             return
@@ -740,8 +747,6 @@ struct HomeView: View {
             cyrillicStatus = .enabled
             return
         }
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
         let hasActiveCyrillicMode = languages.contains { $0.hasPrefix("crh-cyrl") }
         if hasActiveCyrillicMode {
             pendingCyrillicRemovalCheck = false
@@ -882,6 +887,23 @@ struct HomeView: View {
                 KeyboardPreferences.defaults.set(requestedLang, forKey: KeyboardPreferences.languageKey)
                 KeyboardPreferences.defaults.synchronize()
             }
+            if args.contains("-qt_cyrillic_added") {
+                cyrillicEnabled = true
+                KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                KeyboardPreferences.defaults.synchronize()
+                defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+            }
+            if args.contains("-qt_ukrainian_fiva") {
+                cyrillicEnabled = true
+                ukrainianCyrillicLayout = true
+                KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(true)
+                KeyboardPreferences.defaults.synchronize()
+                defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
+                defaults.set(true, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
+            }
             if args.contains("-qt_stats_disabled") {
                 statsEnabled = false
                 isStatsExpanded = false
@@ -897,7 +919,9 @@ struct HomeView: View {
             if args.contains("-qt_demo_stats") {
                 if !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
                     text = "selâm"
-                    shouldAutoFocusSandbox = false
+                    if !args.contains("-qt_focus_sandbox_live") {
+                        shouldAutoFocusSandbox = false
+                    }
                 }
                 totalWords = 180
                 manualWords = 120
@@ -1132,30 +1156,125 @@ private extension HomeView {
     }
 
     var statusIndicatorsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            let states: [KeyboardState] = keyboardState.canInspectKeyboardBundleIds
-                ? [
-                    .active(keyboardState.activeState == .verifiedInstalled),
-                    .enable(keyboardState.enabledState == .verifiedInstalled),
-                    .fullAccess(cachedIsFullAccessEnabled)
-                ]
-                : []
-            if !states.isEmpty {
-                KeyboardStateIndicatorsRow(states: states) {
-                    showIndicatorSheet = true
-                }
+        let warningAmber = Color(red: 0.96, green: 0.58, blue: 0.04)
+        let primaryKeyboardToggleBinding = Binding<Bool>(
+            get: { isPrimaryKeyboardAdded },
+            set: { _ in
+                HapticFeedback.playSelection()
+                onboardingSheetMode = .add
+                onboardingInitialPage = "Onboard1"
+                showIndicatorSheet = true
             }
+        )
+        let fullAccessToggleBinding = Binding<Bool>(
+            get: { isFullAccessGranted },
+            set: { _ in
+                HapticFeedback.playSelection()
+                onboardingSheetMode = .add
+                onboardingInitialPage = "Onboard2"
+                showIndicatorSheet = true
+            }
+        )
 
-            if keyboardState.activeState == .verifiedMissing {
-                StableLocalizedText(
-                    key: Home.home_getkeyboard_key.rawValue,
-                    table: "Home",
-                    font: InterfaceFont.font("GeneralSans-Regular", size: 12),
-                    color: secondaryInk
-                )
-                .padding(.horizontal, 4)
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Button {
+                    HapticFeedback.playSelection()
+                    onboardingSheetMode = .add
+                    onboardingInitialPage = "Onboard1"
+                    showIndicatorSheet = true
+                } label: {
+                    HStack(spacing: 12) {
+                        settingsIconBadge(
+                            isPrimaryKeyboardAdded ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
+                            color: isPrimaryKeyboardAdded ? appleGreen : warningAmber,
+                            badgeID: isPrimaryKeyboardAdded ? "status.primaryKeyboard.ok" : "status.primaryKeyboard.warning"
+                        )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isPrimaryKeyboardAdded ? Home.home_keyboard_on_key.localized : Home.home_keyboard_off_key.localized)
+                                .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                                .foregroundStyle(primaryInk)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                            if !isPrimaryKeyboardAdded {
+                                interfaceLabel("settings.cyrillic.addHint")
+                                    .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                                    .foregroundStyle(secondaryInk)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Toggle("", isOn: animationsAllowed ? primaryKeyboardToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : primaryKeyboardToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("status.primaryKeyboard.toggle")
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("status.primaryKeyboard.row")
+
+            Divider().padding(.leading, 54)
+
+            HStack(spacing: 12) {
+                Button {
+                    HapticFeedback.playSelection()
+                    onboardingSheetMode = .add
+                    onboardingInitialPage = "Onboard2"
+                    showIndicatorSheet = true
+                } label: {
+                    HStack(spacing: 12) {
+                        settingsIconBadge(
+                            isFullAccessGranted ? "lock.open.fill" : "exclamationmark.triangle.fill",
+                            color: isFullAccessGranted ? appleGreen : warningAmber,
+                            badgeID: isFullAccessGranted ? "status.fullAccess.ok" : "status.fullAccess.warning"
+                        )
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isFullAccessGranted ? Home.home_full_on_key.localized : Home.home_full_off_key.localized)
+                                .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
+                                .foregroundStyle(primaryInk)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                            if !isFullAccessGranted {
+                                interfaceLabel("settings.fullAccess.addHint")
+                                    .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                                    .foregroundStyle(secondaryInk)
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .multilineTextAlignment(.leading)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Toggle("", isOn: animationsAllowed ? fullAccessToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : fullAccessToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("status.fullAccess.toggle")
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("status.fullAccess.row")
         }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
     }
 
     private var interfaceLanguageIconName: String {
@@ -1210,6 +1329,7 @@ private extension HomeView {
                         }
                         if !isCyrillicKeyboardAdded {
                             onboardingSheetMode = .add
+                            onboardingInitialPage = "Onboard1"
                             showIndicatorSheet = true
                         }
                     } else {
@@ -1234,6 +1354,7 @@ private extension HomeView {
                             cyrillicEnabled = true
                         }
                         onboardingSheetMode = .add
+                        onboardingInitialPage = "Onboard1"
                         showIndicatorSheet = true
                     } else {
                         ukrainianCyrillicLayout = wantOn
@@ -1254,6 +1375,7 @@ private extension HomeView {
                             Button {
                                 HapticFeedback.playSelection()
                                 onboardingSheetMode = .add
+                                onboardingInitialPage = "Onboard1"
                                 showIndicatorSheet = true
                             } label: {
                                 interfaceLabel("settings.cyrillic.addHint")
@@ -1418,36 +1540,92 @@ private extension HomeView {
 
     /// Combines the expandable "Try Keyboard" controls and the writing area into a single unified Apple card.
     var testingAndWritingSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
-                    isTestingExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    settingsIconBadge("keyboard.badge.eye", color: brandBlue, triggerToken: "\(isTestingExpanded)", badgeID: "testing.header.keyboard")
-                    Text(Onboarding.onb_check_key.localized)
-                        .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
-                        .foregroundStyle(primaryInk)
-                        .lineLimit(1)
-                    Spacer()
-                    ZStack {
-                        Circle()
-                            .fill(segmentedTrackColor)
-                            .frame(width: 24, height: 24)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11.5, weight: .bold))
-                            .foregroundStyle(secondaryInk)
-                            .rotationEffect(.degrees(isTestingExpanded ? 180 : 0))
+        let showWrongKeyboardWarning = (isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive)
+            || ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard")
+        let warningAmber = Color(red: 0.96, green: 0.58, blue: 0.04)
+
+        return VStack(alignment: .leading, spacing: 0) {
+            if showWrongKeyboardWarning {
+                HStack(spacing: 8) {
+                    Button {
+                        HapticFeedback.playSelection()
+                        onboardingSheetMode = .add
+                        onboardingInitialPage = "Onboard3"
+                        showIndicatorSheet = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            settingsIconBadge(
+                                "exclamationmark.triangle.fill",
+                                color: warningAmber,
+                                badgeID: "testing.header.warningBadge"
+                            )
+                            interfaceLabel("sandbox.wrongKeyboardWarning")
+                                .font(InterfaceFont.font("GeneralSans-Semibold", size: 14))
+                                .foregroundStyle(primaryInk)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                            Spacer(minLength: 4)
+                        }
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("testing.header.wrongKeyboardWarning")
+
+                    Button {
+                        withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
+                            isTestingExpanded.toggle()
+                        }
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(segmentedTrackColor)
+                                .frame(width: 24, height: 24)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11.5, weight: .bold))
+                                .foregroundStyle(secondaryInk)
+                                .rotationEffect(.degrees(isTestingExpanded ? 180 : 0))
+                        }
+                        .frame(width: 28, height: 28)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("testing.toggle")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
-                .contentShape(Rectangle())
+                .id("testingSection")
+            } else {
+                Button {
+                    withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
+                        isTestingExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: 12) {
+                        settingsIconBadge("keyboard.badge.eye", color: brandBlue, triggerToken: "\(isTestingExpanded)", badgeID: "testing.header.keyboard")
+                        Text(Onboarding.onb_check_key.localized)
+                            .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
+                            .foregroundStyle(primaryInk)
+                            .lineLimit(1)
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .fill(segmentedTrackColor)
+                                .frame(width: 24, height: 24)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11.5, weight: .bold))
+                                .foregroundStyle(secondaryInk)
+                                .rotationEffect(.degrees(isTestingExpanded ? 180 : 0))
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("testing.toggle")
+                .id("testingSection")
             }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("testing.toggle")
-            .id("testingSection")
 
             if isTestingExpanded {
                 Divider().padding(.horizontal, 14)
@@ -1567,6 +1745,7 @@ private extension HomeView {
                 text: $text,
                 currentText: text,
                 isFocused: $isWritingFieldFocused,
+                isCrimeanTatarKeyboardActive: $isSandboxCrimeanTatarKeyboardActive,
                 canUndo: $canSandboxUndo,
                 canRedo: $canSandboxRedo,
                 liveWPM: $liveWPM,
@@ -2222,13 +2401,44 @@ private extension HomeView {
         return false
     }
 
-    var areAllIndicatorsEnabled: Bool {
-        guard keyboardState.canInspectKeyboardBundleIds else {
+    var isPrimaryKeyboardAdded: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_keyboard_missing") {
+            return false
+        }
+        if args.contains("-qt_keyboard_added") {
             return true
         }
-        return keyboardState.activeState == .verifiedInstalled &&
-            keyboardState.enabledState == .verifiedInstalled &&
-            cachedIsFullAccessEnabled
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        if languages.contains(where: { $0.hasPrefix("crh") }) {
+            return true
+        }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+            || cachedIsFullAccessEnabled
+            || Self.isUITestingEnvironment
+            || args.contains("-qt_demo_stats") {
+            return true
+        }
+        return false
+    }
+
+    var isFullAccessGranted: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_full_access_missing") {
+            return false
+        }
+        if args.contains("-qt_full_access_granted") {
+            return true
+        }
+        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
+            return true
+        }
+        return cachedIsFullAccessEnabled
+    }
+
+    var areAllIndicatorsEnabled: Bool {
+        isPrimaryKeyboardAdded && isFullAccessGranted
     }
 }
 
@@ -2801,6 +3011,46 @@ private struct SettingsLineArtIconShape: Shape {
                 p.addLine(to: CGPoint(x: c.x + CGFloat(cos(angle)) * r2, y: c.y + CGFloat(sin(angle)) * r2))
             }
 
+        case "exclamationmark.triangle.fill", "exclamationmark.triangle":
+            let top = CGPoint(x: w * 0.50, y: h * 0.12)
+            let right = CGPoint(x: w * 0.90, y: h * 0.84)
+            let left = CGPoint(x: w * 0.10, y: h * 0.84)
+            let bottomMid = CGPoint(x: w * 0.50, y: h * 0.84)
+            let cornerR = min(w, h) * 0.08
+            p.move(to: bottomMid)
+            p.addArc(tangent1End: left, tangent2End: top, radius: cornerR)
+            p.addArc(tangent1End: top, tangent2End: right, radius: cornerR)
+            p.addArc(tangent1End: right, tangent2End: left, radius: cornerR)
+            p.closeSubpath()
+            // Exclamation mark stem & dot
+            p.move(to: CGPoint(x: w * 0.50, y: h * 0.38))
+            p.addLine(to: CGPoint(x: w * 0.50, y: h * 0.58))
+            let dotR = min(w, h) * 0.032
+            p.addEllipse(in: CGRect(x: w * 0.50 - dotR, y: h * 0.71 - dotR, width: dotR * 2, height: dotR * 2))
+
+        case "checkmark.circle.fill", "checkmark.circle":
+            let c = CGPoint(x: w * 0.50, y: h * 0.50)
+            let r = min(w, h) * 0.40
+            p.addEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
+            p.move(to: CGPoint(x: w * 0.32, y: h * 0.52))
+            p.addLine(to: CGPoint(x: w * 0.45, y: h * 0.65))
+            p.addLine(to: CGPoint(x: w * 0.69, y: h * 0.37))
+
+        case "lock.open.fill", "lock.open":
+            p.addRoundedRect(
+                in: CGRect(x: w * 0.22, y: h * 0.46, width: w * 0.56, height: h * 0.40),
+                cornerSize: CGSize(width: 2.5, height: 2.5)
+            )
+            p.move(to: CGPoint(x: w * 0.36, y: h * 0.46))
+            p.addLine(to: CGPoint(x: w * 0.36, y: h * 0.28))
+            p.addArc(
+                center: CGPoint(x: w * 0.50, y: h * 0.28),
+                radius: w * 0.14,
+                startAngle: .degrees(180),
+                endAngle: .degrees(350),
+                clockwise: false
+            )
+
         default: // "moon.stars.fill", "moon.fill"
             let c = CGPoint(x: w * 0.48, y: h * 0.50)
             let r = min(w, h) * 0.34
@@ -3357,6 +3607,7 @@ private struct SandboxTextView: UIViewRepresentable {
     @Binding var text: String
     let currentText: String
     @Binding var isFocused: Bool
+    @Binding var isCrimeanTatarKeyboardActive: Bool
     @Binding var canUndo: Bool
     @Binding var canRedo: Bool
     @Binding var liveWPM: Int
@@ -3420,6 +3671,7 @@ private struct SandboxTextView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.textView = uiView
         uiView.textColor = .label
+        context.coordinator.refreshActiveInputMode(for: uiView)
         if currentText != context.coordinator.lastSyncedText || uiView.text != currentText {
             let delta = currentText.count - uiView.text.count
             context.coordinator.lastSyncedText = currentText
@@ -3582,6 +3834,14 @@ private struct SandboxTextView: UIViewRepresentable {
             super.init()
             let nc = NotificationCenter.default
             observers.append(nc.addObserver(
+                forName: UITextInputMode.currentInputModeDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self, let tv = self.textView else { return }
+                self.refreshActiveInputMode(for: tv)
+            })
+            observers.append(nc.addObserver(
                 forName: Notification.Name("crh.key.clearSandboxText"),
                 object: nil,
                 queue: .main
@@ -3663,6 +3923,20 @@ private struct SandboxTextView: UIViewRepresentable {
             }
         }
 
+        func refreshActiveInputMode(for textView: UITextView) {
+            let isCRH: Bool
+            if ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard") {
+                isCRH = false
+            } else if let lang = textView.textInputMode?.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
+                isCRH = lang.hasPrefix("crh")
+            } else {
+                isCRH = true
+            }
+            if parent.isCrimeanTatarKeyboardActive != isCRH {
+                parent.isCrimeanTatarKeyboardActive = isCRH
+            }
+        }
+
         func resetSpeedState() {
             keystrokeTimestamps.removeAll()
             if parent.liveWPM != 0 { parent.liveWPM = 0 }
@@ -3722,6 +3996,7 @@ private struct SandboxTextView: UIViewRepresentable {
                     parent.isFocused = true
                 }
             }
+            refreshActiveInputMode(for: textView)
             refreshUndoRedoState(for: textView)
             updateInlineMathPreview(for: textView)
         }

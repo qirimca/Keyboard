@@ -94,3 +94,5 @@
 "settings.systemKeyboard.desc" = "Auto-capitalization, auto-correction, math results";
 "settings.systemKeyboard.ios26Desc" = "Go to “General” → “Keyboard” (auto-correction, math results, etc.)";
 "settings.cyrillic.addHint" = "Add in “General” → “Keyboard” → “Keyboards”";
+"settings.fullAccess.addHint" = "Enable in “General” → “Keyboard” → “Keyboards” → QırımKey";
+"sandbox.wrongKeyboardWarning" = "Another keyboard active — switch via 🌐";

@@ -94,3 +94,5 @@
 "settings.systemKeyboard.desc" = "Avto-büyük arifler, avto-tüzetüv, matematika";
 "settings.systemKeyboard.ios26Desc" = "«General» → «Keyboard» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";
 "settings.cyrillic.addHint" = "«General» → «Keyboard» → «Keyboards» bölüginde qoşuñız";
+"settings.fullAccess.addHint" = "«General» → «Keyboard» → «Keyboards» → QırımKey bölüginde açınız";
+"sandbox.wrongKeyboardWarning" = "Başqa klaviatura saylanğan — 🌐 ile almaştırıñız";

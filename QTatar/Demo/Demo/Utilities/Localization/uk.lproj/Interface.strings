@@ -94,3 +94,5 @@
 "settings.systemKeyboard.desc" = "Автовеликі літери, автовиправлення, математика";
 "settings.systemKeyboard.ios26Desc" = "Перейдіть у «Загальні» → «Клавіатура» (автовиправлення, математика тощо)";
 "settings.cyrillic.addHint" = "Додайте в «Загальні» → «Клавіатура» → «Клавіатури»";
+"settings.fullAccess.addHint" = "Увімкніть у «Загальні» → «Клавіатура» → «Клавіатури» → QırımKey";
+"sandbox.wrongKeyboardWarning" = "Вибрано іншу клавіатуру — перемкніть через 🌐";

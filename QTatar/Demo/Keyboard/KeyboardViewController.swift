@@ -513,6 +513,7 @@ class KeyboardViewController: KeyboardInputViewController {
         resetToExtensionDefaultScript()
         syncPreferredKeyboardTypeWithProxy()
 
+        KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
         if isCyrillicExtension {
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
         }
