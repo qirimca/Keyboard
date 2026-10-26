@@ -1,56 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 {{WIDTH}} {{HEIGHT}}" width="{{WIDTH}}" height="{{HEIGHT}}">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="{{BG_START}}" />
       <stop offset="100%" stop-color="{{BG_END}}" />
     </linearGradient>
     <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#07101E" stop-opacity="0.72" />
-      <stop offset="28%" stop-color="#0B1628" stop-opacity="0.46" />
-      <stop offset="100%" stop-color="#050912" stop-opacity="0.86" />
+      <stop offset="0%" stop-color="#060D1C" stop-opacity="{{VEIL_TOP_OPACITY}}" />
+      <stop offset="22%" stop-color="#081226" stop-opacity="{{VEIL_HORIZON_OPACITY}}" />
+      <stop offset="100%" stop-color="#040812" stop-opacity="{{VEIL_BOTTOM_OPACITY}}" />
     </linearGradient>
+    <radialGradient id="horizonGlow" cx="50%" cy="20%" r="48%">
+      <stop offset="0%" stop-color="#FBBF24" stop-opacity="{{GLOW_OPACITY}}" />
+      <stop offset="55%" stop-color="#F59E0B" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#050912" stop-opacity="0.0" />
+    </radialGradient>
     <linearGradient id="titaniumRim" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#94A3B8" />
-      <stop offset="50%" stop-color="#475569" />
-      <stop offset="100%" stop-color="#64748B" />
+      <stop offset="0%" stop-color="#F5B87A" />
+      <stop offset="48%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#D99552" />
     </linearGradient>
     <clipPath id="screenClip">
       <rect x="{{SCREEN_X}}" y="{{SCREEN_Y}}" width="{{SCREEN_W}}" height="{{SCREEN_H}}" rx="{{CORNER_RADIUS}}" ry="{{CORNER_RADIUS}}" />
     </clipPath>
-    <filter id="deviceShadow" x="-12%" y="-8%" width="124%" height="122%">
-      <feDropShadow dx="0" dy="28" stdDeviation="36" flood-color="#000000" flood-opacity="0.62" />
+    <filter id="deviceShadow" x="-16%" y="-10%" width="132%" height="128%">
+      <feDropShadow dx="0" dy="8" stdDeviation="26" flood-color="#FF9E3D" flood-opacity="0.38" />
+      <feDropShadow dx="0" dy="28" stdDeviation="36" flood-color="#000000" flood-opacity="0.68" />
     </filter>
     <filter id="textShadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000000" flood-opacity="0.45" />
+      <feDropShadow dx="0" dy="4" stdDeviation="14" flood-color="#000000" flood-opacity="0.72" />
     </filter>
   </defs>
 
-  <!-- Base Layer & Crimean Coast Sunset Photography -->
-  <rect id="layer-background" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bgGrad)" />
-  <image id="layer-crimea-sunset" href="{{CRIMEA_BG_URI}}" x="0" y="0" width="{{WIDTH}}" height="{{HEIGHT}}" preserveAspectRatio="xMidYMid slice" />
-  <rect id="layer-veil" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#sunsetVeil)" />
-
-  <!-- Clean Apple-Grade Headline & Subheadline Copy Layer -->
-  <g id="layer-copy" filter="url(#textShadow)">
-    <text x="{{CENTER_X}}" y="{{BADGE_TEXT_Y}}" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="{{BADGE_SIZE}}" font-weight="700" letter-spacing="2.4" fill="{{ACCENT}}">{{BADGE_TEXT}}</text>
-    <text x="{{CENTER_X}}" y="{{TITLE_Y}}" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="{{TITLE_SIZE}}" font-weight="800" letter-spacing="-0.5" fill="{{HEADLINE_COLOR}}">{{TITLE}}</text>
-    <text x="{{CENTER_X}}" y="{{SUBTITLE_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{SUBTITLE_SIZE}}" font-weight="500" fill="{{SUBTITLE_COLOR}}">{{SUBTITLE}}</text>
+  <!-- 1. Base Layer & Real Crimean Coastal Sunset Photography -->
+  <g id="layer-ai-background">
+    <g id="layer-photo-background">
+      <rect id="layer-background" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#bgGrad)" />
+      <image id="layer-crimea-sunset" href="{{CRIMEA_BG_URI}}" xlink:href="{{CRIMEA_BG_URI}}" x="{{BG_SHIFT_X}}" y="{{BG_SHIFT_Y}}" width="{{BG_DRAW_W}}" height="{{BG_DRAW_H}}" preserveAspectRatio="none" />
+      <rect id="layer-veil" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#sunsetVeil)" />
+      <rect id="layer-horizon-glow" width="{{WIDTH}}" height="{{HEIGHT}}" fill="url(#horizonGlow)" />
+    </g>
   </g>
 
-  <!-- Realistic iPhone Hardware Chassis & Screen Layer -->
+  <!-- 2. Clean Canva DAHZG5VPIOs 2-Element Header (Bold 2-Line Headline + Bulleted 2-Line Subtitle) -->
+  <g id="layer-header-copy" filter="url(#textShadow)">
+    <g id="layer-copy">
+      <rect id="layer-badge-pill" x="{{BADGE_PILL_X}}" y="{{BADGE_PILL_Y}}" width="{{BADGE_PILL_W}}" height="{{BADGE_PILL_H}}" rx="{{BADGE_PILL_RX}}" ry="{{BADGE_PILL_RX}}" fill="#060A12" fill-opacity="0.40" />
+      <text x="{{CENTER_X}}" y="{{TITLE_Y}}" text-anchor="middle" font-family="{{HEADLINE_FONT}}" font-size="{{TITLE_SIZE}}" font-weight="800" letter-spacing="-0.6" fill="{{HEADLINE_COLOR}}">{{TITLE_SVG_TSPANS}}</text>
+      <text x="{{CENTER_X}}" y="{{SUBTITLE_Y}}" text-anchor="middle" font-family="{{BODY_FONT}}" font-size="{{SUBTITLE_SIZE}}" font-weight="500" fill="{{SUBTITLE_COLOR}}">{{SUBTITLE_SVG_TSPANS}}</text>
+    </g>
+  </g>
+
+  <!-- 3. Feature Keywords Layer (Folded into Subtitle for Clean Canva Look; Kept Hidden for Layer Schema Compatibility) -->
+  <g id="layer-feature-pills" opacity="0">
+{{PILLS_SVG}}
+  </g>
+
+  <!-- 4. Realistic iPhone Hardware Chassis & Crisp 1:1 Screen Layer -->
   <g id="layer-device-frame" filter="url(#deviceShadow)">
     <!-- Side Hardware Buttons (Action, Volume Up, Volume Down, Power) -->
-    <rect x="{{BTN_LEFT_X}}" y="{{BTN_ACTION_Y}}" width="{{BTN_W}}" height="{{BTN_ACTION_H}}" rx="4" fill="#64748B" />
-    <rect x="{{BTN_LEFT_X}}" y="{{BTN_VOL1_Y}}" width="{{BTN_W}}" height="{{BTN_VOL_H}}" rx="4" fill="#64748B" />
-    <rect x="{{BTN_LEFT_X}}" y="{{BTN_VOL2_Y}}" width="{{BTN_W}}" height="{{BTN_VOL_H}}" rx="4" fill="#64748B" />
-    <rect x="{{BTN_RIGHT_X}}" y="{{BTN_PWR_Y}}" width="{{BTN_W}}" height="{{BTN_PWR_H}}" rx="4" fill="#64748B" />
+    <rect x="{{BTN_LEFT_X}}" y="{{BTN_ACTION_Y}}" width="{{BTN_W}}" height="{{BTN_ACTION_H}}" rx="4" fill="#78716C" />
+    <rect x="{{BTN_LEFT_X}}" y="{{BTN_VOL1_Y}}" width="{{BTN_W}}" height="{{BTN_VOL_H}}" rx="4" fill="#78716C" />
+    <rect x="{{BTN_LEFT_X}}" y="{{BTN_VOL2_Y}}" width="{{BTN_W}}" height="{{BTN_VOL_H}}" rx="4" fill="#78716C" />
+    <rect x="{{BTN_RIGHT_X}}" y="{{BTN_PWR_Y}}" width="{{BTN_W}}" height="{{BTN_PWR_H}}" rx="4" fill="#78716C" />
 
-    <!-- Outer Titanium Rim & Inner Black Bezel -->
+    <!-- Outer Warm-Lit Titanium Rim & Inner Black Bezel -->
     <rect x="{{OUTER_X}}" y="{{OUTER_Y}}" width="{{OUTER_W}}" height="{{OUTER_H}}" rx="{{OUTER_RADIUS}}" ry="{{OUTER_RADIUS}}" fill="url(#titaniumRim)" />
     <rect x="{{FRAME_X}}" y="{{FRAME_Y}}" width="{{FRAME_W}}" height="{{FRAME_H}}" rx="{{FRAME_RADIUS}}" ry="{{FRAME_RADIUS}}" fill="#07090E" />
 
-    <!-- Real Build Screenshot -->
-    <image href="{{SCREENSHOT_URI}}" x="{{SCREEN_X}}" y="{{SCREEN_Y}}" width="{{SCREEN_W}}" height="{{SCREEN_H}}" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
+    <!-- Real Lossless Build Screenshot -->
+    <image id="layer-screenshot" href="{{SCREENSHOT_URI}}" xlink:href="{{SCREENSHOT_URI}}" x="{{SCREEN_X}}" y="{{SCREEN_Y}}" width="{{SCREEN_W}}" height="{{SCREEN_H}}" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
 
     <!-- Dynamic Island Hardware Pill -->
     <rect x="{{ISLAND_X}}" y="{{ISLAND_Y}}" width="{{ISLAND_W}}" height="{{ISLAND_H}}" rx="{{ISLAND_RX}}" ry="{{ISLAND_RX}}" fill="#050608" />

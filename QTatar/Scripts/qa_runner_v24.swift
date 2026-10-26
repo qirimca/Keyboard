@@ -135,11 +135,11 @@ struct QARunnerV24 {
         check(kvcText.contains("DemoStyleProvider.expectedKeyboardHeight("), "KeyboardViewController.expectedKeyboardHeight delegates to DemoStyleProvider.expectedKeyboardHeight")
         check(calloutText.contains(".edu") && calloutText.contains("≈") && calloutText.contains("‰"), "DemoCalloutActionProvider includes .com domain callouts & rich punctuation/math callouts")
         check(toolbarText.contains("static func slotWidths(") && toolbarText.contains("== .webSearch"), "Autocomplete+NativeToolbarStyle has proportional slotWidths() & suppresses greeting phrase in .webSearch")
-        check(spaceLabelText.contains("CABasicAnimation") && spaceLabelText.contains("group.duration = 4.4") && spaceLabelText.contains("scheduleIdleStopTimer(after: 60.0)") && spaceLabelText.contains("var isSpaceDragActive: Bool = false") && spaceLabelText.contains(".width(.condensed)") && spaceLabelText.contains("currentExertion") && spaceLabelText.contains("1.9"), "SpaceBarLabel has CABasicAnimation breathing (4.4s cycle), 60s idle settle, proportional typing speed acceleration (up to 2.9x), inertial cooldown, condensed corner code, and isSpaceDragActive fade")
+        check(spaceLabelText.contains("CABasicAnimation") && spaceLabelText.contains("group.duration = 4.4") && spaceLabelText.contains("scheduleIdleStopTimer(after: 60.0)") && spaceLabelText.contains("var isSpaceDragActive: Bool = false") && spaceLabelText.contains(".width(.condensed)") && spaceLabelText.contains("currentExertion") && spaceLabelText.contains("1.9") && spaceLabelText.contains("effectiveIsDark ? 0.30 : 0.20"), "SpaceBarLabel has CABasicAnimation breathing (4.4s cycle), 60s idle settle, proportional typing speed acceleration (up to 2.9x), inertial cooldown, condensed corner code matching native УК opacity (0.20 Light / 0.30 Dark), and isSpaceDragActive fade")
         let buttonKeyText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/_Essentials/Keyboard+ButtonKey.swift", encoding: .utf8)) ?? ""
         let buttonGesturesText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Gestures/Gestures+KeyboardButtonGestures.swift", encoding: .utf8)) ?? ""
         let agentsText = (try? String(contentsOfFile: repoRoot + "/AGENTS.md", encoding: .utf8)) ?? ""
-        check(!buttonKeyText.contains(".plusLighter") && styleText.contains("opacity(0.88)") && styleText.contains("darkSystemKey = useClassicStyle ?") && kvcText.contains("view.overrideUserInterfaceStyle = targetViewStyle"), "Dark Mode keys never use .plusLighter blendMode, use uniform 0.88 dark keycap fills on iOS 26+ Liquid Glass, and enforce view.overrideUserInterfaceStyle")
+        check(!buttonKeyText.contains(".plusLighter") && styleText.contains("opacity(0.24)") && styleText.contains("darkSystemKey = useClassicStyle ?") && kvcText.contains("view.overrideUserInterfaceStyle = targetViewStyle"), "Dark Mode keys never use .plusLighter blendMode, use calibrated 0.24 dark keycap fills on iOS 26+ Liquid Glass, and enforce view.overrideUserInterfaceStyle")
         check(!buttonGesturesText.contains("keyFrames.count > 44") && buttonGesturesText.contains("overlapTestRect"), "SwipeTypingState.registerKeyFrame uses spatial overlap removal without arbitrary 44-key cap")
         check(agentsText.contains("Tamga Breathing, Proportional Human Speed Scaling & 60s Idle Settle") && agentsText.contains("Zero White Keys on Dark Background") && agentsText.contains("Mandatory Anti-Regression Audit"), "AGENTS.md includes all 3 anti-regression rules from learning_proposal.md")
         check(spaceDragText.contains("verticalLineAction") && spaceDragText.contains("computeWordWrappedVisualLines") && !spaceDragText.contains("if verticalDistance < verticalThreshold"), "SpaceDragGestureHandler supports unrestricted 2D X+Y cursor movement with dynamic window-width word wrapping")
@@ -173,7 +173,7 @@ struct QARunnerV24 {
         check(maxPhone.letterRowHeight == 56.0 && maxPhone.bottomRowHeight == 55.0 && maxPhone.visibleKeyHeight(forRowAt: 0) == 43.0 && maxPhone.visibleKeyHeight(forRowAt: 3) == 45.0 && maxPhone.totalKeyboardHeight == 263.0 && maxPhoneLand.totalKeyboardHeight == 200.0, "iPhone Plus/Pro Max (430–440 pt): Portrait 263 pt (43/45 pt keys), Landscape 200 pt")
 
         let ipadFloat = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: CGSize(width: 820, height: 1180), hasToolbar: true)
-        check(ipadFloat.letterRowHeight == 43.0 && ipadFloat.toolbarHeight == 38.0 && ipadFloat.totalKeyboardHeight == 214.0, "iPad Floating (all iPads): 43 pt rows + 38 pt toolbar + 4 pt insets = 214.0 pt")
+        check(ipadFloat.letterRowHeight == 45.0 && ipadFloat.bottomRowHeight == 44.0 && ipadFloat.toolbarHeight == 38.0 && ipadFloat.totalKeyboardHeight == 227.0, "iPad Floating (all iPads): 45/44 pt rows + 38 pt toolbar + 10 pt insets = 227.0 pt")
 
         let ipadMiniP = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 744, height: 1133), hasToolbar: true)
         let ipadMiniL = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1133, height: 744), hasToolbar: true)
@@ -181,7 +181,7 @@ struct QARunnerV24 {
         let ipadAirL = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1180, height: 820), hasToolbar: true)
         let ipadPro13P = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 1024, height: 1366), hasToolbar: true)
         let ipadPro13L = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1366, height: 1024), hasToolbar: true)
-        check(ipadMiniP.totalKeyboardHeight == 266.0 && ipadMiniL.totalKeyboardHeight == 338.0 && ipadAirP.totalKeyboardHeight == 274.0 && ipadAirL.totalKeyboardHeight == 342.0 && ipadPro13P.totalKeyboardHeight == 296.0 && ipadPro13L.totalKeyboardHeight == 378.0, "iPad Docked tiers: Mini (266/338 pt), 10.5\" Air 3 & 11\" A16 (274/342 pt), 12.9\"/13\" Pro (296/378 pt)")
+        check(ipadMiniP.totalKeyboardHeight == 266.0 && ipadMiniL.totalKeyboardHeight == 338.0 && ipadAirP.totalKeyboardHeight == 274.0 && ipadAirL.totalKeyboardHeight == 347.0 && ipadPro13P.totalKeyboardHeight == 296.0 && ipadPro13L.totalKeyboardHeight == 378.0, "iPad Docked tiers: Mini (266/338 pt), 10.5\" Air 3 & 11\" A16 (274/347 pt), 12.9\"/13\" Pro (296/378 pt)")
 
         // -----------------------------------------------------------------
         // 6. STRICT EXTENSION SCRIPT BINDING, OS-VERSION SYSTEM KEYS & SENTENCE POSITION CONTEXT
@@ -257,6 +257,52 @@ struct QARunnerV24 {
         check(!ukrNextSafe.contains(where: { SuggestionsDataBaseManager.isBlockedContextualCandidate($0.lowercased(with: Locale(identifier: "tr")), contextWords: ["Ukrayina"]) }), "nextWordSuggestions(['Ukrayina']) contains zero negative terms", detail: "got \(ukrNextSafe)")
         check(!rusiyeNextSafe.contains(where: { ["büyük", "ulu", "güzel", "azat", "qahraman", "muqaddes", "şanlı", "dost"].contains($0.lowercased(with: Locale(identifier: "tr"))) }), "nextWordSuggestions(['Rusiye']) contains zero positive/glorifying epithets", detail: "got \(rusiyeNextSafe)")
         check(rusPrefixSuggs.contains("rustem") && !rusPrefixSuggs.contains(where: { SuggestionsDataBaseManager.isRussianEntityOrPoliticianTerm($0) && $0 != "rus" }) && !putinPrefixSuggs.contains(where: { SuggestionsDataBaseManager.isRussianEntityOrPoliticianTerm($0) && $0 != "putin" }), "Prefix suggestions preserve Crimean Tatar name 'rustem', block 'büyük rusiye/ruslar/rus-yapon', and never suggest corpus completions for 'putin'", detail: "büyük+rus=\(rusPrefixSuggs), putin=\(putinPrefixSuggs)")
+
+        // -----------------------------------------------------------------
+        // 12. PERSONAL DICTIONARY (is_custom = 1) vs PREDICTIVE UNIGRAMS (is_custom = 0) & UI CHECKS
+        // -----------------------------------------------------------------
+        print("\n--- [12] Personal Dictionary (is_custom = 1) vs Predictive Unigrams (is_custom = 0) & UI Checks ---")
+        KeyboardPreferences.wordLearningEnabled = true
+        dbm.deleteLearnedWord("qırımtatarca")
+        dbm.deleteLearnedWord("qırımyañısöz")
+        dbm.learnWordIfPermitted("qırımtatarca", explicitlyConfirmed: false)
+        dbm.learnWordIfPermitted("qırımyañısöz", explicitlyConfirmed: false)
+        Thread.sleep(forTimeInterval: 0.12)
+        let learnedUnconfirmed = dbm.fetchLearnedWords()
+        check(
+            dbm.hasLearnedWord("qırımtatarca") && !learnedUnconfirmed.contains("qırımtatarca") && !learnedUnconfirmed.contains("qırımyañısöz"),
+            "learnWordIfPermitted(explicitlyConfirmed: false) records word in user_unigrams (is_custom=0) for predictive personalization without adding to Personal Dictionary",
+            detail: "hasLearnedWord=\(dbm.hasLearnedWord("qırımtatarca")), personalDict=\(learnedUnconfirmed)"
+        )
+        dbm.learnWordIfPermitted("qırımyañısöz", explicitlyConfirmed: true)
+        Thread.sleep(forTimeInterval: 0.12)
+        let learnedConfirmed = dbm.fetchLearnedWords()
+        check(
+            learnedConfirmed.contains("qırımyañısöz") && !learnedConfirmed.contains("qırımtatarca"),
+            "learnWordIfPermitted(explicitlyConfirmed: true) (tapping quoted Slot 0 suggestion) promotes word to Personal Dictionary (is_custom=1)",
+            detail: "personalDict=\(learnedConfirmed)"
+        )
+        dbm.deleteLearnedWord("qırımyañısöz")
+        dbm.deleteLearnedWord("qırımtatarca")
+        let learnedAfter = dbm.fetchLearnedWords()
+        check(
+            !learnedAfter.contains("qırımyañısöz"),
+            "deleteLearnedWord removes target word from user_unigrams",
+            detail: "words=\(learnedAfter)"
+        )
+        let homeViewText = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Demo/Views/HomeView.swift", encoding: .utf8)) ?? ""
+        check(
+            homeViewText.contains("stats.learnedWords.wordLearningToggle") && homeViewText.contains("stats.learnedWords.clearAllButton"),
+            "Personal Dictionary sheet includes Word Learning toggle and Clear All button"
+        )
+        check(
+            homeViewText.contains("cyrillicBadgeTrigger") && homeViewText.contains("Color(red: 0.99, green: 0.82, blue: 0.16)") && homeViewText.contains("ViewThatFits(in: .horizontal)") && homeViewText.contains("stats.uniqueWordsUnit"),
+            "HomeView isolates cyrillicBadgeTrigger from language switch, renders golden Taraq Tamğa on sky-blue badge, uses ViewThatFits for zero pill truncation, and displays uniqueWordsCount in stats.wordsTile"
+        )
+        check(
+            buttonGesturesText.contains("localDragDistance >= 10.0") && kvcText.contains("pan.cancelsTouchesInView = false"),
+            "Floating keyboard 300 CPM 2-key rollover protection active in Gestures+KeyboardButtonGestures and KeyboardViewController"
+        )
 
         print("\n=================================================================")
         print("SUMMARY: \(passedTests)/\(totalTests) checks passed (\(String(format: "%.1f%%", Double(passedTests) * 100.0 / Double(totalTests)))).")
@@ -347,6 +393,8 @@ enum KeyboardPreferences {
 enum KeyboardUsageStats {
     static let statsResetNotification = "crh.key.statsReset.tests"
     static func updateLearnedWordsCount(_ count: Int) {}
+    static func setLearnedWordsCount(_ count: Int) {}
+    static func setUniqueWordsCount(_ count: Int) {}
     static func recordWordLearned() {}
 }
 #endif

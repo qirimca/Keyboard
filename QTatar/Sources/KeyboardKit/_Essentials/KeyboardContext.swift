@@ -229,8 +229,6 @@ public extension KeyboardContext {
     var keyboardLocale: KeyboardLocale? {
         KeyboardLocale.allCases.first { $0.localeIdentifier == locale.identifier }
     }
-
-
 }
 
 
@@ -423,8 +421,9 @@ extension KeyboardContext {
         if isKeyboardFloating != usesCompactLayout {
             isKeyboardFloating = usesCompactLayout
         }
-        // No public API exposes the system split state to a keyboard extension.
-        if isKeyboardSplit { isKeyboardSplit = false }
+        if isKeyboardSplit {
+            isKeyboardSplit = false
+        }
         renderVersion &+= 1
     }
 }

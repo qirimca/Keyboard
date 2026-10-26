@@ -118,6 +118,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private lazy var transliterator = CrimeanTatarTransliterator()
     private var didInstantiateTransliterator = false
     private var activeFlickSymbol: (action: KeyboardAction, symbol: String)?
+    private var activeFlickTrackingAction: KeyboardAction?
     private var didConsumeBackspacePress = false
 
     func resetComposition() {
@@ -152,18 +153,26 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         ) {
             let dx = currentLocation.x - startLocation.x
             let dy = currentLocation.y - startLocation.y
-            let rawProgress: CGFloat
-            if dy > 1.5, dy > abs(dx) * 0.75 {
-                rawProgress = min(max((dy - 1.5) / 16.0, 0), 1.0)
-            } else {
-                rawProgress = 0
+            if activeFlickTrackingAction != action {
+                if dy > 2.0 && dy > abs(dx) * 0.65 {
+                    activeFlickTrackingAction = action
+                }
             }
-            KeyFlickState.shared.update(action: action, progress: rawProgress)
-            if dy >= 16, dy > abs(dx) * 1.15 {
-                activeFlickSymbol = (action, symbol)
-                return
-            } else if dy < 12 {
+            if activeFlickTrackingAction == action && abs(dx) < 42.0 {
+                let rawProgress = min(max((dy - 2.0) / 34.0, 0), 1.0)
+                KeyFlickState.shared.update(action: action, progress: rawProgress)
+                if rawProgress >= 0.48 {
+                    activeFlickSymbol = (action, symbol)
+                } else if rawProgress < 0.40 {
+                    activeFlickSymbol = nil
+                }
+                if rawProgress > 0.05 {
+                    return
+                }
+            } else {
+                activeFlickTrackingAction = nil
                 activeFlickSymbol = nil
+                KeyFlickState.shared.update(action: action, progress: 0)
             }
         }
         super.handleDrag(on: action, from: startLocation, to: currentLocation)
@@ -535,7 +544,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                         suggestion.text,
                         previousWord: prevWord,
                         proxy: proxy,
-                        explicitlyConfirmed: true
+                        explicitlyConfirmed: false
                     )
                     return
                 }
@@ -575,7 +584,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 replacement,
                 previousWord: prevWord,
                 proxy: proxy,
-                explicitlyConfirmed: true
+                explicitlyConfirmed: false
             )
             autocompleteContext.suggestions = []
             keyboardController?.performAutocomplete()
@@ -622,7 +631,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 replacement,
                 previousWord: prevWord,
                 proxy: proxy,
-                explicitlyConfirmed: true
+                explicitlyConfirmed: false
             )
             autocompleteContext.suggestions = []
             keyboardController?.performAutocomplete()
@@ -711,7 +720,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             replacement,
             previousWord: prevWord,
             proxy: proxy,
-            explicitlyConfirmed: true
+            explicitlyConfirmed: suggestion.isUnknown
         )
         super.handle(suggestion)
     }
@@ -746,6 +755,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     ) {
         if gesture == .press, !replaced {
             activeFlickSymbol = nil
+            activeFlickTrackingAction = nil
             KeyFlickState.shared.reset()
             switch action {
             case .character, .characterMargin:
@@ -755,6 +765,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             }
         }
         if gesture == .release, !replaced {
+            activeFlickTrackingAction = nil
             KeyFlickState.shared.reset()
         }
         if gesture == .release, !replaced,

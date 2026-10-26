@@ -490,19 +490,25 @@ private extension Gestures.KeyboardButtonGestures {
         if let ch = characterKeyString, (ch.first?.isLetter == true || ch == "\u{02BC}"), SwipeTypingState.shared.isSwipeEnabled {
             let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
             SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
-            let globalPoint = CGPoint(
-                x: frame.origin.x + value.location.x,
-                y: frame.origin.y + value.location.y
+            let localDragDistance = hypot(
+                value.location.x - value.startLocation.x,
+                value.location.y - value.startLocation.y
             )
-            let calloutActive = calloutContext?.actionContext.isActive ?? false
-            let isSwipingNow = SwipeTypingState.shared.updateDrag(pointInKeyboard: globalPoint, isActionCalloutActive: calloutActive)
-            if SwipeTypingState.shared.totalDragDistance >= 14.0 || isSwipingNow {
-                calloutContext?.inputContext.reset()
-                calloutContext?.actionContext.reset()
-            }
-            if isSwipingNow {
-                shouldApplyReleaseAction = false
-                return
+            if localDragDistance >= 10.0 {
+                let globalPoint = CGPoint(
+                    x: frame.origin.x + value.location.x,
+                    y: frame.origin.y + value.location.y
+                )
+                let calloutActive = calloutContext?.actionContext.isActive ?? false
+                let isSwipingNow = SwipeTypingState.shared.updateDrag(pointInKeyboard: globalPoint, isActionCalloutActive: calloutActive)
+                if SwipeTypingState.shared.totalDragDistance >= 14.0 || isSwipingNow {
+                    calloutContext?.inputContext.reset()
+                    calloutContext?.actionContext.reset()
+                }
+                if isSwipingNow {
+                    shouldApplyReleaseAction = false
+                    return
+                }
             }
         }
         calloutContext?.actionContext.updateSelection(with: value.translation, location: value.location)
@@ -520,6 +526,9 @@ private extension Gestures.KeyboardButtonGestures {
         } else {
             SwipeTypingState.shared.resetSlideFrom123()
         }
+        let localDragDistance = lastDragValue.map {
+            hypot($0.location.x - $0.startLocation.x, $0.location.y - $0.startLocation.y)
+        } ?? 0
         if action == .backspace, let drag = lastDragValue {
             let dx = drag.location.x - drag.startLocation.x
             let dy = drag.location.y - drag.startLocation.y
@@ -527,9 +536,9 @@ private extension Gestures.KeyboardButtonGestures {
                 NotificationCenter.default.post(name: Notification.Name("crh.key.backspaceSlideLeft"), object: nil)
             }
         }
-        if SwipeTypingState.shared.isSwiping {
+        if localDragDistance >= 14.0 && SwipeTypingState.shared.isSwiping {
             _ = SwipeTypingState.shared.endSwipe()
-        } else {
+        } else if !SwipeTypingState.shared.isSwiping {
             SwipeTypingState.shared.reset(clearTrailImmediately: true)
         }
         endActionCallout()
@@ -554,24 +563,36 @@ private extension Gestures.KeyboardButtonGestures {
         if let ch = characterKeyString, (ch.first?.isLetter == true || ch == "\u{02BC}"), SwipeTypingState.shared.isSwipeEnabled {
             let frame = geo.frame(in: .named(SwipeTypingState.coordinateSpaceName))
             SwipeTypingState.shared.registerKeyFrame(character: ch, frame: frame)
-            SwipeTypingState.shared.beginPotentialSwipe(
-                startChar: ch,
-                pointInKeyboard: CGPoint(x: frame.midX, y: frame.midY)
-            )
+            if !SwipeTypingState.shared.isSwiping {
+                SwipeTypingState.shared.beginPotentialSwipe(
+                    startChar: ch,
+                    pointInKeyboard: CGPoint(x: frame.midX, y: frame.midY)
+                )
+            }
         }
         pressAction?()
         calloutContext?.inputContext.updateInput(for: action, in: geo)
     }
 
     func handleReleaseInside(in geo: GeometryProxy) {
-        guard !SwipeTypingState.shared.isSwiping else { return }
+        let localDragDistance = lastDragValue.map {
+            hypot($0.location.x - $0.startLocation.x, $0.location.y - $0.startLocation.y)
+        } ?? 0
+        if localDragDistance >= 14.0 && SwipeTypingState.shared.isSwiping {
+            return
+        }
         updateShouldApplyReleaseAction()
         guard shouldApplyReleaseAction else { return }
         releaseAction?()
     }
 
     func handleReleaseOutside(in geo: GeometryProxy) {
-        guard !SwipeTypingState.shared.isSwiping else { return }
+        let localDragDistance = lastDragValue.map {
+            hypot($0.location.x - $0.startLocation.x, $0.location.y - $0.startLocation.y)
+        } ?? 0
+        if localDragDistance >= 14.0 && SwipeTypingState.shared.isSwiping {
+            return
+        }
         if action == .space && didTriggerLongPress {
             handleReleaseInside(in: geo)
             return

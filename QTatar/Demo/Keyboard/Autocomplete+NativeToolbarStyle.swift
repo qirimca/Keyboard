@@ -1078,30 +1078,30 @@ struct NativeAutocompleteToolbar: View {
                     let allowTwoLines = displayTitle.count >= 18 || (displayTitle.contains("-") && displayTitle.count >= 13)
                     if suggestion.isAutocorrect {
                         Text(displayTitle)
-                            .font(isFloating ? .subheadline.weight(.regular) : .system(size: 17, weight: .regular))
+                            .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
                             .foregroundStyle(primaryColor)
                             .lineLimit(allowTwoLines ? 2 : 1)
-                            .minimumScaleFactor(0.58)
+                            .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, isFloating ? 6 : 10)
                             .frame(
                                 minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
                                 maxWidth: isPad ? max(168, width - 20) : .infinity,
-                                minHeight: isPad ? 35 : (isFloating ? 28 : 32)
+                                minHeight: isPad ? 30 : (isFloating ? 28 : 32)
                             )
                             .background(greetingPlatterBackground)
                             .padding(.horizontal, isFloating ? 3 : (isDockedPad ? 10 : 6))
                     } else {
                         Text(displayTitle)
-                            .font(isFloating ? .subheadline : .system(size: 17, weight: .regular))
+                            .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
                             .foregroundStyle(primaryColor)
                             .lineLimit(allowTwoLines ? 2 : 1)
-                            .minimumScaleFactor(0.58)
+                            .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, isFloating ? 4 : 8)
-                            .padding(.vertical, isFloating ? 2 : 4)
+                            .padding(.vertical, isFloating ? 2 : (isDockedPad ? 2 : 4))
                     }
                 }
             }
@@ -1121,14 +1121,14 @@ struct NativeAutocompleteToolbar: View {
 
         GeometryReader { geo in
             let totalWidth = max(geo.size.width, 1)
-            let sideInset: CGFloat = 0
+            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
+            let sideInset: CGFloat = isDockedPad ? (isPortrait ? round(totalWidth * 0.08) : round(totalWidth * 0.11)) : 0
             let centerWidth = max(totalWidth - (sideInset * 2), 1)
             let slotWidths = adaptiveSlotWidths(suggestions: suggestions, availableWidth: centerWidth, slotCount: slotCount)
-            let isPortrait = keyboardContext.interfaceOrientation.isPortrait
             let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
             let splitClusterWidth = min(max((totalWidth * (1.0 - minGapFraction)) / 2.0, 1), isPortrait ? 276 : 320)
 
-            ZStack {
+            ZStack(alignment: .center) {
                 if shouldShowGreetingBanner {
                     if isSplitPad {
                         HStack(spacing: 0) {
@@ -1157,7 +1157,7 @@ struct NativeAutocompleteToolbar: View {
                                     width: leftSlotWidth
                                 )
                                 primaryColor.opacity(hideLeftDivider ? 0.0 : 0.22)
-                                    .frame(width: 0.5, height: 22)
+                                    .frame(width: 0.5, height: 18)
                                 suggestionSlotButton(
                                     index: 1,
                                     suggestion: s1,
@@ -1190,14 +1190,15 @@ struct NativeAutocompleteToolbar: View {
 
                                 if index < slotCount - 1 {
                                     primaryColor.opacity(hideDivider ? 0.0 : 0.22)
-                                        .frame(width: 0.5, height: isFloating ? 16 : 24)
+                                        .frame(width: 0.5, height: isFloating ? 16 : (isDockedPad ? 18 : 24))
                                 }
                             }
                         }
-                        .frame(width: totalWidth, height: height)
+                        .frame(width: centerWidth, height: height)
                     }
                 }
             }
+            .frame(width: totalWidth, height: height)
         }
         .frame(height: height)
         .frame(maxWidth: .infinity)
@@ -1231,13 +1232,13 @@ struct NativeAutocompleteToolbar: View {
         let fillColor: Color = useClassic
             ? (isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
             : (isDark ? Color(white: 0.71).opacity(0.24) : Color.white.opacity(0.84))
-        RoundedRectangle(cornerRadius: 9, style: .continuous)
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
             .fill(fillColor)
             .shadow(color: Color.black.opacity(useClassic ? (isDark ? 0.18 : 0.06) : 0.0), radius: 1.5, x: 0, y: 0.5)
     }
 
     private var greetingPillHeight: CGFloat {
-        isDockedPad ? 35 : (isFloating ? 28 : 32)
+        isDockedPad ? 30 : (isFloating ? 28 : 32)
     }
 
     @ViewBuilder
@@ -1260,8 +1261,8 @@ struct NativeAutocompleteToolbar: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 9)
-            .padding(.vertical, 3.5)
-            .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: height - 4)
+            .padding(.vertical, 2.5)
+            .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: height - 3)
             .background(greetingPlatterBackground)
         }
         .buttonStyle(.plain)
@@ -1289,7 +1290,7 @@ struct NativeAutocompleteToolbar: View {
                             .foregroundStyle(primaryColor.opacity(0.72))
                     }
                     .padding(.horizontal, 9)
-                    .padding(.vertical, 4.5)
+                    .padding(.vertical, 3.0)
                     .frame(minHeight: pillHeight)
                     .background(greetingPlatterBackground)
                 }
@@ -1339,7 +1340,7 @@ struct NativeAutocompleteToolbar: View {
                         .frame(width: 13.5, height: 7.5)
 
                     Text(phrase.bannerCRH)
-                        .font(.system(size: isFloating ? 13.0 : (isDockedPad ? 15.5 : 14.5), weight: .regular))
+                        .font(.system(size: isFloating ? 13.5 : (isDockedPad ? 15.5 : 14.5), weight: .regular))
                         .foregroundStyle(primaryColor)
                         .lineLimit(2)
                         .minimumScaleFactor(0.62)
@@ -1351,8 +1352,8 @@ struct NativeAutocompleteToolbar: View {
                         .foregroundStyle(primaryColor.opacity(0.72))
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, isDockedPad ? 4.0 : 3.5)
-                .frame(minHeight: pillHeight, maxHeight: height - 4)
+                .padding(.vertical, isDockedPad ? 2.5 : 3.5)
+                .frame(minHeight: pillHeight, maxHeight: height - 3)
                 .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)

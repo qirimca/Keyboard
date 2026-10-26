@@ -69,6 +69,7 @@
 "settings.stats" = "Statistics";
 "settings.stats.desc" = "Track typing speed, words & achievements";
 "stats.charsSubtitle" = "Characters: %d";
+"stats.uniqueWordsUnit" = "unique";
 "stats.speedSubtitle" = "Recent pace: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Peak typing pace";
 "stats.manualWordsSubtitle" = "Written letter by letter";
@@ -94,5 +95,13 @@
 "settings.systemKeyboard.desc" = "Auto-capitalization, auto-correction, math results";
 "settings.systemKeyboard.ios26Desc" = "Go to “General” → “Keyboard” (auto-correction, math results, etc.)";
 "settings.cyrillic.addHint" = "Add in “General” → “Keyboard” → “Keyboards”";
-"settings.fullAccess.addHint" = "Enable in “General” → “Keyboard” → “Keyboards” → QırımKey";
+"settings.fullAccess.addHint" = "Needed to sync settings, dictionary & haptics (100% offline). Enable in “General” → “Keyboard” → “Keyboards” → QırımKey";
+"settings.fullAccess.onHint" = "Syncs settings, dictionary & haptics (100% offline on device)";
 "sandbox.wrongKeyboardWarning" = "Another keyboard active — switch via 🌐";
+"stats.wordsUnit" = "words";
+"stats.learnedWordsUnit" = "learned";
+"stats.learnedWords.emptyTitle" = "Personal dictionary is empty";
+"stats.learnedWords.emptyDesc" = "New words you type are automatically saved here for faster suggestions.";
+"stats.learnedWords.clearAll" = "Clear dictionary";
+"stats.learnedWords.done" = "Done";
+"stats.learnedWords.delete" = "Delete";

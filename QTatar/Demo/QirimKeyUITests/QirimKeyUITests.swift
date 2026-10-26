@@ -25,20 +25,39 @@ final class QirimKeyUITests: XCTestCase {
         return app.descendants(matching: .any).matching(pred).firstMatch
     }
 
+    private func dismissKeyboardOnboardingOverlayIfNeeded() {
+        let continuePred = NSPredicate(format: "label IN {'Continue', 'Продовжити', 'Далі', 'Devam et'}")
+        let appContinue = app.buttons.matching(continuePred).firstMatch
+        if appContinue.waitForExistence(timeout: 0.8), appContinue.isHittable {
+            appContinue.tap()
+            Thread.sleep(forTimeInterval: 0.4)
+            return
+        }
+        let sb = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let sbContinue = sb.buttons.matching(continuePred).firstMatch
+        if sbContinue.exists && sbContinue.isHittable {
+            sbContinue.tap()
+            Thread.sleep(forTimeInterval: 0.4)
+        }
+    }
+
     private func launch(fieldMode: String = "standard", theme: String = "modernLight", extraArgs: [String] = []) throws {
         app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"] + extraArgs
         app.launch()
         XCTAssertTrue(field.waitForExistence(timeout: 10))
+        dismissKeyboardOnboardingOverlayIfNeeded()
         let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
         if !anyCustomKey.waitForExistence(timeout: 3.5) {
             if !app.buttons["Next keyboard"].exists && !app.buttons["ABC"].exists && app.keyboards.count == 0 {
                 field.tap()
                 Thread.sleep(forTimeInterval: 0.6)
             }
+            dismissKeyboardOnboardingOverlayIfNeeded()
             if !anyCustomKey.exists {
                 cycleToCustomKeyboard(firstKey: firstKey)
             }
         }
+        dismissKeyboardOnboardingOverlayIfNeeded()
         if !anyCustomKey.exists {
             enableKeyboardInSettingsIfNeeded()
             app.terminate()
@@ -49,32 +68,35 @@ final class QirimKeyUITests: XCTestCase {
                 }
                 Thread.sleep(forTimeInterval: 0.8)
             }
+            dismissKeyboardOnboardingOverlayIfNeeded()
             cycleToCustomKeyboard(firstKey: firstKey)
         }
+        dismissKeyboardOnboardingOverlayIfNeeded()
         XCTAssertTrue(anyCustomKey.waitForExistence(timeout: 4.0),
                       "Enable and select Qırımtatarca in Settings before running keyboard tests.")
     }
 
     private func cycleToCustomKeyboard(firstKey: XCUIElement) {
+        dismissKeyboardOnboardingOverlayIfNeeded()
         let nextKeyboard = app.buttons["Next keyboard"]
         let abcBtn = app.buttons["ABC"]
         if !nextKeyboard.exists && !abcBtn.exists && app.keyboards.count == 0 {
-            let clearBtn = app.buttons["sandbox.clear"]
-            if clearBtn.exists && clearBtn.isHittable {
-                clearBtn.tap()
-                Thread.sleep(forTimeInterval: 0.3)
-            }
             if field.exists && field.isHittable {
                 field.tap()
                 Thread.sleep(forTimeInterval: 0.8)
             }
         }
+        dismissKeyboardOnboardingOverlayIfNeeded()
         if anyCustomKey.exists { return }
         if abcBtn.exists && abcBtn.isHittable {
             abcBtn.tap()
+            Thread.sleep(forTimeInterval: 0.4)
+            dismissKeyboardOnboardingOverlayIfNeeded()
             if anyCustomKey.waitForExistence(timeout: 1.8) { return }
         } else if nextKeyboard.exists && nextKeyboard.isHittable {
             nextKeyboard.tap()
+            Thread.sleep(forTimeInterval: 0.4)
+            dismissKeyboardOnboardingOverlayIfNeeded()
             if anyCustomKey.waitForExistence(timeout: 1.8) { return }
         }
         if nextKeyboard.exists && nextKeyboard.isHittable {
@@ -91,6 +113,7 @@ final class QirimKeyUITests: XCTestCase {
                         Thread.sleep(forTimeInterval: 0.6)
                     }
                 }
+                dismissKeyboardOnboardingOverlayIfNeeded()
                 if anyCustomKey.waitForExistence(timeout: 2.5) { return }
             }
         }
@@ -208,6 +231,8 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
         }
+        settings.terminate()
+        Thread.sleep(forTimeInterval: 0.3)
     }
 
     private func key(_ identifier: String) -> XCUIElement {
@@ -221,12 +246,14 @@ final class QirimKeyUITests: XCTestCase {
         }
         element.tap()
         if identifier == "space", field.exists {
+            Thread.sleep(forTimeInterval: 0.15)
             let current = (field.value as? String) ?? ""
             if !current.isEmpty && !current.hasSuffix(" ") {
                 Thread.sleep(forTimeInterval: 0.25)
                 let recheck = (field.value as? String) ?? ""
                 if !recheck.isEmpty && !recheck.hasSuffix(" ") && element.exists {
                     element.tap()
+                    Thread.sleep(forTimeInterval: 0.15)
                 }
             }
         } else if identifier == "numeric" {
@@ -380,6 +407,11 @@ final class QirimKeyUITests: XCTestCase {
     func testLatinAlphabetByTapping() throws {
         try launch()
         try selectScript(cyrillic: false)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            XCTAssertFalse(key("emojis").exists, "iPad must never render a separate emoji button")
+        } else {
+            XCTAssertTrue(key("emojis").exists, "iPhone must render the emoji button when enabled")
+        }
         let alphabet = "qwertyuıopğüâasdfghjklşizxcvbnmöçñ"
         typeLetters(alphabet)
         expectText(alphabet)
@@ -615,7 +647,7 @@ final class QirimKeyUITests: XCTestCase {
 
     func testSpaceAutocorrectRules() throws {
         try launch()
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.wordLearning.toggle").firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "settings.stats.toggle").firstMatch.exists)
         try selectScript(cyrillic: false)
 
         // Verify greeting banner appears when field is empty, is strictly Latin-only, and tapping it inserts a wisdom phrase.
@@ -776,7 +808,8 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(speedTierTile.label.contains("Soñraki:") || speedTierTile.label.contains("yüksek"), "Speed tier tile must display next tier progression info (got: '\(speedTierTile.label)')")
         XCTAssertTrue(volumeTierTile.label.contains("Soñraki:") || volumeTierTile.label.contains("yüksek"), "Volume tier tile must display next tier progression info (got: '\(volumeTierTile.label)')")
         XCTAssertTrue(learnedWordsTile.exists, "Learned words tile must exist in expanded statistics card")
-        XCTAssertFalse(learnedWordsTile.label.contains(", 0,"), "Learned words tile must increment after typing words (got: '\(learnedWordsTile.label)')")
+        XCTAssertFalse(wordsTile.label.contains("· 0 unik."), "Words tile must increment unique words after typing words (got: '\(wordsTile.label)')")
+        XCTAssertTrue(learnedWordsTile.label.contains(", 0,"), "Learned words tile must remain 0 when words are committed via Space (got: '\(learnedWordsTile.label)')")
         capture("Top statistics expanded")
 
         // Verify Reset Statistics confirmation clears all counters and user_lexicon in place, and typing a new word immediately increments both wordsTile and learnedWordsTile in real time.
@@ -793,25 +826,57 @@ final class QirimKeyUITests: XCTestCase {
         field.tap()
         typeLetters("vatan")
         tap("space")
-        Thread.sleep(forTimeInterval: 0.8)
+        Thread.sleep(forTimeInterval: 0.6)
         XCTAssertTrue(wordsTile.label.contains(", 1,") && wordsTile.label.contains("Arifler: 6"), "Typing 'vatan ' after reset must update wordsTile to 1 word and 6 characters in real time (got: '\(wordsTile.label)')")
-        XCTAssertTrue(learnedWordsTile.label.contains(", 1,"), "Typing 'vatan ' after reset must update learnedWordsTile to 1 learned word in real time (got: '\(learnedWordsTile.label)')")
+        XCTAssertTrue(learnedWordsTile.label.contains(", 0,"), "Pressing Space after 'vatan' must NOT add a word to Personal Dictionary (got: '\(learnedWordsTile.label)')")
+
+        // Tapping the quoted literal suggestion in Slot 0 ("qırımsöz") explicitly adds the word to Personal Dictionary.
+        typeLetters("qırımsöz")
+        let quotedSlot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        XCTAssertTrue(quotedSlot0.waitForExistence(timeout: 2.5), "Quoted Slot 0 suggestion must exist for 'qırımsöz'")
+        quotedSlot0.tap()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(learnedWordsTile.label.contains(", 1,"), "Tapping quoted Slot 0 suggestion for 'qırımsöz' must increment learnedWordsTile to 1 in real time (got: '\(learnedWordsTile.label)')")
+        learnedWordsTile.tap()
+        let customWordRow = app.descendants(matching: .any).matching(identifier: "stats.learnedWords.row.qırımsöz").firstMatch
+        XCTAssertTrue(customWordRow.waitForExistence(timeout: 2.5), "Tapping learnedWordsTile must open Personal Dictionary sheet showing 'qırımsöz'")
+        let dictWordLearningSwitch = app.switches["stats.learnedWords.wordLearningToggle"].exists
+            ? app.switches["stats.learnedWords.wordLearningToggle"]
+            : app.descendants(matching: .any).matching(identifier: "stats.learnedWords.wordLearningToggle").firstMatch
+        XCTAssertTrue(dictWordLearningSwitch.exists, "Personal Dictionary sheet must include Word Learning header toggle")
+        let clearAllBtn = app.buttons["stats.learnedWords.clearAllButton"].firstMatch
+        XCTAssertTrue(clearAllBtn.exists, "Personal Dictionary sheet must include Clear All button when non-empty")
+        capture("Personal dictionary sheet with learned word")
+        let deleteCustomWordBtn = app.buttons["stats.learnedWords.delete.qırımsöz"].firstMatch
+        XCTAssertTrue(deleteCustomWordBtn.exists, "Personal Dictionary row must expose delete button for 'qırımsöz'")
+        deleteCustomWordBtn.tap()
+        let emptyDictState = app.descendants(matching: .any).matching(identifier: "stats.learnedWords.emptyState").firstMatch
+        XCTAssertTrue(emptyDictState.waitForExistence(timeout: 2.0), "Deleting the only learned word must transition Personal Dictionary sheet to empty state")
+        let doneDictBtn = app.buttons["stats.learnedWords.doneButton"].firstMatch
+        XCTAssertTrue(doneDictBtn.exists, "Personal Dictionary sheet must have Done button")
+        doneDictBtn.tap()
+        Thread.sleep(forTimeInterval: 0.4)
+        XCTAssertTrue(learnedWordsTile.label.contains(", 0,"), "Deleting 'qırımsöz' in Personal Dictionary sheet must update learnedWordsTile to 0 (got: '\(learnedWordsTile.label)')")
         clear()
 
         statsToggle.tap()
+        Thread.sleep(forTimeInterval: 0.3)
+        XCTAssertTrue(statsToggle.label.contains("luğat") || statsToggle.label.contains("вивч.") || statsToggle.label.contains("learned"), "Compact statistics bar must include learned words unit label (got: '\(statsToggle.label)')")
+        XCTAssertTrue(statsToggle.label.contains("söz") || statsToggle.label.contains("сл.") || statsToggle.label.contains("words"), "Compact statistics bar must include words unit label (got: '\(statsToggle.label)')")
         capture("Top statistics collapsed")
 
-        // Verify statistics setting toggle disables/hides the statistics section and re-enables it cleanly.
+        // Verify statistics setting toggle in the card header disables/hides the statistics pills and re-enables them cleanly.
         let statsSettingSwitch = app.switches["settings.stats.toggle"].exists
             ? app.switches["settings.stats.toggle"]
             : app.descendants(matching: .any).matching(identifier: "settings.stats.toggle").firstMatch
-        XCTAssertTrue(statsSettingSwitch.exists, "Statistics setting toggle must exist in keyboard settings card")
+        XCTAssertTrue(statsSettingSwitch.exists, "Statistics setting toggle must exist in statistics card header")
         tapSwitch(statsSettingSwitch)
         Thread.sleep(forTimeInterval: 0.4)
-        XCTAssertFalse(statsToggle.exists, "Disabling statistics toggle must hide the statistics card")
+        XCTAssertFalse(statsToggle.label.contains("söz/daq"), "Disabling statistics toggle must hide compact statistics pills")
         capture("Statistics disabled via settings toggle")
         tapSwitch(statsSettingSwitch)
-        XCTAssertTrue(statsToggle.waitForExistence(timeout: 2), "Re-enabling statistics toggle must restore the statistics card")
+        Thread.sleep(forTimeInterval: 0.4)
+        XCTAssertTrue(statsToggle.label.contains("söz/daq"), "Re-enabling statistics toggle must restore compact statistics pills")
     }
 
     // MARK: - Latency
@@ -1482,6 +1547,7 @@ final class QirimKeyUITests: XCTestCase {
         let dockedSpace = key("space")
         XCTAssertTrue(dockedSpace.waitForExistence(timeout: 3))
         XCTAssertGreaterThan(dockedSpace.frame.width, 100)
+        XCTAssertFalse(key("emojis").exists, "iPad Docked must never render a separate emoji button")
         capture("floating-strict 0 docked")
 
         let dismiss = key("dismiss")
@@ -1549,11 +1615,39 @@ final class QirimKeyUITests: XCTestCase {
     private var storeDevice: String { UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone" }
 
     func testAppStoreScreenshotsHome() throws {
+        let isPadDevice = (UIDevice.current.userInterfaceIdiom == .pad)
         for lang in ["crh", "uk", "en"] {
             var args = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight", "-qt_lang", lang]
+            if isPadDevice { args.append("-qt_focus_sandbox_live") }
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             app.launchArguments = args
             app.launch()
+            dismissKeyboardOnboardingOverlayIfNeeded()
+            if isPadDevice {
+                if field.waitForExistence(timeout: 3), !anyCustomKey.waitForExistence(timeout: 2.5) {
+                    field.tap()
+                    Thread.sleep(forTimeInterval: 0.6)
+                    dismissKeyboardOnboardingOverlayIfNeeded()
+                    if !anyCustomKey.exists {
+                        cycleToCustomKeyboard(firstKey: key("numeric"))
+                    }
+                    if !anyCustomKey.exists {
+                        enableKeyboardInSettingsIfNeeded()
+                        app.terminate()
+                        app.launchArguments = args
+                        app.launch()
+                        if field.waitForExistence(timeout: 4) {
+                            field.tap()
+                            Thread.sleep(forTimeInterval: 0.8)
+                        }
+                        dismissKeyboardOnboardingOverlayIfNeeded()
+                        cycleToCustomKeyboard(firstKey: key("numeric"))
+                    }
+                }
+                dismissKeyboardOnboardingOverlayIfNeeded()
+                _ = anyCustomKey.waitForExistence(timeout: 3)
+                try? selectScript(cyrillic: false)
+            }
             Thread.sleep(forTimeInterval: 1.8)
             if lang == "crh" {
                 capture("store_\(storeDevice)_04_home_light")
@@ -1583,14 +1677,30 @@ final class QirimKeyUITests: XCTestCase {
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             app.launchArguments = args
             app.launch()
+            dismissKeyboardOnboardingOverlayIfNeeded()
             if field.waitForExistence(timeout: 3), !anyCustomKey.waitForExistence(timeout: 2.5) {
                 field.tap()
                 Thread.sleep(forTimeInterval: 0.6)
+                dismissKeyboardOnboardingOverlayIfNeeded()
                 if !anyCustomKey.exists {
                     cycleToCustomKeyboard(firstKey: key("numeric"))
                 }
+                if !anyCustomKey.exists {
+                    enableKeyboardInSettingsIfNeeded()
+                    app.terminate()
+                    app.launchArguments = args
+                    app.launch()
+                    if field.waitForExistence(timeout: 4) {
+                        field.tap()
+                        Thread.sleep(forTimeInterval: 0.8)
+                    }
+                    dismissKeyboardOnboardingOverlayIfNeeded()
+                    cycleToCustomKeyboard(firstKey: key("numeric"))
+                }
             }
+            dismissKeyboardOnboardingOverlayIfNeeded()
             _ = anyCustomKey.waitForExistence(timeout: 3)
+            try? selectScript(cyrillic: false)
             Thread.sleep(forTimeInterval: 1.5)
             if lang == "crh" {
                 capture("store_\(storeDevice)_05_home_dark")
@@ -1600,12 +1710,46 @@ final class QirimKeyUITests: XCTestCase {
         }
     }
 
+    private func typeCyrillicSelamVerified() {
+        let initialPrefix = (field.value as? String) ?? ""
+        Thread.sleep(forTimeInterval: 0.65)
+        for attempt in 0..<2 {
+            for ch in ["с", "е", "л", "я", "м"] {
+                let id = "character." + ch
+                if !key(id).exists, key("shift").exists {
+                    tap("shift")
+                    _ = key(id).waitForExistence(timeout: 0.8)
+                }
+                if key(id).exists {
+                    key(id).tap()
+                    Thread.sleep(forTimeInterval: 0.16)
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.35)
+            let cur = (field.value as? String) ?? ""
+            if cur.hasSuffix(" selâm") || (initialPrefix.isEmpty && cur.hasSuffix("selâm")) {
+                return
+            }
+            if attempt == 0 {
+                for _ in 0..<6 {
+                    let currentText = (field.value as? String) ?? ""
+                    if currentText.count <= initialPrefix.count || currentText.hasSuffix(" ") {
+                        break
+                    }
+                    if key("backspace").exists {
+                        key("backspace").tap()
+                        Thread.sleep(forTimeInterval: 0.10)
+                    }
+                }
+                Thread.sleep(forTimeInterval: 0.25)
+            }
+        }
+    }
+
     func testAppStoreScreenshotsLight() throws {
-        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats", "-qt_lang", "crh", "-qt_cyrillic_added"])
+        try launch(theme: "modernLight", extraArgs: ["-qt_demo_stats", "-qt_prefill_phrase_prefix", "-qt_lang", "crh", "-qt_cyrillic_added"])
         try selectScript(cyrillic: false)
-        clear()
-        Thread.sleep(forTimeInterval: 0.8)
-        capture("verify_\(storeDevice)_daily_phrase_light")
+        Thread.sleep(forTimeInterval: 0.5)
         capture("vframe_\(storeDevice)_01_phrase_light")
         typeLetters("qirim")
         Thread.sleep(forTimeInterval: 0.5)
@@ -1618,11 +1762,11 @@ final class QirimKeyUITests: XCTestCase {
         app.terminate()
 
         for lang in ["uk", "en"] {
-            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            var args = ["-qt_demo_stats", "-qt_prefill_phrase_prefix", "-qt_lang", lang, "-qt_cyrillic_added"]
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             try launch(theme: "modernLight", extraArgs: args)
             try selectScript(cyrillic: false)
-            clear()
+            Thread.sleep(forTimeInterval: 0.4)
             typeLetters("qirimtatarca")
             Thread.sleep(forTimeInterval: 0.8)
             capture("store_\(storeDevice)_01_latin_light_\(lang)")
@@ -1630,12 +1774,12 @@ final class QirimKeyUITests: XCTestCase {
         }
 
         for lang in ["crh", "uk", "en"] {
-            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            var args = ["-qt_demo_stats", "-qt_prefill_greeting_prefix", "-qt_lang", lang, "-qt_cyrillic_added"]
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             try launch(theme: "modernLight", extraArgs: args)
             if (try? selectScript(cyrillic: true)) != nil, waitForLetter("ф", timeout: 2.0) {
-                clear()
-                typeLetters("селям")
+                Thread.sleep(forTimeInterval: 0.4)
+                typeCyrillicSelamVerified()
                 Thread.sleep(forTimeInterval: 0.8)
                 if lang == "crh" {
                     capture("store_\(storeDevice)_03_cyrillic")
@@ -1648,12 +1792,12 @@ final class QirimKeyUITests: XCTestCase {
 
     func testAppStoreScreenshotCyrillicOnly() throws {
         for lang in ["crh", "uk", "en"] {
-            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            var args = ["-qt_demo_stats", "-qt_prefill_greeting_prefix", "-qt_lang", lang, "-qt_cyrillic_added"]
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             try launch(theme: "modernLight", extraArgs: args)
             try selectScript(cyrillic: true)
-            clear()
-            typeLetters("селям")
+            Thread.sleep(forTimeInterval: 0.4)
+            typeCyrillicSelamVerified()
             Thread.sleep(forTimeInterval: 0.8)
             if lang == "crh" {
                 capture("store_\(storeDevice)_03_cyrillic")
@@ -1664,11 +1808,9 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     func testAppStoreScreenshotsDark() throws {
-        try launch(theme: "modernDark", extraArgs: ["-qt_demo_stats", "-qt_lang", "crh", "-qt_cyrillic_added"])
+        try launch(theme: "modernDark", extraArgs: ["-qt_demo_stats", "-qt_prefill_greeting_prefix", "-qt_lang", "crh", "-qt_cyrillic_added"])
         try selectScript(cyrillic: false)
-        clear()
-        Thread.sleep(forTimeInterval: 0.8)
-        capture("verify_\(storeDevice)_daily_phrase_dark")
+        Thread.sleep(forTimeInterval: 0.4)
         typeLetters("sel")
         tap("character.â")
         typeLetters("m")
@@ -1678,11 +1820,11 @@ final class QirimKeyUITests: XCTestCase {
         app.terminate()
 
         for lang in ["uk", "en"] {
-            var args = ["-qt_demo_stats", "-qt_lang", lang, "-qt_cyrillic_added"]
+            var args = ["-qt_demo_stats", "-qt_prefill_greeting_prefix", "-qt_lang", lang, "-qt_cyrillic_added"]
             if lang == "uk" { args.append("-qt_ukrainian_fiva") }
             try launch(theme: "modernDark", extraArgs: args)
             try selectScript(cyrillic: false)
-            clear()
+            Thread.sleep(forTimeInterval: 0.4)
             typeLetters("sel")
             tap("character.â")
             typeLetters("m")
@@ -1837,8 +1979,30 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     func testSandboxFieldThemeSyncAndCyrillicDisableInstructions() throws {
+        // 0. Verify tapping Full Access row/toggle when Full Access is missing opens Allow Full Access instruction (Step 2/4), NOT Add New Keyboard
+        app.launchArguments = ["-qt_full_access_missing", "-qt_cyrillic_added", "-qt_demo_stats", "-qt_lang", "uk"]
+        app.launch()
+        let fullAccessToggle = app.switches["status.fullAccess.toggle"].exists
+            ? app.switches["status.fullAccess.toggle"]
+            : app.descendants(matching: .any).matching(identifier: "status.fullAccess.toggle").firstMatch
+        XCTAssertTrue(fullAccessToggle.waitForExistence(timeout: 4.0), "status.fullAccess.toggle must be visible when Full Access is missing")
+        fullAccessToggle.tap()
+        let onbView = app.descendants(matching: .any).matching(identifier: "onboarding.add.view").firstMatch
+        let onbOpenBtn = app.descendants(matching: .any).matching(identifier: "onboarding.openSettings.button").firstMatch
+        if !onbView.waitForExistence(timeout: 2.0) && !onbOpenBtn.waitForExistence(timeout: 1.5) {
+            let fullAccessRow = app.descendants(matching: .any).matching(identifier: "status.fullAccess.row").firstMatch
+            if fullAccessRow.exists {
+                fullAccessRow.tap()
+            }
+        }
+        XCTAssertTrue(onbView.waitForExistence(timeout: 3.0) || onbOpenBtn.waitForExistence(timeout: 3.0), "Tapping status.fullAccess.toggle/row must open OnboardingView")
+        let fullAccessText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] 'повний доступ' OR label CONTAINS[c] 'Full Access' OR label CONTAINS[c] 'Tam irişim'")).firstMatch
+        XCTAssertTrue(fullAccessText.waitForExistence(timeout: 2.5), "Full Access onboarding step must explain Allow Full Access, not Add New Keyboard")
+        capture("verify_00_full_access_onboarding_step2")
+        app.terminate()
+
         // 1. Verify turning OFF settings.cyrillic.toggle when Cyrillic is added opens .removeCyrillic instructions
-        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_theme", "modernLight"]
+        app.launchArguments = ["-qt_cyrillic_added", "-qt_demo_stats", "-qt_lang", "uk"]
         app.launch()
         let cyrToggle = app.switches["settings.cyrillic.toggle"].exists
             ? app.switches["settings.cyrillic.toggle"]
@@ -1859,7 +2023,7 @@ final class QirimKeyUITests: XCTestCase {
         // 2. Verify Text (empty -> daily phrase, non-empty -> 3 suggestions) vs Search (empty -> 3 suggestions, no daily phrase)
         try launch(fieldMode: "standard", theme: "modernLight", extraArgs: ["-qt_cyrillic_added"])
         clear()
-        Thread.sleep(forTimeInterval: 0.5)
+        Thread.sleep(forTimeInterval: 3.4)
         let banner = app.descendants(matching: .any).matching(identifier: "autocomplete.greetingBanner").firstMatch
         let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
         let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
@@ -1926,7 +2090,7 @@ final class QirimKeyUITests: XCTestCase {
         let lightSeg = segmentButton(["theme.light", "Aydınlıq", "Світла", "Light"])
         if darkSeg.exists {
             darkSeg.tap()
-            Thread.sleep(forTimeInterval: 0.6)
+            Thread.sleep(forTimeInterval: 3.4)
             capture("verify_06_theme_dark")
         }
         if lightSeg.exists {

@@ -409,9 +409,9 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
-    private let tailDuration: TimeInterval = 0.22
-    private let maxCometArcLength: CGFloat = 210.0
-    private let maxHeadRadius: CGFloat = 7.0
+    private let tailDuration: TimeInterval = 0.20
+    private let maxCometArcLength: CGFloat = 175.0
+    private let maxHeadRadius: CGFloat = 8.5
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
@@ -501,7 +501,7 @@ private struct SwipeTrailOverlay: View {
                         arcProgress[i] = min(1.0, running / max(1.0, accumulatedLen))
                     }
 
-                    let headRadius = maxHeadRadius * (0.42 + 0.58 * headFade)
+                    let headRadius = maxHeadRadius * (0.45 + 0.55 * headFade)
                     var leftSide = [CGPoint](repeating: spine[0], count: count)
                     var rightSide = [CGPoint](repeating: spine[0], count: count)
                     var radii = [CGFloat](repeating: 0, count: count)
@@ -509,8 +509,8 @@ private struct SwipeTrailOverlay: View {
                     let lastIdx = count - 1
                     for i in 0...lastIdx {
                         let s = arcProgress[i]
-                        // Razor-sharp 0.0 pt tail tip flaring with pow(s, 1.55) into a 14 pt rounded comet head.
-                        let r = (i == 0) ? 0.0 : (headRadius * pow(s, 1.55))
+                        // Razor-sharp 0.0 pt tail tip flaring with pow(s, 1.45) into a 17 pt rounded comet head.
+                        let r = (i == 0) ? 0.0 : (headRadius * pow(s, 1.45))
                         radii[i] = r
                         let pPrev = spine[max(0, i - 1)]
                         let pNext = spine[min(lastIdx, i + 1)]
@@ -524,7 +524,7 @@ private struct SwipeTrailOverlay: View {
                         rightSide[i] = CGPoint(x: p.x - nx * r, y: p.y - ny * r)
                     }
 
-                    // 4. Construct a single unified comet silhouette path (0 pt tip -> flared body -> semicircular head).
+                    // 4. Construct a single unified comet silhouette path (0 pt tip -> flared body -> forward semicircular head).
                     var cometPath = Path()
                     cometPath.move(to: spine[0])
                     for i in 1...lastIdx {
@@ -532,23 +532,31 @@ private struct SwipeTrailOverlay: View {
                     }
                     let headPt = spine[lastIdx]
                     let prevPt = spine[max(0, lastIdx - 1)]
-                    let headAngle = atan2(headPt.y - prevPt.y, headPt.x - prevPt.x)
-                    cometPath.addArc(
-                        center: headPt,
-                        radius: headRadius,
-                        startAngle: .radians(Double(headAngle - .pi / 2)),
-                        endAngle: .radians(Double(headAngle + .pi / 2)),
-                        clockwise: false
-                    )
+                    let hdx = headPt.x - prevPt.x
+                    let hdy = headPt.y - prevPt.y
+                    let hLen = max(0.001, hypot(hdx, hdy))
+                    let htx = hdx / hLen
+                    let hty = hdy / hLen
+                    let hnx = -hty
+                    let hny = htx
+                    let capSteps = 16
+                    for step in 1...capSteps {
+                        let phi = (.pi / 2.0) - (.pi * CGFloat(step) / CGFloat(capSteps))
+                        let c = cos(phi)
+                        let s = sin(phi)
+                        let px = headPt.x + headRadius * (c * htx + s * hnx)
+                        let py = headPt.y + headRadius * (c * hty + s * hny)
+                        cometPath.addLine(to: CGPoint(x: px, y: py))
+                    }
                     for i in stride(from: lastIdx, through: 1, by: -1) {
                         cometPath.addLine(to: rightSide[i])
                     }
                     cometPath.closeSubpath()
 
                     let baseTone = isDark
-                        ? Color(red: 0.88, green: 0.90, blue: 0.95)
-                        : Color(red: 0.42, green: 0.45, blue: 0.50)
-                    let maxAlpha = (isDark ? 0.56 : 0.50) * headFade
+                        ? Color(red: 0.86, green: 0.88, blue: 0.92)
+                        : Color(red: 0.44, green: 0.46, blue: 0.49)
+                    let maxAlpha = (isDark ? 0.48 : 0.46) * headFade
 
                     // 5. Render inside an isolated layer clipped to cometPath using .copy blendMode so
                     //    opacity follows the curve (even on loops) with zero internal rings or joint seams.
@@ -574,13 +582,27 @@ private struct SwipeTrailOverlay: View {
                             quad.closeSubpath()
                             layerCtx.fill(quad, with: .color(baseTone.opacity(alpha)))
                         }
-                        let headRect = CGRect(
-                            x: headPt.x - headRadius - 0.5,
-                            y: headPt.y - headRadius - 0.5,
-                            width: (headRadius + 0.5) * 2,
-                            height: (headRadius + 0.5) * 2
-                        )
-                        layerCtx.fill(Path(ellipseIn: headRect), with: .color(baseTone.opacity(maxAlpha)))
+                        let capR = headRadius + 0.5
+                        let backOverlap: CGFloat = 0.6
+                        var headCap = Path()
+                        headCap.move(to: CGPoint(
+                            x: headPt.x - htx * backOverlap + hnx * capR,
+                            y: headPt.y - hty * backOverlap + hny * capR
+                        ))
+                        for step in 0...capSteps {
+                            let phi = (.pi / 2.0) - (.pi * CGFloat(step) / CGFloat(capSteps))
+                            let c = cos(phi)
+                            let s = sin(phi)
+                            let px = headPt.x + capR * (c * htx + s * hnx)
+                            let py = headPt.y + capR * (c * hty + s * hny)
+                            headCap.addLine(to: CGPoint(x: px, y: py))
+                        }
+                        headCap.addLine(to: CGPoint(
+                            x: headPt.x - htx * backOverlap - hnx * capR,
+                            y: headPt.y - hty * backOverlap - hny * capR
+                        ))
+                        headCap.closeSubpath()
+                        layerCtx.fill(headCap, with: .color(baseTone.opacity(maxAlpha)))
                     }
                 }
             }

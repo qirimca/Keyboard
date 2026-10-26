@@ -18,10 +18,12 @@ import Combine
  ("Settings/General/Keyboards"). It needs full access to get
  access to features like haptic feedback.
  */
-class KeyboardViewController: KeyboardInputViewController {
+class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDelegate {
 
     private var didSetupKeyboard = false
     private var keyboardHeightConstraint: NSLayoutConstraint?
+    private var twoFingerTrackpadPanRecognizer: UIPanGestureRecognizer?
+    private var twoFingerTrackpadStartLocation: CGPoint = .zero
     private var cancellables = Set<AnyCancellable>()
     private var lastObservedUkrainianCyrillic = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
     private static let prefsSyncQueue = DispatchQueue(label: "crh.key.prefsSyncQueue", qos: .utility)
@@ -126,10 +128,19 @@ class KeyboardViewController: KeyboardInputViewController {
         let width = targetSize?.width ?? view.bounds.width
         let usesCompactLayout = state.keyboardContext.deviceType == .pad
             && width.isFinite && width > 0 && width < 420
-        if !usesCompactLayout && preferredContentSize != .zero {
+        let targetH = expectedKeyboardHeight(targetSize: targetSize)
+        let targetPriority: UILayoutPriority = usesCompactLayout ? .init(999) : .defaultHigh
+        if constraint.priority != targetPriority {
+            constraint.priority = targetPriority
+        }
+        if usesCompactLayout {
+            let desiredSize = CGSize(width: 0, height: targetH)
+            if abs(preferredContentSize.height - desiredSize.height) > 0.5 || preferredContentSize.width != 0 {
+                preferredContentSize = desiredSize
+            }
+        } else if preferredContentSize != .zero {
             preferredContentSize = .zero
         }
-        let targetH = expectedKeyboardHeight(targetSize: targetSize)
         if abs(constraint.constant - targetH) > 0.5 {
             constraint.constant = targetH
         }
@@ -139,17 +150,34 @@ class KeyboardViewController: KeyboardInputViewController {
         children.first?.view.invalidateIntrinsicContentSize()
     }
 
-    private func applyPreferences(syncDisk: Bool = false) {
-        if syncDisk {
-            Self.prefsSyncQueue.async { [weak self] in
-                KeyboardPreferences.defaults.synchronize()
-                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.isViewLoaded else { return }
+    private func syncPreferencesFromDiskInBackground() {
+        let beforeSug = KeyboardPreferences.suggestionsEnabled
+        let beforeWl = KeyboardPreferences.wordLearningEnabled
+        let beforeCyr = KeyboardPreferences.cyrillicEnabled
+        let beforeUk = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+        let beforeStats = KeyboardPreferences.statsEnabled
+        Self.prefsSyncQueue.async { [weak self] in
+            KeyboardPreferences.defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isViewLoaded else { return }
+                KeyboardPreferences.refreshCachedPreferences()
+                let changed = beforeSug != KeyboardPreferences.suggestionsEnabled
+                    || beforeWl != KeyboardPreferences.wordLearningEnabled
+                    || beforeCyr != KeyboardPreferences.cyrillicEnabled
+                    || beforeUk != KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+                    || beforeStats != KeyboardPreferences.statsEnabled
+                if changed {
                     self.applyPreferences(syncDisk: false)
                     self.refreshProxyState(forceRender: false)
                 }
             }
+        }
+    }
+
+    private func applyPreferences(syncDisk: Bool = false) {
+        if syncDisk {
+            syncPreferencesFromDiskInBackground()
         }
         KeyboardPreferences.refreshCachedPreferences()
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: state.keyboardContext)
@@ -391,6 +419,8 @@ class KeyboardViewController: KeyboardInputViewController {
         NotificationCenter.default.publisher(for: Notification.Name("crh.key.gestureEnded"))
             .sink { [weak self] _ in
                 guard let self else { return }
+                let twoFingerState = self.twoFingerTrackpadPanRecognizer?.state
+                guard twoFingerState != .began && twoFingerState != .changed else { return }
                 if self.state.keyboardContext.isSpaceDragGestureActive {
                     self.state.keyboardContext.setIsSpaceDragGestureActive(false, animated: true)
                 }
@@ -454,11 +484,81 @@ class KeyboardViewController: KeyboardInputViewController {
             .deliverImmediately
         )
 
-        /// 💡 Call super to perform the base initialization.
-        super.viewDidLoad()
+        /// Configure initial preferences and default script BEFORE `super.viewDidLoad()` mounts `SystemKeyboard`,
+        /// preventing redundant SwiftUI hierarchy rebuilds on cold start.
         self.hasDictationKey = true
         resetToExtensionDefaultScript()
         applyPreferences(syncDisk: false)
+        super.viewDidLoad()
+        installTwoFingerTrackpadGestureIfNeeded()
+        QirimKeyDiagnosticsSubscriber.recordLifecycleEvent(
+            "viewDidLoad",
+            details: ["locale": state.keyboardContext.locale.identifier]
+        )
+    }
+
+    private func installTwoFingerTrackpadGestureIfNeeded() {
+        guard twoFingerTrackpadPanRecognizer == nil else { return }
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerTrackpadPan(_:)))
+        pan.minimumNumberOfTouches = 2
+        pan.maximumNumberOfTouches = 2
+        pan.cancelsTouchesInView = false
+        pan.delaysTouchesBegan = false
+        pan.delaysTouchesEnded = false
+        pan.delegate = self
+        view.addGestureRecognizer(pan)
+        twoFingerTrackpadPanRecognizer = pan
+    }
+
+    @objc private func handleTwoFingerTrackpadPan(_ recognizer: UIPanGestureRecognizer) {
+        let location = recognizer.location(in: view)
+        let translation = recognizer.translation(in: view)
+        let panDistance = hypot(translation.x, translation.y)
+        switch recognizer.state {
+        case .began:
+            twoFingerTrackpadStartLocation = location
+        case .changed:
+            guard panDistance >= 14.0 || state.keyboardContext.isSpaceDragGestureActive else { return }
+            if !state.keyboardContext.isSpaceDragGestureActive {
+                KeyFlickState.shared.reset()
+                SwipeTypingState.shared.reset(clearTrailImmediately: true)
+                state.calloutContext.inputContext.reset()
+                state.calloutContext.actionContext.reset()
+                services.spaceDragGestureHandler.currentDragStartLocation = nil
+                services.spaceDragGestureHandler.handleDragGesture(
+                    from: twoFingerTrackpadStartLocation,
+                    to: twoFingerTrackpadStartLocation
+                )
+                state.keyboardContext.setIsSpaceDragGestureActive(true, animated: true)
+                if state.feedbackConfiguration.isHapticFeedbackEnabled {
+                    HapticFeedback.lightImpact.trigger()
+                }
+            }
+            services.spaceDragGestureHandler.handleDragGesture(
+                from: twoFingerTrackpadStartLocation,
+                to: location
+            )
+        case .ended, .cancelled, .failed:
+            if state.keyboardContext.isSpaceDragGestureActive {
+                state.keyboardContext.setIsSpaceDragGestureActive(false, animated: true)
+            }
+        default:
+            break
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === twoFingerTrackpadPanRecognizer {
+            return !state.keyboardContext.isKeyboardFloating
+        }
+        return true
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        return true
     }
 
     override func didReceiveMemoryWarning() {
@@ -491,9 +591,11 @@ class KeyboardViewController: KeyboardInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         self.hasDictationKey = true
         SuggestionsDataBaseManager.shared.resumeAccess()
-        refreshSupplementaryLexicon()
         isResettingDocumentState = false
         view.backgroundColor = .clear
+        if view.bounds.width >= 420 && preferredContentSize != .zero {
+            preferredContentSize = .zero
+        }
         resetHostBundleIdCache()
         state.keyboardContext.syncTextDocumentProxy(with: self)
         state.keyboardContext.syncIsFloating(with: self)
@@ -513,17 +615,12 @@ class KeyboardViewController: KeyboardInputViewController {
         resetToExtensionDefaultScript()
         syncPreferredKeyboardTypeWithProxy()
 
-        if isCyrillicExtension {
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
-        } else {
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
-        }
-        applyPreferences(syncDisk: true)
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
         SpaceBarState.shared.prepareForAppearance()
         GreetingBannerState.shared.prepareForAppearance(reshuffle: true)
         refreshProxyState(forceRender: true)
+        syncPreferencesFromDiskInBackground()
         super.viewWillAppear(animated)
     }
 
@@ -696,15 +793,20 @@ class KeyboardViewController: KeyboardInputViewController {
         if !isDocEmpty || isSearchField {
             GreetingBannerState.shared.dismissForTyping()
             if suggestionsOn {
+                let dbReady = SuggestionsDataBaseManager.shared.isReady
                 if isSearchField && isDocEmpty {
-                    let starter = (services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: "") ?? []
+                    let starter = dbReady
+                        ? ((services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: "") ?? [])
+                        : []
                     if !starter.isEmpty {
                         state.autocompleteContext.suggestions = starter
                     } else {
                         performAutocomplete()
                     }
                 } else if forceRender || lastRenderSignature?.hasText != signature.hasText || lastRenderSignature?.keyboardType != signature.keyboardType {
-                    let immediate = (services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: autocompleteText ?? "") ?? []
+                    let immediate = dbReady
+                        ? ((services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: autocompleteText ?? "") ?? [])
+                        : []
                     if !immediate.isEmpty {
                         state.autocompleteContext.suggestions = immediate
                     } else {
@@ -723,7 +825,7 @@ class KeyboardViewController: KeyboardInputViewController {
             }
         }
         if signature != lastRenderSignature || forceRender {
-            let prefsChanged = forceRender
+            let prefsChanged = lastRenderSignature == nil
                 || lastRenderSignature?.cyrillicEnabled != signature.cyrillicEnabled
                 || lastRenderSignature?.ukrainianCyrillicLayoutEnabled != signature.ukrainianCyrillicLayoutEnabled
                 || lastRenderSignature?.suggestionsEnabled != signature.suggestionsEnabled
@@ -809,6 +911,11 @@ class KeyboardViewController: KeyboardInputViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        refreshSupplementaryLexicon()
+        let seenKey = isCyrillicExtension ? "crh.key.cyrillicExtensionSeen" : "crh.key.primaryExtensionSeen"
+        if !KeyboardPreferences.defaults.bool(forKey: seenKey) {
+            KeyboardPreferences.defaults.set(true, forKey: seenKey)
+        }
         if KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isPredictiveTextEnabled(for: textDocumentProxy) {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
                 guard let self, self.isViewLoaded, self.view.window != nil else { return }
@@ -823,6 +930,18 @@ class KeyboardViewController: KeyboardInputViewController {
         SpaceBarState.shared.triggerSwitchAnimation()
         updateKeyboardHeightConstraint()
         refreshProxyState()
+        QirimKeyDiagnosticsSubscriber.recordLifecycleEvent(
+            "viewDidAppear",
+            details: [
+                "boundsWidth": "\(Int(view.bounds.width))",
+                "boundsHeight": "\(Int(view.bounds.height))",
+                "isFloating": "\(state.keyboardContext.isKeyboardFloating)",
+                "preferredContentHeight": "\(Int(preferredContentSize.height))",
+                "constraintHeight": "\(Int(keyboardHeightConstraint?.constant ?? 0))",
+                "constraintPriority": "\(Int(keyboardHeightConstraint?.priority.rawValue ?? 0))",
+                "locale": state.keyboardContext.locale.identifier
+            ]
+        )
         let hasText = textDocumentProxy.hasText || !(textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
         let isSearch = DemoStyleProvider.isSearchField(for: state.keyboardContext)
         if hasText || isSearch {
@@ -993,7 +1112,7 @@ final class KeyFlickState {
             currentProgress = 0
         }
         currentAction = action
-        if abs(clamped - currentProgress) > 0.005 || (clamped == 0 && currentProgress != 0) || (clamped == 1 && currentProgress != 1) {
+        if abs(clamped - currentProgress) > 0.001 || (clamped == 0 && currentProgress != 0) || (clamped == 1 && currentProgress != 1) {
             currentProgress = clamped
             subject.send(Event(action: action, progress: clamped))
         }
@@ -1019,8 +1138,8 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
 
     @State private var progress: CGFloat = 0
 
-    private var primaryFontSize: CGFloat { isLandscape ? 23.0 : 20.5 }
-    private var restingScale: CGFloat { isLandscape ? (12.5 / 23.0) : (10.5 / 20.5) }
+    private var primaryFontSize: CGFloat { isLandscape ? 25.5 : 23.0 }
+    private var restingScale: CGFloat { isLandscape ? (13.5 / 25.5) : (11.5 / 23.0) }
     private var flickGlyphBaselineCompensation: CGFloat {
         switch flickSymbol {
         case ",", ".", "_":
@@ -1029,18 +1148,18 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
             return 0
         }
     }
-    private var restingOffsetY: CGFloat { (isLandscape ? -19.5 : -13.5) + flickGlyphBaselineCompensation }
+    private var restingOffsetY: CGFloat { (isLandscape ? -20.5 : -14.5) + flickGlyphBaselineCompensation }
     private var restingOpacity: Double { isDark ? 0.42 : 0.34 }
-    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 7.5 : 6.5 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 7.0 : 6.0 }
 
     var body: some View {
         let currentFlickScale = restingScale + (1.0 - restingScale) * progress
         let currentFlickOffsetY = restingOffsetY * (1.0 - progress)
         let currentFlickOpacity = restingOpacity + (1.0 - restingOpacity) * Double(progress)
 
-        let currentPrimaryOffsetY = restingPrimaryOffsetY + progress * (isLandscape ? 12.0 : 9.5)
-        let currentPrimaryScale = 1.0 - progress * 0.25
-        let currentPrimaryOpacity = max(0.0, 1.0 - Double(progress) * 1.65)
+        let currentPrimaryOffsetY = restingPrimaryOffsetY + progress * (isLandscape ? 14.0 : 11.0)
+        let currentPrimaryScale = 1.0 - progress * 0.22
+        let currentPrimaryOpacity = max(0.0, 1.0 - Double(progress) * 1.0)
 
         ZStack {
             primaryContent()
@@ -1065,7 +1184,7 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
                     progress = 0
                 }
             } else {
-                withAnimation(.interactiveSpring(response: 0.07, dampingFraction: 0.92)) {
+                withAnimation(.interactiveSpring(response: 0.04, dampingFraction: 0.96)) {
                     progress = event.progress
                 }
             }

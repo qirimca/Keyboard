@@ -84,10 +84,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // In iPad Floating mode, the system floating platter already renders a native Globe button next to the bottom grabber pill.
-        // Include the Emoji (.emojis) button when the system Emoji keyboard is enabled (both on Face ID iPhone and in iPad Floating mode).
+        // In iPad Floating mode, the system floating platter already renders a native Globe button next to the bottom grabber pill,
+        // and native iPadOS never shows a separate Emoji button on the keyboard row. Only iPhone shows the Emoji (.emojis) button when enabled.
         let shouldIncludeGlobe = !context.isKeyboardFloating && context.needsInputModeSwitchKey
-        let canShowPhoneEmoji = (context.deviceType == .phone || context.isKeyboardFloating) && SystemKeyboardSettings.isEmojiKeyboardEnabled
+        let canShowPhoneEmoji = context.deviceType == .phone && !context.isKeyboardFloating && SystemKeyboardSettings.isEmojiKeyboardEnabled
 
         #if os(iOS) || os(tvOS) || os(visionOS)
         let proxy = context.textDocumentProxy
@@ -152,7 +152,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
     
     override func bottomSystemButtonWidth(for context: KeyboardContext) -> KeyboardLayout.ItemWidth {
         if context.isKeyboardFloating {
-            return .percentage(SystemKeyboardSettings.isEmojiKeyboardEnabled ? 0.13 : 0.235)
+            return .percentage(0.235)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
         return .percentage(isPortrait ? 0.118 : 0.11)
@@ -177,10 +177,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 return lowerSystemButtonWidth(for: context)
             }
             if context.isKeyboardFloating {
-                if type == .emojis {
-                    return .percentage(0.13)
-                }
-                return .percentage(SystemKeyboardSettings.isEmojiKeyboardEnabled ? 0.13 : 0.235)
+                return .percentage(0.235)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {

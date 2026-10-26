@@ -1,5 +1,5 @@
 {
-  "template_version": "1.2.0",
+  "template_version": "1.3.0",
   "project": "QırımKey",
   "app_version": "3.1",
   "build_number": "5",
@@ -11,23 +11,37 @@
   },
   "themes": {
     "light": {
+      "background_asset": "marketing/templates/assets/crimea_sunset_bg.png",
       "bg_start": "#16243A",
       "bg_end": "#0C1524",
-      "veil_opacity": "0.52",
-      "accent": "#FBBF24",
+      "veil_opacity": "0.28",
+      "veil_top_opacity": "0.28",
+      "veil_mid_opacity": "0.06",
+      "veil_bot_opacity": "0.28",
+      "badge_pill_fill": "#091326",
+      "badge_pill_opacity": "0.58",
+      "badge_pill_stroke": "#FBBF24",
+      "accent": "#FDE047",
       "accent_secondary": "#38BDF8",
       "headline": "#FFFFFF",
-      "subtitle": "#E2E8F0",
+      "subtitle": "#F1F5F9",
       "frame_border": "#94A3B8"
     },
     "dark": {
+      "background_asset": "marketing/templates/assets/crimea_sunset_bg.png",
       "bg_start": "#090F1C",
       "bg_end": "#050912",
-      "veil_opacity": "0.70",
-      "accent": "#38BDF8",
-      "accent_secondary": "#FBBF24",
+      "veil_opacity": "0.42",
+      "veil_top_opacity": "0.44",
+      "veil_mid_opacity": "0.12",
+      "veil_bot_opacity": "0.42",
+      "badge_pill_fill": "#060D1D",
+      "badge_pill_opacity": "0.62",
+      "badge_pill_stroke": "#FBBF24",
+      "accent": "#FDE047",
+      "accent_secondary": "#38BDF8",
       "headline": "#FFFFFF",
-      "subtitle": "#CBD5E1",
+      "subtitle": "#E2E8F0",
       "frame_border": "#475569"
     }
   },
@@ -127,96 +141,96 @@
     "crh": {
       "01_latin_light": {
         "badge": "QIRIMKEY • ÖZ TİLİMİZ ER YERDE",
-        "title": "Qırımtatar Klaviaturası",
-        "subtitle": "Lâtin ve Kirill elifbeleri, aqıllı söz teklifleri ve svayp",
+        "title": "Qırımtatar\nklaviaturası QırımKey",
+        "subtitle": "Lâtin ve Kirill elifbeleri • Aqıllı\nsöz teklifleri ve tez svayp",
         "pills": ["Lâtin & Kirill", "Söz teklifleri", "Zengin luğat"]
       },
       "02_latin_dark": {
         "badge": "QARANLIQ TEMA & LIQUID GLASS",
-        "title": "Zarif Gece Körünişi",
-        "subtitle": "Közni yormayğan dizayn ve canlı Taraq Tamğa nefes aluvı",
+        "title": "Zarif gece\nkörünişi",
+        "subtitle": "Qaranlıq tema Liquid Glass • Canlı\nTaraq Tamğa nefes aluvı",
         "pills": ["Qaranlıq tema", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
         "badge": "EKİ ELİFBE — BİR YERDE",
-        "title": "Kirill ve Canlı Transliteratsiya",
-        "subtitle": "селям → selâm • Ukraina ФІВА ve klassik tizilişleri",
+        "title": "Kirill ve canlı\ntransliteratsiya",
+        "subtitle": "селям → selâm • Ukraina ФІВА\ntizilişi ve avto-tüzetüv",
         "pills": ["Къырымтатарджа", "Українська ФІВА", "Avto-tüzetüv"]
       },
       "04_home_light": {
         "badge": "STATİSTİKA & SAZLAMALAR",
-        "title": "Öz Üslübiñizge Köre Sazlañız",
-        "subtitle": "Yazuv statistika kartası, künlik hikmetler ve qolay idare",
-        "pills": ["Statistika", "Künlik hikmetler", "iPhone & iPad"]
+        "title": "Qolay idare\nve statistika",
+        "subtitle": "Yazuv statistikası • Söz ögrenüv •\nKünlik hikmetler ve sazlamalar",
+        "pills": ["Statistika", "Söz ögrenüv", "Künlik hikmetler"]
       },
       "05_home_dark": {
         "badge": "100% CİHAZDA • TAM HUSUSİYLİK",
-        "title": "Malümatıñız Emniyette",
-        "subtitle": "İnternetsiz işley • Şahsiy yazuvlarıñız cihazdan tışqa çıqmay",
+        "title": "Malümatıñız\nemniyette",
+        "subtitle": "Tamamen internetsiz işley • Şahsiy\nyazuvlarıñız cihazdan tışqa çıqmay",
         "pills": ["İnternetsiz işley", "Sıfır telemetriya", "Tam emniyet"]
       }
     },
     "uk": {
       "01_latin_light": {
         "badge": "QIRIMKEY • РІДНА МОВА ВСЮДИ",
-        "title": "Кримськотатарська клавіатура",
-        "subtitle": "Латиниця та кирилиця, розумні підказки слів і свайп",
+        "title": "Кримськотатарська\nклавіатура QırımKey",
+        "subtitle": "Латиниця та кирилиця • Розумні\nпропозиції слів і швидкий свайп",
         "pills": ["Латиниця й кирилиця", "Пропозиції слів", "Багатий словник"]
       },
       "02_latin_dark": {
         "badge": "ТЕМНА ТЕМА & LIQUID GLASS",
-        "title": "Витончений нічний дизайн",
-        "subtitle": "Комфортний набір удень і вночі з живим диханням Тарак-Тамги",
+        "title": "Витончений\nнічний дизайн",
+        "subtitle": "Темна тема Liquid Glass • Живе\nдихання емблеми Тарак-Тамги",
         "pills": ["Темна тема", "Liquid Glass", "Тарак-Тамга"]
       },
       "03_cyrillic": {
         "badge": "ДВА АЛФАВІТИ РАЗОМ",
-        "title": "Кирилиця та миттєва транслітерація",
-        "subtitle": "селям → selâm • Українська розкладка ФІВА та класична",
+        "title": "Латиниця й кирилиця\nв один дотик",
+        "subtitle": "селям → selâm • Українська\nрозкладка ФІВА та автовиправлення",
         "pills": ["Къырымтатарджа", "Українська ФІВА", "Автовиправлення"]
       },
       "04_home_light": {
         "badge": "СТАТИСТИКА Й НАЛАШТУВАННЯ",
-        "title": "Зручне керування та прогрес",
-        "subtitle": "Статистика швидкості друку, відомі вислови та гнучкі опції",
-        "pills": ["Статистика", "Відомі вислови", "iPhone та iPad"]
+        "title": "Швидке налаштування\nта статистика",
+        "subtitle": "Статистика друку • Навчання слів •\nВідомі вислови • Підказки в додатку",
+        "pills": ["Статистика", "Навчання слів", "Відомі вислови"]
       },
       "05_home_dark": {
         "badge": "100% НА ПРИСТРОЇ • ПОВНА ПРИВАТНІСТЬ",
-        "title": "Ваші дані у безпеці",
-        "subtitle": "Працює повністю офлайн • Жодні тексти не передаються в мережу",
+        "title": "Ваші дані\nу безпеці",
+        "subtitle": "Працює повністю офлайн •\nЖодні тексти не передаються в мережу",
         "pills": ["100% Офлайн", "Без телеметрії", "Повний захист"]
       }
     },
     "en": {
       "01_latin_light": {
         "badge": "QIRIMKEY • OUR LANGUAGE EVERYWHERE",
-        "title": "Crimean Tatar Keyboard",
-        "subtitle": "Latin & Cyrillic scripts, smart word predictions and swipe",
+        "title": "Crimean Tatar\nKeyboard QırımKey",
+        "subtitle": "Latin & Cyrillic scripts • Smart\nword predictions and fast swipe",
         "pills": ["Latin & Cyrillic", "Smart Suggestions", "Rich Lexicon"]
       },
       "02_latin_dark": {
         "badge": "DARK THEME & LIQUID GLASS",
-        "title": "Refined Night Experience",
-        "subtitle": "Effortless day & night typing with breathing Taraq Tamğa emblem",
+        "title": "Refined Night\nExperience",
+        "subtitle": "Liquid Glass dark theme • Breathing\nTaraq Tamğa spacebar emblem",
         "pills": ["Dark Theme", "Liquid Glass", "Taraq Tamğa"]
       },
       "03_cyrillic": {
         "badge": "TWO SCRIPTS IN ONE",
-        "title": "Cyrillic & Live Transliteration",
-        "subtitle": "селям → selâm • Ukrainian FIVA and classic Cyrillic layouts",
+        "title": "Cyrillic & Live\nTransliteration",
+        "subtitle": "селям → selâm • Ukrainian FIVA\nlayout and smart autocorrect",
         "pills": ["Cyrillic Script", "Ukrainian FIVA", "Autocorrect"]
       },
       "04_home_light": {
         "badge": "STATISTICS & CUSTOMIZATION",
-        "title": "Tailored to Your Typing Style",
-        "subtitle": "Personal typing milestones, cultural quotes & intuitive controls",
-        "pills": ["Statistics", "Cultural Quotes", "iPhone & iPad"]
+        "title": "Quick Setup\n& Statistics",
+        "subtitle": "Typing statistics • Word learning •\nCultural quotes & in-app guidance",
+        "pills": ["Statistics", "Word Learning", "Cultural Quotes"]
       },
       "05_home_dark": {
         "badge": "100% ON-DEVICE • TOTAL PRIVACY",
-        "title": "Your Data Stays Yours",
-        "subtitle": "Works completely offline • Zero telemetry or cloud tracking",
+        "title": "Your Data\nStays Safe",
+        "subtitle": "Works completely offline •\nNo typed text is ever sent online",
         "pills": ["100% Offline", "Zero Telemetry", "Full Privacy"]
       }
     }

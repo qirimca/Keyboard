@@ -1,57 +1,88 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2064 2752" width="2064" height="2752">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 2064 2752" width="2064" height="2752">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#16243A" />
       <stop offset="100%" stop-color="#0C1524" />
     </linearGradient>
     <linearGradient id="sunsetVeil" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#07101E" stop-opacity="0.72" />
-      <stop offset="28%" stop-color="#0B1628" stop-opacity="0.46" />
-      <stop offset="100%" stop-color="#050912" stop-opacity="0.86" />
+      <stop offset="0%" stop-color="#060D1C" stop-opacity="0.28" />
+      <stop offset="22%" stop-color="#081226" stop-opacity="0.06" />
+      <stop offset="100%" stop-color="#040812" stop-opacity="0.28" />
     </linearGradient>
+    <radialGradient id="horizonGlow" cx="50%" cy="20%" r="48%">
+      <stop offset="0%" stop-color="#FBBF24" stop-opacity="0.16" />
+      <stop offset="55%" stop-color="#F59E0B" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#050912" stop-opacity="0.0" />
+    </radialGradient>
     <linearGradient id="aluminumRim" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#94A3B8" />
-      <stop offset="50%" stop-color="#475569" />
-      <stop offset="100%" stop-color="#64748B" />
+      <stop offset="0%" stop-color="#F5B87A" />
+      <stop offset="48%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#D99552" />
     </linearGradient>
     <clipPath id="screenClip">
-      <rect x="227" y="509" width="1609" height="2091" rx="44" ry="44" />
+      <rect x="382" y="782" width="1300" height="1871" rx="44" ry="44" />
     </clipPath>
-    <filter id="deviceShadow" x="-10%" y="-8%" width="120%" height="122%">
-      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000000" flood-opacity="0.62" />
+    <filter id="deviceShadow" x="-14%" y="-10%" width="128%" height="128%">
+      <feDropShadow dx="0" dy="8" stdDeviation="28" flood-color="#FF9E3D" flood-opacity="0.38" />
+      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000000" flood-opacity="0.68" />
     </filter>
     <filter id="textShadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="#000000" flood-opacity="0.45" />
+      <feDropShadow dx="0" dy="4" stdDeviation="14" flood-color="#000000" flood-opacity="0.72" />
     </filter>
   </defs>
 
-  <!-- Base Layer & Crimean Coast Sunset Photography -->
-  <rect id="layer-background" width="2064" height="2752" fill="url(#bgGrad)" />
-  <image id="layer-crimea-sunset" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" x="0" y="0" width="2064" height="2752" preserveAspectRatio="xMidYMid slice" />
-  <rect id="layer-veil" width="2064" height="2752" fill="url(#sunsetVeil)" />
-
-  <!-- Clean Apple-Grade Headline & Subheadline Copy Layer -->
-  <g id="layer-copy" filter="url(#textShadow)">
-    <text x="1032" y="159" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="35" font-weight="700" letter-spacing="2.4" fill="#FBBF24">QIRIMKEY • ÖZ TİLİMİZ ER YERDE</text>
-    <text x="1032" y="291" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="74" font-weight="800" letter-spacing="-0.5" fill="#FFFFFF">Qırımtatar Klaviaturası</text>
-    <text x="1032" y="396" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="43" font-weight="500" fill="#E2E8F0">Lâtin ve Kirill elifbeleri, aqıllı söz teklifleri ve svayp</text>
+  <!-- 1. Base Layer & Real Crimean Coastal Sunset Photography -->
+  <g id="layer-ai-background">
+    <g id="layer-photo-background">
+      <rect id="layer-background" width="2064" height="2752" fill="url(#bgGrad)" />
+      <image id="layer-crimea-sunset" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" xlink:href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/marketing/templates/assets/crimea_sunset_bg.png" x="0" y="0" width="2064" height="2752" preserveAspectRatio="none" />
+      <rect id="layer-veil" width="2064" height="2752" fill="url(#sunsetVeil)" />
+      <rect id="layer-horizon-glow" width="2064" height="2752" fill="url(#horizonGlow)" />
+    </g>
   </g>
 
-  <!-- Realistic iPad Pro Hardware Chassis & Screen Layer -->
+  <!-- 2. Clean Canva DAHZG5VPIOs 2-Element Header (Bold 2-Line Headline + Bulleted 2-Line Subtitle) -->
+  <g id="layer-header-copy" filter="url(#textShadow)">
+    <g id="layer-copy">
+      <rect id="layer-badge-pill" x="372" y="143" width="1320" height="533" rx="46" ry="46" fill="#060A12" fill-opacity="0.40" />
+      <text x="1032" y="280" text-anchor="middle" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif" font-size="98" font-weight="800" letter-spacing="-0.6" fill="#FFFFFF">        <tspan x="1032" y="280">Qırımtatar</tspan>
+        <tspan x="1032" y="387">klaviaturası QırımKey</tspan></text>
+      <text x="1032" y="478" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="42" font-weight="500" fill="#F1F5F9">        <tspan x="1032" y="478">Lâtin ve Kirill elifbeleri • Aqıllı</tspan>
+        <tspan x="1032" y="534">söz teklifleri ve tez svayp</tspan></text>
+    </g>
+  </g>
+
+  <!-- 3. Feature Keywords Layer (Folded into Subtitle for Clean Canva Look; Kept Hidden for Layer Schema Compatibility) -->
+  <g id="layer-feature-pills" opacity="0">
+    <g id="pill-1">
+      <rect x="550" y="461" width="317" height="57" rx="28" ry="28" fill="#FFFFFF" fill-opacity="0.15" stroke="#FDE047" stroke-opacity="0.62" stroke-width="1.4" />
+      <text x="708" y="499" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="31" font-weight="600" fill="#FFFFFF">Lâtin &amp; Kirill</text>
+    </g>
+    <g id="pill-2">
+      <rect x="891" y="461" width="317" height="57" rx="28" ry="28" fill="#FFFFFF" fill-opacity="0.15" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="1.4" />
+      <text x="1049" y="499" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="31" font-weight="600" fill="#FFFFFF">Söz teklifleri</text>
+    </g>
+    <g id="pill-3">
+      <rect x="1232" y="461" width="282" height="57" rx="28" ry="28" fill="#FFFFFF" fill-opacity="0.15" stroke="#FFFFFF" stroke-opacity="0.30" stroke-width="1.4" />
+      <text x="1373" y="499" text-anchor="middle" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif" font-size="31" font-weight="600" fill="#FFFFFF">Zengin luğat</text>
+    </g>
+  </g>
+
+  <!-- 4. Realistic iPad Pro Hardware Chassis & Crisp 1:1 Screen Layer -->
   <g id="layer-device-frame" filter="url(#deviceShadow)">
     <!-- Top Power & Side Volume Buttons -->
-    <rect x="1674" y="461" width="76" height="10" rx="3" fill="#64748B" />
-    <rect x="1874" y="881" width="10" height="99" rx="3" fill="#64748B" />
-    <rect x="1874" y="1011" width="10" height="99" rx="3" fill="#64748B" />
+    <rect x="1557" y="734" width="62" height="10" rx="3" fill="#78716C" />
+    <rect x="1720" y="1112" width="10" height="89" rx="3" fill="#78716C" />
+    <rect x="1720" y="1229" width="10" height="89" rx="3" fill="#78716C" />
 
-    <!-- Outer Aluminum Rim & Inner Black Bezel -->
-    <rect x="187" y="469" width="1689" height="2171" rx="79" ry="79" fill="url(#aluminumRim)" />
-    <rect x="197" y="479" width="1669" height="2151" rx="69" ry="69" fill="#080A0F" />
+    <!-- Outer Warm-Lit Aluminum Rim & Inner Black Bezel -->
+    <rect x="342" y="742" width="1380" height="1951" rx="79" ry="79" fill="url(#aluminumRim)" />
+    <rect x="352" y="752" width="1360" height="1931" rx="69" ry="69" fill="#080A0F" />
 
     <!-- Front TrueDepth Camera Lens in Top Bezel -->
-    <circle cx="1032" cy="494" r="6" fill="#111827" stroke="#1E293B" stroke-width="2" />
+    <circle cx="1032" cy="767" r="6" fill="#111827" stroke="#1E293B" stroke-width="2" />
 
-    <!-- Real Build Screenshot -->
-    <image href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png" x="227" y="509" width="1609" height="2091" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
+    <!-- Real Lossless Build Screenshot -->
+    <image id="layer-screenshot" href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png" xlink:href="/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png" x="382" y="782" width="1300" height="1871" clip-path="url(#screenClip)" preserveAspectRatio="xMidYMid slice" />
   </g>
 </svg>

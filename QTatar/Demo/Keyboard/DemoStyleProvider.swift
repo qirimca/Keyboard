@@ -394,6 +394,34 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return true
     }
 
+    override var calloutStyle: Callouts.CalloutStyle {
+        var style = super.calloutStyle
+        let isDark = Self.effectiveIsDark(for: keyboardContext)
+        style.backgroundColor = isDark
+            ? Color(red: 78.0 / 255.0, green: 78.0 / 255.0, blue: 79.0 / 255.0)
+            : Color.white
+        style.textColor = isDark ? .white : .black
+        style.borderColor = isDark ? Color.black.opacity(0.35) : Color.black.opacity(0.18)
+        style.shadowColor = Color.black.opacity(isDark ? 0.28 : 0.14)
+        style.shadowRadius = 4
+        style.buttonCornerRadius = buttonCornerRadius(for: .character("a"))
+        style.cornerRadius = keyboardContext.isKeyboardFloating ? 10.0 : 8.0
+        return style
+    }
+
+    override var inputCalloutStyle: Callouts.InputCalloutStyle {
+        var style = super.inputCalloutStyle
+        style.callout = calloutStyle
+        if keyboardContext.isKeyboardFloating {
+            style.calloutSize = CGSize(width: 47.5, height: 65.0)
+            style.font = .system(size: 36.5, weight: .regular)
+        } else {
+            style.calloutSize = CGSize(width: 52.0, height: 62.0)
+            style.font = .system(size: 36.0, weight: .regular)
+        }
+        return style
+    }
+
     override func buttonBackgroundColor(
         for action: KeyboardAction,
         isPressed: Bool
@@ -412,24 +440,26 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let darkInputKey = useClassicStyle
             ? Color(white: 0.28)
             : Color(white: 0.71).opacity(0.24)
+        // Native iPadOS/iOS Dark Mode pressed keys become darker/more translucent (RGB(38,38,42) over RGB(22,22,24))
         let darkInputKeyPressed = useClassicStyle
             ? Color(white: 0.18)
-            : Color(white: 0.85).opacity(0.38)
+            : Color(white: 0.65).opacity(0.11)
         let darkSystemKeyGray = useClassicStyle
             ? Color(white: 0.20)
             : Color(white: 0.71).opacity(0.24)
         let darkSystemKeyGrayPressed = useClassicStyle
             ? Color(white: 0.28)
-            : Color(white: 0.85).opacity(0.38)
+            : Color(white: 0.65).opacity(0.11)
         let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
         let lightInputKey = useClassicStyle
             ? Color.white
             : Color.white.opacity(0.84)
+        // Native iPadOS/iOS Light Mode pressed keys become highly translucent (RGB(188,214,202) over RGB(180,207,195) wallpaper)
         let lightInputKeyPressed = useClassicStyle
             ? Color(white: 0.85)
-            : Color(white: 0.82).opacity(0.92)
+            : Color(white: 0.88).opacity(0.22)
         let lightSystemKeyGray = useClassicStyle
             ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0) // #ACB3BE
             : Color.black.opacity(0.17)
@@ -540,20 +570,20 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             if isLetter {
                 let isLower = char == char.lowercased() && char != char.uppercased()
                 if isFloating {
-                    return .system(size: isLower ? 19.5 : 17.5, weight: .regular)
+                    return .system(size: isLower ? 22.0 : 19.5, weight: .regular)
                 } else if isDockedPad {
-                    return .system(size: isPortrait ? (isLower ? 20.5 : 19.5) : (isLower ? 23.0 : 21.5), weight: .regular)
+                    return .system(size: isPortrait ? (isLower ? 23.0 : 22.0) : (isLower ? 25.5 : 24.5), weight: .regular)
                 } else if isCompactPhone {
                     return .system(size: isLower ? 22.5 : 19.5, weight: .regular)
                 } else {
                     return .system(size: isLower ? 24.5 : 21.5, weight: .regular)
                 }
             }
-            return .system(size: isFloating ? 18 : (isDockedPad ? (isPortrait ? 20 : 22) : (isCompactPhone ? 20 : 21.5)), weight: .regular)
+            return .system(size: isFloating ? 20 : (isDockedPad ? (isPortrait ? 22 : 24) : (isCompactPhone ? 20 : 21.5)), weight: .regular)
         case .custom(let name) where name == "url_domain":
-            return .system(size: isFloating ? 14 : (isDockedPad ? 15 : 15.5), weight: .regular)
+            return .system(size: isFloating ? 14 : (isDockedPad ? 15.5 : 15.5), weight: .regular)
         case .custom(let name) where name == "toggle_script":
-            return .system(size: isDockedPad ? (isPortrait ? 17.5 : 18) : 14, weight: .regular)
+            return .system(size: isDockedPad ? (isPortrait ? 18.0 : 19.0) : 15.0, weight: .regular)
         case .keyboardType(let type):
             if type == .emojis {
                 if isDockedPad {
@@ -561,16 +591,16 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 }
                 return .system(size: isFloating ? 16.5 : 19, weight: .regular)
             }
-            return .system(size: isFloating ? 14 : (isDockedPad ? (isPortrait ? 17.5 : 18) : 15.0), weight: .regular)
+            return .system(size: isFloating ? 15.5 : (isDockedPad ? (isPortrait ? 18.0 : 19.0) : 15.0), weight: .regular)
         case .shift, .capsLock, .backspace:
             if isDockedPad {
-                return .system(size: isPortrait ? 19 : 21, weight: .regular)
+                return .system(size: isPortrait ? 20 : 22, weight: .regular)
             }
             return .system(size: 16.5, weight: .regular)
         default:
             if buttonImage(for: action) != nil {
                 if isDockedPad {
-                    return .system(size: isPortrait ? 19 : 21, weight: .regular)
+                    return .system(size: isPortrait ? 20 : 22, weight: .regular)
                 }
                 return .system(size: isFloating ? 16.5 : 19, weight: .regular)
             }

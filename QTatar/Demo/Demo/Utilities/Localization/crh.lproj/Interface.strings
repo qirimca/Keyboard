@@ -69,6 +69,7 @@
 "settings.stats" = "Statistika";
 "settings.stats.desc" = "Yazuv tezligi, sözler ve yeñişlerni közetüv";
 "stats.charsSubtitle" = "Arifler: %d";
+"stats.uniqueWordsUnit" = "unik.";
 "stats.speedSubtitle" = "Soñki tezlik: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Eñ yüksek yazuv tezligi";
 "stats.manualWordsSubtitle" = "Qolnen arif-arif yazılğan";
@@ -94,5 +95,13 @@
 "settings.systemKeyboard.desc" = "Avto-büyük arifler, avto-tüzetüv, matematika";
 "settings.systemKeyboard.ios26Desc" = "«General» → «Keyboard» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";
 "settings.cyrillic.addHint" = "«General» → «Keyboard» → «Keyboards» bölüginde qoşuñız";
-"settings.fullAccess.addHint" = "«General» → «Keyboard» → «Keyboards» → QırımKey bölüginde açınız";
+"settings.fullAccess.addHint" = "Sazlamalar, luğat ve titrevni sinhronizatsiya etmek içün kerek (100% oflayn). «General» → «Keyboard» → «Keyboards» → QırımKey bölüginde açınız";
+"settings.fullAccess.onHint" = "Sazlamalar, luğat ve titrev sinhronizatsiyası (100% cihazda oflayn)";
 "sandbox.wrongKeyboardWarning" = "Başqa klaviatura saylanğan — 🌐 ile almaştırıñız";
+"stats.wordsUnit" = "söz";
+"stats.learnedWordsUnit" = "luğat";
+"stats.learnedWords.emptyTitle" = "Şahsiy luğat şimdilik boş";
+"stats.learnedWords.emptyDesc" = "Yazğan yañı sözleriñiz tez teklifler içün mında öz-özünden saqlana.";
+"stats.learnedWords.clearAll" = "Luğatnı temizle";
+"stats.learnedWords.done" = "Azır";
+"stats.learnedWords.delete" = "Yoq et";

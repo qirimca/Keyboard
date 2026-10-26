@@ -208,6 +208,7 @@ enum KeyboardUsageStats {
     static let suggestedWordsKey = "crh.key.stats.suggestedWords"
     static let suggestedCharsKey = "crh.key.stats.suggestedCharacters"
     static let learnedWordsKey = "crh.key.stats.learnedWords"
+    static let uniqueWordsKey = "crh.key.stats.uniqueWords"
     static let activeSecondsKey = "crh.key.stats.activeSeconds"
     static let peakWPMKey = "crh.key.stats.peakWPM"
     static let peakCPMKey = "crh.key.stats.peakCPM"
@@ -218,6 +219,7 @@ enum KeyboardUsageStats {
 
     static let statsUpdatedNotification = "crh.key.statsDidUpdate"
     static let statsResetNotification = "crh.key.statsDidReset"
+    static let userLexiconChangedNotification = "crh.key.userLexiconDidChange"
 
     private static var recentKeystrokeTimes: [CFAbsoluteTime] = []
     private static var lastKeystrokeTime: CFAbsoluteTime = 0
@@ -243,6 +245,7 @@ enum KeyboardUsageStats {
         return defaults.integer(forKey: totalWordsKey)
     }
     static var learnedWords: Int { KeyboardPreferences.defaults.integer(forKey: learnedWordsKey) }
+    static var uniqueWords: Int { KeyboardPreferences.defaults.integer(forKey: uniqueWordsKey) }
     static var activeSeconds: Double { KeyboardPreferences.defaults.double(forKey: activeSecondsKey) }
     static var peakWPM: Int { KeyboardPreferences.defaults.integer(forKey: peakWPMKey) }
     static var peakCPM: Int { KeyboardPreferences.defaults.integer(forKey: peakCPMKey) }
@@ -442,17 +445,83 @@ enum KeyboardUsageStats {
 
     static func updateLearnedWordsCount(_ count: Int) {
         guard KeyboardPreferences.statsEnabled else { return }
+        setLearnedWordsCount(count)
+    }
+
+    static func setLearnedWordsCount(_ count: Int) {
         let defaults = KeyboardPreferences.defaults
-        let current = defaults.integer(forKey: learnedWordsKey)
-        let updated = max(count, current)
-        if updated != current {
-            defaults.set(updated, forKey: learnedWordsKey)
+        let clamped = max(0, count)
+        if defaults.integer(forKey: learnedWordsKey) != clamped {
+            defaults.set(clamped, forKey: learnedWordsKey)
             scheduleCrossProcessSync(immediate: true)
         }
     }
 
-    /// Reads the exact row count of `user_unigrams` from `user_lexicon.sqlite` in the shared App Group container
-    /// so `learnedWords` in `HomeView` always stays synchronized with the on-device personal dictionary.
+    static func setUniqueWordsCount(_ count: Int) {
+        let defaults = KeyboardPreferences.defaults
+        let clamped = max(0, count)
+        if defaults.integer(forKey: uniqueWordsKey) != clamped {
+            defaults.set(clamped, forKey: uniqueWordsKey)
+            scheduleCrossProcessSync(immediate: true)
+        }
+    }
+
+    /// When the user types in the in-app sandbox while Full Access is not yet enabled for the keyboard extension,
+    /// the host app records the completed word count in App Group stats without auto-adding words to the Personal Dictionary.
+    static func recordSandboxCommittedWordIfNeeded(oldText: String, newText: String, isFullAccessGranted: Bool) {
+        guard !isFullAccessGranted else { return }
+        guard newText.count == oldText.count + 1,
+              newText.hasPrefix(oldText),
+              let addedChar = newText.last else { return }
+        let isDelimiter = addedChar.isWhitespace || ".!?,;:".contains(addedChar)
+        guard isDelimiter else { return }
+        guard let lastOldChar = oldText.last, lastOldChar.isLetter || lastOldChar.isNumber else { return }
+
+        if KeyboardPreferences.statsEnabled {
+            recordCharacterTyped(count: 1)
+            recordManualWordCompleted()
+        }
+    }
+
+    private static func writableUserLexiconDatabaseURL() -> URL? {
+        let fm = FileManager.default
+        if let containerDir = AppConfiguration.appGroupContainerURL {
+            try? fm.createDirectory(at: containerDir, withIntermediateDirectories: true)
+            if fm.isWritableFile(atPath: containerDir.path) {
+                return containerDir.appendingPathComponent("user_lexicon.sqlite")
+            }
+        }
+        if let supportDir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            try? fm.createDirectory(at: supportDir, withIntermediateDirectories: true)
+            return supportDir.appendingPathComponent("user_lexicon.sqlite")
+        }
+        return nil
+    }
+
+    private static func userLexiconDatabaseURL() -> URL? {
+        if let containerDir = AppConfiguration.appGroupContainerURL {
+            let url = containerDir.appendingPathComponent("user_lexicon.sqlite")
+            if FileManager.default.fileExists(atPath: url.path) {
+                return url
+            }
+        }
+        if let supportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let directURL = supportDir.appendingPathComponent("user_lexicon.sqlite")
+            if FileManager.default.fileExists(atPath: directURL.path) {
+                return directURL
+            }
+            let fallbackURL = supportDir
+                .appendingPathComponent("QirimKeyUserLexicon", isDirectory: true)
+                .appendingPathComponent("user_lexicon.sqlite")
+            if FileManager.default.fileExists(atPath: fallbackURL.path) {
+                return fallbackURL
+            }
+        }
+        return AppConfiguration.appGroupContainerURL?.appendingPathComponent("user_lexicon.sqlite")
+    }
+
+    /// Reads the exact row count of custom personal-dictionary words (`is_custom = 1`) and total unique words (`user_unigrams`)
+    /// from `user_lexicon.sqlite` in the shared App Group container so `learnedWords` and `uniqueWords` in `HomeView` stay synchronized.
     /// When called on the main thread, dispatches the SQLite read to `syncQueue` and returns the cached count immediately.
     @discardableResult
     static func syncLearnedWordsCountFromSQLite() -> Int {
@@ -471,30 +540,73 @@ enum KeyboardUsageStats {
     private static func performSyncLearnedWordsCountFromSQLite() -> Int {
         let defaults = KeyboardPreferences.defaults
         let stored = defaults.integer(forKey: learnedWordsKey)
-        guard let containerDir = AppConfiguration.appGroupContainerURL else {
-            return stored
-        }
-        let dbURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
-        guard FileManager.default.fileExists(atPath: dbURL.path) else {
+        let storedUnique = defaults.integer(forKey: uniqueWordsKey)
+        let isDemoMode = CommandLine.arguments.contains("-qt_demo_stats") || CommandLine.arguments.contains("-qt_seed_demo_stats")
+        guard let dbURL = userLexiconDatabaseURL(),
+              FileManager.default.fileExists(atPath: dbURL.path) else {
+            if !isDemoMode && (stored != 0 || storedUnique != 0) {
+                defaults.set(0, forKey: learnedWordsKey)
+                defaults.set(0, forKey: uniqueWordsKey)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName(statsUpdatedNotification as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+                return 0
+            }
             return stored
         }
         var db: OpaquePointer?
-        guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
+        let openRC = sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil)
+        if openRC != SQLITE_OK {
             if let db { sqlite3_close_v2(db) }
-            return stored
+            db = nil
+            guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
+                if let db { sqlite3_close_v2(db) }
+                return stored
+            }
+        } else {
+            sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
+            sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
         }
         sqlite3_busy_timeout(db, 150)
         defer { sqlite3_close_v2(db) }
-        var stmt: OpaquePointer?
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
-              sqlite3_step(stmt) == SQLITE_ROW else {
-            return stored
+
+        var customCount = 0
+        do {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1;", -1, &stmt, nil) == SQLITE_OK,
+               sqlite3_step(stmt) == SQLITE_ROW {
+                customCount = Int(sqlite3_column_int(stmt, 0))
+            }
         }
-        let dbCount = Int(sqlite3_column_int(stmt, 0))
-        let resolved = max(stored, dbCount)
-        if resolved != stored {
-            defaults.set(resolved, forKey: learnedWordsKey)
+
+        var totalUniqueCount = 0
+        do {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
+               sqlite3_step(stmt) == SQLITE_ROW {
+                totalUniqueCount = Int(sqlite3_column_int(stmt, 0))
+            }
+        }
+
+        let isDemoSeeded = isDemoMode && customCount == 0
+        let resolvedCustom = isDemoSeeded ? max(stored, customCount) : customCount
+        let resolvedUnique = isDemoSeeded ? max(storedUnique, totalUniqueCount) : totalUniqueCount
+        var didChange = false
+        if resolvedCustom != stored {
+            defaults.set(resolvedCustom, forKey: learnedWordsKey)
+            didChange = true
+        }
+        if resolvedUnique != storedUnique {
+            defaults.set(resolvedUnique, forKey: uniqueWordsKey)
+            didChange = true
+        }
+        if didChange {
             CFNotificationCenterPostNotification(
                 CFNotificationCenterGetDarwinNotifyCenter(),
                 CFNotificationName(statsUpdatedNotification as CFString),
@@ -503,7 +615,224 @@ enum KeyboardUsageStats {
                 true
             )
         }
-        return resolved
+        return resolvedCustom
+    }
+
+    /// Returns the user's explicitly saved personal-dictionary words (`is_custom = 1`) from `user_unigrams` ordered by most recently used.
+    static func fetchLearnedWords(limit: Int = 500) -> [(word: String, freq: Int, lastUsed: Int64)] {
+        let isDemoMode = CommandLine.arguments.contains("-qt_demo_stats") || CommandLine.arguments.contains("-qt_seed_demo_stats")
+        if isDemoMode {
+            let currentStored = KeyboardPreferences.defaults.integer(forKey: learnedWordsKey)
+            if currentStored == 18 {
+                seedDemoLearnedWordsIfNeeded()
+            }
+        }
+        guard let dbURL = userLexiconDatabaseURL(),
+              FileManager.default.fileExists(atPath: dbURL.path) else {
+            return []
+        }
+        var db: OpaquePointer?
+        let openRC = sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil)
+        if openRC != SQLITE_OK {
+            if let db { sqlite3_close_v2(db) }
+            db = nil
+            guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
+                if let db { sqlite3_close_v2(db) }
+                return []
+            }
+        } else {
+            sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
+            sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+        }
+        sqlite3_busy_timeout(db, 150)
+        defer { sqlite3_close_v2(db) }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        let sql = "SELECT word, freq, last_used FROM user_unigrams WHERE is_custom = 1 ORDER BY last_used DESC, freq DESC, word ASC LIMIT ?1;"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_bind_int(stmt, 1, Int32(max(1, limit))) == SQLITE_OK else {
+            return []
+        }
+        var words: [(word: String, freq: Int, lastUsed: Int64)] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let ptr = sqlite3_column_text(stmt, 0) {
+                let word = String(cString: ptr)
+                let freq = Int(sqlite3_column_int(stmt, 1))
+                let lastUsed = sqlite3_column_int64(stmt, 2)
+                words.append((word: word, freq: max(1, freq), lastUsed: lastUsed))
+            }
+        }
+        return words
+    }
+
+    /// Deletes a single learned word from `user_unigrams` and `user_bigrams`, updates `learnedWordsKey`, and returns the exact remaining count.
+    @discardableResult
+    static func deleteLearnedWord(_ word: String) -> Int {
+        let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased(with: Locale(identifier: "crh-Latn"))
+        guard !normalized.isEmpty,
+              let dbURL = userLexiconDatabaseURL(),
+              FileManager.default.fileExists(atPath: dbURL.path) else {
+            return fetchLearnedWords().count
+        }
+        let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        var db: OpaquePointer?
+        var remainingTotalUnique = 0
+        if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
+            sqlite3_busy_timeout(db, 150)
+            do {
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(db, "DELETE FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK {
+                    _ = normalized.withCString { cStr in
+                        sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+                    }
+                    sqlite3_step(stmt)
+                }
+            }
+            do {
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(db, "DELETE FROM user_bigrams WHERE word1 = ?1 OR word2 = ?1;", -1, &stmt, nil) == SQLITE_OK {
+                    _ = normalized.withCString { cStr in
+                        sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+                    }
+                    sqlite3_step(stmt)
+                }
+            }
+            do {
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
+                   sqlite3_step(stmt) == SQLITE_ROW {
+                    remainingTotalUnique = Int(sqlite3_column_int(stmt, 0))
+                }
+            }
+        }
+        if let db {
+            sqlite3_close_v2(db)
+        }
+        let remainingCount = fetchLearnedWords().count
+        setLearnedWordsCount(remainingCount)
+        setUniqueWordsCount(remainingTotalUnique)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(userLexiconChangedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(statsUpdatedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
+        return remainingCount
+    }
+
+    /// Clears all learned words from the personal dictionary without resetting general typing statistics.
+    static func clearAllLearnedWords() {
+        if let dbURL = userLexiconDatabaseURL(),
+           FileManager.default.fileExists(atPath: dbURL.path) {
+            var db: OpaquePointer?
+            var remainingTotalUnique = 0
+            if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
+                sqlite3_busy_timeout(db, 150)
+                sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+                sqlite3_exec(db, "DELETE FROM user_unigrams WHERE is_custom = 1;", nil, nil, nil)
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
+                   sqlite3_step(stmt) == SQLITE_ROW {
+                    remainingTotalUnique = Int(sqlite3_column_int(stmt, 0))
+                }
+            }
+            if let db {
+                sqlite3_close_v2(db)
+            }
+            setUniqueWordsCount(remainingTotalUnique)
+        }
+        setLearnedWordsCount(0)
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(userLexiconChangedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(statsUpdatedNotification as CFString),
+            nil,
+            nil,
+            true
+        )
+    }
+
+    static func clearLearnedWords() {
+        clearAllLearnedWords()
+    }
+
+    /// Seeds demo learned words into `user_lexicon.sqlite` when `-qt_demo_stats` is active and the lexicon is empty.
+    static func seedDemoLearnedWordsIfNeeded() {
+        guard let dbURL = AppConfiguration.appGroupContainerURL?.appendingPathComponent("user_lexicon.sqlite") else { return }
+        var db: OpaquePointer?
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
+        guard sqlite3_open_v2(dbURL.path, &db, flags, nil) == SQLITE_OK else {
+            if let db { sqlite3_close_v2(db) }
+            return
+        }
+        sqlite3_busy_timeout(db, 150)
+        defer { sqlite3_close_v2(db) }
+        let schema = """
+        CREATE TABLE IF NOT EXISTS user_unigrams (
+            word TEXT PRIMARY KEY,
+            freq INTEGER NOT NULL DEFAULT 1,
+            last_used INTEGER NOT NULL DEFAULT 0,
+            is_custom INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS user_bigrams (
+            word1 TEXT NOT NULL,
+            word2 TEXT NOT NULL,
+            freq INTEGER NOT NULL DEFAULT 1,
+            last_used INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (word1, word2)
+        );
+        """
+        sqlite3_exec(db, schema, nil, nil, nil)
+        sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+        do {
+            var countStmt: OpaquePointer?
+            defer { sqlite3_finalize(countStmt) }
+            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1;", -1, &countStmt, nil) == SQLITE_OK,
+               sqlite3_step(countStmt) == SQLITE_ROW,
+               sqlite3_column_int(countStmt, 0) > 0 {
+                return
+            }
+        }
+        let demoWords = [
+            "qırımtatarca", "aqmescit", "bağçasaray", "kelever", "qarasuvbazar",
+            "kefe", "alupka", "gurzuf", "sudaq", "kezlev",
+            "çufut-qale", "salğır", "çatır-dağ", "ay-petri", "qırım",
+            "meraba", "sağoluñız", "bereket"
+        ]
+        let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        let now = Int64(Date().timeIntervalSince1970)
+        for (idx, word) in demoWords.enumerated() {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            let sql = "INSERT OR REPLACE INTO user_unigrams(word, freq, last_used, is_custom) VALUES (?1, ?2, ?3, 1);"
+            if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                _ = word.withCString { cStr in
+                    sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+                }
+                sqlite3_bind_int(stmt, 2, Int32(max(1, 5 - (idx % 4))))
+                sqlite3_bind_int64(stmt, 3, now - Int64(idx * 60))
+                sqlite3_step(stmt)
+            }
+        }
     }
 
     static func markInjectedText(_ text: String = "") {
@@ -527,11 +856,10 @@ enum KeyboardUsageStats {
     }
 
     static func clearUserLexiconDatabaseInPlace() {
-        guard let containerDir = AppConfiguration.appGroupContainerURL else {
+        guard let dbURL = userLexiconDatabaseURL(),
+              FileManager.default.fileExists(atPath: dbURL.path) else {
             return
         }
-        let dbURL = containerDir.appendingPathComponent("user_lexicon.sqlite")
-        guard FileManager.default.fileExists(atPath: dbURL.path) else { return }
         var db: OpaquePointer?
         if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
             sqlite3_busy_timeout(db, 150)
@@ -551,6 +879,7 @@ enum KeyboardUsageStats {
             suggestedWordsKey,
             suggestedCharsKey,
             learnedWordsKey,
+            uniqueWordsKey,
             activeSecondsKey,
             peakWPMKey,
             peakCPMKey,
@@ -805,12 +1134,41 @@ import MetricKit
 @available(iOS 14.0, *)
 final class QirimKeyDiagnosticsSubscriber: NSObject, MXMetricManagerSubscriber {
     static let shared = QirimKeyDiagnosticsSubscriber()
+    private static let logQueue = DispatchQueue(label: "crh.key.diagnosticsLogQueue", qos: .utility)
     private var isRegistered = false
 
     func start() {
         guard !isRegistered else { return }
         isRegistered = true
         MXMetricManager.shared.add(self)
+    }
+
+    static func recordLifecycleEvent(_ event: String, details: [String: String] = [:]) {
+        logQueue.async {
+            guard let containerURL = AppConfiguration.appGroupContainerURL else { return }
+            let diagDir = containerURL.appendingPathComponent("Diagnostics", isDirectory: true)
+            try? FileManager.default.createDirectory(at: diagDir, withIntermediateDirectories: true)
+            let logURL = diagDir.appendingPathComponent("keyboard_lifecycle.jsonl")
+            var payload = details
+            payload["event"] = event
+            payload["ts"] = String(format: "%.3f", Date().timeIntervalSince1970)
+            payload["bundle"] = Bundle.main.bundleIdentifier ?? "unknown"
+            guard let data = try? JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]),
+                  var line = String(data: data, encoding: .utf8) else { return }
+            line.append("\n")
+            guard let lineData = line.data(using: .utf8) else { return }
+            if let attrs = try? FileManager.default.attributesOfItem(atPath: logURL.path),
+               let size = attrs[.size] as? UInt64, size > 262_144 {
+                try? lineData.write(to: logURL, options: .atomic)
+            } else if FileManager.default.fileExists(atPath: logURL.path),
+                      let handle = try? FileHandle(forWritingTo: logURL) {
+                defer { try? handle.close() }
+                _ = try? handle.seekToEnd()
+                try? handle.write(contentsOf: lineData)
+            } else {
+                try? lineData.write(to: logURL, options: .atomic)
+            }
+        }
     }
 
     func didReceive(_ payloads: [MXDiagnosticPayload]) {

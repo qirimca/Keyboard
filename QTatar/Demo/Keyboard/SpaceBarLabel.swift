@@ -410,13 +410,21 @@ struct SpaceBarLabel: View {
         }
     }
 
+    private var fullNameOpacity: Double {
+        effectiveIsDark ? 0.42 : 0.34
+    }
+
+    private var cornerCodeOpacity: Double {
+        effectiveIsDark ? 0.30 : 0.20
+    }
+
     var body: some View {
         let primaryColor = effectiveIsDark ? Color.white : Color.black
         ZStack {
             // Centered full localized language name when appearing / switching script
             Text(fullName)
                 .font(.system(size: centerFontSize, weight: .regular, design: .default))
-                .foregroundStyle(primaryColor.opacity(0.65))
+                .foregroundStyle(primaryColor.opacity(fullNameOpacity))
                 .lineLimit(1)
                 .opacity(spaceBarState.isShowingFullName ? 1 : 0)
 
@@ -425,12 +433,12 @@ struct SpaceBarLabel: View {
                 .frame(width: isCompact ? 18.0 : 22.5, height: isCompact ? 10.0 : 12.5)
                 .opacity(spaceBarState.isShowingFullName ? 0 : 1)
 
-            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state, condensed to match native iOS "УК"
+            // Pinned bottom-trailing 2-letter code ("QT" / "КЪ" / "Кʼ") in resting state, condensed and opacity-matched to native iOS "УК"
             Text(languageCode)
                 .font(cornerFont)
                 .kerning(-0.3)
                 .scaleEffect(x: 0.85, y: 1.0, anchor: .bottomTrailing)
-                .foregroundStyle(primaryColor.opacity(0.55))
+                .foregroundStyle(primaryColor.opacity(cornerCodeOpacity))
                 .lineLimit(1)
                 .padding(.trailing, isCompact ? 8.5 : 9.5)
                 .padding(.bottom, isCompact ? 4.5 : 5.5)

@@ -1,6 +1,7 @@
 {
-  "template_version": "1.2.0",
+  "template_version": "1.3.0",
   "background_asset": "marketing/templates/assets/crimea_sunset_bg.png",
+  "background_asset_dark": "marketing/templates/assets/crimea_sunset_bg.png",
   "video_storyboard_22s": {
     "duration_seconds": 22,
     "narrative_acts": [
@@ -68,7 +69,7 @@
       "svg_path": "marketing/rendered/crh/iphone_6_3/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_crh.png",
       "source_exists": true,
-      "sha256": "e85512e694af7f8f8c313079301ce581c53f274306d7dcef21211e25c6151260"
+      "sha256": "8ceac93945c184012e98abd7e51731c39bac542c96e7f58311e34d52db4730aa"
     },
     {
       "locale": "crh",
@@ -77,7 +78,7 @@
       "svg_path": "marketing/rendered/crh/iphone_6_3/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_crh.png",
       "source_exists": true,
-      "sha256": "5054eae4d4fa0a1f2bf28a2ab958cfbeb979a7bc493936d2798a0dc24de4d763"
+      "sha256": "a3837ed4c477ac5b65ec99efcd286ef2e14cc97c3769c0564b34b4443898448d"
     },
     {
       "locale": "crh",
@@ -86,7 +87,7 @@
       "svg_path": "marketing/rendered/crh/iphone_6_3/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_crh.png",
       "source_exists": true,
-      "sha256": "fffd8fa57c1f5f1de213af52e63185308f0e59b671cc17291efaa37171102339"
+      "sha256": "4673f6bdec4fd3b5980ce3f06860029393efac5eeff20352452a57d700298ba6"
     },
     {
       "locale": "crh",
@@ -95,7 +96,7 @@
       "svg_path": "marketing/rendered/crh/iphone_6_3/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_crh.png",
       "source_exists": true,
-      "sha256": "2b6b2a6d328466aa816cc1c169e6622a583b51c79c6c1034a2df990fb857d447"
+      "sha256": "a2e368c121dc5a0247b20c0b28786a6c448ba4397762c1ed7bf03d360eff95a1"
     },
     {
       "locale": "crh",
@@ -104,7 +105,7 @@
       "svg_path": "marketing/rendered/crh/iphone_6_3/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_crh.png",
       "source_exists": true,
-      "sha256": "3952d4935ce811b4fc7daac999ad6d009dea090675f38d62ca0fa10dee1ecbfd"
+      "sha256": "b0ec34564d7092152f8c9d741e1790fe831870cb1e2c8e232326639a2987b746"
     },
     {
       "locale": "crh",
@@ -113,7 +114,7 @@
       "svg_path": "marketing/rendered/crh/ipad_13/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_crh.png",
       "source_exists": true,
-      "sha256": "c2f4c6a83a44d3812736a9b40901c7c8a44b0a7880dd9b05439b536346c1099e"
+      "sha256": "a35132e04ce1a2b0150e723d90452c87cba7b080ef64375933ce686651a17d0f"
     },
     {
       "locale": "crh",
@@ -122,7 +123,7 @@
       "svg_path": "marketing/rendered/crh/ipad_13/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_crh.png",
       "source_exists": true,
-      "sha256": "caae23c00b2ca30c8daa5fa9ef544fcf0db9b5bb3b112500cb3871a87da017a6"
+      "sha256": "a006bd544a98660aed8d77740b3af9836a93e35f71c871b1737eedd691ae4d2a"
     },
     {
       "locale": "crh",
@@ -131,7 +132,7 @@
       "svg_path": "marketing/rendered/crh/ipad_13/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_crh.png",
       "source_exists": true,
-      "sha256": "1d007fe05a10fd0bf0068dd24f53d6321543421dc8dd74397721a692709aaf1d"
+      "sha256": "b1b68dc355238969a5c9763f746448c5728dad08a1a4a4a4603e03f447317c68"
     },
     {
       "locale": "crh",
@@ -140,7 +141,7 @@
       "svg_path": "marketing/rendered/crh/ipad_13/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_crh.png",
       "source_exists": true,
-      "sha256": "8aa5cb1e842e8ed09fee4c78495e89038becfe7823f2f72bad6fa0d7b5a327e8"
+      "sha256": "00fe8f502ff6a5c71c0d542f5dac722a64da5db567b73af61a54bd3354559375"
     },
     {
       "locale": "crh",
@@ -149,7 +150,7 @@
       "svg_path": "marketing/rendered/crh/ipad_13/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_crh.png",
       "source_exists": true,
-      "sha256": "7bf993e02bc67b8dc44b19e329078b779951de53a27343c192cdc52dbd6458a3"
+      "sha256": "34d7aeeb5ca87cceb81936ae94d16d15ada6af6a8b1aa04851b78f59f57211c3"
     },
     {
       "locale": "uk",
@@ -158,7 +159,7 @@
       "svg_path": "marketing/rendered/uk/iphone_6_3/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_uk.png",
       "source_exists": true,
-      "sha256": "ffb007b09bb39748528ace5983bdeb4c95df0f7b743cce7816077c63b0859141"
+      "sha256": "3841787851d9da9a37f4dd039af485c01731b7f35f4cb94fac09a03f0aba3c78"
     },
     {
       "locale": "uk",
@@ -167,7 +168,7 @@
       "svg_path": "marketing/rendered/uk/iphone_6_3/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_uk.png",
       "source_exists": true,
-      "sha256": "76ea7ca96d358f3afb753dcdb6ab661f2a7aa624e323d6aaaaf03373e7126da2"
+      "sha256": "912e8a7137e0be8c0d39252373f4f0f29234c698e0a183708eca2d35893a22c4"
     },
     {
       "locale": "uk",
@@ -176,7 +177,7 @@
       "svg_path": "marketing/rendered/uk/iphone_6_3/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_uk.png",
       "source_exists": true,
-      "sha256": "c2b2ab5887a41e4804cc750e4e626d826921b305e2e76ceb9aff6feb262945fb"
+      "sha256": "4fa4f439a70df1b12db7518ce6f1a25a018f14579d29422315014de2afc67af6"
     },
     {
       "locale": "uk",
@@ -185,7 +186,7 @@
       "svg_path": "marketing/rendered/uk/iphone_6_3/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_uk.png",
       "source_exists": true,
-      "sha256": "0b431e92305f137b21b7ba392f8fc174c479ab00691f3c35aa659cbb7b17c3be"
+      "sha256": "25f86a9d01193ee7c095cd6a77edcf4647e1ad3972f5aceaccb5f40039bdd104"
     },
     {
       "locale": "uk",
@@ -194,7 +195,7 @@
       "svg_path": "marketing/rendered/uk/iphone_6_3/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_uk.png",
       "source_exists": true,
-      "sha256": "91bc782a814a4a59c98f4eddefc3290a6627388c278c3d9e2efb9139caaeb5dd"
+      "sha256": "3afda3727cf3e639ca5ef3d007925176085558a7b290ba78aa49644a17339ca8"
     },
     {
       "locale": "uk",
@@ -203,7 +204,7 @@
       "svg_path": "marketing/rendered/uk/ipad_13/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_uk.png",
       "source_exists": true,
-      "sha256": "c4e3b812519b6f81f550795ee0acb2feb626e81a39ea2ac116f4575d73d795a5"
+      "sha256": "1fb4eba69c4307d2ad2c918fe6348fc9cd3893f611c7d17ba09ab08afa22f829"
     },
     {
       "locale": "uk",
@@ -212,7 +213,7 @@
       "svg_path": "marketing/rendered/uk/ipad_13/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_uk.png",
       "source_exists": true,
-      "sha256": "1c1ffc30a0c42927a877d26c23749f87a6163fc24d099a975dd985f69668dd2e"
+      "sha256": "e980563bd1a6c92a6fa70e4011613f5110f62938786368c5c1634d1ea490a26f"
     },
     {
       "locale": "uk",
@@ -221,7 +222,7 @@
       "svg_path": "marketing/rendered/uk/ipad_13/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_uk.png",
       "source_exists": true,
-      "sha256": "34a59e8948ce50fb174484410a4a764baa17149bfa2e9828af02093e74b2d138"
+      "sha256": "77440d7422e8863287dbe780eb62c89760e892a0f9f6f53d8bec76148b64f1ca"
     },
     {
       "locale": "uk",
@@ -230,7 +231,7 @@
       "svg_path": "marketing/rendered/uk/ipad_13/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_uk.png",
       "source_exists": true,
-      "sha256": "16e813bb2e01f5ec8c8c2a87525a616d63b2ff836badbf8fde93f5c588849096"
+      "sha256": "bcf0638db6bcc7ae2a873cda9a69991beafc50223ec6fb52b55875e3583fe28c"
     },
     {
       "locale": "uk",
@@ -239,7 +240,7 @@
       "svg_path": "marketing/rendered/uk/ipad_13/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_uk.png",
       "source_exists": true,
-      "sha256": "4654696d2983e53d443b4519b9315971ff09731158da276f49c150a3f8b48a6d"
+      "sha256": "81cbb83da4860f08a6502466dec7349ecca542e887c09b6a6b67ed3edc3c829c"
     },
     {
       "locale": "en",
@@ -248,7 +249,7 @@
       "svg_path": "marketing/rendered/en/iphone_6_3/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_01_latin_light_en.png",
       "source_exists": true,
-      "sha256": "0001951cfa2954a9a06ffbe6de6ba96758958a5cb5165fd39fb0f219659a756c"
+      "sha256": "a3cafc2ee803f6aeaac43e13f821612cd01a452c145ac93b004b1ee9a1acb75d"
     },
     {
       "locale": "en",
@@ -257,7 +258,7 @@
       "svg_path": "marketing/rendered/en/iphone_6_3/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_02_latin_dark_en.png",
       "source_exists": true,
-      "sha256": "9013fd3c80d4e4ea6daccab3c31835c093aab186db1ed84d2c0fea5838487e52"
+      "sha256": "1c68c085238280497d83e00423574902f9177421d3c4badd2299f4f4f0e09f73"
     },
     {
       "locale": "en",
@@ -266,7 +267,7 @@
       "svg_path": "marketing/rendered/en/iphone_6_3/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_03_cyrillic_en.png",
       "source_exists": true,
-      "sha256": "a032103e7ff9ead3fcafee1105111fc1fa49f4373591f5b3dc6fff88a46aa450"
+      "sha256": "e7a4865a5dca469deb422014f5a529fdb1118fcff95b9dc51893f09c59782f3f"
     },
     {
       "locale": "en",
@@ -275,7 +276,7 @@
       "svg_path": "marketing/rendered/en/iphone_6_3/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_04_home_light_en.png",
       "source_exists": true,
-      "sha256": "d040a2d97bafb6e1e37b4ef5b06068799df2363e3af969d8ce26f511e0cdc4cb"
+      "sha256": "196a11cc592aeeba51718f9c86c2f782af1877ac6f733570952928169d9f69f2"
     },
     {
       "locale": "en",
@@ -284,7 +285,7 @@
       "svg_path": "marketing/rendered/en/iphone_6_3/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_iphone_05_home_dark_en.png",
       "source_exists": true,
-      "sha256": "eeccf32ba75a1eed4c83d467e4b4c9cf069efa77c8f2220d82fc4d41fd935951"
+      "sha256": "4a25e2133d4c4b38c92d757744f8ae51042ce214bc90ae9615f8dc381ef68e0d"
     },
     {
       "locale": "en",
@@ -293,7 +294,7 @@
       "svg_path": "marketing/rendered/en/ipad_13/01_latin_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_01_latin_light_en.png",
       "source_exists": true,
-      "sha256": "f1fa14d2c5420e946ff02f3bd4efc0b9cf0b2715386603b017135d0e02ef39eb"
+      "sha256": "7c50b5f96cbc79aabda2431d9a453b1543e360d201827b34fc2e3054a720b789"
     },
     {
       "locale": "en",
@@ -302,7 +303,7 @@
       "svg_path": "marketing/rendered/en/ipad_13/02_latin_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_02_latin_dark_en.png",
       "source_exists": true,
-      "sha256": "1cb7f0d4276414744d7072fa691cf33b88648a2d96e99c0ad0cce0918e49e2d7"
+      "sha256": "f9a31b03ad3ecc61458c99ef06f68d29fc991f5e9e39bd9b54f90d77c6cddd33"
     },
     {
       "locale": "en",
@@ -311,7 +312,7 @@
       "svg_path": "marketing/rendered/en/ipad_13/03_cyrillic.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_03_cyrillic_en.png",
       "source_exists": true,
-      "sha256": "bd1f72691a2af8676793cbf3d87c182ee10533b48cbde59d7fe6e22feb83a6a9"
+      "sha256": "8f388009d4cabb0c3b69f2fdf68a33e76cc055137de8ef3d2c6bfe81993309f7"
     },
     {
       "locale": "en",
@@ -320,7 +321,7 @@
       "svg_path": "marketing/rendered/en/ipad_13/04_home_light.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_04_home_light_en.png",
       "source_exists": true,
-      "sha256": "717cebaf4e03896bf2d40790c2ce363e883baeb3100d2f1f6370e147a85a931f"
+      "sha256": "e32a0eae4d6335aebe72380b24c1c84c5b59e110c70191e36bc455336105dc94"
     },
     {
       "locale": "en",
@@ -329,7 +330,7 @@
       "svg_path": "marketing/rendered/en/ipad_13/05_home_dark.svg",
       "source_screenshot": "docs/release/2026-10-25/assets/store_ipad_05_home_dark_en.png",
       "source_exists": true,
-      "sha256": "694986e6b922fde08ee4d0815346d82a9df6165f5d5de573b9f92946f290c4ee"
+      "sha256": "8bf35f1d86f4e11b79cd61269e2aabaffe298cae1f4370715f4a76fd5ee43371"
     }
   ]
 }

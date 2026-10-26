@@ -170,6 +170,16 @@ final class SuggestionsDataBaseManager {
             nil,
             .deliverImmediately
         )
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            nil,
+            { _, _, _, _, _ in
+                SuggestionsDataBaseManager.shared.refreshAfterExternalLexiconChange()
+            },
+            "crh.key.userLexiconDidChange" as CFString,
+            nil,
+            .deliverImmediately
+        )
         let nc = NotificationCenter.default
         let suspendNames: [Notification.Name] = [
             .NSExtensionHostWillResignActive,
@@ -252,9 +262,13 @@ final class SuggestionsDataBaseManager {
             if KeyboardPreferences.wordLearningEnabled {
                 self.ensureUserDB()
                 if KeyboardPreferences.statsEnabled {
-                    let learnedCount = self.countUserUnigrams()
+                    let learnedCount = self.countCustomUserUnigrams()
+                    let uniqueCount = self.countTotalUserUnigrams()
                     if learnedCount > 0 {
                         KeyboardUsageStats.updateLearnedWordsCount(learnedCount)
+                    }
+                    if uniqueCount > 0 {
+                        KeyboardUsageStats.setUniqueWordsCount(uniqueCount)
                     }
                 }
             }
@@ -449,12 +463,14 @@ final class SuggestionsDataBaseManager {
         }
         sqlite3_busy_timeout(userDB, 150)
         let schema = """
-        PRAGMA journal_mode = WAL;
+        PRAGMA wal_checkpoint(TRUNCATE);
+        PRAGMA journal_mode = DELETE;
         PRAGMA synchronous = NORMAL;
         CREATE TABLE IF NOT EXISTS user_unigrams (
             word TEXT PRIMARY KEY,
             freq INTEGER NOT NULL DEFAULT 1,
-            last_used INTEGER NOT NULL DEFAULT 0
+            last_used INTEGER NOT NULL DEFAULT 0,
+            is_custom INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_user_unigrams_freq ON user_unigrams(freq DESC, last_used DESC);
         CREATE TABLE IF NOT EXISTS user_bigrams (
@@ -467,6 +483,7 @@ final class SuggestionsDataBaseManager {
         CREATE INDEX IF NOT EXISTS idx_user_bigrams_word1 ON user_bigrams(word1, freq DESC, last_used DESC);
         """
         sqlite3_exec(userDB, schema, nil, nil, nil)
+        sqlite3_exec(userDB, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
 
         var userVersion: Int32 = 0
         var versionStmt: OpaquePointer?
@@ -485,6 +502,14 @@ final class SuggestionsDataBaseManager {
             PRAGMA user_version = 3;
             """
             sqlite3_exec(userDB, migrationSQL, nil, nil, nil)
+        }
+
+        let strictQuotedMigrationKey = "crh.key.migration.strictQuotedLearnedWordsV1"
+        if !ProcessInfo.processInfo.arguments.contains("-qt_demo_stats"),
+           !KeyboardPreferences.defaults.bool(forKey: strictQuotedMigrationKey) {
+            KeyboardPreferences.defaults.set(true, forKey: strictQuotedMigrationKey)
+            KeyboardUsageStats.setLearnedWordsCount(countCustomUserUnigrams())
+            KeyboardUsageStats.setUniqueWordsCount(countTotalUserUnigrams())
         }
     }
 
@@ -873,12 +898,10 @@ final class SuggestionsDataBaseManager {
                     if prefixMatches.isEmpty, self.typoCorrection(for: normalizedWord) != nil {
                         return
                     }
-                    // Out-of-vocabulary words (!isKnownInBundledDB) require either explicit confirmation
-                    // or repeated input (newCount >= 2) before entering user_unigrams.
                     if existingUserFreq == 0 {
                         let newCount = (self.sessionUnconfirmedOOVCounts[normalizedWord] ?? 0) + 1
                         self.sessionUnconfirmedOOVCounts[normalizedWord] = newCount
-                        guard newCount >= 2 else { return }
+                        guard newCount >= 1 else { return }
                     }
                 }
             }
@@ -894,14 +917,16 @@ final class SuggestionsDataBaseManager {
                 }
                 return nil
             }()
-            let isNewUserWord = (existingUserFreq == 0)
-            self.recordLearnedEntry(word: normalizedWord, previousWord: effectivePrev, timestamp: now)
-            let totalLearned = self.countUserUnigrams()
-            if totalLearned > 0 {
-                KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
-            } else if isNewUserWord {
-                KeyboardUsageStats.recordWordLearned()
-            }
+            self.recordLearnedEntry(
+                word: normalizedWord,
+                previousWord: effectivePrev,
+                timestamp: now,
+                isCustom: explicitlyConfirmed
+            )
+            let totalCustom = self.countCustomUserUnigrams()
+            let totalUnique = self.countTotalUserUnigrams()
+            KeyboardUsageStats.setLearnedWordsCount(totalCustom)
+            KeyboardUsageStats.setUniqueWordsCount(totalUnique)
         }
     }
 
@@ -925,18 +950,27 @@ final class SuggestionsDataBaseManager {
         databaseQueue.sync {
             ensureDB()
             ensureUserDB()
-            let isNewUserWord = (userFrequency(of: normalizedWord) == 0)
-            recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now)
-            let totalLearned = countUserUnigrams()
-            if totalLearned > 0 {
-                KeyboardUsageStats.updateLearnedWordsCount(totalLearned)
-            } else if isNewUserWord {
-                KeyboardUsageStats.recordWordLearned()
-            }
+            recordLearnedEntry(word: normalizedWord, previousWord: normalizedPrev, timestamp: now, isCustom: true)
+            let totalCustom = countCustomUserUnigrams()
+            let totalUnique = countTotalUserUnigrams()
+            KeyboardUsageStats.setLearnedWordsCount(totalCustom)
+            KeyboardUsageStats.setUniqueWordsCount(totalUnique)
         }
     }
 
-    private func countUserUnigrams() -> Int {
+    private func countCustomUserUnigrams() -> Int {
+        ensureUserDB()
+        guard let userDB else { return 0 }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(userDB, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1;", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else {
+            return 0
+        }
+        return Int(sqlite3_column_int(stmt, 0))
+    }
+
+    private func countTotalUserUnigrams() -> Int {
         ensureUserDB()
         guard let userDB else { return 0 }
         var stmt: OpaquePointer?
@@ -972,6 +1006,32 @@ final class SuggestionsDataBaseManager {
         }
     }
 
+    func fetchLearnedWords(limit: Int = 500) -> [String] {
+        if shouldBypassMainThreadOnColdStart() { return [] }
+        return databaseQueue.sync {
+            ensureUserDB()
+            guard let userDB else { return [] }
+            var results: [String] = []
+            var stmt: OpaquePointer?
+            let sql = "SELECT word FROM user_unigrams WHERE is_custom = 1 ORDER BY last_used DESC, freq DESC, word ASC LIMIT ?1;"
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_prepare_v2(userDB, sql, -1, &stmt, nil) == SQLITE_OK,
+                  sqlite3_bind_int(stmt, 1, Int32(max(1, limit))) == SQLITE_OK else {
+                return []
+            }
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                if let wordPtr = sqlite3_column_text(stmt, 0) {
+                    results.append(String(cString: wordPtr))
+                }
+            }
+            return results
+        }
+    }
+
+    func deleteLearnedWord(_ word: String) {
+        unlearnWord(word)
+    }
+
     func unlearnWord(_ word: String) {
         let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Self.casingLocale)
         let work = { [weak self] in
@@ -979,18 +1039,42 @@ final class SuggestionsDataBaseManager {
             self.sessionUnconfirmedOOVCounts.removeValue(forKey: normalized)
             self.ensureUserDB()
             guard let userDB = self.userDB else { return }
-            var stmt: OpaquePointer?
-            defer { sqlite3_finalize(stmt) }
-            if sqlite3_prepare_v2(userDB, "DELETE FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
-               self.bindText(stmt, index: 1, value: normalized) {
-                sqlite3_step(stmt)
+            do {
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(userDB, "DELETE FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK,
+                   self.bindText(stmt, index: 1, value: normalized) {
+                    sqlite3_step(stmt)
+                }
             }
+            do {
+                var stmt: OpaquePointer?
+                defer { sqlite3_finalize(stmt) }
+                if sqlite3_prepare_v2(userDB, "DELETE FROM user_bigrams WHERE word1 = ?1 OR word2 = ?1;", -1, &stmt, nil) == SQLITE_OK,
+                   self.bindText(stmt, index: 1, value: normalized) {
+                    sqlite3_step(stmt)
+                }
+            }
+            KeyboardUsageStats.setLearnedWordsCount(self.countCustomUserUnigrams())
+            KeyboardUsageStats.setUniqueWordsCount(self.countTotalUserUnigrams())
         }
         if Thread.isMainThread && !isReady {
             prepareAsync()
             databaseQueue.async(execute: work)
         } else {
             databaseQueue.sync(execute: work)
+        }
+    }
+
+    func refreshAfterExternalLexiconChange() {
+        databaseQueue.async { [weak self] in
+            guard let self else { return }
+            self.sessionUnconfirmedOOVCounts.removeAll()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            if let userDB = self.userDB {
+                sqlite3_close_v2(userDB)
+                self.userDB = nil
+            }
         }
     }
 
@@ -1008,22 +1092,24 @@ final class SuggestionsDataBaseManager {
         }
     }
 
-    private func recordLearnedEntry(word: String, previousWord: String?, timestamp: Int64) {
+    private func recordLearnedEntry(word: String, previousWord: String?, timestamp: Int64, isCustom: Bool = false) {
         ensureUserDB()
         guard let userDB else { return }
         do {
             var stmt: OpaquePointer?
             defer { sqlite3_finalize(stmt) }
             let sql = """
-            INSERT INTO user_unigrams(word, freq, last_used)
-            VALUES (?1, 1, ?2)
+            INSERT INTO user_unigrams(word, freq, last_used, is_custom)
+            VALUES (?1, 1, ?2, ?3)
             ON CONFLICT(word) DO UPDATE SET
                 freq = MIN(freq + 1, 10000),
-                last_used = excluded.last_used;
+                last_used = excluded.last_used,
+                is_custom = MAX(user_unigrams.is_custom, excluded.is_custom);
             """
             if sqlite3_prepare_v2(userDB, sql, -1, &stmt, nil) == SQLITE_OK,
                bindText(stmt, index: 1, value: word),
-               sqlite3_bind_int64(stmt, 2, timestamp) == SQLITE_OK {
+               sqlite3_bind_int64(stmt, 2, timestamp) == SQLITE_OK,
+               sqlite3_bind_int(stmt, 3, isCustom ? 1 : 0) == SQLITE_OK {
                 sqlite3_step(stmt)
             }
         }
@@ -4363,8 +4449,8 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 if portraitWidth >= 960.0 {
                     // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 64.0 : 73.5,
-                        bottomRowHeight: hasToolbar ? 62.0 : 71.5,
+                        letterRowHeight: hasToolbar ? 64.0 : 72.0,
+                        bottomRowHeight: hasToolbar ? 62.0 : 70.0,
                         letterTopBottomInset: 4.5,
                         bottomTopBottomInset: 4.5,
                         horizontalItemInset: 6.0,
@@ -4376,10 +4462,10 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 } else if portraitWidth <= 768.0 {
                     // iPad mini (744 pt) & 9.7" iPad (768 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 56.5 : 66.0,
-                        bottomRowHeight: hasToolbar ? 54.5 : 64.0,
-                        letterTopBottomInset: 4.25,
-                        bottomTopBottomInset: 4.25,
+                        letterRowHeight: hasToolbar ? 56.5 : 64.5,
+                        bottomRowHeight: hasToolbar ? 54.5 : 62.5,
+                        letterTopBottomInset: 4.0,
+                        bottomTopBottomInset: 4.0,
                         horizontalItemInset: 5.5,
                         edgeTopBottomInset: 2.0,
                         edgeHorizontalInset: 6.0,
@@ -4389,8 +4475,8 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 } else {
                     // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 58.5 : 68.0,
-                        bottomRowHeight: hasToolbar ? 56.5 : 66.0,
+                        letterRowHeight: hasToolbar ? 58.5 : 66.5,
+                        bottomRowHeight: hasToolbar ? 56.5 : 64.5,
                         letterTopBottomInset: 4.5,
                         bottomTopBottomInset: 4.5,
                         horizontalItemInset: 6.0,
@@ -4401,14 +4487,14 @@ struct KeyboardAdaptiveGeometry: Equatable {
                     )
                 }
             } else {
-                // iPad Docked Landscape
+                // iPad Docked Landscape (exact 1:1 native iPadOS 26/27 row heights and 38.0 pt toolbar)
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt)
+                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt total
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 84.0 : 93.5,
-                        bottomRowHeight: hasToolbar ? 84.0 : 93.5,
-                        letterTopBottomInset: hasToolbar ? 6.0 : 5.5,
-                        bottomTopBottomInset: hasToolbar ? 6.0 : 5.5,
+                        letterRowHeight: hasToolbar ? 84.0 : 92.0,
+                        bottomRowHeight: hasToolbar ? 84.0 : 92.0,
+                        letterTopBottomInset: 6.0,
+                        bottomTopBottomInset: 6.0,
                         horizontalItemInset: 7.0,
                         edgeTopBottomInset: 2.0,
                         edgeHorizontalInset: 8.0,
@@ -4416,10 +4502,10 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 11.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini / 9.7" Landscape
+                    // iPad mini / 9.7" Landscape -> 338.0 pt total
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 74.0 : 83.5,
-                        bottomRowHeight: hasToolbar ? 74.0 : 83.5,
+                        letterRowHeight: hasToolbar ? 74.0 : 82.0,
+                        bottomRowHeight: hasToolbar ? 74.0 : 82.0,
                         letterTopBottomInset: 5.5,
                         bottomTopBottomInset: 5.5,
                         horizontalItemInset: 6.5,
@@ -4429,7 +4515,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 10.0
                     )
                 } else {
-                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt)
+                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt) -> 347.0 pt total
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: hasToolbar ? 75.0 : 83.0,
                         bottomRowHeight: hasToolbar ? 78.0 : 91.0,

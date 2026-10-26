@@ -119,6 +119,7 @@ struct HomeView: View {
     @AppStorage(KeyboardUsageStats.suggestedCharsKey, store: KeyboardPreferences.defaults) private var suggestedCharacters = 0
     @AppStorage(KeyboardUsageStats.totalCharsKey, store: KeyboardPreferences.defaults) private var totalCharacters = 0
     @AppStorage(KeyboardUsageStats.learnedWordsKey, store: KeyboardPreferences.defaults) private var learnedWordsCount = 0
+    @AppStorage(KeyboardUsageStats.uniqueWordsKey, store: KeyboardPreferences.defaults) private var uniqueWordsCount = 0
     @AppStorage(KeyboardUsageStats.activeSecondsKey, store: KeyboardPreferences.defaults) private var activeSeconds: Double = 0
     @AppStorage(KeyboardUsageStats.peakWPMKey, store: KeyboardPreferences.defaults) private var peakWPM = 0
     @AppStorage(KeyboardUsageStats.peakCPMKey, store: KeyboardPreferences.defaults) private var peakCPM = 0
@@ -132,6 +133,9 @@ struct HomeView: View {
     @State private var canSandboxRedo = false
     @State private var isStatsExpanded = false
     @State private var showResetStatsConfirmation = false
+    @State private var showLearnedWordsSheet = false
+    @State private var learnedWordsEntries: [(word: String, freq: Int, lastUsed: Int64)] = []
+    @State private var cyrillicBadgeTrigger = 0
     @State private var isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     @State private var selectedFieldMode: KeyboardTestFieldMode = {
@@ -225,18 +229,18 @@ struct HomeView: View {
                     layout {
                         // Child 0: Status indicators (only shown when setup has issues / is incomplete)
                         if !areAllIndicatorsEnabled {
-                            statusIndicatorsSection
+                            AnyView(statusIndicatorsSection)
                                 .id("statusIndicators")
                         }
 
                         // Child 1: Try Keyboard + Writing Area at the very top (right below status indicators when present, or first item at top)
-                        testingAndWritingSection
+                        AnyView(testingAndWritingSection)
 
                         // Child 2: Basic Statistics (expandable) + Keyboard settings
                         VStack(alignment: .leading, spacing: itemSpacing) {
-                            statisticsAndAchievementsSection
+                            AnyView(statisticsAndAchievementsSection)
                                 .id("statsSection")
-                            keyboardSettingsSection
+                            AnyView(keyboardSettingsSection)
                         }
                     }
                     // iPad: single column (portrait / split view) stays at a readable width; very wide
@@ -247,50 +251,8 @@ struct HomeView: View {
                     .padding(.top, Device.iPhone ? 8 : 14)
                     .padding(.bottom, shouldShowStartOverlay ? 76 : (isKeyboardVisible ? 24 : (Device.iPhone ? 16 : 24)))
                 }
-                .onChange(of: isStatsExpanded) { _, expanded in
-                    if expanded {
-                        refreshStatsFromAppGroup(syncSQLite: true)
-                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                            scroll.scrollTo("statsSection", anchor: .top)
-                        }
-                    }
-                }
-                .onChange(of: isLandscapeCompactHeight) { _, isCompactHeight in
-                    if isCompactHeight {
-                        if isWritingFieldFocused {
-                            scroll.scrollTo("testingSandbox", anchor: .top)
-                        } else if !areAllIndicatorsEnabled && Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize) {
-                            scroll.scrollTo("statusIndicators", anchor: .top)
-                        }
-                    }
-                }
-                .onChange(of: isWritingFieldFocused) { _, focused in
-                    syncSandboxFocusToAppGroup(focused)
-                    if focused && isLandscapeCompactHeight {
-                        scroll.scrollTo("testingSandbox", anchor: .top)
-                    }
-                }
-                .onChange(of: text) { _, _ in
-                    if statsEnabled {
-                        refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
-                    }
-                    if isWritingFieldFocused && isLandscapeCompactHeight {
-                        scroll.scrollTo("testingSandbox", anchor: .top)
-                    }
-                }
-                .onChange(of: isTestingExpanded) { _, expanded in
-                    if expanded {
-                        shouldAutoFocusSandbox = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                            withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                                scroll.scrollTo("testingSection", anchor: .top)
-                            }
-                        }
-                    } else {
-                        shouldAutoFocusSandbox = false
-                        clearThemeOverride()
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
+                .background {
+                    scrollPositionObserversView(scroll: scroll, isLandscapeCompactHeight: isLandscapeCompactHeight, effectiveContainerSize: effectiveContainerSize)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -314,6 +276,8 @@ struct HomeView: View {
                     .onChange(of: geometry.size) { _, size in viewportSize = size }
             }
             .ignoresSafeArea(.keyboard)
+            homeLifecycleObserversView
+            homePreferencesObserversView
         }
         .overlay(alignment: .bottom, content: {
             if shouldShowStartOverlay {
@@ -372,177 +336,74 @@ struct HomeView: View {
                 Text(localizedInterfaceString("settings.missingCyrillic"))
             }
         }
-        .onAppear {
-            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-            Self.registerStatsSyncObserverIfNeeded()
-            Self.enforceFullScreenWindowIfNeeded()
-            if !didInitializeThemeFromSystem {
-                didInitializeThemeFromSystem = true
-                if !ProcessInfo.processInfo.arguments.contains("-qt_theme") {
-                    selectedThemeMode = .mode(isDark: UIScreen.main.traitCollection.userInterfaceStyle == .dark)
-                }
-            }
-            applyLaunchArguments()
-            syncPreferencesFromSettingsBundleAndAppGroup()
-            if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride) {
-                syncThemeToAppGroup(selectedThemeMode)
-            } else {
-                clearThemeOverride()
-            }
-            refreshCyrillicStatus()
-            keyboardState.refresh()
-            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-            AppStoreReviewManager.recordForegroundSession()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
-            refreshCyrillicStatus()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
-            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-        }
-        .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
-            let now = CFAbsoluteTimeGetCurrent()
-            let elapsed = now - Self.lastPreferencesSyncTime
-            if elapsed >= 0.4 {
-                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
-            } else {
-                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
-                if !Self.isTrailingPreferencesSyncPending {
-                    Self.isTrailingPreferencesSyncPending = true
-                    let delay = max(0.05, 0.4 - elapsed)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        Self.isTrailingPreferencesSyncPending = false
-                        NotificationCenter.default.post(name: Self.localStatsRefreshNotification, object: nil)
+    }
+
+    @ViewBuilder
+    private func scrollPositionObserversView(scroll: ScrollViewProxy, isLandscapeCompactHeight: Bool, effectiveContainerSize: CGSize) -> some View {
+        Color.clear
+            .onChange(of: isStatsExpanded) { _, expanded in
+                if expanded {
+                    refreshStatsFromAppGroup(syncSQLite: true)
+                    withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
+                        scroll.scrollTo("statsSection", anchor: .top)
                     }
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-            syncPreferencesFromSettingsBundleAndAppGroup()
-            refreshCyrillicStatus()
-            keyboardState.refresh()
-            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-            AppStoreReviewManager.recordForegroundSession()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-            syncPreferencesFromSettingsBundleAndAppGroup()
-            refreshCyrillicStatus()
-            keyboardState.refresh()
-            refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-        }
-        .onChange(of: colorScheme) { _, newScheme in
-            let args = ProcessInfo.processInfo.arguments
-            if !args.contains("-qt_theme") && !hasManualThemeOverride {
-                selectedThemeMode = .mode(isDark: newScheme == .dark)
-                if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox) {
-                    syncThemeToAppGroup(selectedThemeMode)
-                } else {
-                    clearThemeOverride()
+            .onChange(of: isLandscapeCompactHeight) { _, isCompactHeight in
+                if isCompactHeight {
+                    if isWritingFieldFocused {
+                        scroll.scrollTo("testingSandbox", anchor: .top)
+                    } else if !areAllIndicatorsEnabled && Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize) {
+                        scroll.scrollTo("statusIndicators", anchor: .top)
+                    }
                 }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
-            shouldAutoFocusSandbox = false
-            clearThemeOverride()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
-            if pendingCyrillicRemovalCheck {
-                didEnterBackgroundForCyrillicCheck = true
+            .onChange(of: isWritingFieldFocused) { _, focused in
+                syncSandboxFocusToAppGroup(focused)
+                if focused && isLandscapeCompactHeight {
+                    scroll.scrollTo("testingSandbox", anchor: .top)
+                }
             }
-            shouldAutoFocusSandbox = false
-            clearThemeOverride()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-            withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                isKeyboardVisible = true
+            .onChange(of: text) { _, _ in
+                if statsEnabled {
+                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
+                }
+                if isWritingFieldFocused && isLandscapeCompactHeight {
+                    scroll.scrollTo("testingSandbox", anchor: .top)
+                }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-            withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                isKeyboardVisible = false
+            .onChange(of: isTestingExpanded) { _, expanded in
+                if expanded {
+                    shouldAutoFocusSandbox = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
+                            scroll.scrollTo("testingSection", anchor: .top)
+                        }
+                    }
+                } else {
+                    shouldAutoFocusSandbox = false
+                    clearThemeOverride()
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
-            refreshCyrillicStatus()
-        }
-        .onChange(of: selectedThemeMode) { _, newTheme in
-            guard UIApplication.shared.applicationState == .active else { return }
-            syncThemeToAppGroup(newTheme)
-        }
-        .onChange(of: selectedFieldMode) { _, _ in
-            guard UIApplication.shared.applicationState == .active else { return }
-            syncThemeToAppGroup(selectedThemeMode)
-        }
-        .onChange(of: cyrillicEnabled) { _, newValue in
-            lastKnownSettingsSnapshot[KeyboardPreferences.cyrillicKey] = newValue
-            KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
-            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.cyrillicKey)")
-            UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
-            KeyboardPreferences.defaults.synchronize()
-            UserDefaults.standard.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            KeyboardPreferences.refreshCachedPreferences()
-            notifySandboxTraitsChanged()
-        }
-        .onChange(of: ukrainianCyrillicLayout) { _, newValue in
-            lastKnownSettingsSnapshot[KeyboardPreferences.ukrainianCyrillicLayoutKey] = newValue
-            KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(newValue)
-            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.ukrainianCyrillicLayoutKey)")
-            UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
-            KeyboardPreferences.defaults.synchronize()
-            UserDefaults.standard.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            KeyboardPreferences.refreshCachedPreferences()
-            notifySandboxTraitsChanged()
-        }
-        .onChange(of: suggestionsEnabled) { _, newValue in
-            lastKnownSettingsSnapshot[KeyboardPreferences.suggestionsKey] = newValue
-            KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
-            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.suggestionsKey)")
-            UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
-            KeyboardPreferences.defaults.synchronize()
-            UserDefaults.standard.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            KeyboardPreferences.refreshCachedPreferences()
-            notifySandboxTraitsChanged()
-        }
-        .onChange(of: wordLearningEnabled) { _, newValue in
-            lastKnownSettingsSnapshot[KeyboardPreferences.wordLearningKey] = newValue
-            KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
-            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.wordLearningKey)")
-            UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
-            KeyboardPreferences.defaults.synchronize()
-            UserDefaults.standard.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            KeyboardPreferences.refreshCachedPreferences()
-            notifySandboxTraitsChanged()
-        }
-        .onChange(of: statsEnabled) { _, newValue in
-            lastKnownSettingsSnapshot[KeyboardPreferences.statsEnabledKey] = newValue
-            KeyboardPreferences.setStatsEnabled(newValue)
-            KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.statsEnabledKey)")
-            UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.statsEnabledKey)
-            KeyboardPreferences.defaults.synchronize()
-            UserDefaults.standard.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            KeyboardPreferences.refreshCachedPreferences()
-            notifySandboxTraitsChanged()
-            if !newValue {
-                isStatsExpanded = false
-                liveWPM = 0
-                liveCPM = 0
-            } else {
-                refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-            }
-        }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
+    }
+
+    @ViewBuilder
+    private var homeLifecycleObserversView: some View {
+        Color.clear
+            .onAppear {
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                Self.registerStatsSyncObserverIfNeeded()
                 Self.enforceFullScreenWindowIfNeeded()
+                if !didInitializeThemeFromSystem {
+                    didInitializeThemeFromSystem = true
+                    if !ProcessInfo.processInfo.arguments.contains("-qt_theme") {
+                        selectedThemeMode = .mode(isDark: UIScreen.main.traitCollection.userInterfaceStyle == .dark)
+                    }
+                }
+                applyLaunchArguments()
                 syncPreferencesFromSettingsBundleAndAppGroup()
-                if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
+                if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride) {
                     syncThemeToAppGroup(selectedThemeMode)
                 } else {
                     clearThemeOverride()
@@ -550,22 +411,182 @@ struct HomeView: View {
                 refreshCyrillicStatus()
                 keyboardState.refresh()
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
-            } else if newPhase == .inactive {
+                AppStoreReviewManager.recordForegroundSession()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
+                refreshCyrillicStatus()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+                isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Self.localStatsRefreshNotification)) { _ in
+                let now = CFAbsoluteTimeGetCurrent()
+                let elapsed = now - Self.lastPreferencesSyncTime
+                if elapsed >= 0.4 {
+                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+                } else {
+                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
+                    if !Self.isTrailingPreferencesSyncPending {
+                        Self.isTrailingPreferencesSyncPending = true
+                        let delay = max(0.05, 0.4 - elapsed)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            Self.isTrailingPreferencesSyncPending = false
+                            NotificationCenter.default.post(name: Self.localStatsRefreshNotification, object: nil)
+                        }
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                syncPreferencesFromSettingsBundleAndAppGroup()
+                refreshCyrillicStatus()
+                keyboardState.refresh()
+                refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+                AppStoreReviewManager.recordForegroundSession()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+                isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                syncPreferencesFromSettingsBundleAndAppGroup()
+                refreshCyrillicStatus()
+                keyboardState.refresh()
+                refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
                 shouldAutoFocusSandbox = false
                 clearThemeOverride()
-                refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
-            } else {
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
                 if pendingCyrillicRemovalCheck {
                     didEnterBackgroundForCyrillicCheck = true
                 }
                 shouldAutoFocusSandbox = false
                 clearThemeOverride()
             }
-        }
-        .onDisappear {
-            shouldAutoFocusSandbox = false
-            clearThemeOverride()
-        }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+                withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
+                    isKeyboardVisible = true
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
+                    isKeyboardVisible = false
+                }
+            }
+            .onDisappear {
+                shouldAutoFocusSandbox = false
+                clearThemeOverride()
+            }
+    }
+
+    @ViewBuilder
+    private var homePreferencesObserversView: some View {
+        Color.clear
+            .onChange(of: colorScheme) { _, newScheme in
+                let args = ProcessInfo.processInfo.arguments
+                if !args.contains("-qt_theme") && !hasManualThemeOverride {
+                    selectedThemeMode = .mode(isDark: newScheme == .dark)
+                    if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox) {
+                        syncThemeToAppGroup(selectedThemeMode)
+                    } else {
+                        clearThemeOverride()
+                    }
+                }
+            }
+            .onChange(of: selectedThemeMode) { _, newTheme in
+                guard UIApplication.shared.applicationState == .active else { return }
+                syncThemeToAppGroup(newTheme)
+            }
+            .onChange(of: selectedFieldMode) { _, _ in
+                guard UIApplication.shared.applicationState == .active else { return }
+                syncThemeToAppGroup(selectedThemeMode)
+            }
+            .onChange(of: cyrillicEnabled) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.cyrillicKey] = newValue
+                KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.cyrillicKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
+                KeyboardPreferences.defaults.synchronize()
+                UserDefaults.standard.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+            }
+            .onChange(of: ukrainianCyrillicLayout) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.ukrainianCyrillicLayoutKey] = newValue
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(newValue)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.ukrainianCyrillicLayoutKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
+                KeyboardPreferences.defaults.synchronize()
+                UserDefaults.standard.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+            }
+            .onChange(of: suggestionsEnabled) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.suggestionsKey] = newValue
+                KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.suggestionsKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.suggestionsKey)
+                KeyboardPreferences.defaults.synchronize()
+                UserDefaults.standard.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+            }
+            .onChange(of: wordLearningEnabled) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.wordLearningKey] = newValue
+                KeyboardPreferences.setWordLearningEnabled(newValue)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.wordLearningKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.wordLearningKey)
+                KeyboardPreferences.defaults.synchronize()
+                UserDefaults.standard.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+            }
+            .onChange(of: statsEnabled) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.statsEnabledKey] = newValue
+                KeyboardPreferences.setStatsEnabled(newValue)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.statsEnabledKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.statsEnabledKey)
+                KeyboardPreferences.defaults.synchronize()
+                UserDefaults.standard.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+                if !newValue {
+                    isStatsExpanded = false
+                    liveWPM = 0
+                    liveCPM = 0
+                } else {
+                    refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                    Self.enforceFullScreenWindowIfNeeded()
+                    syncPreferencesFromSettingsBundleAndAppGroup()
+                    if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
+                        syncThemeToAppGroup(selectedThemeMode)
+                    } else {
+                        clearThemeOverride()
+                    }
+                    refreshCyrillicStatus()
+                    keyboardState.refresh()
+                    refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+                } else if newPhase == .inactive {
+                    shouldAutoFocusSandbox = false
+                    clearThemeOverride()
+                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+                } else {
+                    if pendingCyrillicRemovalCheck {
+                        didEnterBackgroundForCyrillicCheck = true
+                    }
+                    shouldAutoFocusSandbox = false
+                    clearThemeOverride()
+                }
+            }
     }
 
     private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
@@ -701,6 +722,7 @@ struct HomeView: View {
         let newSuggestedChars = d.integer(forKey: KeyboardUsageStats.suggestedCharsKey)
         let newTotalChars = d.integer(forKey: KeyboardUsageStats.totalCharsKey)
         let newLearnedWords = d.integer(forKey: KeyboardUsageStats.learnedWordsKey)
+        let newUniqueWords = d.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
         let newActiveSeconds = d.double(forKey: KeyboardUsageStats.activeSecondsKey)
         let newPeakWPM = d.integer(forKey: KeyboardUsageStats.peakWPMKey)
         let newPeakCPM = d.integer(forKey: KeyboardUsageStats.peakCPMKey)
@@ -714,6 +736,7 @@ struct HomeView: View {
         if suggestedCharacters != newSuggestedChars { suggestedCharacters = newSuggestedChars }
         if totalCharacters != newTotalChars { totalCharacters = newTotalChars }
         if learnedWordsCount != newLearnedWords { learnedWordsCount = newLearnedWords }
+        if uniqueWordsCount != newUniqueWords { uniqueWordsCount = newUniqueWords }
         if abs(activeSeconds - newActiveSeconds) > 0.3 { activeSeconds = newActiveSeconds }
         if peakWPM != newPeakWPM { peakWPM = newPeakWPM }
         if peakCPM != newPeakCPM { peakCPM = newPeakCPM }
@@ -989,20 +1012,38 @@ struct HomeView: View {
                 if args.contains("-qt_prefill_phrase_prefix") {
                     switch demoLang {
                     case "uk":
-                        text = "Selâm! Qırım — Ukraynadır. Til — milletniñ "
+                        // Verified bannerCRH #68 (Çerkez-Ali): "Qırım — menim Vatanımdır!"
+                        text = "Qırım — menim Vatanımdır! "
                     case "en":
-                        text = "Selâm, dünya! Qırımtatar tili — Qırımnıñ canlı "
+                        // Verified bannerCRH #5 (Qırımtatar atalar sözü): "Til — yürekniñ anahtarı."
+                        text = "Til — yürekniñ anahtarı. "
                     default:
-                        text = "Selâm! Til — milletniñ ruhudır. Ana tilimizni "
+                        // Verified bannerCRH #26 (Seyran Üseinov): "Til — bizim temelimiz!"
+                        text = "Til — bizim temelimiz! "
+                    }
+                } else if args.contains("-qt_prefill_greeting_prefix") {
+                    switch demoLang {
+                    case "uk":
+                        // Verified bannerCRH #85 (Qırımtatar atalar sözü): "Birlikte — quvet!"
+                        text = "Birlikte — quvet! "
+                    case "en":
+                        // Verified bannerCRH #36 (Vasfiye Qıpçaq): "Tiliñni bil, oqu, yaz!"
+                        text = "Tiliñni bil, oqu, yaz! "
+                    default:
+                        // Verified bannerCRH #63 (İsmail Gasprinskiy): "Tilde, fikirde, işte — birlik!"
+                        text = "Tilde, fikirde, işte — birlik! "
                     }
                 } else if !args.contains("-qt_reset_text") && !args.contains("-qt_field") {
                     switch demoLang {
                     case "uk":
-                        text = "Selâm! Qırım — Ukraynadır. Til — milletniñ ruhudır."
+                        // Verified bannerCRH #68 + #85:
+                        text = "Qırım — menim Vatanımdır! Birlikte — quvet!"
                     case "en":
-                        text = "Selâm, dünya! Qırımtatar tili — Qırımnıñ canlı mirasıdır."
+                        // Verified bannerCRH #5 + #22:
+                        text = "Til — yürekniñ anahtarı. Tilni bilmek — dostluqnı qaviyleştirmektir."
                     default:
-                        text = "Selâm! Til — milletniñ ruhudır. Ana tilimizni seveyik!"
+                        // Verified bannerCRH #28 (Seyran Üseinov):
+                        text = "Dünyada eñ tatlı — qırımtatar tilimiz!"
                     }
                     let isDarkLaunch = args.contains("-qt_demo_dark") || (args.contains("-qt_theme") && args.contains("modernDark"))
                     if !args.contains("-qt_focus_sandbox_live") && !isDarkLaunch {
@@ -1018,6 +1059,7 @@ struct HomeView: View {
                 lastWPM = 38
                 activeSeconds = 420
                 learnedWordsCount = 18
+                uniqueWordsCount = 64
                 phrasesInserted = 7
                 let d = KeyboardPreferences.defaults
                 d.set(180, forKey: KeyboardUsageStats.totalWordsKey)
@@ -1029,8 +1071,10 @@ struct HomeView: View {
                 d.set(38, forKey: KeyboardUsageStats.lastWPMKey)
                 d.set(420.0, forKey: KeyboardUsageStats.activeSecondsKey)
                 d.set(18, forKey: KeyboardUsageStats.learnedWordsKey)
+                d.set(64, forKey: KeyboardUsageStats.uniqueWordsKey)
                 d.set(7, forKey: KeyboardUsageStats.phrasesInsertedKey)
                 d.synchronize()
+                KeyboardUsageStats.seedDemoLearnedWordsIfNeeded()
             }
             if args.contains("-qt_open_about") {
                 shouldAutoFocusSandbox = false
@@ -1038,6 +1082,12 @@ struct HomeView: View {
                     if navigationPath.isEmpty {
                         navigationPath.append(DemoRoute.about)
                     }
+                }
+            }
+            if args.contains("-qt_open_learned_words") {
+                shouldAutoFocusSandbox = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    openLearnedWordsDictionary()
                 }
             }
             if shouldAutoFocusSandbox {
@@ -1206,7 +1256,8 @@ private extension HomeView {
             targetLabel: "Q",
             isEnabled: isEnabled,
             isUkrainianStyle: isUkrainianStyle,
-            accentColor: color
+            accentColor: color,
+            triggerCount: cyrillicBadgeTrigger
         )
     }
 
@@ -1310,14 +1361,12 @@ private extension HomeView {
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .multilineTextAlignment(.leading)
-                            if !isFullAccessGranted {
-                                interfaceLabel("settings.fullAccess.addHint")
-                                    .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
-                                    .foregroundStyle(secondaryInk)
-                                    .lineLimit(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    .multilineTextAlignment(.leading)
-                            }
+                            interfaceLabel(isFullAccessGranted ? "settings.fullAccess.onHint" : "settings.fullAccess.addHint")
+                                .font(InterfaceFont.font("GeneralSans-Regular", size: 12))
+                                .foregroundStyle(secondaryInk)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
                         }
                         Spacer(minLength: 8)
                     }
@@ -1393,6 +1442,7 @@ private extension HomeView {
                 get: { isCyrillicEffectiveOn },
                 set: { wantOn in
                     HapticFeedback.playSelection()
+                    cyrillicBadgeTrigger &+= 1
                     if wantOn {
                         if Device.iPad {
                             cyrillicEnabled = true
@@ -1416,6 +1466,7 @@ private extension HomeView {
                 get: { isUkrainianEffectiveOn },
                 set: { wantOn in
                     HapticFeedback.playSelection()
+                    cyrillicBadgeTrigger &+= 1
                     if !isCyrillicEffectiveOn {
                         ukrainianCyrillicLayout = true
                         if Device.iPad {
@@ -1440,6 +1491,7 @@ private extension HomeView {
                     VStack(alignment: .leading, spacing: 2) {
                         Button {
                             HapticFeedback.playSelection()
+                            cyrillicBadgeTrigger &+= 1
                             if isCyrillicEffectiveOn {
                                 if Device.iPad {
                                     cyrillicEnabled = false
@@ -1532,9 +1584,6 @@ private extension HomeView {
                 .padding(.leading, 54)
                 .padding(.trailing, 14)
                 .padding(.vertical, 9)
-                .onDisappear {
-                    Self.appearedBadgeIDs.remove("settings.ukrainianCyrillic.capsules")
-                }
             }
 
             Divider().padding(.leading, 54)
@@ -1578,7 +1627,7 @@ private extension HomeView {
                 Self.openSystemKeyboardSettings()
             } label: {
                 HStack(spacing: 12) {
-                    settingsIconBadge("slider.horizontal.3", color: Color(.systemGray), badgeID: "settings.systemKeyboard.slider")
+                    settingsIconBadge("slider.horizontal.3", color: Color(red: 0.16, green: 0.56, blue: 0.94), badgeID: "settings.systemKeyboard.slider")
                     VStack(alignment: .leading, spacing: 2) {
                         interfaceLabel("settings.systemKeyboard")
                             .font(InterfaceFont.font("GeneralSans-Medium", size: 15))
@@ -1853,7 +1902,8 @@ private extension HomeView {
                 themeMode: selectedThemeMode,
                 hasManualThemeOverride: hasManualThemeOverride,
                 preferencesToken: "\(cyrillicEnabled)-\(ukrainianCyrillicLayout)-\(suggestionsEnabled)-\(wordLearningEnabled)-\(statsEnabled)",
-                fontSize: Device.iPad ? 16 : 15
+                fontSize: Device.iPad ? 16 : 15,
+                isFullAccessGranted: isFullAccessGranted
             )
             .frame(height: Device.iPad ? 92 : 70)
             .padding(.leading, 8)
@@ -1928,13 +1978,13 @@ private extension HomeView {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(color)
             Text(value)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 11.5, weight: .bold, design: .rounded))
                 .foregroundStyle(primaryInk)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, Device.iPhone ? 7 : 8)
         .padding(.vertical, 5)
         .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
         .fixedSize(horizontal: true, vertical: false)
@@ -1944,16 +1994,35 @@ private extension HomeView {
         HStack(spacing: 4) {
             WalnutBrainIcon(color: color, size: 12.5)
             Text(value)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 11.5, weight: .bold, design: .rounded))
                 .foregroundStyle(primaryInk)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .contentTransition(.numericText())
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, Device.iPhone ? 7 : 8)
         .padding(.vertical, 5)
         .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func openLearnedWordsDictionary() {
+        HapticFeedback.playSelection()
+        let fetched = KeyboardUsageStats.fetchLearnedWords()
+        learnedWordsEntries = fetched
+        if learnedWordsCount != fetched.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetched.isEmpty) {
+            learnedWordsCount = fetched.count
+        }
+        showLearnedWordsSheet = true
+    }
+
+    private func deleteLearnedWordFromSheet(_ word: String) {
+        HapticFeedback.playSelection()
+        let newCount = KeyboardUsageStats.deleteLearnedWord(word)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+            learnedWordsEntries.removeAll { $0.word == word }
+            learnedWordsCount = newCount
+        }
     }
 
     /// Top Basic Statistics bar with expandable Extended Statistics & Achievements card.
@@ -1976,6 +2045,8 @@ private extension HomeView {
         let volumeTier = KeyboardUsageStats.volumeTier(for: totalWords)
         let wpmUnit = localizedInterfaceString("stats.wpmUnit")
         let cpmUnit = localizedInterfaceString("stats.cpmUnit")
+        let wordsUnit = localizedInterfaceString("stats.wordsUnit")
+        let learnedWordsUnit = localizedInterfaceString("stats.learnedWordsUnit")
 
         let speedSubtitle: String = {
             if recentWPM > 0 || recentCPM > 0 {
@@ -2028,7 +2099,7 @@ private extension HomeView {
                         isStatsExpanded.toggle()
                     }
                 } label: {
-                    VStack(alignment: .leading, spacing: 8) {
+                    ViewThatFits(in: .horizontal) {
                         HStack(spacing: 8) {
                             settingsIconBadge(
                                 "chart.bar.xaxis",
@@ -2041,16 +2112,18 @@ private extension HomeView {
                                 .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
                                 .foregroundStyle(statsEnabled ? primaryInk : secondaryInk)
                                 .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
 
                             Spacer(minLength: 6)
 
-                            if statsEnabled && !isStatsExpanded && Device.iPad {
+                            if statsEnabled && !isStatsExpanded {
                                 HStack(spacing: 6) {
-                                    compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
+                                    compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)")
                                     compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)")
                                     compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
-                                    walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
+                                    walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)")
                                 }
+                                .fixedSize(horizontal: true, vertical: false)
                             }
 
                             if statsEnabled {
@@ -2063,13 +2136,41 @@ private extension HomeView {
                         }
                         .padding(.trailing, 74)
 
-                        if statsEnabled && !isStatsExpanded && !Device.iPad {
-                            HStack(spacing: 6) {
-                                compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords)")
-                                compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)")
-                                compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
-                                walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount)")
-                                Spacer(minLength: 0)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                settingsIconBadge(
+                                    "chart.bar.xaxis",
+                                    color: Color(red: 0.58, green: 0.29, blue: 0.92),
+                                    isEnabled: statsEnabled,
+                                    triggerToken: "\(statsEnabled)-\(isStatsExpanded)",
+                                    badgeID: "stats.header.chart"
+                                )
+                                interfaceLabel("stats.title")
+                                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
+                                    .foregroundStyle(statsEnabled ? primaryInk : secondaryInk)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+
+                                Spacer(minLength: 6)
+
+                                if statsEnabled {
+                                    Image(systemName: isStatsExpanded ? "chevron.up" : "chevron.down")
+                                        .font(.system(size: 12.5, weight: .semibold))
+                                        .foregroundStyle(secondaryInk)
+                                        .frame(width: 24, height: 24)
+                                        .background(Color(.tertiarySystemFill), in: Circle())
+                                }
+                            }
+                            .padding(.trailing, 74)
+
+                            if statsEnabled && !isStatsExpanded {
+                                HStack(spacing: 5) {
+                                    compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)")
+                                    compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)")
+                                    compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime)
+                                    walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)")
+                                    Spacer(minLength: 0)
+                                }
                             }
                         }
                     }
@@ -2087,204 +2188,23 @@ private extension HomeView {
             }
 
             if statsEnabled && isStatsExpanded {
-                Divider()
-
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) {
-                        statTile(
-                            icon: "text.word.spacing",
-                            color: brandBlue,
-                            title: localizedInterfaceString("stats.words"),
-                            value: "\(totalWords)",
-                            subtitle: String(format: localizedInterfaceString("stats.charsSubtitle"), typedChars)
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.wordsTile")
-
-                        statTile(
-                            icon: "bolt.heart.fill",
-                            color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                            title: localizedInterfaceString("stats.speed"),
-                            value: "\(bestWPM) \(wpmUnit) · \(bestCPM) \(cpmUnit)",
-                            subtitle: speedSubtitle
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.speedTile")
-                    }
-
-                    HStack(spacing: 10) {
-                        statTile(
-                            icon: "keyboard.fill",
-                            color: brandBlue,
-                            title: localizedInterfaceString("stats.manualWords"),
-                            value: "\(effectiveManualWords)",
-                            subtitle: localizedInterfaceString("stats.manualWordsSubtitle")
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.manualWordsTile")
-
-                        statTile(
-                            icon: "sparkles",
-                            color: appleGreen,
-                            title: localizedInterfaceString("stats.suggestedWords"),
-                            value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))",
-                            subtitle: String(format: localizedInterfaceString("stats.suggestedWordsSubtitle"), savedChars)
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.suggestedWordsTile")
-                    }
-
-                    HStack(spacing: 10) {
-                        statTile(
-                            icon: "gauge.with.dots.needle.67percent",
-                            color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                            title: localizedInterfaceString("stats.speedLevel"),
-                            value: localizedInterfaceString("stats.speedTier\(speedTier.level)"),
-                            subtitle: speedTierSubtitle
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.speedTierTile")
-
-                        statTile(
-                            icon: "flame.fill",
-                            color: Color(red: 0.58, green: 0.29, blue: 0.92),
-                            title: localizedInterfaceString("stats.volumeLevel"),
-                            value: localizedInterfaceString("stats.volumeTier\(volumeTier.level)"),
-                            subtitle: volumeTierSubtitle
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.volumeTierTile")
-                    }
-
-                    HStack(spacing: 10) {
-                        statTile(
-                            icon: "clock.fill",
-                            color: appleGreen,
-                            title: localizedInterfaceString("stats.activeTime"),
-                            value: formattedActiveTime,
-                            subtitle: localizedInterfaceString("stats.activeTimeSubtitle")
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.activeTimeTile")
-
-                        walnutBrainStatTile(
-                            color: Color(red: 0.96, green: 0.58, blue: 0.04),
-                            title: localizedInterfaceString("stats.learnedWords"),
-                            value: "\(learnedWordsCount)",
-                            subtitle: localizedInterfaceString("stats.learnedWordsSubtitle")
-                        )
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("stats.learnedWordsTile")
-                    }
-                }
-
-                Divider()
-
-                HStack(spacing: 6) {
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.96, green: 0.58, blue: 0.04))
-                    interfaceLabel("stats.achievements")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
-                        .foregroundStyle(secondaryInk)
-                    Spacer()
-
-                    Button(role: .destructive) {
-                        HapticFeedback.playSelection()
-                        showResetStatsConfirmation = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                            interfaceLabel("stats.reset")
-                                .font(InterfaceFont.font("GeneralSans-Medium", size: 12))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(Color.red)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Color.red.opacity(0.10), in: Capsule())
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("stats.resetButton")
-                }
-
-                if Device.iPhone {
-                    VStack(spacing: 8) {
-                        progressiveAchievementBadge(
-                            icon: "flag.checkered",
-                            title: localizedInterfaceString("stats.ach.firstStep"),
-                            descFormat: localizedInterfaceString("stats.ach.firstStep.desc"),
-                            currentValue: totalWords,
-                            milestones: [10, 50, 250, 1000, 5000],
-                            milestoneLabels: ["10", "50", "250", "1k", "5k"]
-                        )
-                        progressiveAchievementBadge(
-                            icon: "bolt.heart.fill",
-                            title: localizedInterfaceString("stats.ach.speed"),
-                            descFormat: localizedInterfaceString("stats.ach.speed.desc"),
-                            currentValue: bestWPM,
-                            milestones: [15, 25, 40, 55, 75],
-                            milestoneLabels: ["15", "25", "40", "55", "75"]
-                        )
-                        progressiveAchievementBadge(
-                            icon: "book.closed.fill",
-                            title: localizedInterfaceString("stats.ach.scholar"),
-                            descFormat: localizedInterfaceString("stats.ach.scholar.desc"),
-                            currentValue: max(learnedWordsCount, totalWords / 10),
-                            milestones: [5, 25, 75, 200, 500],
-                            milestoneLabels: ["5", "25", "75", "200", "500"]
-                        )
-                        progressiveAchievementBadge(
-                            icon: "sparkles",
-                            title: localizedInterfaceString("stats.ach.wisdom"),
-                            descFormat: localizedInterfaceString("stats.ach.wisdom.desc"),
-                            currentValue: phrasesInserted,
-                            milestones: [1, 5, 15, 35, 75],
-                            milestoneLabels: ["1", "5", "15", "35", "75"]
-                        )
-                    }
-                } else {
-                    VStack(spacing: 10) {
-                        HStack(spacing: 10) {
-                            progressiveAchievementBadge(
-                                icon: "flag.checkered",
-                                title: localizedInterfaceString("stats.ach.firstStep"),
-                                descFormat: localizedInterfaceString("stats.ach.firstStep.desc"),
-                                currentValue: totalWords,
-                                milestones: [10, 50, 250, 1000, 5000],
-                                milestoneLabels: ["10", "50", "250", "1k", "5k"]
-                            )
-                            progressiveAchievementBadge(
-                                icon: "bolt.heart.fill",
-                                title: localizedInterfaceString("stats.ach.speed"),
-                                descFormat: localizedInterfaceString("stats.ach.speed.desc"),
-                                currentValue: bestWPM,
-                                milestones: [15, 25, 40, 55, 75],
-                                milestoneLabels: ["15", "25", "40", "55", "75"]
-                            )
-                        }
-                        HStack(spacing: 10) {
-                            progressiveAchievementBadge(
-                                icon: "book.closed.fill",
-                                title: localizedInterfaceString("stats.ach.scholar"),
-                                descFormat: localizedInterfaceString("stats.ach.scholar.desc"),
-                                currentValue: max(learnedWordsCount, totalWords / 10),
-                                milestones: [5, 25, 75, 200, 500],
-                                milestoneLabels: ["5", "25", "75", "200", "500"]
-                            )
-                            progressiveAchievementBadge(
-                                icon: "sparkles",
-                                title: localizedInterfaceString("stats.ach.wisdom"),
-                                descFormat: localizedInterfaceString("stats.ach.wisdom.desc"),
-                                currentValue: phrasesInserted,
-                                milestones: [1, 5, 15, 35, 75],
-                                milestoneLabels: ["1", "5", "15", "35", "75"]
-                            )
-                        }
-                    }
-                }
+                AnyView(
+                    expandedStatisticsContentView(
+                        bestWPM: bestWPM,
+                        bestCPM: bestCPM,
+                        wpmUnit: wpmUnit,
+                        cpmUnit: cpmUnit,
+                        typedChars: typedChars,
+                        savedChars: savedChars,
+                        effectiveManualWords: effectiveManualWords,
+                        boostMultiplier: boostMultiplier,
+                        speedTierLevel: speedTier.level,
+                        volumeTierLevel: volumeTier.level,
+                        speedSubtitle: speedSubtitle,
+                        speedTierSubtitle: speedTierSubtitle,
+                        volumeTierSubtitle: volumeTierSubtitle
+                    )
+                )
             }
         }
         .padding(.horizontal, 14)
@@ -2298,17 +2218,248 @@ private extension HomeView {
         .onDisappear {
             Self.appearedBadgeIDs.remove("stats.header.chart")
         }
+        .sheet(isPresented: $showLearnedWordsSheet) {
+            AnyView(learnedWordsSheetView)
+        }
         .alert(localizedInterfaceString("stats.resetConfirmTitle"), isPresented: $showResetStatsConfirmation) {
             Button(localizedInterfaceString("stats.resetConfirmAction"), role: .destructive) {
                 KeyboardUsageStats.resetAll()
                 liveWPM = 0
                 liveCPM = 0
                 learnedWordsCount = 0
+                uniqueWordsCount = 0
+                learnedWordsEntries = []
                 refreshStatsFromAppGroup(syncSQLite: false)
             }
             Button(localizedInterfaceString("stats.cancel"), role: .cancel) {}
         } message: {
             Text(localizedInterfaceString("stats.resetConfirmMessage"))
+        }
+    }
+
+    @ViewBuilder
+    private func expandedStatisticsContentView(
+        bestWPM: Int,
+        bestCPM: Int,
+        wpmUnit: String,
+        cpmUnit: String,
+        typedChars: Int,
+        savedChars: Int,
+        effectiveManualWords: Int,
+        boostMultiplier: Double,
+        speedTierLevel: Int,
+        volumeTierLevel: Int,
+        speedSubtitle: String,
+        speedTierSubtitle: String,
+        volumeTierSubtitle: String
+    ) -> some View {
+        Divider()
+
+        let baseCharsSubtitle = String(format: localizedInterfaceString("stats.charsSubtitle"), typedChars)
+        let wordsTileSubtitle = uniqueWordsCount > 0
+            ? "\(baseCharsSubtitle) · \(uniqueWordsCount) \(localizedInterfaceString("stats.uniqueWordsUnit"))"
+            : baseCharsSubtitle
+
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "text.word.spacing",
+                    color: brandBlue,
+                    title: localizedInterfaceString("stats.words"),
+                    value: "\(totalWords)",
+                    subtitle: wordsTileSubtitle
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.wordsTile")
+
+                statTile(
+                    icon: "bolt.heart.fill",
+                    color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                    title: localizedInterfaceString("stats.speed"),
+                    value: "\(bestWPM) \(wpmUnit) · \(bestCPM) \(cpmUnit)",
+                    subtitle: speedSubtitle
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.speedTile")
+            }
+
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "keyboard.fill",
+                    color: brandBlue,
+                    title: localizedInterfaceString("stats.manualWords"),
+                    value: "\(effectiveManualWords)",
+                    subtitle: localizedInterfaceString("stats.manualWordsSubtitle")
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.manualWordsTile")
+
+                statTile(
+                    icon: "sparkles",
+                    color: appleGreen,
+                    title: localizedInterfaceString("stats.suggestedWords"),
+                    value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))",
+                    subtitle: String(format: localizedInterfaceString("stats.suggestedWordsSubtitle"), savedChars)
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.suggestedWordsTile")
+            }
+
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "gauge.with.dots.needle.67percent",
+                    color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                    title: localizedInterfaceString("stats.speedLevel"),
+                    value: localizedInterfaceString("stats.speedTier\(speedTierLevel)"),
+                    subtitle: speedTierSubtitle
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.speedTierTile")
+
+                statTile(
+                    icon: "flame.fill",
+                    color: Color(red: 0.58, green: 0.29, blue: 0.92),
+                    title: localizedInterfaceString("stats.volumeLevel"),
+                    value: localizedInterfaceString("stats.volumeTier\(volumeTierLevel)"),
+                    subtitle: volumeTierSubtitle
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.volumeTierTile")
+            }
+
+            HStack(spacing: 10) {
+                statTile(
+                    icon: "clock.fill",
+                    color: appleGreen,
+                    title: localizedInterfaceString("stats.activeTime"),
+                    value: formattedActiveTime,
+                    subtitle: localizedInterfaceString("stats.activeTimeSubtitle")
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.activeTimeTile")
+
+                walnutBrainStatTile(
+                    color: Color(red: 0.96, green: 0.58, blue: 0.04),
+                    title: localizedInterfaceString("stats.learnedWords"),
+                    value: "\(learnedWordsCount)",
+                    subtitle: localizedInterfaceString("stats.learnedWordsSubtitle")
+                )
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("stats.learnedWordsTile")
+            }
+        }
+
+        Divider()
+
+        HStack(spacing: 6) {
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color(red: 0.96, green: 0.58, blue: 0.04))
+            interfaceLabel("stats.achievements")
+                .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
+                .foregroundStyle(secondaryInk)
+            Spacer()
+
+            Button(role: .destructive) {
+                HapticFeedback.playSelection()
+                showResetStatsConfirmation = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 11, weight: .semibold))
+                    interfaceLabel("stats.reset")
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 12))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(Color.red)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Color.red.opacity(0.10), in: Capsule())
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("stats.resetButton")
+        }
+
+        AnyView(expandedAchievementsGridView(bestWPM: bestWPM))
+    }
+
+    @ViewBuilder
+    private func expandedAchievementsGridView(bestWPM: Int) -> some View {
+        if Device.iPhone {
+            VStack(spacing: 8) {
+                progressiveAchievementBadge(
+                    icon: "flag.checkered",
+                    title: localizedInterfaceString("stats.ach.firstStep"),
+                    descFormat: localizedInterfaceString("stats.ach.firstStep.desc"),
+                    currentValue: totalWords,
+                    milestones: [10, 50, 250, 1000, 5000],
+                    milestoneLabels: ["10", "50", "250", "1k", "5k"]
+                )
+                progressiveAchievementBadge(
+                    icon: "bolt.heart.fill",
+                    title: localizedInterfaceString("stats.ach.speed"),
+                    descFormat: localizedInterfaceString("stats.ach.speed.desc"),
+                    currentValue: bestWPM,
+                    milestones: [15, 25, 40, 55, 75],
+                    milestoneLabels: ["15", "25", "40", "55", "75"]
+                )
+                progressiveAchievementBadge(
+                    icon: "book.closed.fill",
+                    title: localizedInterfaceString("stats.ach.scholar"),
+                    descFormat: localizedInterfaceString("stats.ach.scholar.desc"),
+                    currentValue: max(learnedWordsCount, totalWords / 10),
+                    milestones: [5, 25, 75, 200, 500],
+                    milestoneLabels: ["5", "25", "75", "200", "500"]
+                )
+                progressiveAchievementBadge(
+                    icon: "sparkles",
+                    title: localizedInterfaceString("stats.ach.wisdom"),
+                    descFormat: localizedInterfaceString("stats.ach.wisdom.desc"),
+                    currentValue: phrasesInserted,
+                    milestones: [1, 5, 15, 35, 75],
+                    milestoneLabels: ["1", "5", "15", "35", "75"]
+                )
+            }
+        } else {
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    progressiveAchievementBadge(
+                        icon: "flag.checkered",
+                        title: localizedInterfaceString("stats.ach.firstStep"),
+                        descFormat: localizedInterfaceString("stats.ach.firstStep.desc"),
+                        currentValue: totalWords,
+                        milestones: [10, 50, 250, 1000, 5000],
+                        milestoneLabels: ["10", "50", "250", "1k", "5k"]
+                    )
+                    progressiveAchievementBadge(
+                        icon: "bolt.heart.fill",
+                        title: localizedInterfaceString("stats.ach.speed"),
+                        descFormat: localizedInterfaceString("stats.ach.speed.desc"),
+                        currentValue: bestWPM,
+                        milestones: [15, 25, 40, 55, 75],
+                        milestoneLabels: ["15", "25", "40", "55", "75"]
+                    )
+                }
+                HStack(spacing: 10) {
+                    progressiveAchievementBadge(
+                        icon: "book.closed.fill",
+                        title: localizedInterfaceString("stats.ach.scholar"),
+                        descFormat: localizedInterfaceString("stats.ach.scholar.desc"),
+                        currentValue: max(learnedWordsCount, totalWords / 10),
+                        milestones: [5, 25, 75, 200, 500],
+                        milestoneLabels: ["5", "25", "75", "200", "500"]
+                    )
+                    progressiveAchievementBadge(
+                        icon: "sparkles",
+                        title: localizedInterfaceString("stats.ach.wisdom"),
+                        descFormat: localizedInterfaceString("stats.ach.wisdom.desc"),
+                        currentValue: phrasesInserted,
+                        milestones: [1, 5, 15, 35, 75],
+                        milestoneLabels: ["1", "5", "15", "35", "75"]
+                    )
+                }
+            }
         }
     }
 
@@ -2343,31 +2494,166 @@ private extension HomeView {
     }
 
     func walnutBrainStatTile(color: Color, title: String, value: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                WalnutBrainIcon(color: color, size: 13)
-                Text(title)
-                    .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
+        Button {
+            openLearnedWordsDictionary()
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    WalnutBrainIcon(color: color, size: 13)
+                    Text(title)
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
+                        .foregroundStyle(secondaryInk)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(secondaryInk.opacity(0.75))
+                        .accessibilityHidden(true)
+                }
+                Text(value)
+                    .font(.system(size: Device.iPhone ? 12.5 : 14.5, weight: .bold, design: .rounded))
+                    .foregroundStyle(primaryInk)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.numericText())
+                Text(subtitle)
+                    .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                     .foregroundStyle(secondaryInk)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contentTransition(.numericText())
             }
-            Text(value)
-                .font(.system(size: Device.iPhone ? 12.5 : 14.5, weight: .bold, design: .rounded))
-                .foregroundStyle(primaryInk)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .contentTransition(.numericText())
-            Text(subtitle)
-                .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
-                .foregroundStyle(secondaryInk)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-                .contentTransition(.numericText())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var learnedWordsSheetView: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    walnutBrainIconBadge(
+                        color: Color(red: 0.96, green: 0.58, blue: 0.04),
+                        isEnabled: wordLearningEnabled
+                    )
+                    Text(localizedInterfaceString("settings.wordLearning"))
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15.5))
+                        .foregroundStyle(primaryInk)
+                        .lineLimit(1)
+                    Spacer(minLength: 8)
+                    Toggle("", isOn: $wordLearningEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("stats.learnedWords.wordLearningToggle")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .background(
+                    Color(.secondarySystemGroupedBackground),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 6)
+
+                if learnedWordsEntries.isEmpty {
+                    VStack(spacing: 12) {
+                        WalnutBrainIcon(color: Color(red: 0.96, green: 0.58, blue: 0.04), size: 42)
+                            .padding(.bottom, 4)
+                        Text(localizedInterfaceString("stats.learnedWords.emptyTitle"))
+                            .font(InterfaceFont.font("GeneralSans-Semibold", size: 17))
+                            .foregroundStyle(primaryInk)
+                            .multilineTextAlignment(.center)
+                        Text(localizedInterfaceString("stats.learnedWords.emptyDesc"))
+                            .font(InterfaceFont.font("GeneralSans-Regular", size: 14))
+                            .foregroundStyle(secondaryInk)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 28)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("stats.learnedWords.emptyState")
+                } else {
+                    List {
+                        ForEach(learnedWordsEntries, id: \.word) { item in
+                            HStack(spacing: 10) {
+                                WalnutBrainIcon(color: Color(red: 0.96, green: 0.58, blue: 0.04), size: 14)
+                                Text(item.word)
+                                    .font(InterfaceFont.font("GeneralSans-Medium", size: 16))
+                                    .foregroundStyle(primaryInk)
+                                    .accessibilityIdentifier("stats.learnedWords.row.\(item.word)")
+                                Spacer(minLength: 8)
+                                if item.freq > 1 {
+                                    Text("×\(item.freq)")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(secondaryInk)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 2.5)
+                                        .background(Color(.tertiarySystemFill), in: Capsule())
+                                }
+                                Button(role: .destructive) {
+                                    deleteLearnedWordFromSheet(item.word)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(Color.red)
+                                        .frame(width: 30, height: 30)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel(localizedInterfaceString("stats.learnedWords.delete"))
+                                .accessibilityIdentifier("stats.learnedWords.delete.\(item.word)")
+                            }
+                        }
+                        .onDelete { offsets in
+                            let wordsToDelete = offsets.map { learnedWordsEntries[$0].word }
+                            for w in wordsToDelete {
+                                deleteLearnedWordFromSheet(w)
+                            }
+                        }
+                    }
+                    .listStyle(.insetGrouped)
+                    .accessibilityIdentifier("stats.learnedWords.list")
+                }
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle(localizedInterfaceString("stats.learnedWordsSubtitle"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !learnedWordsEntries.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(role: .destructive) {
+                            HapticFeedback.playSelection()
+                            KeyboardUsageStats.clearAllLearnedWords()
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                                learnedWordsEntries = []
+                                learnedWordsCount = 0
+                            }
+                        } label: {
+                            Text(localizedInterfaceString("stats.learnedWords.clearAll"))
+                                .font(InterfaceFont.font("GeneralSans-Medium", size: 14))
+                                .foregroundStyle(Color.red)
+                        }
+                        .accessibilityIdentifier("stats.learnedWords.clearAllButton")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showLearnedWordsSheet = false
+                    } label: {
+                        Text(localizedInterfaceString("stats.learnedWords.done"))
+                            .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
+                    }
+                    .accessibilityIdentifier("stats.learnedWords.doneButton")
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     func progressiveAchievementBadge(
@@ -2790,7 +3076,7 @@ private struct SettingsLineArtIconShape: Shape {
     static func iconFrameSize(for systemName: String) -> CGFloat {
         switch systemName {
         case "lang.crh.tamga", "lang.uk.tryzub", "lang.en.unionjack":
-            return 20.0
+            return 17.5
         default:
             return 16.5
         }
@@ -2799,12 +3085,9 @@ private struct SettingsLineArtIconShape: Shape {
     static func strokeStyle(for systemName: String, frameSize: CGFloat) -> StrokeStyle {
         switch systemName {
         case "lang.crh.tamga":
-            return StrokeStyle(lineWidth: frameSize / 9.0, lineCap: .square, lineJoin: .miter)
-        case "lang.uk.tryzub":
-            let scale = (frameSize / 800.0) * 0.94
-            return StrokeStyle(lineWidth: 38.0 * scale, lineCap: .butt, lineJoin: .miter)
-        case "lang.en.unionjack":
-            return StrokeStyle(lineWidth: frameSize * (1.20 / 20.0), lineCap: .butt, lineJoin: .miter)
+            return StrokeStyle(lineWidth: 1.65, lineCap: .round, lineJoin: .round)
+        case "lang.uk.tryzub", "lang.en.unionjack":
+            return StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
         default:
             return StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
         }
@@ -2817,8 +3100,8 @@ private struct SettingsLineArtIconShape: Shape {
 
         switch systemName {
         case "lang.crh.tamga":
-            // Exact 9:5 Crimean Tatar Taraq Tamğa centerline matching SharedTaraqTamgaShape
-            let scale = min(w / 9.0, h / 5.0)
+            // Friendly rounded-corner Crimean Tatar Taraq Tamğa line-drawing (9:5 proportions with soft rounded corners)
+            let scale = min(w / 9.0, h / 5.6)
             let drawW = scale * 9.0
             let drawH = scale * 5.0
             let ox = rect.minX + (w - drawW) * 0.5
@@ -2826,128 +3109,91 @@ private struct SettingsLineArtIconShape: Shape {
             func pt(_ gx: CGFloat, _ gy: CGFloat) -> CGPoint {
                 CGPoint(x: ox + gx * scale, y: oy + gy * scale)
             }
-            // Outer U-frame + left/right feet
-            p.move(to: pt(0.5, 3.5))
-            p.addLine(to: pt(1.5, 3.5))
-            p.addLine(to: pt(1.5, 0.5))
-            p.addLine(to: pt(7.5, 0.5))
-            p.addLine(to: pt(7.5, 3.5))
-            p.addLine(to: pt(8.5, 3.5))
-            // Center vertical prong
-            p.move(to: pt(4.5, 0.5))
-            p.addLine(to: pt(4.5, 4.5))
-            // Center bottom bar
-            p.move(to: pt(3.5, 4.5))
-            p.addLine(to: pt(5.5, 4.5))
+            let cornerR = scale * 0.55
+            // 1. Outer arch with soft rounded bends and feet
+            p.move(to: pt(0.4, 3.55))
+            p.addArc(tangent1End: pt(1.55, 3.55), tangent2End: pt(1.55, 0.55), radius: cornerR * 0.65)
+            p.addArc(tangent1End: pt(1.55, 0.55), tangent2End: pt(7.45, 0.55), radius: cornerR)
+            p.addArc(tangent1End: pt(7.45, 0.55), tangent2End: pt(7.45, 3.55), radius: cornerR)
+            p.addArc(tangent1End: pt(7.45, 3.55), tangent2End: pt(8.6, 3.55), radius: cornerR * 0.65)
+            p.addLine(to: pt(8.6, 3.55))
+            // 2. Central vertical stem
+            p.move(to: pt(4.5, 0.55))
+            p.addLine(to: pt(4.5, 4.55))
+            // 3. Central bottom crossbar
+            p.move(to: pt(3.35, 4.55))
+            p.addLine(to: pt(5.65, 4.55))
 
         case "lang.uk.tryzub":
-            // Exact official Ukrainian Tryzub (Малий Державний Герб України, 480x800 grid)
-            let scale = min(w / 480.0, h / 800.0) * 0.94
-            let ox = rect.midX
-            let oy = rect.midY - (400.0 * scale)
-            func pt(_ dx: CGFloat, _ y: CGFloat, sign: CGFloat = 1.0) -> CGPoint {
-                CGPoint(x: ox + sign * dx * scale, y: oy + (y - 53.0) * scale)
+            // Friendly rounded-stroke Ukrainian Tryzub centerline drawing (single-line progressive sketch)
+            let cx = w * 0.50
+            func pt(_ dx: CGFloat, _ ny: CGFloat, sign: CGFloat = 1.0) -> CGPoint {
+                CGPoint(x: cx + sign * dx * w, y: ny * h)
             }
-            // 1. Continuous central spear & lower trefoil loop with mitered top/bottom tips and open middle diamond
-            p.move(to: pt(88, 673, sign: -1.0))
-            p.addCurve(
-                to: pt(6, 290, sign: -1.0),
-                control1: pt(82, 545, sign: -1.0),
-                control2: pt(6, 415, sign: -1.0)
-            )
-            p.addCurve(
-                to: pt(12, 145, sign: -1.0),
-                control1: pt(6, 245, sign: -1.0),
-                control2: pt(12, 195, sign: -1.0)
-            )
-            p.addCurve(
-                to: pt(0, 68, sign: 1.0),
-                control1: pt(12, 116, sign: -1.0),
-                control2: pt(9, 90, sign: -1.0)
-            )
-            p.addCurve(
-                to: pt(12, 145, sign: 1.0),
-                control1: pt(9, 90, sign: 1.0),
-                control2: pt(12, 116, sign: 1.0)
-            )
-            p.addCurve(
-                to: pt(6, 290, sign: 1.0),
-                control1: pt(12, 195, sign: 1.0),
-                control2: pt(6, 245, sign: 1.0)
-            )
-            p.addCurve(
-                to: pt(88, 673, sign: 1.0),
-                control1: pt(6, 415, sign: 1.0),
-                control2: pt(82, 545, sign: 1.0)
-            )
-            p.addCurve(
-                to: pt(0, 836, sign: 1.0),
-                control1: pt(84, 745, sign: 1.0),
-                control2: pt(48, 800, sign: 1.0)
-            )
-            p.addCurve(
-                to: pt(88, 673, sign: -1.0),
-                control1: pt(48, 800, sign: -1.0),
-                control2: pt(84, 745, sign: -1.0)
-            )
-            p.closeSubpath()
-
-            // Solid fill spine inside upper spear blade (y = 85..385) and lower central post (y = 615..832)
-            p.move(to: pt(0, 85))
-            p.addLine(to: pt(0, 385))
-            p.move(to: pt(0, 615))
-            p.addLine(to: pt(0, 832))
-
-            // 2. Left & right outer wings + signature C-scrolls meeting at the central Y-junction
+            // 1. Left & right outer wings with soft rounded curves down to the base
             for sign: CGFloat in [-1.0, 1.0] {
-                p.move(to: pt(0, 673, sign: sign))
-                p.addLine(to: pt(220, 673, sign: sign))
-                p.addLine(to: pt(220, 136, sign: sign))
+                p.move(to: pt(0.0, 0.77, sign: sign))
+                p.addQuadCurve(to: pt(0.37, 0.72, sign: sign), control: pt(0.32, 0.77, sign: sign))
+                p.addLine(to: pt(0.37, 0.20, sign: sign))
                 p.addCurve(
-                    to: pt(104, 474, sign: sign),
-                    control1: pt(122, 210, sign: sign),
-                    control2: pt(114, 345, sign: sign)
-                )
-
-                p.move(to: pt(96, 478, sign: sign))
-                p.addCurve(
-                    to: pt(164, 513, sign: sign),
-                    control1: pt(132, 456, sign: sign),
-                    control2: pt(164, 480, sign: sign)
+                    to: pt(0.16, 0.55, sign: sign),
+                    control1: pt(0.21, 0.27, sign: sign),
+                    control2: pt(0.18, 0.42, sign: sign)
                 )
                 p.addCurve(
-                    to: pt(0, 625, sign: sign),
-                    control1: pt(164, 566, sign: sign),
-                    control2: pt(26, 568, sign: sign)
+                    to: pt(0.0, 0.72, sign: sign),
+                    control1: pt(0.28, 0.53, sign: sign),
+                    control2: pt(0.24, 0.70, sign: sign)
                 )
-
-                p.move(to: pt(164, 513, sign: sign))
-                p.addLine(to: pt(220, 513, sign: sign))
+                // Side crossbar tie
+                p.move(to: pt(0.19, 0.58, sign: sign))
+                p.addLine(to: pt(0.37, 0.58, sign: sign))
             }
+            // 2. Central spear with soft rounded loop and bottom finial
+            p.move(to: pt(0.0, 0.10))
+            p.addCurve(
+                to: pt(0.0, 0.54, sign: -1.0),
+                control1: pt(0.12, 0.24, sign: -1.0),
+                control2: pt(0.10, 0.44, sign: -1.0)
+            )
+            p.addCurve(
+                to: pt(0.0, 0.10, sign: 1.0),
+                control1: pt(0.10, 0.44, sign: 1.0),
+                control2: pt(0.12, 0.24, sign: 1.0)
+            )
+            p.move(to: pt(0.0, 0.54))
+            p.addLine(to: pt(0.0, 0.90))
 
         case "lang.en.unionjack":
-            // Authentic British Union Jack flag vector emblem (8 triangles + bold St George's Cross + diagonal saltire)
-            let x0 = w * 0.04, x1 = w * 0.96
-            let y0 = h * 0.20, y1 = h * 0.80
+            // Friendly rounded-corner UK badge sketch matching the unified line-art icon family
+            let x0 = w * 0.08, x1 = w * 0.92
+            let y0 = h * 0.17, y1 = h * 0.83
             let cx = w * 0.50, cy = h * 0.50
+            let r = min(w, h) * 0.18
 
+            // 1. Soft rounded squircle frame
             p.addRoundedRect(
                 in: CGRect(x: x0, y: y0, width: x1 - x0, height: y1 - y0),
-                cornerSize: CGSize(width: w * 0.04, height: w * 0.04)
+                cornerSize: CGSize(width: r, height: r)
             )
-            // Full diagonal St Andrew's / St Patrick's saltire from corner to corner
-            p.move(to: CGPoint(x: x0 + w * 0.02, y: y0 + h * 0.02))
-            p.addLine(to: CGPoint(x: x1 - w * 0.02, y: y1 - h * 0.02))
-            p.move(to: CGPoint(x: x1 - w * 0.02, y: y0 + h * 0.02))
-            p.addLine(to: CGPoint(x: x0 + w * 0.02, y: y1 - h * 0.02))
-            // Bold central St George's Cross
-            let d = w * 0.022
-            for off in [-d, 0.0, d] {
-                p.move(to: CGPoint(x: cx + off, y: y0))
-                p.addLine(to: CGPoint(x: cx + off, y: y1))
-                p.move(to: CGPoint(x: x0, y: cy + off))
-                p.addLine(to: CGPoint(x: x1, y: cy + off))
-            }
+            // 2. Central St George's Cross (clean single rounded strokes)
+            p.move(to: CGPoint(x: cx, y: y0 + h * 0.02))
+            p.addLine(to: CGPoint(x: cx, y: y1 - h * 0.02))
+            p.move(to: CGPoint(x: x0 + w * 0.02, y: cy))
+            p.addLine(to: CGPoint(x: x1 - w * 0.02, y: cy))
+            // 3. Diagonal quadrant saltire rays with breathing gap around the center intersection
+            let gx = w * 0.14
+            let gy = h * 0.12
+            let ix = w * 0.09
+            let iy = h * 0.08
+            p.move(to: CGPoint(x: x0 + ix, y: y0 + iy))
+            p.addLine(to: CGPoint(x: cx - gx, y: cy - gy))
+            p.move(to: CGPoint(x: cx + gx, y: cy + gy))
+            p.addLine(to: CGPoint(x: x1 - ix, y: y1 - iy))
+            p.move(to: CGPoint(x: x1 - ix, y: y0 + iy))
+            p.addLine(to: CGPoint(x: cx + gx, y: cy - gy))
+            p.move(to: CGPoint(x: cx - gx, y: cy + gy))
+            p.addLine(to: CGPoint(x: x0 + ix, y: y1 - iy))
 
         case "globe":
             let r = min(w, h) * 0.42
@@ -3275,18 +3521,55 @@ private struct InteractiveSettingsIconBadge: View {
 
     var body: some View {
         let effectiveColor = isEnabled ? color : Color(.systemGray2)
+        let badgeFillStyle: AnyShapeStyle = {
+            guard isEnabled else { return AnyShapeStyle(Color(.systemGray2).gradient) }
+            switch systemName {
+            case "lang.crh.tamga":
+                return AnyShapeStyle(
+                    LinearGradient(
+                        colors: [Color(red: 0.07, green: 0.58, blue: 0.85), Color(red: 0.04, green: 0.45, blue: 0.71)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            case "lang.uk.tryzub":
+                return AnyShapeStyle(
+                    LinearGradient(
+                        colors: [Color(red: 0.02, green: 0.40, blue: 0.88), Color(red: 0.92, green: 0.70, blue: 0.06)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            case "lang.en.unionjack":
+                return AnyShapeStyle(
+                    LinearGradient(
+                        colors: [Color(red: 0.08, green: 0.26, blue: 0.74), Color(red: 0.82, green: 0.15, blue: 0.25)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            default:
+                return AnyShapeStyle(effectiveColor.gradient)
+            }
+        }()
+        let glyphStrokeColor: Color = {
+            if isEnabled && systemName == "lang.crh.tamga" {
+                return Color(red: 0.99, green: 0.82, blue: 0.16)
+            }
+            return Color.white
+        }()
         let iconFrame = SettingsLineArtIconShape.iconFrameSize(for: systemName)
         let strokeStyle = SettingsLineArtIconShape.strokeStyle(for: systemName, frameSize: iconFrame)
 
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(effectiveColor.gradient)
+                .fill(badgeFillStyle)
                 .frame(width: 28, height: 28)
 
             SettingsLineArtIconShape(systemName: systemName)
                 .trim(from: 0, to: drawProgress)
                 .stroke(
-                    Color.white,
+                    glyphStrokeColor,
                     style: strokeStyle
                 )
                 .frame(width: iconFrame, height: iconFrame)
@@ -3407,6 +3690,7 @@ private struct TransliterationKeycapBadge: View {
     let isEnabled: Bool
     let isUkrainianStyle: Bool
     let accentColor: Color
+    var triggerCount: Int = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -3574,7 +3858,7 @@ private struct TransliterationKeycapBadge: View {
                 drawProgress = 1.0
             }
         }
-        .onChange(of: isUkrainianStyle) { _, _ in
+        .onChange(of: triggerCount) { _, _ in
             triggerLineDraw(forceAllowWhenDisabled: true)
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
@@ -3717,6 +4001,7 @@ private struct SandboxTextView: UIViewRepresentable {
     let hasManualThemeOverride: Bool
     let preferencesToken: String
     let fontSize: CGFloat
+    var isFullAccessGranted: Bool = true
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -4116,6 +4401,18 @@ private struct SandboxTextView: UIViewRepresentable {
             refreshActiveInputMode(for: textView)
             refreshUndoRedoState(for: textView)
             updateInlineMathPreview(for: textView)
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("-qt_prefill_phrase_prefix") || args.contains("-qt_prefill_greeting_prefix") {
+                let endPos = (textView.text as NSString).length
+                textView.selectedRange = NSRange(location: endPos, length: 0)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak textView] in
+                    guard let textView else { return }
+                    let len = (textView.text as NSString).length
+                    if textView.selectedRange.location != len {
+                        textView.selectedRange = NSRange(location: len, length: 0)
+                    }
+                }
+            }
         }
 
         func textViewDidEndEditing(_ textView: UITextView) {
@@ -4161,6 +4458,11 @@ private struct SandboxTextView: UIViewRepresentable {
                 resetSpeedState()
             } else if delta > 0 && delta <= 2 && !KeyboardUsageStats.wasRecentlyInjected() {
                 recordTypedCharacters(delta)
+                KeyboardUsageStats.recordSandboxCommittedWordIfNeeded(
+                    oldText: oldText,
+                    newText: newText,
+                    isFullAccessGranted: parent.isFullAccessGranted
+                )
             }
             textView.scrollRangeToVisible(textView.selectedRange)
             refreshUndoRedoState(for: textView)

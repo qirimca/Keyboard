@@ -69,6 +69,7 @@
 "settings.stats" = "Статистика";
 "settings.stats.desc" = "Відстеження швидкості набору, слів і досягнень";
 "stats.charsSubtitle" = "Символів: %d";
+"stats.uniqueWordsUnit" = "унік.";
 "stats.speedSubtitle" = "Поточний темп: %d %@ · %d %@";
 "stats.speedPeakSubtitle" = "Рекордний темп друку";
 "stats.manualWordsSubtitle" = "Надруковано по літерах";
@@ -94,5 +95,13 @@
 "settings.systemKeyboard.desc" = "Автовеликі літери, автовиправлення, математика";
 "settings.systemKeyboard.ios26Desc" = "Перейдіть у «Загальні» → «Клавіатура» (автовиправлення, математика тощо)";
 "settings.cyrillic.addHint" = "Додайте в «Загальні» → «Клавіатура» → «Клавіатури»";
-"settings.fullAccess.addHint" = "Увімкніть у «Загальні» → «Клавіатура» → «Клавіатури» → QırımKey";
+"settings.fullAccess.addHint" = "Потрібен для синхронізації налаштувань, словника й вібрації (100% офлайн). Увімкніть у «Загальні» → «Клавіатура» → «Клавіатури» → QırımKey";
+"settings.fullAccess.onHint" = "Синхронізація налаштувань, словника й вібрації (100% офлайн на пристрої)";
 "sandbox.wrongKeyboardWarning" = "Вибрано іншу клавіатуру — перемкніть через 🌐";
+"stats.wordsUnit" = "сл.";
+"stats.learnedWordsUnit" = "вивч.";
+"stats.learnedWords.emptyTitle" = "Особистий словник порожній";
+"stats.learnedWords.emptyDesc" = "Нові слова, які ви друкуєте, автоматично зберігаються тут для швидких підказок.";
+"stats.learnedWords.clearAll" = "Очистити словник";
+"stats.learnedWords.done" = "Готово";
+"stats.learnedWords.delete" = "Видалити";

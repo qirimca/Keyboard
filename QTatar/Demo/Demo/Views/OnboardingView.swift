@@ -39,17 +39,30 @@ struct OnboardingView: View {
         var instruction: String {
             switch self {
             case .onboard1:
-                return Onboarding.onb_onb1_key.localized
-            case .onboard2:
                 if #available(iOS 26.0, *) {
                     let v26 = L10n.tr("onb_onb2_ios26_key", table: "Onboarding")
                     return v26 != "onb_onb2_ios26_key" ? v26 : Onboarding.onb_onb2_key.localized
                 }
                 return Onboarding.onb_onb2_key.localized
+            case .onboard2:
+                return Onboarding.onb_onb1_key.localized
             case .onboard3:
                 return Onboarding.onb_onb3_key.localized
             case .onboard4:
                 return Onboarding.onb_onb4_key.localized
+            }
+        }
+        
+        var imageName: String {
+            switch self {
+            case .onboard1:
+                return "Onboard2"
+            case .onboard2:
+                return "Onboard1"
+            case .onboard3:
+                return "Onboard3"
+            case .onboard4:
+                return "Onboard4"
             }
         }
         
@@ -95,6 +108,7 @@ struct OnboardingView: View {
                 selected = validPage
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(mode == .removeCyrillic ? "onboarding.removeCyrillic.view" : "onboarding.add.view")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
@@ -147,12 +161,14 @@ private extension OnboardingView {
             formattedInstructionText(for: page.instruction)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
+                .accessibilityIdentifier("onboarding.instruction.text")
             
             if page == .onboard1 || page == .onboard2 {
                 navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
                     HomeView.openKeyboardSettings()
                 }
                 .padding(.horizontal, 20)
+                .accessibilityIdentifier("onboarding.openSettings.button")
             }
             
             if page == .onboard3 {
@@ -171,7 +187,7 @@ private extension OnboardingView {
                 }
             }
             
-            Image(page.rawValue)
+            Image(page.imageName)
                 .resizable()
                 .scaledToFit()
                 .accessibilityHidden(true)
