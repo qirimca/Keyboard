@@ -1,1 +1,1 @@
-qirim,kirim,tatarca,klavye,tatar,luqat,imla,sözlük,alfabe,transliterasyon,swipe,ctcorpus,crh,ana,dil
+kırım,qırım,tatarca,klavye,kiril,latin,imla,sözlük,alfabe,harf çevirisi,dil,swipe,crh,Ukrayna
