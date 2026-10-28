@@ -17,4 +17,4 @@ QırımKey funcționează offline și nu face nicio cerere de rețea. Ceea ce sc
 
 Site și asistență: https://ctcorpus.org/index.php/en/
 Confidențialitate și termeni: https://ctcorpus.org/index.php/en/terms-of-use
-Cod sursă: https://github.com/qirimyoung/QirimKey_iOS
+Cod sursă: https://github.com/qirimca/Keyboard

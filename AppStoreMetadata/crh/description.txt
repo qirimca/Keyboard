@@ -17,4 +17,4 @@ QırımKey internetsiz çalışa ve hiç bir şebeke soravı yapmay. Yazğanıñ
 
 Destek ve sayt: https://ctcorpus.org/index.php/crh/
 Qullanuv şartları: https://ctcorpus.org/index.php/crh/qullanuv-sartlari
-Açıq kod: https://github.com/qirimyoung/QirimKey_iOS
+Açıq kod: https://github.com/qirimca/Keyboard

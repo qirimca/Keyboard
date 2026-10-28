@@ -17,4 +17,4 @@ QırımKey çevrimdışı çalışır ve hiçbir ağ isteği yapmaz. Yazdıklar�
 
 Web sitesi ve destek: https://ctcorpus.org/index.php/crh/
 Gizlilik ve kullanım koşulları: https://ctcorpus.org/index.php/crh/qullanuv-sartlari
-Açık kaynak: https://github.com/qirimyoung/QirimKey_iOS
+Açık kaynak: https://github.com/qirimca/Keyboard

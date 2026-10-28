@@ -17,4 +17,4 @@ QırımKey працює без інтернету й не робить жодн�
 
 Сайт і підтримка: https://ctcorpus.org/index.php/uk/
 Умови користування: https://ctcorpus.org/index.php/uk/umovy-vykorystannia
-Відкритий код: https://github.com/qirimyoung/QirimKey_iOS
+Відкритий код: https://github.com/qirimca/Keyboard

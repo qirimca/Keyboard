@@ -17,4 +17,4 @@ QırımKey arbeitet offline und sendet keine Netzwerkanfragen. Was Sie tippen, w
 
 Website und Support: https://ctcorpus.org/index.php/en/
 Datenschutz und Bedingungen: https://ctcorpus.org/index.php/en/terms-of-use
-Quellcode: https://github.com/qirimyoung/QirimKey_iOS
+Quellcode: https://github.com/qirimca/Keyboard

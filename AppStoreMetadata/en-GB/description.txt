@@ -17,4 +17,4 @@ QırımKey works offline and never makes a network request. What you type is not
 
 Website and support: https://ctcorpus.org/index.php/en/
 Privacy and terms: https://ctcorpus.org/index.php/en/terms-of-use
-Source code: https://github.com/qirimyoung/QirimKey_iOS
+Source code: https://github.com/qirimca/Keyboard
