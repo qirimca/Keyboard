@@ -1032,7 +1032,12 @@ enum KeyboardUsageStats {
 struct TaraqTamgaLogoBadge: View {
     var size: CGFloat = 28
     var cornerRadius: CGFloat = 7
+    var isDarkOverride: Bool? = nil
     @Environment(\.colorScheme) private var colorScheme
+
+    private var effectiveIsDark: Bool {
+        isDarkOverride ?? (colorScheme == .dark)
+    }
 
     private var lightGradient: LinearGradient {
         LinearGradient(
@@ -1061,7 +1066,7 @@ struct TaraqTamgaLogoBadge: View {
     private var keyCap: some View {
         let box = size * 0.727
         let corner = size * 0.164
-        let isDark = colorScheme == .dark
+        let isDark = effectiveIsDark
         ZStack {
             RoundedRectangle(cornerRadius: corner, style: .continuous)
                 .fill(isDark ? Color(red: 33.0 / 255.0, green: 50.0 / 255.0, blue: 70.0 / 255.0) : Color.white)
@@ -1087,15 +1092,25 @@ struct TaraqTamgaLogoBadge: View {
     var body: some View {
         Group {
             if Self.hasLogoAsset {
-                Image("logo")
-                    .resizable()
-                    .interpolation(.high)
-                    .antialiased(true)
-                    .scaledToFit()
+                ZStack {
+                    Image("logo")
+                        .resizable()
+                        .interpolation(.high)
+                        .antialiased(true)
+                        .scaledToFit()
+                        .environment(\.colorScheme, .light)
+                    Image("logo")
+                        .resizable()
+                        .interpolation(.high)
+                        .antialiased(true)
+                        .scaledToFit()
+                        .environment(\.colorScheme, .dark)
+                        .opacity(effectiveIsDark ? 1.0 : 0.0)
+                }
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(colorScheme == .dark ? darkGradient : lightGradient)
+                        .fill(effectiveIsDark ? darkGradient : lightGradient)
                     keyCap
                 }
             }
@@ -1104,7 +1119,7 @@ struct TaraqTamgaLogoBadge: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.22 : 0.14), lineWidth: 0.75)
+                .strokeBorder(Color.primary.opacity(effectiveIsDark ? 0.22 : 0.14), lineWidth: 0.75)
         )
     }
 }
@@ -1194,7 +1209,7 @@ extension UITextDocumentProxy {
 }
 
 /// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
-/// from system keyboard preferences controllers, `CFPreferences`, `UserDefaults`, App Group cache, and `UITextDocumentProxy`.
+/// from `CFPreferences`, `UserDefaults`, App Group cache, and `UITextDocumentProxy`.
 enum SystemKeyboardSettings {
 
     enum Feature: String {
@@ -1237,35 +1252,24 @@ enum SystemKeyboardSettings {
     ]
 
     private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let syncSel = NSSelectorFromString("synchronizePreferences")
-            if shouldSync, controller.responds(to: syncSel) {
-                _ = controller.perform(syncSel)
-            }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in keys {
-                if controller.responds(to: valSel),
-                   let raw = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue(),
-                   let num = raw as? NSNumber {
-                    KeyboardPreferences.defaults.set(num.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
-                    return num.boolValue
-                }
-            }
-        }
         let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
             "com.apple.Preferences" as CFString,
             kCFPreferencesAnyApplication
         ]
+        if shouldSync {
+            for domain in domains {
+                CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+            }
+        }
         for key in keys {
             for domain in domains {
                 if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
                     KeyboardPreferences.defaults.set(val.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
                     return val.boolValue
+                }
+                if let hostVal = CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
+                    KeyboardPreferences.defaults.set(hostVal.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
+                    return hostVal.boolValue
                 }
             }
             if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
@@ -1383,6 +1387,9 @@ enum SystemKeyboardSettings {
     static func isPredictiveTextEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard KeyboardPreferences.suggestionsEnabled, isFeatureEnabled(.predictiveText) else { return false }
         if proxy?.isSecureTextEntry == true { return false }
+        if #available(iOS 17.0, *), proxy?.inlinePredictionType == .no && proxy?.spellCheckingType == .no {
+            return false
+        }
         return readSystemPreferenceBool(["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
     }
 
@@ -1420,7 +1427,7 @@ enum SystemKeyboardSettings {
     static let cachedEnabledKeyboardsKey = "crh.key.cachedEnabledKeyboards"
 
     /// Reads the list of enabled keyboard identifiers from system preferences (`AppleKeyboards`),
-    /// `TIPreferencesController`, `UITextInputMode.activeInputModes`, and the App Group cache.
+    /// `UITextInputMode.activeInputModes`, and the App Group cache.
     @discardableResult
     static func enabledSystemKeyboardIdentifiers(forceRefresh: Bool = false) -> [String] {
         let now = ProcessInfo.processInfo.systemUptime
@@ -1437,7 +1444,6 @@ enum SystemKeyboardSettings {
             didReadAuthoritativeList = true
         }
         let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
             "com.apple.Preferences" as CFString,
             kCFPreferencesAnyApplication
         ]
@@ -1446,20 +1452,9 @@ enum SystemKeyboardSettings {
                 collected.append(contentsOf: list)
                 didReadAuthoritativeList = true
             }
-        }
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in ["Keyboards", "AppleKeyboards"] {
-                if controller.responds(to: valSel),
-                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
-                   !list.isEmpty {
-                    collected.append(contentsOf: list)
-                    didReadAuthoritativeList = true
-                }
+            if let hostList = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostList.isEmpty {
+                collected.append(contentsOf: hostList)
+                didReadAuthoritativeList = true
             }
         }
 
@@ -1470,7 +1465,8 @@ enum SystemKeyboardSettings {
             }
             if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
                 if lang.hasPrefix("crh-cyrl-ua") {
-                    collected.append(AppConfiguration.ukrainianCyrillicKeyboardBundleId)
+                    collected.append(AppConfiguration.ukrainianKeyboardBundleId)
+                    collected.append(AppConfiguration.ukrainianDeviceKeyboardBundleId)
                 } else if lang.hasPrefix("crh-cyrl") {
                     collected.append(AppConfiguration.cyrillicKeyboardBundleId)
                 } else if lang == "crh" || lang.hasPrefix("crh-latn") {
@@ -1502,7 +1498,6 @@ enum SystemKeyboardSettings {
             return true
         }
         let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
             "com.apple.Preferences" as CFString,
             kCFPreferencesAnyApplication
         ]
@@ -1510,19 +1505,8 @@ enum SystemKeyboardSettings {
             if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
                 return true
             }
-        }
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in ["Keyboards", "AppleKeyboards"] {
-                if controller.responds(to: valSel),
-                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
-                   !list.isEmpty {
-                    return true
-                }
+            if let hostList = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostList.isEmpty {
+                return true
             }
         }
         return false

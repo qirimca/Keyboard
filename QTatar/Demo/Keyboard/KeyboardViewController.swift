@@ -924,7 +924,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             case "field.email", "field.url", "field.numbers", "field.search":
                 context.autocapitalizationTypeOverride = Keyboard.AutocapitalizationType.none
             default:
-                context.autocapitalizationTypeOverride = .sentences
+                context.autocapitalizationTypeOverride = nil
             }
         } else {
             context.autocapitalizationTypeOverride = nil

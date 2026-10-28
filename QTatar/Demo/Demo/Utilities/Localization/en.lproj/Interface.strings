@@ -10,10 +10,10 @@
 "settings.language" = "Interface language";
 "settings.cyrillic" = "Cyrillic keyboard";
 "settings.suggestions" = "Word suggestions";
-"settings.wordLearning" = "Learn words";
+"settings.wordLearning" = "Remember new words";
 "settings.done" = "Done";
-"settings.keyboardHelp" = "The Cyrillic keyboard transliterates into Latin text. On iPad, the switch shows or hides the “абв/abc” key. Learn words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.";
-"settings.keyboardHelpPhone" = "The Cyrillic keyboard transliterates into Latin text. Learn words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.";
+"settings.keyboardHelp" = "The Cyrillic keyboard transliterates into Latin text. On iPad, the switch shows or hides the “абв/abc” key. Remember new words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.";
+"settings.keyboardHelpPhone" = "The Cyrillic keyboard transliterates into Latin text. Remember new words adapts suggestions and next-word predictions on your device. Shared settings require Full Access.";
 "theme.light" = "Light";
 "theme.dark" = "Dark";
 "settings.enableBothKeyboards" = "To switch with the globe, add both Qırımtatarca and Къырымтатарджа in iOS Settings → General → Keyboard → Keyboards → Add New Keyboard → QırımKey.";
@@ -90,14 +90,14 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Separate keyboard in iOS Settings is only needed for floating mode";
 "settings.appSettings" = "App settings";
-"settings.appSettings.desc" = "Word suggestions, word learning";
+"settings.appSettings.desc" = "Word suggestions, remember new words";
 "settings.systemKeyboard" = "System settings";
 "settings.systemKeyboard.desc" = "Auto-capitalization, auto-correction, math results";
 "settings.systemKeyboard.ios26Desc" = "Go to “General” → “Keyboard” (auto-correction, math results, etc.)";
 "settings.cyrillic.addHint" = "Add in “General” → “Keyboard” → “Keyboards”";
-"settings.fullAccess.addHint" = "Needed to sync settings, dictionary & haptics (100% offline). Enable in “General” → “Keyboard” → “Keyboards” → QırımKey";
+"settings.fullAccess.addHint" = "Needed to sync settings, dictionary & haptics (100% offline). Enable in “Settings” → “Apps” → QırımKey → “Keyboards” → “Allow Full Access”";
 "settings.fullAccess.onHint" = "Syncs settings, dictionary & haptics (100% offline on device)";
-"sandbox.wrongKeyboardWarning" = "Another keyboard active — switch via 🌐";
+"sandbox.wrongKeyboardWarning" = "Another keyboard active — switch via {{globe}}";
 "stats.wordsUnit" = "words";
 "stats.learnedWordsUnit" = "learned";
 "stats.learnedWords.emptyTitle" = "Personal dictionary is empty";
@@ -105,3 +105,5 @@
 "stats.learnedWords.clearAll" = "Clear dictionary";
 "stats.learnedWords.done" = "Done";
 "stats.learnedWords.delete" = "Delete";
+"settings.standardLayout" = "Standard layout";
+"settings.standardLayout.desc" = "q · ğ · ñ · ş · ç · ü · ö · ı";

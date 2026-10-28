@@ -10,10 +10,10 @@
 "settings.language" = "İnterfeys tili";
 "settings.cyrillic" = "Kirill klaviaturası";
 "settings.suggestions" = "Söz teklifleri";
-"settings.wordLearning" = "Sözlerni ögrenüv";
+"settings.wordLearning" = "Yañı sözlerni aqılda tutuv";
 "settings.done" = "Azır";
-"settings.keyboardHelp" = "Kirill klaviaturası metinni latin ariflerinen kirsete. iPad-de bu seçim «абв/abc» dögmesini köstere yaki gizley. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
-"settings.keyboardHelpPhone" = "Kirill klaviaturası metinni latin ariflerinen kirsete. Sözlerni ögrenüv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
+"settings.keyboardHelp" = "Kirill klaviaturası metinni latin ariflerinen kirsete. iPad-de bu seçim «абв/abc» dögmesini köstere yaki gizley. Yañı sözlerni aqılda tutuv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
+"settings.keyboardHelpPhone" = "Kirill klaviaturası metinni latin ariflerinen kirsete. Yañı sözlerni aqılda tutuv sıq qullanılğan sözlerni ve söz birikmelerini cihazda saqlay. Ortaq sazlamalar içün Tam irişim kerek.";
 "theme.light" = "Aydınlıq";
 "theme.dark" = "Qaranlıq";
 "settings.enableBothKeyboards" = "Globus dögmesinen almaştırmaq içün eki klaviaturanı da qoşuñız: Qırımtatarca ve Къырымтатарджа. Yol: «Settings» → «General» → «Keyboard» → «Keyboards» → «Add New Keyboard» → QırımKey.";
@@ -90,14 +90,14 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "iOS Sazlamalarında ayrı klaviatura tek yüzüci rejim içün kerek";
 "settings.appSettings" = "Qoşulma sazlamaları";
-"settings.appSettings.desc" = "Söz teklifleri, sözlerni ögrenüv";
+"settings.appSettings.desc" = "Söz teklifleri, yañı sözlerni aqılda tutuv";
 "settings.systemKeyboard" = "Sistem sazlamaları";
 "settings.systemKeyboard.desc" = "Avto-büyük arifler, avto-tüzetüv, matematika";
 "settings.systemKeyboard.ios26Desc" = "«General» → «Keyboard» bölügine keçiñiz (avto-tüzetüv, matematika ve ilh.)";
 "settings.cyrillic.addHint" = "«General» → «Keyboard» → «Keyboards» bölüginde qoşuñız";
-"settings.fullAccess.addHint" = "Sazlamalar, luğat ve titrevni sinhronizatsiya etmek içün kerek (100% oflayn). «General» → «Keyboard» → «Keyboards» → QırımKey bölüginde açınız";
+"settings.fullAccess.addHint" = "Sazlamalar, luğat ve titrevni sinhronizatsiya etmek içün kerek (100% oflayn). «Settings» → «Apps» → QırımKey → «Keyboards» → «Allow Full Access» bölüginde açınız";
 "settings.fullAccess.onHint" = "Sazlamalar, luğat ve titrev sinhronizatsiyası (100% cihazda oflayn)";
-"sandbox.wrongKeyboardWarning" = "Başqa klaviatura saylanğan — 🌐 ile almaştırıñız";
+"sandbox.wrongKeyboardWarning" = "Başqa klaviatura saylanğan — {{globe}} ile almaştırıñız";
 "stats.wordsUnit" = "söz";
 "stats.learnedWordsUnit" = "luğat";
 "stats.learnedWords.emptyTitle" = "Şahsiy luğat şimdilik boş";
@@ -105,3 +105,5 @@
 "stats.learnedWords.clearAll" = "Luğatnı temizle";
 "stats.learnedWords.done" = "Azır";
 "stats.learnedWords.delete" = "Yoq et";
+"settings.standardLayout" = "Standart tiziliş";
+"settings.standardLayout.desc" = "q · ğ · ñ · ş · ç · ü · ö · ı";

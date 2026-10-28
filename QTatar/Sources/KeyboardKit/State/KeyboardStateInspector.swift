@@ -66,7 +66,6 @@ public extension KeyboardStateInspector {
     ) -> [String] {
         var ids = defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
         let domains: [CFString] = [
-            "com.apple.keyboard.preferences" as CFString,
             "com.apple.Preferences" as CFString,
             kCFPreferencesAnyApplication
         ]
@@ -74,19 +73,8 @@ public extension KeyboardStateInspector {
             if let domainIds = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !domainIds.isEmpty {
                 ids.append(contentsOf: domainIds)
             }
-        }
-        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
-            guard let cls: AnyClass = NSClassFromString(className) else { continue }
-            let sharedSel = NSSelectorFromString("sharedPreferencesController")
-            guard cls.responds(to: sharedSel),
-                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
-            let valSel = NSSelectorFromString("valueForPreferenceKey:")
-            for key in ["Keyboards", "AppleKeyboards"] {
-                if controller.responds(to: valSel),
-                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
-                   !list.isEmpty {
-                    ids.append(contentsOf: list)
-                }
+            if let hostIds = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostIds.isEmpty {
+                ids.append(contentsOf: hostIds)
             }
         }
         let modeIds = UITextInputMode.activeInputModes.compactMap { $0.value(forKey: "identifier") as? String }
