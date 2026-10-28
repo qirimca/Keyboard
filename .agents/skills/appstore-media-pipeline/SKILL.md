@@ -27,7 +27,7 @@ Previews: 15–30 s, `.mp4/.mov/.m4v` H.264, ≤30 fps, ≤500 MB, poster frame 
 
 - A booted simulator + Chrome on 16 GB causes swap thrash; shut idle simulators down. A hung `xcodebuild -quiet` after the test is normal here: kill only your own PID.
 - Decimating a long raw recording to 24 s makes 0.25 s key presses invisible; the real-time scenario must be short (<= ~30 s) or the machine must be unloaded.
-- Do not publish the personal-dictionary screenshot with third-party brand words; use neutral demo words.
+- Personal-dictionary screenshot: the demo words must be out-of-vocabulary proper names or brands that a user would add themselves (owner decision 2026-10-28); never replace them with ordinary dictionary words.
 
 ## Publication steps (added 2026-10-28)
 
