@@ -18,7 +18,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 SRC = os.path.join(ROOT, "AppStoreMetadata", "Media_PlanB")
 OUT = os.path.join(ROOT, "AppStoreMetadata", "Media_Designed")
 FILES = ["01_latin_light.png", "02_latin_dark.png", "03_cyrillic.png", "04_home_light.png", "05_home_dark.png"]
-DEVICES = {"iphone_6.9": (1320, 2868), "ipad_13": (2064, 2752)}
+DEVICES = {"iphone_6.9": (1320, 2868), "ipad_13": (2064, 2752), "iphone_duo": (1398, 2034)}  # Duo = foldable iPhone, outer display
 FONT_PATH = "/System/Library/Fonts/SFNS.ttf"
 
 BLUE_DEEP = (7, 58, 105)
@@ -239,13 +239,18 @@ def build(locale, dev, w, h, preview):
     canvas = background(w, h, n)
     # ornament crossing seams (behind devices)
     ribbon(canvas, w, h, n)
-    shots = [Image.open(os.path.join(SRC, SRC_FOLDER[locale], dev, f)) for f in FILES]
+    shots = [Image.open(os.path.join(SRC, SRC_FOLDER[locale], "iphone_6.9" if dev == "iphone_duo" else dev, f)) for f in FILES]
     # Media_PlanB/*/ipad_13/03_cyrillic.png shows the LATIN layout (pre-existing defect). Use the authentic iPad Cyrillic
     # capture (status bar normalised to 09:41 from the reference shot) so frame 3 really shows Cyrillic.
     fixed = os.path.join(OUT, "_sources", "ipad_13_03_cyrillic.png")
     if ipad and os.path.exists(fixed):
         shots[2] = Image.open(fixed)
     dev_w = int(w * (0.70 if ipad else 0.80))
+    if dev.startswith("iphone"):
+        # Fit the phone mockup into the space under the caption (it may bleed ~3.5% off the bottom), keeping its aspect ratio.
+        top = h * 0.235
+        aspect = shots[0].width / shots[0].height
+        dev_w = int(min(dev_w, (h - top + h * 0.035) * aspect))
     for i, shot in enumerate(shots):
         body = device(shot, dev_w, 0.075 if not ipad else 0.045, 0.016 if not ipad else 0.014)
         x = i * w + (w - body.width) // 2
@@ -276,6 +281,9 @@ def build(locale, dev, w, h, preview):
 if __name__ == "__main__":
     preview = "--preview" in sys.argv
     only = [a for a in sys.argv[1:] if not a.startswith("--")]
+    devs = [a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--dev=")]
     for loc in (only or ALL_LOCALES):
         for dev, (w, h) in DEVICES.items():
+            if devs and dev not in devs:
+                continue
             build(loc, dev, w, h, preview)
