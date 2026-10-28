@@ -1,0 +1,20 @@
+QırımKey este o tastatură tătară crimeeană pentru iPhone și iPad. A fost construită pe baza Corpusului Național al Limbii Tătare Crimeene (ctcorpus.org) de comunitatea QIRI'M Young împreună cu Universitatea Națională „Taras Șevcenko” din Kiev, pentru cei care scriu în Crimeea ucraineană și oriunde se vorbește această limbă.
+
+Două moduri de a scrie
+Aranjamentul latin pune ğ, ñ, ç, ş, ö, ü, ı și â direct pe taste. Dacă sunteți obișnuiți cu chirilica, treceți la aranjamentul chirilic: apăsați tastele cunoscute, iar QırımKey scrie pe loc în alfabetul latin tătar crimeean. Există și un aranjament chirilic opțional în stil ucrainean (ґ → g, г → ğ, кʼ → q, нʼ → ñ).
+
+Ortografie după reguli
+Sugestiile și corectarea automată urmează ortografia 2024/2025 (DESS nr. 1722/04-03/25): cuvinte cu cratimă, precum gece-kündüz, particula interogativă (yaptıñ mı → yaptıñmı) și majuscule în nume ca Qırım, Aqmescit și Bağçasaray. Corectarea automată se face doar la apăsarea spațiului, iar o singură atingere a lui ⌫ o anulează. Tastatura învață cuvintele pe care le folosiți numai pe dispozitiv.
+
+Scriere prin glisare
+Treceți degetul peste taste pe iPhone sau pe tastatura plutitoare de pe iPad, în ambele aranjamente. Un cuvânt tocmai scris prin glisare se șterge cu un singur ⌫.
+
+Pe iPhone și iPad
+Aspect luminos și întunecat, pe iPad tastatură fixată, plutitoare și divizată, iar deasupra tastelor un scurt proverb sau o urare tătară crimeeană înainte să începeți să scrieți. În câmpul de test încorporat puteți încerca modurile text, căutare, e-mail și URL și vedeți viteza de scriere.
+
+Confidențialitate din construcție
+QırımKey funcționează offline și nu face nicio cerere de rețea. Ceea ce scrieți nu este colectat, stocat sau partajat.
+
+Site și asistență: https://ctcorpus.org/index.php/en/
+Confidențialitate și termeni: https://ctcorpus.org/index.php/en/terms-of-use
+Cod sursă: https://github.com/qirimyoung/QirimKey_iOS

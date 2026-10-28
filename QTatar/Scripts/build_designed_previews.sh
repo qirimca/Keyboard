@@ -12,7 +12,12 @@ mkdir -p /tmp/qk_audio
 for loc in ${LOCALES:-en uk crh tr de pl ro}; do
   mkdir -p "AppStoreMetadata/Media_Designed/$loc"
   TL="AppStoreMetadata/Media_Designed/_sources/timelines/$loc.json"
-  swift QTatar/Scripts/compose_preview.swift "$IPHONE_SRC" "$WAV" "AppStoreMetadata/Media_Designed/$loc/AppPreview_Designed_iPhone_6_9.mp4" "$TL" top 2>&1 | grep -E "^(OK|FAILED)"
-  swift QTatar/Scripts/compose_preview.swift "$IPAD_SRC" "$WAV" "AppStoreMetadata/Media_Designed/$loc/AppPreview_Designed_iPad_13.mp4" "$TL" middle 2>&1 | grep -E "^(OK|FAILED)"
+  [ "${ONLY:-}" = "ipad" ] || swift QTatar/Scripts/compose_preview.swift "$IPHONE_SRC" "$WAV" "AppStoreMetadata/Media_Designed/$loc/AppPreview_Designed_iPhone_6_9.mp4" "$TL" top 2>&1 | grep -E "^(OK|FAILED)"
+  if [ -n "${IPAD_SEGMENTS:-}" ]; then
+    # real-time montage from a raw simulator recording (key presses stay visible): IPAD_SEGMENTS="a-b,c-d" IPAD_SIZE=1200x1600 IPAD_WAV=...
+    swift QTatar/Scripts/compose_preview.swift "$IPAD_SRC" "${IPAD_WAV:-$WAV}" "AppStoreMetadata/Media_Designed/$loc/AppPreview_Designed_iPad_13.mp4" "AppStoreMetadata/Media_Designed/_sources/timelines/${loc}_ipad.json" middle 30 "$IPAD_SEGMENTS" "${IPAD_SIZE:-1200x1600}" 2>&1 | grep -E "^(OK|FAILED)"
+  else
+    swift QTatar/Scripts/compose_preview.swift "$IPAD_SRC" "$WAV" "AppStoreMetadata/Media_Designed/$loc/AppPreview_Designed_iPad_13.mp4" "$TL" middle 2>&1 | grep -E "^(OK|FAILED)"
+  fi
 done
 echo DONE

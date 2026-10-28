@@ -1,30 +1,20 @@
-QırımKey, iPhone ve iPad için geliştirilmiş modern ve akıllı bir Kırım Tatarca klavyesidir. Kırım Tatar Dili Ulusal Derlemi (QTMK, ctcorpus.org) temelinde, QIRIM YANG (QIRI'M Young) sivil toplum kuruluşu ile Kiev Taras Şevçenko Ulusal Üniversitesi iş birliğiyle oluşturulmuştur.
+QırımKey, iPhone ve iPad için bir Kırım Tatarca klavyesidir. Kırım Tatar Dili Ulusal Derlemi (ctcorpus.org) temelinde, QIRIM YANG topluluğu ile Kiev Taras Şevçenko Ulusal Üniversitesi iş birliğiyle hazırlandı; Ukrayna Kırımı'nda ve bu dilin konuşulduğu her yerde yazanlar için.
 
-LATİN VE KİRİL DÜZENLERİ, ANLIK HARF ÇEVİRİSİ İLE
-• Tüm Kırım Tatarca harflere (ğ, ñ, ç, ş, ö, ü, ı, â) doğrudan erişim sağlayan özel Latin düzeni.
-• Anlık Kiril-Latin harf çevirisi yapan akıllı Kiril düzeni: alışık olduğunuz Kiril tuşlarıyla yazın, klavye doğru Kırım Tatarca Latin yazısını anında üretsin.
-• İsteğe bağlı Ukrayna uyarlamalı Kiril düzeni ("Українська розкладка", ФІВА): ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e, і → i, и → ı.
+İki yazı düzeni
+Latin düzeni ğ, ñ, ç, ş, ö, ü, ı ve â harflerini doğrudan tuşlara koyar. Kiril alışkanlığınız varsa Kiril düzenine geçin: bildiğiniz tuşlara basarsınız, QırımKey Kırım Tatarca Latin yazısını anında yazar. İsteğe bağlı bir Ukrayna usulü Kiril düzeni de var (ґ → g, г → ğ, кʼ → q, нʼ → ñ).
 
-RESMÎ 2024/2025 İMLASI VE AKILLI TAHMİNLER
-• Kırım Tatar Dili Ulusal Derlemi tabanlı; resmî 2024/2025 Kırım Tatarca İmla Kuralları'na (DESS No. 1722/04-03/25) uygun.
-• Tire ile yazılan birleşik sözcükleri (gece-kündüz, alış-veriş), soru ekini (-mı/-mi; yaptıñ mı → yaptıñmı) ve Kırım yer adlarının büyük harfle yazımını (Qırım, Aqmescit, Bağçasaray, Çonğar, Or Qapı) destekleyen üç alanlı öneri ve otomatik düzeltme çubuğu.
-• Boşlukla uygulanan son otomatik düzeltmeyi tek dokunuşla geri alan Geri Sil (⌫) tuşu.
-• Cihaz üzerinde kişiselleştirilmiş sözcük ve sözcük çifti öğrenimi.
+Kurallara uygun yazım
+Öneriler ve otomatik düzeltme 2024/2025 imlasını izler (DESS No. 1722/04-03/25): tireli sözcükler (gece-kündüz), soru eki (yaptıñ mı → yaptıñmı), Qırım, Aqmescit, Bağçasaray gibi yer adlarında büyük harf. Otomatik düzeltme yalnızca boşluk tuşunda çalışır; ⌫'e tek dokunuş geri alır. Kullandığınız sözcükleri klavye yalnızca cihazınızda öğrenir.
 
-HIZLI KAYDIRARAK YAZMA (QIRIMKEY SWIPE V2)
-• iPhone'da ve iPad'in Yüzen klavyesinde, hem Latin hem Kiril düzenlerinde akıcı ve kesintisiz hareketle yazma.
-• Kaydırarak yazılan sözcüğün hemen ardından tek dokunuşla Geri Sil (⌫) ile tüm sözcüğü silme.
+Kaydırarak yazma
+iPhone'da ya da iPad'in yüzen klavyesinde, iki düzende de tuşların üzerinde parmağınızı kaydırın. Kaydırarak yazdığınız sözcüğü tek ⌫ ile silersiniz.
 
-iOS VE iPadOS 26/27 İÇİN TASARLANDI
-• Tüm uygulamalarda ve Spotlight'ta Açık ve Koyu Mod ile otomatik uyum sağlayan yerel Apple Liquid Glass görünümü.
-• Tam iPad klavye desteği: Sabit, Yüzen ve Bölünmüş modlar; sağ alttaki "⌄⌨" tuşunun menüsü ve kıstırma hareketiyle denetlenir.
-• Yazmaya başlamadan önce üst şeritte günlük Kırım Tatar atasözleri, selamlaşmalar ve edebî alıntılar.
-• Alan türleri (Metin, Arama, E-posta, URL, 123) için yerleşik etkileşimli deneme alanı; cihaz üzerinde yazma hızı ve hacmi ilerleme düzeyleri.
+iPhone ve iPad'de
+Açık ve Koyu görünüm, iPad'de sabit, yüzen ve bölünmüş klavye, yazmaya başlamadan önce tuşların üstünde kısa bir Kırım Tatar atasözü ya da selamlaşma. Yerleşik deneme alanında metin, arama, e-posta ve URL kiplerini deneyip yazma hızınızı görebilirsiniz.
 
-TASARIMI GEREĞİ %100 GİZLİ VE ÇEVRİMDIŞI
-• QırımKey cihazınızda tamamen çevrimdışı çalışır; hiçbir ağ isteği yapmaz.
-• Yazdığınız hiçbir şeyi ve hiçbir kişisel veriyi toplamaz, iletmez, saklamaz veya paylaşmaz.
+Varsayılan olarak gizli
+QırımKey çevrimdışı çalışır ve hiçbir ağ isteği yapmaz. Yazdıklarınız toplanmaz, saklanmaz, paylaşılmaz.
 
-Resmî Web Sitesi ve Destek: https://ctcorpus.org/index.php/en/
-Gizlilik Politikası ve Kullanım Koşulları: https://ctcorpus.org/index.php/en/terms-of-use
-Açık Kaynak Depo: https://github.com/qirimyoung/QirimKey_iOS
+Web sitesi ve destek: https://ctcorpus.org/index.php/crh/
+Gizlilik ve kullanım koşulları: https://ctcorpus.org/index.php/crh/qullanuv-sartlari
+Açık kaynak: https://github.com/qirimyoung/QirimKey_iOS

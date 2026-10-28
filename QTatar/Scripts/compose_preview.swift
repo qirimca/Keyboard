@@ -6,6 +6,7 @@
 import AVFoundation
 import AppKit
 import CoreText
+import CoreImage
 
 struct Cap: Decodable { let start: Double; let end: Double; let text: String }
 
@@ -23,9 +24,23 @@ guard let vTrack = asset.tracks(withMediaType: .video).first, let aTrack = wavAs
     fputs("missing tracks\n", stderr); exit(2)
 }
 let size = vTrack.naturalSize
-let W = Int(size.width), H = Int(size.height)
+// Optional 8th arg "WxH" rescales the source (e.g. a 2064x2752 simulator recording -> 1200x1600).
+var W = Int(size.width), H = Int(size.height)
+if a.count > 8 { let p = a[8].split(separator: "x").compactMap { Int($0) }; if p.count == 2 { W = p[0]; H = p[1] } }
+let needScale = W != Int(size.width) || H != Int(size.height)
+let ciContext = CIContext(options: nil)
 let fps = 30
-let total = Int(min(CMTimeGetSeconds(asset.duration), maxSec) * Double(fps))
+// Optional 7th arg "a-b,c-d" keeps only those source ranges (real time, 1x) and concatenates them.
+var segments: [(Double, Double)] = []
+if a.count > 7 { for part in a[7].split(separator: ",") { let ab = part.split(separator: "-").compactMap { Double($0) }; if ab.count == 2 { segments.append((ab[0], ab[1])) } } }
+let outSeconds = segments.isEmpty ? min(CMTimeGetSeconds(asset.duration), maxSec) : segments.reduce(0) { $0 + ($1.1 - $1.0) }
+let total = Int(outSeconds * Double(fps))
+func sourceTime(_ t: Double) -> Double {
+    if segments.isEmpty { return t }
+    var rem = t
+    for (s0, s1) in segments { let d = s1 - s0; if rem <= d { return s0 + rem }; rem -= d }
+    return segments.last!.1
+}
 
 let reader = try AVAssetReader(asset: asset)
 let vOut = AVAssetReaderTrackOutput(track: vTrack, outputSettings: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA])
@@ -95,7 +110,8 @@ group.enter()
 vIn.requestMediaDataWhenReady(on: DispatchQueue(label: "video")) {
     while vIn.isReadyForMoreMediaData && k < total {
         let t = Double(k) / Double(fps)
-        while let sb = pending, CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sb)) <= t + 1e-6 || cur == nil {
+        let ts = sourceTime(t)
+        while let sb = pending, CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sb)) <= ts + 1e-6 || cur == nil {
             cur = CMSampleBufferGetImageBuffer(sb)
             pending = vOut.copyNextSampleBuffer()
             if pending == nil { break }
@@ -107,7 +123,12 @@ vIn.requestMediaDataWhenReady(on: DispatchQueue(label: "video")) {
         CVPixelBufferLockBaseAddress(src, .readOnly); CVPixelBufferLockBaseAddress(dst, [])
         let sBytes = CVPixelBufferGetBytesPerRow(src), dBytes = CVPixelBufferGetBytesPerRow(dst)
         let sp = CVPixelBufferGetBaseAddress(src)!, dp = CVPixelBufferGetBaseAddress(dst)!
-        for row in 0..<H { memcpy(dp + row * dBytes, sp + row * sBytes, min(sBytes, dBytes)) }
+        if needScale {
+            let img = CIImage(cvPixelBuffer: src).transformed(by: CGAffineTransform(scaleX: CGFloat(W) / size.width, y: CGFloat(H) / size.height))
+            ciContext.render(img, to: dst)
+        } else {
+            for row in 0..<H { memcpy(dp + row * dBytes, sp + row * sBytes, min(sBytes, dBytes)) }
+        }
         if let (c, al) = alpha(at: t),
            let ctx = CGContext(data: dp, width: W, height: H, bitsPerComponent: 8, bytesPerRow: dBytes, space: CGColorSpaceCreateDeviceRGB(),
                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) {

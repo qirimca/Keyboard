@@ -1,30 +1,20 @@
-QırımKey is a modern, intelligent Crimean Tatar keyboard for iPhone and iPad, built on the National Corpus of the Crimean Tatar Language (NCCTL, ctcorpus.org) by QIRI'M Young NGO in collaboration with Taras Shevchenko National University of Kyiv.
+QırımKey is a Crimean Tatar keyboard for iPhone and iPad. It was built on the National Corpus of the Crimean Tatar Language (ctcorpus.org) by the QIRI'M Young community together with Taras Shevchenko National University of Kyiv, for people who write in Ukrainian Crimea and wherever else the language is spoken.
 
-LATIN & CYRILLIC LAYOUTS WITH REAL-TIME TRANSLITERATION
-• Dedicated Crimean Tatar Latin layout with direct access to all Crimean Tatar characters (ğ, ñ, ç, ş, ö, ü, ı, â).
-• Smart Cyrillic layout with automatic real-time Cyrillic-to-Latin transliteration: type using familiar Cyrillic keys while the keyboard outputs accurate Crimean Tatar Latin script on the fly.
-• Optional Ukrainian-adapted Cyrillic layout ("Ukrainian layout", ФІВА) with intuitive mappings (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e, і → i, и → ı).
+Two ways to type
+The Latin layout puts ğ, ñ, ç, ş, ö, ü, ı and â right on the keys. If you are used to Cyrillic, switch to the Cyrillic layout: you press familiar keys and QırımKey writes Crimean Tatar Latin as you go. There is also an optional Ukrainian-style Cyrillic layout (ґ → g, г → ğ, кʼ → q, нʼ → ñ).
 
-OFFICIAL 2024/2025 ORTHOGRAPHY & SMART PREDICTIONS
-• Powered by the National Corpus of the Crimean Tatar Language and compliant with the official 2024/2025 Crimean Tatar Orthography (DESS No. 1722/04-03/25).
-• Three-slot suggestion and autocorrection bar supporting hyphenated compound words (gece-kündüz, alış-veriş), automatic merging of question particles (-mı/-mi, e.g. yaptıñ mı → yaptıñmı), and automatic capitalization of Crimean Tatar toponyms (Qırım, Aqmescit, Bağçasaray, Çonğar, Or Qapı).
-• Instant single-tap Backspace (⌫) undo of the last space-committed autocorrection.
-• Personalized on-device word and bigram learning.
+Spelling that follows the rules
+Suggestions and autocorrection follow the 2024/2025 orthography (DESS No. 1722/04-03/25): hyphenated words such as gece-kündüz, the question particle (yaptıñ mı → yaptıñmı), and capital letters in names like Qırım, Aqmescit and Bağçasaray. Autocorrection only happens when you press space, and one tap on ⌫ undoes it. The keyboard learns the words you use, on your device only.
 
-FAST GLIDE TYPING (QIRIMKEY SWIPE V2)
-• Smooth continuous gesture typing on iPhone and iPad Floating keyboards across both Latin and Cyrillic layouts.
-• Single-tap Backspace (⌫) full-word deletion immediately after swiping a word.
+Swipe typing
+Glide across the keys on iPhone, or on the floating keyboard on iPad, in both layouts. A word you just swiped is deleted with a single ⌫.
 
-DESIGNED FOR iOS & iPadOS 26/27
-• Native Apple Liquid Glass aesthetics with automatic Light and Dark Mode synchronization across all host apps and Spotlight.
-• Full iPad keyboard support: Docked, Floating, and Split keyboard modes controlled via the bottom-right "⌄⌨" key callout menu and pinch gesture.
-• Daily Crimean Tatar proverbs, greetings, and literary quotes in the top banner before typing begins.
-• Built-in interactive testing sandbox for field modes (Text, Search, Email, URL, 123) and on-device typing speed and volume progression levels.
+On iPhone and iPad
+Light and Dark appearance, docked, floating and split keyboards on iPad, and a short Crimean Tatar proverb or greeting above the keys before you start typing. A built-in test field lets you try text, search, email and URL modes and watch your typing speed.
 
-100% PRIVATE & OFFLINE BY DESIGN
-• QırımKey runs completely offline on your device with zero network requests.
-• We never collect, transmit, store, or share anything you type or any personal data.
+Private by design
+QırımKey works offline and never makes a network request. What you type is not collected, stored or shared.
 
-Official Website & Support: https://ctcorpus.org/index.php/en/
-Privacy Policy & Terms of Use: https://ctcorpus.org/index.php/en/terms-of-use
-Open-Source Repository: https://github.com/qirimyoung/QirimKey_iOS
+Website and support: https://ctcorpus.org/index.php/en/
+Privacy and terms: https://ctcorpus.org/index.php/en/terms-of-use
+Source code: https://github.com/qirimyoung/QirimKey_iOS

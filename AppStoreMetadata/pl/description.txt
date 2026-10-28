@@ -1,0 +1,20 @@
+QırımKey to klawiatura krymskotatarska na iPhone'a i iPada. Powstała na bazie Narodowego Korpusu Języka Krymskotatarskiego (ctcorpus.org), stworzona przez społeczność QIRI'M Young wraz z Kijowskim Narodowym Uniwersytetem imienia Tarasa Szewczenki – dla tych, którzy piszą na ukraińskim Krymie i wszędzie tam, gdzie mówi się tym językiem.
+
+Dwa sposoby pisania
+Układ łaciński ma ğ, ñ, ç, ş, ö, ü, ı i â wprost na klawiszach. Jeśli przywykłeś do cyrylicy, przełącz się na układ cyrylicki: naciskasz znajome klawisze, a QırımKey na bieżąco zapisuje tekst krymskotatarską łacinką. Jest też opcjonalny układ cyrylicki w ukraińskim stylu (ґ → g, г → ğ, кʼ → q, нʼ → ñ).
+
+Pisownia zgodna z zasadami
+Podpowiedzi i autokorekta stosują ortografię 2024/2025 (DESS nr 1722/04-03/25): wyrazy z łącznikiem, np. gece-kündüz, partykułę pytajną (yaptıñ mı → yaptıñmı) oraz wielkie litery w nazwach takich jak Qırım, Aqmescit i Bağçasaray. Autokorekta działa tylko po naciśnięciu spacji, a jedno dotknięcie ⌫ ją cofa. Klawiatura uczy się używanych przez Ciebie słów wyłącznie na urządzeniu.
+
+Pisanie gestem
+Przesuwaj palcem po klawiszach na iPhonie lub na pływającej klawiaturze iPada, w obu układach. Właśnie napisane gestem słowo usuniesz jednym ⌫.
+
+Na iPhonie i iPadzie
+Jasny i ciemny wygląd, na iPadzie klawiatura zadokowana, pływająca i dzielona, a nad klawiszami krótkie krymskotatarskie przysłowie lub powitanie, zanim zaczniesz pisać. We wbudowanym polu testowym wypróbujesz tryby tekstu, wyszukiwania, e-maila i adresu URL i zobaczysz swoją prędkość pisania.
+
+Prywatność od podstaw
+QırımKey działa offline i nie wysyła żadnych zapytań sieciowych. To, co piszesz, nie jest zbierane, przechowywane ani udostępniane.
+
+Strona i wsparcie: https://ctcorpus.org/index.php/en/
+Prywatność i warunki: https://ctcorpus.org/index.php/en/terms-of-use
+Kod źródłowy: https://github.com/qirimyoung/QirimKey_iOS
