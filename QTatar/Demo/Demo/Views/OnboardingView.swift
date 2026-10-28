@@ -129,6 +129,8 @@ struct OnboardingView: View {
         VStack(spacing: 16) {
             formattedInstructionText(for: L10n.tr("onb_remove_cyrillic_desc", table: "Onboarding"))
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
                 .padding(.horizontal, 16)
 
             navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
@@ -155,13 +157,58 @@ struct OnboardingView: View {
 }
 
 private extension OnboardingView {
+
+    private var iPadFloatingOnlyNote: String {
+        let key = "onb_ipad_floating_only_note"
+        let localized = KeyboardPreferences.localizationBundle(for: language).localizedString(forKey: key, value: key, table: "Onboarding")
+        if localized != key {
+            return localized
+        }
+        switch language {
+        case "uk":
+            return "На iPad додавати окрему кириличну клавіатуру в Параметрах потрібно лише для плаваючого вікна. У повнорозмірному (docked) режимі перемикання вже працює одразу клавішею «абв»."
+        case "en":
+            return "On iPad, adding the separate Cyrillic keyboard in Settings is only needed for the Floating window. In full-size (Docked) mode, switching already works immediately via the “абв” key."
+        default:
+            return "iPad-de ayrı kirill klaviaturasını Sazlamalarda qoşmaq tek yüzüci pencere (floating) içün kerek. Tam ölçülü (docked) rejimde «абв» dögmesinen almaştıruv deral çalışa."
+        }
+    }
     
     private func onboardingPage(_ page: Page) -> some View {
         VStack {
             formattedInstructionText(for: page.instruction)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
                 .padding(.horizontal, 20)
                 .accessibilityIdentifier("onboarding.instruction.text")
+
+            if Device.iPad && page == .onboard1 {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "ipad.landscape")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color(red: 0.07, green: 0.58, blue: 0.85))
+                        .padding(.top, 2)
+                    Text(iPadFloatingOnlyNote)
+                        .font(InterfaceFont.font("GeneralSans-Medium", size: 14, text: iPadFloatingOnlyNote))
+                        .foregroundStyle(Color(.secondaryLabel))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color(red: 0.07, green: 0.58, blue: 0.85).opacity(0.28), lineWidth: 1)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(iPadFloatingOnlyNote)
+                .accessibilityIdentifier("onboarding.ipadFloatingNote.text")
+            }
             
             if page == .onboard1 || page == .onboard2 {
                 navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
@@ -175,7 +222,7 @@ private extension OnboardingView {
                 TextField(text: $text) {
                     Text(Onboarding.onb_check_key.localized).regularText(color: Color(.placeholderText))
                 }
-                .font(.custom("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
+                .font(InterfaceFont.font("GeneralSans-Regular", size: Device.iPad ? 16 : 12))
                 .foregroundStyle(Color(.label))
                 .padding()
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -237,6 +284,9 @@ private extension OnboardingView {
         } label: {
             Text(text)
                 .mediumText()
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
                 .background(Color(.secondarySystemGroupedBackground))
@@ -266,7 +316,7 @@ private extension OnboardingView {
         if !description.isEmpty {
             result = result
                 + Text(": ")
-                    .font(.custom("GeneralSans-Medium", size: Device.iPad ? size + 4 : size))
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPad ? size + 4 : size))
                     .foregroundStyle(Color(.label))
                 + Text.customFontText(
                     description,

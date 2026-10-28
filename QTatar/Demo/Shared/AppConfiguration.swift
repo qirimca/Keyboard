@@ -1648,8 +1648,8 @@ enum SystemKeyboardSettings {
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesUkrainian = ids.contains { id in
             let lower = id.lowercased()
-            return lower == AppConfiguration.ukrainianCyrillicKeyboardBundleId.lowercased()
-                || lower == AppConfiguration.ukrainianCyrillicDeviceBundleId.lowercased()
+            return lower == AppConfiguration.ukrainianKeyboardBundleId.lowercased()
+                || lower == AppConfiguration.ukrainianDeviceKeyboardBundleId.lowercased()
                 || lower.contains("crh.key.keyboard.keyboardukrainian")
                 || lower.contains("crh.key.keyboard.pro")
         }

@@ -167,13 +167,24 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         )
     }
 
-    static func rowHeight(forRowAt rowIndex: Int, context: KeyboardContext) -> CGFloat {
-        resolvedMetrics(for: context).rowHeight(forRowAt: rowIndex)
+    static func rowHeight(forRowAt rowIndex: Int, totalRows: Int = 4, context: KeyboardContext) -> CGFloat {
+        resolvedMetrics(for: context).rowHeight(forRowAt: rowIndex, totalRows: totalRows)
     }
 
-    static func itemEdgeInsets(forRowAt rowIndex: Int, context: KeyboardContext) -> EdgeInsets {
+    static func itemEdgeInsets(forRowAt rowIndex: Int, totalRows: Int = 4, context: KeyboardContext) -> EdgeInsets {
         let metrics = resolvedMetrics(for: context)
-        let vertical = metrics.verticalItemInset(forRowAt: rowIndex)
+        if context.isKeyboardFloating && !usesClassicSystemKeyStyle {
+            let vertical: CGFloat = 7.5
+            let horizontal: CGFloat = 2.8
+            return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
+        }
+        if totalRows == 5 && context.deviceType == .pad && !context.isKeyboardFloating {
+            let isPortrait = context.interfaceOrientation.isPortrait
+            let vertical: CGFloat = isPortrait ? 3.5 : 4.5
+            let horizontal: CGFloat = isPortrait ? 4.5 : 5.5
+            return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
+        }
+        let vertical = metrics.verticalItemInset(forRowAt: rowIndex, totalRows: totalRows)
         let horizontal = metrics.horizontalItemInset
         return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
     }
@@ -206,6 +217,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if Self.usesClassicSystemKeyStyle {
             return (keyboardContext.deviceType == .pad && !keyboardContext.isKeyboardFloating) ? 6.0 : 5.0
         }
+        if keyboardContext.isKeyboardFloating {
+            return 8.5
+        }
+        if CrimeanTatarIPadKeyboardLayoutProvider.isIPadPro5RowLayout(keyboardContext) && keyboardContext.keyboardType.isAlphabetic {
+            return keyboardContext.interfaceOrientation.isPortrait ? 8.0 : 9.0
+        }
         return Self.resolvedMetrics(for: keyboardContext).cornerRadius
     }
     
@@ -222,14 +239,11 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     override var keyboardLayoutConfiguration: KeyboardLayout.Configuration {
         var config = super.keyboardLayoutConfiguration
         let metrics = Self.resolvedMetrics(for: keyboardContext)
+        let totalRows = (CrimeanTatarIPadKeyboardLayoutProvider.isIPadPro5RowLayout(keyboardContext) && keyboardContext.keyboardType.isAlphabetic) ? 5 : 4
+        let insets = Self.itemEdgeInsets(forRowAt: 0, totalRows: totalRows, context: keyboardContext)
         config.rowHeight = metrics.letterRowHeight
-        config.buttonInsets = EdgeInsets(
-            top: metrics.letterTopBottomInset,
-            leading: metrics.horizontalItemInset,
-            bottom: metrics.letterTopBottomInset,
-            trailing: metrics.horizontalItemInset
-        )
-        config.buttonCornerRadius = metrics.cornerRadius
+        config.buttonInsets = insets
+        config.buttonCornerRadius = buttonCornerRadius(for: .character("a"))
         return config
     }
     
@@ -237,7 +251,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         forRowAt rowIndex: Int,
         in layout: KeyboardLayout
     ) -> CGFloat {
-        Self.rowHeight(forRowAt: rowIndex, context: keyboardContext)
+        Self.rowHeight(forRowAt: rowIndex, totalRows: layout.itemRows.count, context: keyboardContext)
     }
     
     override func buttonContentInsets(for action: KeyboardAction) -> EdgeInsets {
@@ -394,31 +408,59 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return true
     }
 
+    static var usesModernPillCallout: Bool {
+        if let override = KeyboardPreferences.defaults.object(forKey: "crh.key.test.useModernPillCallout") as? Bool {
+            return override
+        }
+        if #available(iOS 27.0, *) {
+            return true
+        }
+        return false
+    }
+
     override var calloutStyle: Callouts.CalloutStyle {
         var style = super.calloutStyle
         let isDark = Self.effectiveIsDark(for: keyboardContext)
+        let useClassic = Self.usesClassicSystemKeyStyle
+        let useModernPill = Self.usesModernPillCallout
+        let isPad = keyboardContext.deviceType == .pad
+        let isFloating = keyboardContext.isKeyboardFloating
         style.backgroundColor = isDark
-            ? Color(red: 78.0 / 255.0, green: 78.0 / 255.0, blue: 79.0 / 255.0)
+            ? (useClassic
+                ? Color(red: 78.0 / 255.0, green: 78.0 / 255.0, blue: 79.0 / 255.0)
+                : Color(red: 98.0 / 255.0, green: 98.0 / 255.0, blue: 102.0 / 255.0))
             : Color.white
         style.textColor = isDark ? .white : .black
-        style.borderColor = isDark ? Color.black.opacity(0.35) : Color.black.opacity(0.18)
-        style.shadowColor = Color.black.opacity(isDark ? 0.28 : 0.14)
-        style.shadowRadius = 4
-        style.buttonCornerRadius = buttonCornerRadius(for: .character("a"))
-        style.cornerRadius = keyboardContext.isKeyboardFloating ? 10.0 : 8.0
+        style.borderColor = isDark ? Color.white.opacity(0.18) : Color.black.opacity(0.06)
+        style.shadowColor = Color.black.opacity(isDark ? 0.38 : 0.16)
+        style.shadowRadius = useModernPill ? 6.0 : 3.5
+        style.buttonCornerRadius = useModernPill
+            ? buttonCornerRadius(for: .character("a"))
+            : (isPad ? (isFloating ? 5.0 : 7.0) : 6.0)
+        style.cornerRadius = useModernPill
+            ? (isFloating ? 11.5 : 13.0)
+            : (isFloating ? 9.5 : 11.0)
+        style.curveSize = useModernPill
+            ? .zero
+            : (isFloating ? CGSize(width: 5.0, height: 10.0) : CGSize(width: 6.0, height: 11.0))
         return style
     }
 
     override var inputCalloutStyle: Callouts.InputCalloutStyle {
         var style = super.inputCalloutStyle
+        let isFloating = keyboardContext.isKeyboardFloating
         style.callout = calloutStyle
-        if keyboardContext.isKeyboardFloating {
-            style.calloutSize = CGSize(width: 47.5, height: 65.0)
-            style.font = .system(size: 36.5, weight: .regular)
-        } else {
-            style.calloutSize = CGSize(width: 52.0, height: 62.0)
-            style.font = .system(size: 36.0, weight: .regular)
-        }
+        style.calloutSize = isFloating
+            ? CGSize(width: 41.0, height: 48.0)
+            : CGSize(width: 45.0, height: 52.0)
+        style.calloutPadding = isFloating ? 5.0 : 6.0
+        style.font = .system(size: isFloating ? 29.0 : 34.0, weight: .regular)
+        return style
+    }
+
+    override var actionCalloutStyle: Callouts.ActionCalloutStyle {
+        var style = super.actionCalloutStyle
+        style.callout = calloutStyle
         return style
     }
 
@@ -438,30 +480,29 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let useClassicStyle = Self.usesClassicSystemKeyStyle
 
         let darkInputKey = useClassicStyle
-            ? Color(white: 0.28)
+            ? Color.white.opacity(0.24)
             : Color(white: 0.71).opacity(0.24)
-        // Native iPadOS/iOS Dark Mode pressed keys become darker/more translucent (RGB(38,38,42) over RGB(22,22,24))
         let darkInputKeyPressed = useClassicStyle
-            ? Color(white: 0.18)
-            : Color(white: 0.65).opacity(0.11)
+            ? Color.white.opacity(0.46)
+            : Color(white: 0.96).opacity(0.52)
         let darkSystemKeyGray = useClassicStyle
-            ? Color(white: 0.20)
+            ? Color.white.opacity(0.15)
             : Color(white: 0.71).opacity(0.24)
         let darkSystemKeyGrayPressed = useClassicStyle
-            ? Color(white: 0.28)
-            : Color(white: 0.65).opacity(0.11)
+            ? Color.white.opacity(0.42)
+            : Color(white: 0.96).opacity(0.52)
         let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
         let lightInputKey = useClassicStyle
-            ? Color.white
+            ? Color.white.opacity(0.92)
             : Color.white.opacity(0.84)
-        // Native iPadOS/iOS Light Mode pressed keys become highly translucent (RGB(188,214,202) over RGB(180,207,195) wallpaper)
+        // Native iPadOS/iOS Light Mode pressed keys depress with a crisp gray-translucent tint
         let lightInputKeyPressed = useClassicStyle
-            ? Color(white: 0.85)
-            : Color(white: 0.88).opacity(0.22)
+            ? Color(red: 0.54, green: 0.57, blue: 0.63).opacity(0.68)
+            : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.68)
         let lightSystemKeyGray = useClassicStyle
-            ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0) // #ACB3BE
+            ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0).opacity(0.68) // Translucent #ACB3BE
             : Color.black.opacity(0.17)
         let lightSystemKeyGrayPressed = lightInputKey
 
@@ -531,7 +572,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         
         let context = keyboardContext
         let isDark = Self.effectiveIsDark(for: context)
-        let primaryLabelColor = isDark ? Color.white.opacity(0.88) : Color.black.opacity(0.84)
+        let primaryLabelColor = isDark ? Color.white : Color.black
         
         if case .primary(let type) = action {
             switch type {

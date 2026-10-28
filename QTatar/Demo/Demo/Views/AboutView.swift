@@ -85,6 +85,7 @@ private extension AboutView {
             Text(About.about_description_key.localized)
                 .regularText(size: 14, color: Color(.secondaryLabel))
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal)
         .frame(maxWidth: .infinity)
@@ -266,8 +267,11 @@ private extension AboutView {
                     openURL(URL(string: link)!)
                 }
             } label: {
-                HStack {
-                    Text(About.about_more_key.localized).regularText(size: 14, color: Color(.systemBackground))
+                HStack(spacing: 4) {
+                    Text(About.about_more_key.localized)
+                        .regularText(size: 14, color: Color(.systemBackground))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Image(systemName: "arrow.up.forward.app")
                         .imageScale(.small)
                         .foregroundStyle(Color(.systemBackground))

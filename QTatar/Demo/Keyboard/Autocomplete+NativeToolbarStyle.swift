@@ -991,7 +991,7 @@ struct NativeAutocompleteToolbar: View {
     }
 
     private var height: CGFloat {
-        isFloating ? 38 : (isDockedPad ? 38 : 40)
+        DemoStyleProvider.resolvedMetrics(for: keyboardContext, hasToolbarOverride: true).toolbarHeight
     }
 
     private var shouldShowGreetingBanner: Bool {
@@ -1084,14 +1084,16 @@ struct NativeAutocompleteToolbar: View {
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, isFloating ? 6 : 10)
+                            .padding(.horizontal, isFloating ? 8 : 10)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(
                                 minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
                                 maxWidth: isPad ? max(168, width - 20) : .infinity,
-                                minHeight: isPad ? 30 : (isFloating ? 28 : 32)
+                                minHeight: isPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : 32),
+                                maxHeight: isPad ? min(32, max(26, height - 2)) : (isFloating ? 28 : 34)
                             )
                             .background(greetingPlatterBackground)
-                            .padding(.horizontal, isFloating ? 3 : (isDockedPad ? 10 : 6))
+                            .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 10 : 6))
                     } else {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
@@ -1100,7 +1102,7 @@ struct NativeAutocompleteToolbar: View {
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
                             .multilineTextAlignment(.center)
-                            .padding(.horizontal, isFloating ? 4 : 8)
+                            .padding(.horizontal, isFloating ? 8 : 8)
                             .padding(.vertical, isFloating ? 2 : (isDockedPad ? 2 : 4))
                     }
                 }
@@ -1108,7 +1110,7 @@ struct NativeAutocompleteToolbar: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
-        .buttonStyle(FullSlotButtonStyle())
+        .buttonStyle(FullSlotButtonStyle(isDark: isDark))
         .frame(width: width, height: height)
         .contentShape(Rectangle())
         .accessibilityIdentifier("autocomplete.slot.\(index)")
@@ -1122,11 +1124,14 @@ struct NativeAutocompleteToolbar: View {
         GeometryReader { geo in
             let totalWidth = max(geo.size.width, 1)
             let isPortrait = keyboardContext.interfaceOrientation.isPortrait
-            let sideInset: CGFloat = isDockedPad ? (isPortrait ? round(totalWidth * 0.08) : round(totalWidth * 0.11)) : 0
+            let sideInset: CGFloat = isDockedPad
+                ? (isPortrait ? round(totalWidth * 0.08) : round(totalWidth * 0.11))
+                : (isFloating ? 6.0 : 0.0)
             let centerWidth = max(totalWidth - (sideInset * 2), 1)
             let slotWidths = adaptiveSlotWidths(suggestions: suggestions, availableWidth: centerWidth, slotCount: slotCount)
             let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
             let splitClusterWidth = min(max((totalWidth * (1.0 - minGapFraction)) / 2.0, 1), isPortrait ? 276 : 320)
+            let verticalCenterOffset: CGFloat = isFloating ? 6.0 : (isDockedPad ? 1.5 : 2.5)
 
             ZStack(alignment: .center) {
                 if shouldShowGreetingBanner {
@@ -1199,20 +1204,32 @@ struct NativeAutocompleteToolbar: View {
                 }
             }
             .frame(width: totalWidth, height: height)
+            .offset(y: verticalCenterOffset)
         }
         .frame(height: height)
         .frame(maxWidth: .infinity)
-        .clipped()
         .environment(\.colorScheme, isDark ? .dark : .light)
     }
 
     private struct FullSlotButtonStyle: ButtonStyle {
+        let isDark: Bool
+
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.primary.opacity(0.001))
+                .background(
+                    ZStack {
+                        Color.primary.opacity(0.001)
+                        if configuration.isPressed {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(isDark ? Color.white.opacity(0.32) : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.42))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                        }
+                    }
+                )
                 .contentShape(Rectangle())
-                .opacity(configuration.isPressed ? 0.65 : 1.0)
+                .opacity(configuration.isPressed ? 0.88 : 1.0)
         }
     }
 
@@ -1232,13 +1249,13 @@ struct NativeAutocompleteToolbar: View {
         let fillColor: Color = useClassic
             ? (isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
             : (isDark ? Color(white: 0.71).opacity(0.24) : Color.white.opacity(0.84))
-        RoundedRectangle(cornerRadius: 8, style: .continuous)
+        RoundedRectangle(cornerRadius: (isFloating && !useClassic) ? 8.5 : 8.0, style: .continuous)
             .fill(fillColor)
             .shadow(color: Color.black.opacity(useClassic ? (isDark ? 0.18 : 0.06) : 0.0), radius: 1.5, x: 0, y: 0.5)
     }
 
     private var greetingPillHeight: CGFloat {
-        isDockedPad ? 30 : (isFloating ? 28 : 32)
+        isDockedPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : 32)
     }
 
     @ViewBuilder
@@ -1259,10 +1276,12 @@ struct NativeAutocompleteToolbar: View {
                     .minimumScaleFactor(0.55)
                     .allowsTightening(true)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 2.5)
-            .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: height - 3)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: pillHeight + 4)
             .background(greetingPlatterBackground)
         }
         .buttonStyle(.plain)
@@ -1291,7 +1310,8 @@ struct NativeAutocompleteToolbar: View {
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 3.0)
-                    .frame(minHeight: pillHeight)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: pillHeight, maxHeight: pillHeight)
                     .background(greetingPlatterBackground)
                 }
                 .buttonStyle(.plain)
@@ -1346,6 +1366,7 @@ struct NativeAutocompleteToolbar: View {
                         .minimumScaleFactor(0.62)
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 12.5, weight: .medium))
@@ -1353,7 +1374,8 @@ struct NativeAutocompleteToolbar: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, isDockedPad ? 2.5 : 3.5)
-                .frame(minHeight: pillHeight, maxHeight: height - 3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: pillHeight, maxHeight: isFloating ? pillHeight : pillHeight + 4)
                 .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)

@@ -268,6 +268,7 @@ struct HomeView: View {
                     .padding(.top, Device.iPhone ? 8 : 14)
                     .padding(.bottom, shouldShowStartOverlay ? 76 : (isKeyboardVisible ? 24 : (Device.iPhone ? 16 : 24)))
                 }
+                .softTopScrollEdgeEffect()
                 .background {
                     scrollPositionObserversView(scroll: scroll, isLandscapeCompactHeight: isLandscapeCompactHeight, effectiveContainerSize: effectiveContainerSize)
                 }
@@ -307,7 +308,7 @@ struct HomeView: View {
         })
         .animation(animationsAllowed ? .easeInOut(duration: 0.25) : nil, value: shouldShowStartOverlay)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .adaptiveNavigationToolbarBackground()
         .toolbar {
             NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
                 navigationPath.append(DemoRoute.onboarding)
@@ -1702,7 +1703,7 @@ private extension HomeView {
                                 fontName: "GeneralSans-Regular",
                                 fontSize: 12,
                                 color: secondaryInk,
-                                lineLimit: 3
+                                lineLimit: nil
                             )
                         }
                         Spacer(minLength: 8)
@@ -1788,8 +1789,7 @@ private extension HomeView {
                             fontName: "GeneralSans-Regular",
                             fontSize: 12,
                             color: secondaryInk,
-                            lineLimit: 1,
-                            minimumScaleFactor: 0.75
+                            lineLimit: nil
                         )
                     }
                     Spacer(minLength: 8)
@@ -1828,8 +1828,7 @@ private extension HomeView {
                             fontName: "GeneralSans-Regular",
                             fontSize: 12,
                             color: secondaryInk,
-                            lineLimit: 1,
-                            minimumScaleFactor: 0.75
+                            lineLimit: nil
                         )
                     }
                     Spacer(minLength: 8)
@@ -2212,13 +2211,13 @@ private extension HomeView {
                                     fontName: "GeneralSans-Semibold",
                                     fontSize: 15,
                                     color: primaryInk,
-                                    lineLimit: 2
+                                    lineLimit: nil
                                 )
                             } else {
                                 Text(Home.home_keyboard_off_key.localized + " — " + localizedInterfaceString("settings.cyrillic.addHint"))
                                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
                                     .foregroundStyle(primaryInk)
-                                    .lineLimit(2)
+                                    .lineLimit(nil)
                                     .fixedSize(horizontal: false, vertical: true)
                                     .multilineTextAlignment(.leading)
                             }
@@ -2262,6 +2261,7 @@ private extension HomeView {
                             fontSize: 15,
                             color: primaryInk,
                             lineLimit: 1,
+                            minimumScaleFactor: 0.85,
                             fixedHorizontal: true
                         )
                         Spacer()
@@ -3046,17 +3046,18 @@ private extension HomeView {
                     .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
                     .foregroundStyle(secondaryInk)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             Text(value)
                 .font(.system(size: Device.iPhone ? 12.5 : 14.5, weight: .bold, design: .rounded))
                 .foregroundStyle(primaryInk)
-                .lineLimit(2)
+                .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.numericText())
             Text(subtitle)
                 .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                 .foregroundStyle(secondaryInk)
-                .lineLimit(2)
+                .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
                 .contentTransition(.numericText())
         }
@@ -3077,6 +3078,7 @@ private extension HomeView {
                         .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
                         .foregroundStyle(secondaryInk)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     Spacer(minLength: 4)
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10.5, weight: .semibold))
@@ -3086,13 +3088,13 @@ private extension HomeView {
                 Text(value)
                     .font(.system(size: Device.iPhone ? 12.5 : 14.5, weight: .bold, design: .rounded))
                     .foregroundStyle(primaryInk)
-                    .lineLimit(2)
+                    .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.numericText())
                 Text(subtitle)
                     .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                     .foregroundStyle(secondaryInk)
-                    .lineLimit(2)
+                    .lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true)
                     .contentTransition(.numericText())
             }
@@ -3118,6 +3120,7 @@ private extension HomeView {
                         .font(InterfaceFont.font("GeneralSans-Medium", size: 15.5))
                         .foregroundStyle(primaryInk)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     Spacer(minLength: 8)
                     Toggle("", isOn: $wordLearningEnabled)
                         .labelsHidden()
@@ -3264,6 +3267,7 @@ private extension HomeView {
                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
                     .foregroundStyle(primaryInk)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.85)
                 Spacer(minLength: 4)
                 Text(levelBadgeText)
                     .font(.system(size: 10, weight: .bold, design: .rounded))
@@ -3278,6 +3282,7 @@ private extension HomeView {
                 .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                 .foregroundStyle(secondaryInk)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
                 .contentTransition(.numericText())
 
             GeometryReader { geo in
@@ -5252,4 +5257,25 @@ private struct SandboxTextView: UIViewRepresentable {
         }
     }
 }
+
+private extension View {
+    @ViewBuilder
+    func softTopScrollEdgeEffect() -> some View {
+        if #available(iOS 26.0, *) {
+            self.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            self
+        }
+    }
+
+    @ViewBuilder
+    func adaptiveNavigationToolbarBackground() -> some View {
+        if #available(iOS 26.0, *) {
+            self
+        } else {
+            self.toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        }
+    }
+}
+
 
