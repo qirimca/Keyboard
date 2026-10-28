@@ -120,6 +120,21 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var activeFlickSymbol: (action: KeyboardAction, symbol: String)?
     private var activeFlickTrackingAction: KeyboardAction?
     private var didConsumeBackspacePress = false
+    private var suppressReleaseUntilUptime: TimeInterval = 0
+
+    func cancelActiveKeyGesturesForTrackpad() {
+        activeFlickSymbol = nil
+        activeFlickTrackingAction = nil
+        KeyFlickState.shared.reset()
+        let calloutCtx = (keyboardController as? KeyboardInputViewController)?.state.calloutContext
+        calloutCtx?.inputContext.reset()
+        calloutCtx?.actionContext.reset()
+        suppressReleaseUntilUptime = ProcessInfo.processInfo.systemUptime + 0.35
+    }
+
+    func markTwoFingerTrackpadEnded() {
+        suppressReleaseUntilUptime = ProcessInfo.processInfo.systemUptime + 0.18
+    }
 
     func resetComposition() {
         lastCompletedTypedWord = nil
@@ -135,7 +150,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             if name == "toggle_script" {
                 return gesture == .press
             }
-            if ["undo", "redo", "url_domain"].contains(name) {
+            if ["undo", "redo", "url_domain", "one_handed_left", "one_handed_right", "one_handed_off"].contains(name) {
                 return gesture == .release
             }
         }
@@ -147,6 +162,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         from startLocation: CGPoint,
         to currentLocation: CGPoint
     ) {
+        if keyboardContext.isSpaceDragGestureActive && action != .space {
+            activeFlickTrackingAction = nil
+            activeFlickSymbol = nil
+            KeyFlickState.shared.reset()
+            return
+        }
         if let symbol = CrimeanTatarIPadKeyboardLayoutProvider.flickSymbol(
             for: action,
             context: keyboardContext
@@ -753,6 +774,18 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         on action: KeyboardAction,
         replaced: Bool
     ) {
+        if action != .space,
+           keyboardContext.isSpaceDragGestureActive || ProcessInfo.processInfo.systemUptime < suppressReleaseUntilUptime {
+            switch gesture {
+            case .release, .longPress, .repeatPress, .doubleTap:
+                activeFlickSymbol = nil
+                activeFlickTrackingAction = nil
+                KeyFlickState.shared.reset()
+                return
+            default:
+                break
+            }
+        }
         if gesture == .press, !replaced {
             activeFlickSymbol = nil
             activeFlickTrackingAction = nil
@@ -796,9 +829,10 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if action == .backspace, gesture == .press,
            let swipedInsertion = lastSwipedWordInsertion {
             lastSwipedWordInsertion = nil
-            let proxy = keyboardContext.textDocumentProxy
-            let before = proxy.documentContextBeforeInput ?? ""
-            if before.hasSuffix(swipedInsertion) {
+            if SystemKeyboardSettings.isDeleteSlideToTypeByWordEnabled {
+                let proxy = keyboardContext.textDocumentProxy
+                let before = proxy.documentContextBeforeInput ?? ""
+                if before.hasSuffix(swipedInsertion) {
                 didConsumeBackspacePress = true
                 triggerFeedback(for: gesture, on: action)
                 resetComposition()
@@ -874,6 +908,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     keyboardController?.performAutocomplete()
                 }
                 return
+                }
             }
         }
         if action == .backspace, gesture == .press,
@@ -1131,6 +1166,30 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 TextHistoryManager.shared.recordInsert(".com")
                 keyboardContext.textDocumentProxy.insertText(".com")
                 keyboardController?.performAutocomplete()
+                return
+            } else if name == "one_handed_left" {
+                SwipeTypingState.shared.clearKeyFrames()
+                if keyboardContext.oneHandedMode != "left" {
+                    keyboardContext.oneHandedMode = "left"
+                }
+                keyboardContext.renderVersion &+= 1
+                KeyboardPreferences.setOneHandedMode("left")
+                return
+            } else if name == "one_handed_right" {
+                SwipeTypingState.shared.clearKeyFrames()
+                if keyboardContext.oneHandedMode != "right" {
+                    keyboardContext.oneHandedMode = "right"
+                }
+                keyboardContext.renderVersion &+= 1
+                KeyboardPreferences.setOneHandedMode("right")
+                return
+            } else if name == "one_handed_off" {
+                SwipeTypingState.shared.clearKeyFrames()
+                if keyboardContext.oneHandedMode != "off" {
+                    keyboardContext.oneHandedMode = "off"
+                }
+                keyboardContext.renderVersion &+= 1
+                KeyboardPreferences.setOneHandedMode("off")
                 return
             }
         }

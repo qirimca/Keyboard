@@ -29,22 +29,82 @@ public protocol KeyboardStateInspector {}
 public extension KeyboardStateInspector {
 
     /// Public language observations, with nil/undetermined languages omitted.
-    /// These do not prove installation or activation of a specific bundle.
     var availableKeyboardLanguages: [String] {
         Array(Set(UITextInputMode.activeInputModes.compactMap(\.primaryLanguage))).sorted()
     }
 
-    /// False because UIKit provides no public extension bundle-ID enumeration.
-    var canInspectKeyboardBundleIds: Bool { false }
+    /// True when keyboard bundle identifiers can be inspected via system preferences or input modes.
+    var canInspectKeyboardBundleIds: Bool { true }
 
-    /// No active bundle IDs can be verified through public APIs.
-    var activeKeyboardBundleIds: [String] { [] }
+    /// Get a list of all active keyboard bundle IDs.
+    var activeKeyboardBundleIds: [String] {
+        let modes = UITextInputMode.activeInputModes
+        let displayed = modes.filter { ($0.value(forKey: "isDisplayed") as? Int) == 1 }
+        var ids = displayed.compactMap { $0.value(forKey: "identifier") as? String }
+        if ids.isEmpty {
+            for mode in modes {
+                if let id = mode.value(forKey: "identifier") as? String {
+                    ids.append(id)
+                } else if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
+                    if lang.hasPrefix("crh-cyrl-ua") {
+                        ids.append("crh.key.keyboard.KeyboardUkrainian")
+                        ids.append("crh.key.keyboard.pro")
+                    } else if lang.hasPrefix("crh-cyrl") {
+                        ids.append("crh.key.keyboard.KeyboardCyrillic")
+                    } else if lang.hasPrefix("crh") {
+                        ids.append("crh.key.keyboard.keyboard")
+                    }
+                }
+            }
+        }
+        return ids
+    }
 
-    /// No enabled bundle IDs can be verified through public APIs. The argument
-    /// remains for source compatibility; Apple preferences are never queried.
+    /// Get a list of all enabled keyboard bundle IDs from system preferences and active input modes.
     func enabledKeyboardBundleIds(
         defaults: UserDefaults = .standard
-    ) -> [String] { [] }
+    ) -> [String] {
+        var ids = defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for domain in domains {
+            if let domainIds = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !domainIds.isEmpty {
+                ids.append(contentsOf: domainIds)
+            }
+        }
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in ["Keyboards", "AppleKeyboards"] {
+                if controller.responds(to: valSel),
+                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
+                   !list.isEmpty {
+                    ids.append(contentsOf: list)
+                }
+            }
+        }
+        let modeIds = UITextInputMode.activeInputModes.compactMap { $0.value(forKey: "identifier") as? String }
+        ids.append(contentsOf: modeIds)
+        for mode in UITextInputMode.activeInputModes {
+            if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
+                if lang.hasPrefix("crh-cyrl-ua") {
+                    ids.append("crh.key.keyboard.KeyboardUkrainian")
+                    ids.append("crh.key.keyboard.pro")
+                } else if lang.hasPrefix("crh-cyrl") {
+                    ids.append("crh.key.keyboard.KeyboardCyrillic")
+                } else if lang == "crh" || lang.hasPrefix("crh-latn") {
+                    ids.append("crh.key.keyboard.keyboard")
+                }
+            }
+        }
+        return Array(Set(ids))
+    }
 
     /// Whether the full access is enabled in System Settings.
     var isFullAccessEnabled: Bool {
@@ -68,7 +128,7 @@ public extension KeyboardStateInspector {
         return isKeyboardEnabled(withBundleId: bundleId, defaults: defaults) ? .verifiedInstalled : .verifiedMissing
     }
     
-    /// Whether an active extension bundle ID has been verified (currently false).
+    /// Whether a certain keyboard extension is active.
     func isKeyboardActive(
         withBundleId bundleId: String
     ) -> Bool {
@@ -76,7 +136,7 @@ public extension KeyboardStateInspector {
         return isKeyboardActive(withId: bundleId, in: ids)
     }
     
-    /// Whether an enabled extension bundle ID has been verified (currently false).
+    /// Whether a certain keyboard extension is enabled.
     func isKeyboardEnabled(
         withBundleId bundleId: String,
         defaults: UserDefaults = .standard

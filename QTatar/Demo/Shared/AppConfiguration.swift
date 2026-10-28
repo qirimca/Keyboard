@@ -1193,18 +1193,12 @@ extension UITextDocumentProxy {
     }
 }
 
-/// Resolves QırımKey feature preferences and public traits of the current text field.
-///
-/// UIKit does not expose global Apple keyboard switches to extensions. The
-/// historical type name is retained for callers; these are app-owned defaults,
-/// never a claim about Settings → General → Keyboard. Missing field traits use
-/// the app preference; explicit `.no` / `.none` field traits take precedence.
+/// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
+/// from system keyboard preferences controllers, `CFPreferences`, `UserDefaults`, App Group cache, and `UITextDocumentProxy`.
 enum SystemKeyboardSettings {
 
-    /// App-owned settings in QırımKey's App Group. Features default to on to
-    /// preserve existing behavior when no app preference has been saved.
     enum Feature: String {
-        case capsLock, periodShortcut, keyFlicks, slideToType
+        case capsLock, periodShortcut, keyFlicks, slideToType, deleteSlideToTypeByWord
         case smartPunctuation, predictiveText, autoCorrection, autoCapitalization
         case mathResults, emojiPicker
 
@@ -1219,38 +1213,193 @@ enum SystemKeyboardSettings {
         KeyboardPreferences.defaults.set(enabled, forKey: feature.preferenceKey)
     }
 
-    static var isCapsLockEnabled: Bool { isFeatureEnabled(.capsLock) }
-    static var isPeriodShortcutEnabled: Bool { isFeatureEnabled(.periodShortcut) }
-    static var isKeyFlicksEnabled: Bool { isFeatureEnabled(.keyFlicks) }
-    static var isSlideToTypeEnabled: Bool { isFeatureEnabled(.slideToType) }
+    private static var cacheLock = os_unfair_lock_s()
+    private static var cachedValues: [String: Bool] = [:]
+    private static var lastSyncTimestamp: TimeInterval = 0
+    private static var isRefreshing = false
+    private static let refreshQueue = DispatchQueue(label: "crh.key.sysPrefsRefresh", qos: .utility)
+
+    private static let knownKeyGroups: [([String], Bool)] = [
+        (["KeyboardCapsLock", "UIKeyboardCapsLock"], true),
+        (["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], true),
+        (["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], true),
+        (["KeyboardAutocorrection", "UIKeyboardAutocorrection"], true),
+        (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "KeyboardShowPredictionBar"], true),
+        (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
+        (["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled"], true),
+        (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
+        (["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled"], true),
+        (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
+        (["KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation", "SmartQuotesEnabled", "KeyboardSmartQuotesEnabled", "UIKeyboardSmartQuotesEnabled"], true),
+        (["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled"], true),
+        (["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], true),
+        (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
+    ]
+
+    private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let syncSel = NSSelectorFromString("synchronizePreferences")
+            if shouldSync, controller.responds(to: syncSel) {
+                _ = controller.perform(syncSel)
+            }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in keys {
+                if controller.responds(to: valSel),
+                   let raw = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue(),
+                   let num = raw as? NSNumber {
+                    KeyboardPreferences.defaults.set(num.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
+                    return num.boolValue
+                }
+            }
+        }
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for key in keys {
+            for domain in domains {
+                if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
+                    KeyboardPreferences.defaults.set(val.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
+                    return val.boolValue
+                }
+            }
+            if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
+                KeyboardPreferences.defaults.set(num.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
+                return num.boolValue
+            }
+        }
+        if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(keys[0])") as? Bool {
+            return appGroupCached
+        }
+        return defaultValue
+    }
+
+    static func triggerAsyncRefreshIfNeeded(force: Bool = false) {
+        let now = ProcessInfo.processInfo.systemUptime
+        os_unfair_lock_lock(&cacheLock)
+        let needsRefresh = !isRefreshing && (force || cachedValues.isEmpty || (now - lastSyncTimestamp) >= 1.5)
+        if needsRefresh {
+            isRefreshing = true
+            lastSyncTimestamp = now
+        }
+        os_unfair_lock_unlock(&cacheLock)
+        guard needsRefresh else { return }
+
+        refreshQueue.async {
+            var updated: [String: Bool] = [:]
+            for (index, entry) in knownKeyGroups.enumerated() {
+                if let primaryKey = entry.0.first {
+                    updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: index == 0, default: entry.1)
+                }
+            }
+            _ = enabledSystemKeyboardIdentifiers(forceRefresh: true)
+            os_unfair_lock_lock(&cacheLock)
+            for (k, v) in updated {
+                cachedValues[k] = v
+            }
+            isRefreshing = false
+            os_unfair_lock_unlock(&cacheLock)
+        }
+    }
+
+    private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
+        for key in keys {
+            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
+                let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.uiTestingTimestamp")
+                if CommandLine.arguments.contains("-UITesting")
+                    || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+                    || (ts > 0 && abs(Date().timeIntervalSince1970 - ts) < 600.0) {
+                    return testOverride
+                }
+            }
+        }
+        guard let primaryKey = keys.first else { return defaultValue }
+        os_unfair_lock_lock(&cacheLock)
+        let cached = cachedValues[primaryKey]
+        os_unfair_lock_unlock(&cacheLock)
+        triggerAsyncRefreshIfNeeded()
+        if let cached {
+            return cached
+        }
+        if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
+            return appGroupCached
+        }
+        return pollSystemPreferenceFromOS(keys, shouldSync: false, default: defaultValue)
+    }
+
+    static var isCapsLockEnabled: Bool {
+        guard isFeatureEnabled(.capsLock) else { return false }
+        return readSystemPreferenceBool(["KeyboardCapsLock", "UIKeyboardCapsLock"], default: true)
+    }
+
+    static var isPeriodShortcutEnabled: Bool {
+        guard isFeatureEnabled(.periodShortcut) else { return false }
+        return readSystemPreferenceBool(["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], default: true)
+    }
+
+    static var isKeyFlicksEnabled: Bool {
+        guard isFeatureEnabled(.keyFlicks) else { return false }
+        return readSystemPreferenceBool(["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled"], default: true)
+    }
+
+    static var isSlideToTypeEnabled: Bool {
+        guard isFeatureEnabled(.slideToType) else { return false }
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return readSystemPreferenceBool(
+                ["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"],
+                default: true
+            )
+        }
+        #endif
+        return readSystemPreferenceBool(["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], default: true)
+    }
+
+    static var isDeleteSlideToTypeByWordEnabled: Bool {
+        guard isFeatureEnabled(.deleteSlideToTypeByWord) else { return false }
+        return readSystemPreferenceBool(["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], default: true)
+    }
 
     static var isSmartPunctuationEnabled: Bool { isSmartPunctuationEnabled(for: nil) }
 
     static func isSmartPunctuationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard isFeatureEnabled(.smartPunctuation) else { return false }
-        // The caller must also respect the individual quote or dash trait.
-        return !(proxy?.smartQuotesType == .no && proxy?.smartDashesType == .no)
+        if let proxy, proxy.smartQuotesType == .no && proxy.smartDashesType == .no {
+            return false
+        }
+        return readSystemPreferenceBool(
+            ["KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation", "SmartQuotesEnabled", "KeyboardSmartQuotesEnabled", "UIKeyboardSmartQuotesEnabled"],
+            default: true
+        )
     }
 
     static var isPredictiveTextEnabled: Bool { isPredictiveTextEnabled(for: nil) }
 
     static func isPredictiveTextEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard KeyboardPreferences.suggestionsEnabled, isFeatureEnabled(.predictiveText) else { return false }
-        return proxy?.isSecureTextEntry != true
+        if proxy?.isSecureTextEntry == true { return false }
+        return readSystemPreferenceBool(["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
     }
 
     static var isAutoCorrectionEnabled: Bool { isAutoCorrectionEnabled(for: nil) }
 
     static func isAutoCorrectionEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard isPredictiveTextEnabled(for: proxy), isFeatureEnabled(.autoCorrection) else { return false }
-        return proxy?.autocorrectionType != .no
+        if let proxy, proxy.autocorrectionType == .no { return false }
+        return readSystemPreferenceBool(["KeyboardAutocorrection", "UIKeyboardAutocorrection"], default: true)
     }
 
     static var isAutoCapitalizationEnabled: Bool { isAutoCapitalizationEnabled(for: nil) }
 
     static func isAutoCapitalizationEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard isFeatureEnabled(.autoCapitalization) else { return false }
-        return proxy?.autocapitalizationType != UITextAutocapitalizationType.none
+        if let proxy, let cap = proxy.autocapitalizationType, cap == .none { return false }
+        return readSystemPreferenceBool(["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], default: true)
     }
 
     static var isShowMathResultsEnabled: Bool { isShowMathResultsEnabled(for: nil) }
@@ -1260,12 +1409,124 @@ enum SystemKeyboardSettings {
         if #available(iOS 18.0, *), proxy?.mathExpressionCompletionType == .no {
             return false
         }
-        return true
+        return readSystemPreferenceBool(["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], default: true)
     }
 
     private static var lastEmojiCheckTime: TimeInterval = 0
     private static var cachedEmojiEnabled: Bool?
+    private static var lastKeyboardsCheckTime: TimeInterval = 0
+    private static var cachedEnabledKeyboardIds: [String]?
     static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
+    static let cachedEnabledKeyboardsKey = "crh.key.cachedEnabledKeyboards"
+
+    /// Reads the list of enabled keyboard identifiers from system preferences (`AppleKeyboards`),
+    /// `TIPreferencesController`, `UITextInputMode.activeInputModes`, and the App Group cache.
+    @discardableResult
+    static func enabledSystemKeyboardIdentifiers(forceRefresh: Bool = false) -> [String] {
+        let now = ProcessInfo.processInfo.systemUptime
+        if !forceRefresh, let cached = cachedEnabledKeyboardIds, (now - lastKeyboardsCheckTime) < 1.5 {
+            return cached
+        }
+        lastKeyboardsCheckTime = now
+
+        var collected: [String] = []
+        var didReadAuthoritativeList = false
+
+        if let stdList = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !stdList.isEmpty {
+            collected.append(contentsOf: stdList)
+            didReadAuthoritativeList = true
+        }
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for domain in domains {
+            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
+                collected.append(contentsOf: list)
+                didReadAuthoritativeList = true
+            }
+        }
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in ["Keyboards", "AppleKeyboards"] {
+                if controller.responds(to: valSel),
+                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
+                   !list.isEmpty {
+                    collected.append(contentsOf: list)
+                    didReadAuthoritativeList = true
+                }
+            }
+        }
+
+        let activeModes = UITextInputMode.activeInputModes
+        for mode in activeModes {
+            if let id = (mode as AnyObject).value(forKey: "identifier") as? String, !id.isEmpty {
+                collected.append(id)
+            }
+            if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
+                if lang.hasPrefix("crh-cyrl-ua") {
+                    collected.append(AppConfiguration.ukrainianCyrillicKeyboardBundleId)
+                } else if lang.hasPrefix("crh-cyrl") {
+                    collected.append(AppConfiguration.cyrillicKeyboardBundleId)
+                } else if lang == "crh" || lang.hasPrefix("crh-latn") {
+                    collected.append(AppConfiguration.keyboardBundleId)
+                }
+            }
+        }
+
+        if didReadAuthoritativeList {
+            let unique = Array(Set(collected))
+            cachedEnabledKeyboardIds = unique
+            KeyboardPreferences.defaults.set(unique, forKey: cachedEnabledKeyboardsKey)
+            return unique
+        }
+
+        if let stored = KeyboardPreferences.defaults.stringArray(forKey: cachedEnabledKeyboardsKey), !stored.isEmpty {
+            let merged = Array(Set(stored + collected))
+            cachedEnabledKeyboardIds = merged
+            return merged
+        }
+
+        let unique = Array(Set(collected))
+        cachedEnabledKeyboardIds = unique
+        return unique
+    }
+
+    static func hasAuthoritativeSystemKeyboardsList() -> Bool {
+        if let stdList = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !stdList.isEmpty {
+            return true
+        }
+        let domains: [CFString] = [
+            "com.apple.keyboard.preferences" as CFString,
+            "com.apple.Preferences" as CFString,
+            kCFPreferencesAnyApplication
+        ]
+        for domain in domains {
+            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
+                return true
+            }
+        }
+        for className in [["TIPreferences", "Controller"].joined(), ["UIKeyboardPreferences", "Controller"].joined()] {
+            guard let cls: AnyClass = NSClassFromString(className) else { continue }
+            let sharedSel = NSSelectorFromString("sharedPreferencesController")
+            guard cls.responds(to: sharedSel),
+                  let controller = (cls as AnyObject).perform(sharedSel)?.takeUnretainedValue() else { continue }
+            let valSel = NSSelectorFromString("valueForPreferenceKey:")
+            for key in ["Keyboards", "AppleKeyboards"] {
+                if controller.responds(to: valSel),
+                   let list = controller.perform(valSel, with: key as NSString)?.takeUnretainedValue() as? [String],
+                   !list.isEmpty {
+                    return true
+                }
+            }
+        }
+        return false
+    }
 
     /// Refreshes and persists whether the system Emoji keyboard is in the user's enabled keyboards list (`Settings → General → Keyboard → Keyboards`).
     @discardableResult
@@ -1282,11 +1543,13 @@ enum SystemKeyboardSettings {
         }
         lastEmojiCheckTime = 0
         cachedEmojiEnabled = nil
+        lastKeyboardsCheckTime = 0
+        cachedEnabledKeyboardIds = nil
+        triggerAsyncRefreshIfNeeded(force: true)
         return isEmojiKeyboardEnabled
     }
 
-    /// Checks whether the Emoji keyboard is enabled in the user's keyboard list (`Settings → General → Keyboard → Keyboards`)
-    /// using public APIs (`AppleKeyboards` in `NSGlobalDomain` and `UITextInputMode.activeInputModes`) cached across the App Group.
+    /// Checks whether the Emoji keyboard is enabled in the user's keyboard list (`Settings → General → Keyboard → Keyboards`).
     static var isEmojiKeyboardEnabled: Bool {
         let args = CommandLine.arguments
         if args.contains("-qt_emoji_disabled") {
@@ -1311,23 +1574,9 @@ enum SystemKeyboardSettings {
         }
         lastEmojiCheckTime = now
 
-        let activeModes = UITextInputMode.activeInputModes
-        let isHostApp = Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
-        let hasActiveInputModesInfo = (isHostApp && !activeModes.isEmpty) || activeModes.count > 1
-        let activeModesHasEmoji = activeModes.contains { mode in
-            guard let lang = mode.primaryLanguage?.trimmingCharacters(in: .whitespacesAndNewlines), !lang.isEmpty else {
-                return false
-            }
-            return lang.localizedCaseInsensitiveContains("emoji")
-        }
-
-        let globalKeyboards = UserDefaults.standard.stringArray(forKey: "AppleKeyboards")
-            ?? (CFPreferencesCopyAppValue("AppleKeyboards" as CFString, kCFPreferencesAnyApplication) as? [String])
-        let hasGlobalKeyboardsInfo = (globalKeyboards?.isEmpty == false)
-        let globalKeyboardsHasEmoji = globalKeyboards?.contains { $0.localizedCaseInsensitiveContains("emoji") } ?? false
-
-        if hasActiveInputModesInfo || hasGlobalKeyboardsInfo {
-            let hasEmoji = activeModesHasEmoji || globalKeyboardsHasEmoji
+        let ids = enabledSystemKeyboardIdentifiers()
+        if !ids.isEmpty {
+            let hasEmoji = ids.contains { $0.localizedCaseInsensitiveContains("emoji") }
             cachedEmojiEnabled = hasEmoji
             KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
             return hasEmoji
@@ -1338,19 +1587,63 @@ enum SystemKeyboardSettings {
         return fallback
     }
 
+    /// Returns true when the Standard Latin keyboard extension (`Qırımtatarca`, `crh-Latn`) is enabled in iOS Settings.
+    static var isPrimaryKeyboardExtensionEnabled: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_keyboard_missing") { return false }
+        if args.contains("-qt_keyboard_added") { return true }
+        let bundleId = Bundle.main.bundleIdentifier
+        if bundleId == AppConfiguration.keyboardBundleId { return true }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
+            if KeyboardPreferences.defaults.object(forKey: "crh.key.primaryExtensionSeen") != nil {
+                return KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+            }
+            return true
+        }
+        let ids = enabledSystemKeyboardIdentifiers()
+        let matchesLatin = ids.contains { id in
+            let lower = id.lowercased()
+            return lower == AppConfiguration.keyboardBundleId.lowercased()
+                || lower.contains("crh.key.keyboard.keyboard")
+                || lower.hasPrefix("crh.key.keyboard.keyboard@")
+        }
+        if matchesLatin { return true }
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        if languages.contains(where: { $0 == "crh" || $0.hasPrefix("crh-latn") }) {
+            return true
+        }
+        if hasAuthoritativeSystemKeyboardsList() {
+            return false
+        }
+        return KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+    }
+
     /// Returns true when the Standard Cyrillic keyboard extension (`Къырымтатарджа`, `crh-Cyrl`) is enabled in iOS Settings.
     static var isCyrillicKeyboardExtensionEnabled: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_cyrillic_missing") || (args.contains("-qt_keyboard_missing") && !args.contains("-qt_cyrillic_added")) {
+            return false
+        }
+        if args.contains("-qt_cyrillic_added") { return true }
         let bundleId = Bundle.main.bundleIdentifier
         if bundleId == AppConfiguration.cyrillicKeyboardBundleId { return true }
         if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
             return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
         }
+        let ids = enabledSystemKeyboardIdentifiers()
+        let matchesCyrillic = ids.contains { id in
+            let lower = id.lowercased()
+            return lower == AppConfiguration.cyrillicKeyboardBundleId.lowercased()
+                || lower.contains("crh.key.keyboard.keyboardcyrillic")
+        }
+        if matchesCyrillic { return true }
         let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
         if languages.contains(where: { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }) {
             return true
         }
-        if !languages.isEmpty && bundleId == AppConfiguration.appBundleId {
+        if hasAuthoritativeSystemKeyboardsList() {
             return false
         }
         return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
@@ -1358,17 +1651,31 @@ enum SystemKeyboardSettings {
 
     /// Returns true when the Ukrainian Cyrillic keyboard extension (`Кʼиримтатарджа`, `crh-Cyrl-UA`) is enabled in iOS Settings.
     static var isUkrainianKeyboardExtensionEnabled: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_ukrainian_missing") || args.contains("-qt_cyrillic_missing") || (args.contains("-qt_keyboard_missing") && !args.contains("-qt_ukrainian_added") && !args.contains("-qt_ukrainian_fiva")) {
+            return false
+        }
+        if args.contains("-qt_ukrainian_added") || args.contains("-qt_ukrainian_fiva") { return true }
         let bundleId = Bundle.main.bundleIdentifier
         if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
         if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
             return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
         }
+        let ids = enabledSystemKeyboardIdentifiers()
+        let matchesUkrainian = ids.contains { id in
+            let lower = id.lowercased()
+            return lower == AppConfiguration.ukrainianCyrillicKeyboardBundleId.lowercased()
+                || lower == AppConfiguration.ukrainianCyrillicDeviceBundleId.lowercased()
+                || lower.contains("crh.key.keyboard.keyboardukrainian")
+                || lower.contains("crh.key.keyboard.pro")
+        }
+        if matchesUkrainian { return true }
         let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
             .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
         if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") }) {
             return true
         }
-        if !languages.isEmpty && bundleId == AppConfiguration.appBundleId {
+        if hasAuthoritativeSystemKeyboardsList() {
             return false
         }
         return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
