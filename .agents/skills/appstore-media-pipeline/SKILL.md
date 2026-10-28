@@ -28,3 +28,16 @@ Previews: 15–30 s, `.mp4/.mov/.m4v` H.264, ≤30 fps, ≤500 MB, poster frame 
 - A booted simulator + Chrome on 16 GB causes swap thrash; shut idle simulators down. A hung `xcodebuild -quiet` after the test is normal here: kill only your own PID.
 - Decimating a long raw recording to 24 s makes 0.25 s key presses invisible; the real-time scenario must be short (<= ~30 s) or the machine must be unloaded.
 - Do not publish the personal-dictionary screenshot with third-party brand words; use neutral demo words.
+
+## Publication steps (added 2026-10-28)
+
+1. Release build: `QTatar/Scripts/archive_and_upload.sh [archive|export|all]` (needs `ASC_KEY_ID`, `ASC_ISSUER_ID`; team from `LocalSigning.xcconfig`; about 9 min archive + 3 min upload).
+2. `QTatar/Scripts/asc/attach_build.py <build>` waits for `VALID`, sets `usesNonExemptEncryption=false` if empty and attaches the build to the iOS version. It never submits.
+3. `QTatar/Scripts/asc/asc_submission_readiness.py [--fill-review]` prints version, review detail, build, URLs and age rating; `--fill-review` writes the review contact and notes.
+4. Device classes: `iPhone Duo` (`APP_IPHONE_DUO` screenshots 1398x2034 outer / 2007x2853 inner, `IPHONE_DUO` previews 886x1920); generator `--dev=iphone_duo`. Unknown new classes: probe with an invalid enum value.
+5. Stop before Submit; the owner presses the button.
+
+## Creative assets and device classes (added 2026-10-28, Round 44)
+- Generate with `QTatar/Scripts/generate_creative_assets.py` (dark flat key, no outer tile, iPhone-style frames with Dynamic Island) into `AppStoreMetadata/Media_Designed/creative_assets/`: `header_5244x2950.png`, `header_3840x1646.png`, `search_5244x2950.png`, `search_3840x2560.png`, `search_1920x1280.png`. No public API: share via Google Drive (`gdrive`), user drags them into ASC Asset Library.
+- Additional ASC classes: `APP_IPHONE_61` / `IPHONE_61` (1206×2622 or 1179×2556 screenshots, 886×1920 previews; frames are resized from 6.9") and `APP_IPHONE_DUO` / `IPHONE_DUO` (1398×2034). Discover more with an invalid enum (`ZZZ_INVALID`).
+- iPad previews: record the simulator in real time, cut segments listed in `Media_Designed/_sources/ipad_segments.txt`, never decimate.

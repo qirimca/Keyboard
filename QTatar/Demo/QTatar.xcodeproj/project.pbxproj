@@ -49,6 +49,23 @@
 		E1A2B3C4D5E6478990123451 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 		E1A2B3C4D5E6478990123452 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 		E1A2B3C4D5E6478990123453 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
+		9D2112BC30824B700031FE0A /* KeyboardUkrainian.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9D2112D130824B700031FE0A /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921153B25D58AC7003510D9 /* KeyboardViewController.swift */; };
+		9D2112D230824B700031FE0A /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
+		9D2112D330824B700031FE0A /* SuggestionsDataBaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */; };
+		9D2112D430824B700031FE0A /* CrimeanTatarAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B02D3AFD6A007D41BC /* CrimeanTatarAutocompleteProvider.swift */; };
+		9D2112D530824B700031FE0A /* SpaceBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973BF2D3B1000007D41BC /* SpaceBarLabel.swift */; };
+		9D2112D630824B700031FE0A /* Autocomplete+NativeToolbarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973C12D3B1001007D41BC /* Autocomplete+NativeToolbarStyle.swift */; };
+		9D2112D730824B700031FE0A /* CrimeanTatarIPadKeyboardLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973D22D3B3000007D41BC /* CrimeanTatarIPadKeyboardLayoutProvider.swift */; };
+		9D2112D830824B700031FE0A /* DemoStyleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C672642A7BCE37004A5721 /* DemoStyleProvider.swift */; };
+		9D2112D930824B700031FE0A /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
+		9D2112DA30824B700031FE0A /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
+		9D2112DB30824B700031FE0A /* DemoActionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */; };
+		9D2112DC30824B700031FE0A /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B42D3AFD6A007D41BC /* AppConfiguration.swift */; };
+		9D2112DD30824B700031FE0A /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 41F4DEFC2CF4D96D00D1D7E8 /* libsqlite3.tbd */; };
+		9D2112DE30824B700031FE0A /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 41C4AA8D2BBA597E0094EF1C /* KeyboardKit */; };
+		9D2112DF30824B700031FE0A /* TransliterationRules.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C302550732D493EA99DF6ED /* TransliterationRules.json */; };
+		9D2112E030824B700031FE0A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +75,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 9C2112B430824B700031FE0A;
 			remoteInfo = KeyboardCyrillic;
+		};
+		9D2112BA30824B700031FE0A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A921151A25D58A94003510D9 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9D2112B430824B700031FE0A;
+			remoteInfo = KeyboardUkrainian;
 		};
 		A921153E25D58AC7003510D9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -76,6 +100,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				9C2112BC30824B700031FE0A /* KeyboardCyrillic.appex in Embed Foundation Extensions */,
+				9D2112BC30824B700031FE0A /* KeyboardUkrainian.appex in Embed Foundation Extensions */,
 				A921154025D58AC7003510D9 /* Keyboard.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
@@ -98,6 +123,7 @@
 		9C2112AA30824B320031FE0A /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		9C2112AB30824B320031FE0A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardCyrillic.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardUkrainian.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrimeanTatarTransliterator.swift; sourceTree = "<group>"; };
 		9C211365308293930031FE0A /* QirimKeyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QirimKeyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCalloutActionProvider.swift; sourceTree = "<group>"; };
@@ -144,12 +170,21 @@
 			);
 			target = 9C2112B430824B700031FE0A /* KeyboardCyrillic */;
 		};
+		9D2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				KeyboardUkrainian.entitlements,
+			);
+			target = 9D2112B430824B700031FE0A /* KeyboardUkrainian */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6AE9732B2D3A9AE8007D41BC /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9C2112B030824B330031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
 		6AE973562D3AB305007D41BC /* Views */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Views; sourceTree = "<group>"; };
 		9C2112B630824B700031FE0A /* KeyboardCyrillic */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9C2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = KeyboardCyrillic; sourceTree = "<group>"; };
+		9D2112B630824B700031FE0A /* KeyboardUkrainian */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9D2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = KeyboardUkrainian; sourceTree = "<group>"; };
 		9C211366308293930031FE0A /* QirimKeyUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = QirimKeyUITests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
@@ -160,6 +195,15 @@
 			files = (
 				4F7F43D2A72F489EBF850D31 /* libsqlite3.tbd in Frameworks */,
 				B3E0A173A94B4A0B96B829DA /* KeyboardKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D2112B230824B700031FE0A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D2112DD30824B700031FE0A /* libsqlite3.tbd in Frameworks */,
+				9D2112DE30824B700031FE0A /* KeyboardKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -217,6 +261,7 @@
 				A921152425D58A94003510D9 /* Demo */,
 				A921153A25D58AC7003510D9 /* Keyboard */,
 				9C2112B630824B700031FE0A /* KeyboardCyrillic */,
+				9D2112B630824B700031FE0A /* KeyboardUkrainian */,
 				9C211366308293930031FE0A /* QirimKeyUITests */,
 				A921152325D58A94003510D9 /* Products */,
 				A921155425D58D95003510D9 /* Frameworks */,
@@ -229,6 +274,7 @@
 				A921152225D58A94003510D9 /* QTatar.app */,
 				A921153925D58AC7003510D9 /* Keyboard.appex */,
 				9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */,
+				9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */,
 				9C211365308293930031FE0A /* QirimKeyUITests.xctest */,
 			);
 			name = Products;
@@ -324,6 +370,29 @@
 			productReference = 9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		9D2112B430824B700031FE0A /* KeyboardUkrainian */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9D2112BD30824B700031FE0A /* Build configuration list for PBXNativeTarget "KeyboardUkrainian" */;
+			buildPhases = (
+				9D2112B130824B700031FE0A /* Sources */,
+				9D2112B230824B700031FE0A /* Frameworks */,
+				9D2112B330824B700031FE0A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9D2112B630824B700031FE0A /* KeyboardUkrainian */,
+			);
+			name = KeyboardUkrainian;
+			packageProductDependencies = (
+				41C4AA8D2BBA597E0094EF1C /* KeyboardKit */,
+			);
+			productName = KeyboardUkrainian;
+			productReference = 9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		9C211364308293930031FE0A /* QirimKeyUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9C21136B308293930031FE0A /* Build configuration list for PBXNativeTarget "QirimKeyUITests" */;
@@ -361,6 +430,7 @@
 			dependencies = (
 				A921153F25D58AC7003510D9 /* PBXTargetDependency */,
 				9C2112BB30824B700031FE0A /* PBXTargetDependency */,
+				9D2112BB30824B700031FE0A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6AE9732B2D3A9AE8007D41BC /* Utilities */,
@@ -408,6 +478,9 @@
 					9C2112B430824B700031FE0A = {
 						CreatedOnToolsVersion = 27.1;
 					};
+					9D2112B430824B700031FE0A = {
+						CreatedOnToolsVersion = 27.1;
+					};
 					9C211364308293930031FE0A = {
 						CreatedOnToolsVersion = 27.1;
 					};
@@ -439,6 +512,7 @@
 				A921152125D58A94003510D9 /* QTatar */,
 				A921153825D58AC7003510D9 /* Keyboard */,
 				9C2112B430824B700031FE0A /* KeyboardCyrillic */,
+				9D2112B430824B700031FE0A /* KeyboardUkrainian */,
 				9C211364308293930031FE0A /* QirimKeyUITests */,
 			);
 		};
@@ -451,6 +525,15 @@
 			files = (
 				98C898F7BF2C45A2A2B8C2B2 /* TransliterationRules.json in Resources */,
 				E1A2B3C4D5E6478990123453 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D2112B330824B700031FE0A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D2112DF30824B700031FE0A /* TransliterationRules.json in Resources */,
+				9D2112E030824B700031FE0A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -523,7 +606,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/bash;
-			shellScript = "APP_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nLOC_BUNDLE=\"${APP_DIR}/AppLocalizations.bundle\"\nrm -rf \"${LOC_BUNDLE}\" \"${APP_DIR}/Settings.bundle\" \"${APP_DIR}/Localizable.loctable\" \"${APP_DIR}/InfoPlist.loctable\"\nif [ -d \"${SRCROOT}/Demo/Settings.bundle\" ]; then\n  cp -R \"${SRCROOT}/Demo/Settings.bundle\" \"${APP_DIR}/Settings.bundle\"\nfi\nmkdir -p \"${LOC_BUNDLE}\"\nfor lang in crh uk en; do\n  if [ -d \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj\" ]; then\n    mkdir -p \"${LOC_BUNDLE}/${lang}.lproj\"\n    cp -f \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj/\"*.strings \"${LOC_BUNDLE}/${lang}.lproj/\"\n  fi\n  rm -rf \"${APP_DIR}/${lang}.lproj\"\ndone\n";
+			shellScript = "APP_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nLOC_BUNDLE=\"${APP_DIR}/AppLocalizations.bundle\"\nrm -rf \"${LOC_BUNDLE}\" \"${APP_DIR}/Settings.bundle\" \"${APP_DIR}/Localizable.loctable\" \"${APP_DIR}/InfoPlist.loctable\"\nif [ -d \"${SRCROOT}/Demo/Settings.bundle\" ]; then\n  cp -R \"${SRCROOT}/Demo/Settings.bundle\" \"${APP_DIR}/Settings.bundle\"\nfi\nmkdir -p \"${LOC_BUNDLE}\"\ndate '+%Y-%m-%d %H:%M' > \"${LOC_BUNDLE}/BuildTimestamp.txt\"\nfor lang in crh uk en; do\n  if [ -d \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj\" ]; then\n    mkdir -p \"${LOC_BUNDLE}/${lang}.lproj\"\n    cp -f \"${SRCROOT}/Demo/Utilities/Localization/${lang}.lproj/\"*.strings \"${LOC_BUNDLE}/${lang}.lproj/\"\n  fi\n  rm -rf \"${APP_DIR}/${lang}.lproj\"\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -544,6 +627,25 @@
 				9B5976BB48744E91AFB8CFC1 /* DemoLayoutProvider.swift in Sources */,
 				623E6E9D337B451190B799D8 /* DemoActionHandler.swift in Sources */,
 				1771081230A745BC8A310D44 /* AppConfiguration.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D2112B130824B700031FE0A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9D2112D130824B700031FE0A /* KeyboardViewController.swift in Sources */,
+				9D2112D230824B700031FE0A /* CrimeanTatarTransliterator.swift in Sources */,
+				9D2112D330824B700031FE0A /* SuggestionsDataBaseManager.swift in Sources */,
+				9D2112D430824B700031FE0A /* CrimeanTatarAutocompleteProvider.swift in Sources */,
+				9D2112D530824B700031FE0A /* SpaceBarLabel.swift in Sources */,
+				9D2112D630824B700031FE0A /* Autocomplete+NativeToolbarStyle.swift in Sources */,
+				9D2112D730824B700031FE0A /* CrimeanTatarIPadKeyboardLayoutProvider.swift in Sources */,
+				9D2112D830824B700031FE0A /* DemoStyleProvider.swift in Sources */,
+				9D2112D930824B700031FE0A /* DemoCalloutActionProvider.swift in Sources */,
+				9D2112DA30824B700031FE0A /* DemoLayoutProvider.swift in Sources */,
+				9D2112DB30824B700031FE0A /* DemoActionHandler.swift in Sources */,
+				9D2112DC30824B700031FE0A /* AppConfiguration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -591,6 +693,11 @@
 			target = 9C2112B430824B700031FE0A /* KeyboardCyrillic */;
 			targetProxy = 9C2112BA30824B700031FE0A /* PBXContainerItemProxy */;
 		};
+		9D2112BB30824B700031FE0A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9D2112B430824B700031FE0A /* KeyboardUkrainian */;
+			targetProxy = 9D2112BA30824B700031FE0A /* PBXContainerItemProxy */;
+		};
 		A921153F25D58AC7003510D9 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A921153825D58AC7003510D9 /* Keyboard */;
@@ -606,7 +713,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -635,7 +742,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -657,13 +764,75 @@
 			};
 			name = Release;
 		};
+		9D2112BE30824B700031FE0A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_INTENTS_METADATA_EXTRACTION = NO;
+				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.1;
+				PRODUCT_BUNDLE_IDENTIFIER = crh.key.keyboard.KeyboardUkrainian;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = crh.key.keyboard.pro;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xrsimulator xros";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9D2112BF30824B700031FE0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_INTENTS_METADATA_EXTRACTION = NO;
+				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 3.1;
+				PRODUCT_BUNDLE_IDENTIFIER = crh.key.keyboard.KeyboardUkrainian;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = crh.key.keyboard.pro;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator xrsimulator xros";
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		9C211369308293930031FE0A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -688,8 +857,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -840,7 +1011,7 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -874,7 +1045,7 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -905,7 +1076,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -934,7 +1105,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -964,6 +1135,15 @@
 			buildConfigurations = (
 				9C2112BE30824B700031FE0A /* Debug */,
 				9C2112BF30824B700031FE0A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9D2112BD30824B700031FE0A /* Build configuration list for PBXNativeTarget "KeyboardUkrainian" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D2112BE30824B700031FE0A /* Debug */,
+				9D2112BF30824B700031FE0A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -1,30 +1,20 @@
-QırımKey — Qırımtatar tiliniñ Milliy Korpusı (QTMK, ctcorpus.org) esasında «QIRIM YANG» cemaat teşkilâtı ve Kyiv Milliy Universitetiniñ iştiraginen iPhone ve iPad içün yaratılğan zemaneviy aqıllı qırımtatar klaviaturasıdır.
+QırımKey — iPhone ve iPad içün qırımtatar klaviaturası. Onı Qırımtatar tiliniñ Milliy Korpusı (ctcorpus.org) esasında «QIRIM YANG» cemaat teşkilâtı Kyiv Taras Şevçenko namındaki Milliy Universitet ile birlikte yarattı: Ukrayna Qırımında yaşağanlar içün ve bu til işitilgen er yerde yazğanlar içün.
 
-LATİN VE KİRİL TİZİLİŞLERİ (AVTOTRANSLİTERATSİYA İLE)
-• Bütün qırımtatar latin ariflerine (ğ, ñ, ç, ş, ö, ü, ı, â) qolay irişim bergen mahsus latin tizilişi.
-• Kiril ariflerini avtomatik olaraq latin elifbesine çevirgen aqıllı kiril tizilişi: alışqan kiril dögmesinen yazıñız, klaviatura ise metinni deral qırımtatar latin elifbesinen tizsin.
-• Ukraina klaviaturasına alışqan qullanıcılar içün uyğunlaştırılğan «Ukraina tizilişi» (ФІВА): ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e, і → i, и → ı.
+Eki türlü yazuv
+Latin tizilişinde ğ, ñ, ç, ş, ö, ü, ı ve â ariflerı toğrudan-toğru dögmelerde turalar. Kiril alışqan olsañız, Kiril tizilişine keçiñiz: tanış dögmelerge basasıñız, QırımKey ise qırımtatar latin yazuvında yaza. İstegen olsañız, ukrain usulında Kiril tizilişi de bar (ґ → g, г → ğ, кʼ → q, нʼ → ñ).
 
-2024/2025 RESMİY İMLÂSI VE AQILLI SÖZ TEVSİYELERİ
-• Qırımtatar tiliniñ Milliy Korpusına tayanğan luğat bazası 2024/2025 resmiy qırımtatar imlâ qaidelerine (ДЕСС № 1722/04-03/25) uyğundır.
-• Defisli murakkep sözler (gece-kündüz, alış-veriş), -mı/-mi sualuklarınıñ qoşulıp yazıluvı (yaptıñ mı → yaptıñmı) ve Ukrayna Qırımınıñ qırımtatar toponimleriniñ büyük arifnen yazıluvı (Qırım, Ukrayna, Aqmescit, Bağçasaray, Çonğar, Or Qapı) desteklene.
-• Soñki avtotüzetüvni Backspace (⌫) dögmesine bir basuvnen lâğu etüv.
-• Cihaz içinde şahsiy söz ve söz birikmelerini ögrenüv.
+Qaideler boyunca yazuv
+Teklifler ve avtomatik tüzetüv 2024/2025 yılınıñ imlâsına (DESS № 1722/04-03/25) köre çalışalar: defis ile yazılğan sözler (gece-kündüz), sual zerreciği (yaptıñ mı → yaptıñmı) ve Qırım, Aqmescit, Bağçasaray kibi isimlerde büyük arif. Avtomatik tüzetüv yalıñız boşluq basılğanda ola, ⌫ dögmesine bir basuv ise onı keri ala. Qullanğan sözleriñizni klaviatura yalıñız cihazıñızda öğrene.
 
-TEZ SVAYP YAZUVI (QIRIMKEY SWIPE V2)
-• iPhone ve iPad yüzüci (Floating) rejiminde em latin, em de kiril tizilişlerinde parmaqnı dögmeler üzerinde taydırıp tez yazuv.
-• Svaypnen yazılğan sözni Backspace (⌫) dögmesine bir basuvnen bütününen silüv.
+Svayp yazuv
+iPhone'da yaki iPad'niñ yüzgen klaviaturasında, eki tizilişte de barmağıñıznı dögmeler üzerinde keçiriñiz. Yañı svayp ile yazılğan söz bir ⌫ ile silinir.
 
-iOS VE iPadOS 26/27 İÇÜN YARATILĞAN
-• Apple Liquid Glass üslübi ve bütün sistem qoşulmalarında ve Spotlight içinde yarıq/qaranlıq temanıñ avtomatik sinhronizatsiyası.
-• iPad içün tolu destek: standart (Docked), yüzüci (Floating) ve bölünmegen/bölüngen (Split) klaviatura rejimleri («⌄⌨» menüsi ve eki parmaq areketi ile).
-• Yazıp başlamazdan evel klaviaturanıñ yuqarı satırında kündelik qırımtatar atalar sözleri, selâmlaşuvlar ve klassiklerniñ sözleri.
-• Qoşulma içinde interaktiv sınama meydançığı ve yazuv tezligi statistika seviyeleri.
+iPhone ve iPad'de
+Aydınlıq ve qaranlıq körünüş; iPad'de sabit, yüzgen ve ayırılğan klaviatura; yazuvğa başlamazdan ögünde dögmeler üstünde qısqa qırımtatar ata sözü yaki selâmlaşuv. İçine yerleştirilgen sınav meydanında metin, qıdıruv, e-poçta ve veb rejimlerini sınap, yazuv tezliginiznı körebilirsiñiz.
 
-100% MAHREMİYET VE İNTERNETSİZ İŞLEV
-• QırımKey bütünley cihaz içinde ve internetsiz işley (iç bir ağ sorğusı yapılmay).
-• Yazğan metinleriñiz ya da şahsiy malümatlarıñız iç bir vaqıt toplanmay ve iç bir yerge yiberilmey.
+Mahremiyet
+QırımKey internetsiz çalışa ve hiç bir şebeke soravı yapmay. Yazğanıñız yıynalmay, saqlanmay ve kimseniñ ellerine berilmey.
 
-Resmiy sayt ve destek: https://ctcorpus.org/index.php/crh/
-Mahremiyet siyaseti: https://ctcorpus.org/index.php/crh/qullanuv-sartlari
-Açıq kod (Open Source): https://github.com/qirimyoung/QirimKey_iOS
+Destek ve sayt: https://ctcorpus.org/index.php/crh/
+Qullanuv şartları: https://ctcorpus.org/index.php/crh/qullanuv-sartlari
+Açıq kod: https://github.com/qirimyoung/QirimKey_iOS

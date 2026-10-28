@@ -17,8 +17,10 @@ enum KeyboardPreferences {
     static let ukrainianCyrillicLayoutKey = "crh.key.ukrainianCyrillicLayout"
     static let statsEnabledKey = "crh.key.statsEnabled"
     static let splitKeyboardKey = "crh.key.splitKeyboardEnabled"
+    static let oneHandedModeKey = "crh.key.oneHandedMode"
     static let languageKey = "crh.key.interfaceLanguage"
     static let splitModeChangedNotification = "crh.key.splitKeyboardModeDidChange"
+    static let oneHandedModeChangedNotification = "crh.key.oneHandedModeDidChange"
     static let ukrainianCyrillicLayoutChangedNotification = "crh.key.ukrainianCyrillicLayoutDidChange"
     /// Created once: `UserDefaults(suiteName:)` is expensive and used by the style provider for every key.
     static let defaults: UserDefaults = UserDefaults(suiteName: AppConfiguration.appGroupID) ?? .standard
@@ -29,14 +31,76 @@ enum KeyboardPreferences {
     private static var cachedUkrainianCyrillicLayout: Bool?
     private static var cachedStatsEnabled: Bool?
     private static var cachedSplitKeyboard: Bool?
+    private static var cachedOneHandedMode: String?
 
     static func refreshCachedPreferences() {
         cachedSuggestions = (defaults.object(forKey: suggestionsKey) as? Bool) ?? (UserDefaults.standard.object(forKey: suggestionsKey) as? Bool) ?? true
         cachedWordLearning = (defaults.object(forKey: wordLearningKey) as? Bool) ?? (UserDefaults.standard.object(forKey: wordLearningKey) as? Bool) ?? true
-        cachedCyrillic = defaults.object(forKey: cyrillicKey) as? Bool ?? true
-        cachedUkrainianCyrillicLayout = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
+        cachedCyrillic = (defaults.object(forKey: cyrillicKey) as? Bool)
+            ?? ((SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled || SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled) ? true : true)
+        cachedUkrainianCyrillicLayout = (defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool)
+            ?? (SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled ? true : false)
         cachedStatsEnabled = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
+        let rawOneHanded = resolveStoredOneHandedMode()
+        cachedOneHandedMode = rawOneHanded
+        SystemKeyboardSettings.refreshSystemEmojiKeyboardState()
+    }
+
+    private static func resolveStoredOneHandedMode() -> String {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return "off"
+        }
+        #endif
+        let isHostApp = Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
+        let lastSeenStdKey = "crh.key.lastSeenStd.\(oneHandedModeKey)"
+        if isHostApp,
+           let stdVal = UserDefaults.standard.string(forKey: oneHandedModeKey),
+           (stdVal == "left" || stdVal == "right" || stdVal == "off") {
+            let lastSeenStd = defaults.string(forKey: lastSeenStdKey)
+            if lastSeenStd != stdVal {
+                // Settings.app (Root.plist) changed UserDefaults.standard since we last checked
+                defaults.set(stdVal, forKey: oneHandedModeKey)
+                defaults.set(stdVal, forKey: lastSeenStdKey)
+                defaults.set(stdVal, forKey: "crh.key.lastSynced.\(oneHandedModeKey)")
+                return stdVal
+            }
+            if let groupVal = defaults.string(forKey: oneHandedModeKey),
+               (groupVal == "left" || groupVal == "right" || groupVal == "off"),
+               groupVal != stdVal {
+                // Keyboard extension changed App Group value; sync it back to UserDefaults.standard
+                UserDefaults.standard.set(groupVal, forKey: oneHandedModeKey)
+                defaults.set(groupVal, forKey: lastSeenStdKey)
+                defaults.set(groupVal, forKey: "crh.key.lastSynced.\(oneHandedModeKey)")
+                return groupVal
+            }
+        }
+        if let groupVal = defaults.string(forKey: oneHandedModeKey),
+           (groupVal == "left" || groupVal == "right" || groupVal == "off") {
+            return groupVal
+        }
+        if let stdVal = UserDefaults.standard.string(forKey: oneHandedModeKey),
+           (stdVal == "left" || stdVal == "right" || stdVal == "off") {
+            defaults.set(stdVal, forKey: oneHandedModeKey)
+            if isHostApp {
+                defaults.set(stdVal, forKey: lastSeenStdKey)
+            }
+            return stdVal
+        }
+        for key in ["KeyboardBias", "OneHandedKeyboardMode"] {
+            if let raw = CFPreferencesCopyAppValue(key as CFString, kCFPreferencesAnyApplication) {
+                if let s = raw as? String {
+                    let lower = s.lowercased()
+                    if lower.contains("left") { return "left" }
+                    if lower.contains("right") { return "right" }
+                } else if let n = raw as? NSNumber {
+                    if n.intValue == 1 { return "left" }
+                    if n.intValue == 2 { return "right" }
+                }
+            }
+        }
+        return "off"
     }
 
     static var suggestionsEnabled: Bool {
@@ -54,10 +118,22 @@ enum KeyboardPreferences {
     }
 
     static var ukrainianCyrillicLayoutEnabled: Bool {
+        let bundleId = Bundle.main.bundleIdentifier
+        if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
+        if bundleId == AppConfiguration.cyrillicKeyboardBundleId {
+            let isUITesting = defaults.bool(forKey: "crh.key.test.isUITesting")
+            if !isUITesting && SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled {
+                return false
+            }
+        }
         if let cached = cachedUkrainianCyrillicLayout { return cached }
-        let val = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool ?? false
-        cachedUkrainianCyrillicLayout = val
-        return val
+        if let stored = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool {
+            cachedUkrainianCyrillicLayout = stored
+            return stored
+        }
+        let fallback = SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
+        cachedUkrainianCyrillicLayout = fallback
+        return fallback
     }
 
     static var statsEnabled: Bool {
@@ -73,6 +149,14 @@ enum KeyboardPreferences {
         let val = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
         cachedSplitKeyboard = val
         return val
+    }
+
+    static var oneHandedMode: String {
+        if UIDevice.current.userInterfaceIdiom == .pad { return "off" }
+        if let cached = cachedOneHandedMode { return cached }
+        let normalized = resolveStoredOneHandedMode()
+        cachedOneHandedMode = normalized
+        return normalized
     }
 
     static func setStatsEnabled(_ enabled: Bool) {
@@ -98,6 +182,7 @@ enum KeyboardPreferences {
     static func setCyrillicEnabled(_ enabled: Bool) {
         cachedCyrillic = enabled
         defaults.set(enabled, forKey: cyrillicKey)
+        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
     }
 
     static func setUkrainianCyrillicLayoutEnabled(_ enabled: Bool) {
@@ -126,12 +211,40 @@ enum KeyboardPreferences {
         )
     }
 
+    static func setOneHandedMode(_ mode: String) {
+        let normalized = (mode == "left" || mode == "right") ? mode : "off"
+        cachedOneHandedMode = normalized
+        defaults.set(normalized, forKey: oneHandedModeKey)
+        if Bundle.main.bundleIdentifier == AppConfiguration.appBundleId {
+            defaults.set(normalized, forKey: "crh.key.lastSeenStd.\(oneHandedModeKey)")
+            defaults.set(normalized, forKey: "crh.key.lastSynced.\(oneHandedModeKey)")
+            UserDefaults.standard.set(normalized, forKey: oneHandedModeKey)
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(oneHandedModeChangedNotification as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
+    }
+
     /// Only iPad has a place where the toggle matters (the абв/abc key); on iPhone the Cyrillic keyboard is always available,
     /// because iOS offers no way to hide it from the system list.
     static var cyrillicEnabled: Bool {
         if UIDevice.current.userInterfaceIdiom != .pad { return true }
         if let cached = cachedCyrillic { return cached }
-        let val = defaults.object(forKey: cyrillicKey) as? Bool ?? true
+        if let stored = defaults.object(forKey: cyrillicKey) as? Bool {
+            cachedCyrillic = stored
+            return stored
+        }
+        let val = ukrainianCyrillicLayoutEnabled
+            || SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
+            || SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
+            || true
         cachedCyrillic = val
         return val
     }
@@ -806,17 +919,18 @@ enum KeyboardUsageStats {
         do {
             var countStmt: OpaquePointer?
             defer { sqlite3_finalize(countStmt) }
-            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1;", -1, &countStmt, nil) == SQLITE_OK,
+            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1 AND word = 'Spotify';", -1, &countStmt, nil) == SQLITE_OK,
                sqlite3_step(countStmt) == SQLITE_ROW,
                sqlite3_column_int(countStmt, 0) > 0 {
                 return
             }
         }
+        sqlite3_exec(db, "DELETE FROM user_unigrams WHERE is_custom = 1;", nil, nil, nil)
         let demoWords = [
-            "qırımtatarca", "aqmescit", "bağçasaray", "kelever", "qarasuvbazar",
-            "kefe", "alupka", "gurzuf", "sudaq", "kezlev",
-            "çufut-qale", "salğır", "çatır-dağ", "ay-petri", "qırım",
-            "meraba", "sağoluñız", "bereket"
+            "Spotify", "Netflix", "Telegram", "WhatsApp", "GitHub",
+            "LinkedIn", "Coursera", "Duolingo", "Airbnb", "PayPal",
+            "Starlink", "OpenAI", "MacBook", "Bluetooth", "Grammarly",
+            "Revolut", "Figma", "Cloudflare"
         ]
         let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
         let now = Int64(Date().timeIntervalSince1970)
@@ -942,6 +1056,28 @@ struct TaraqTamgaLogoBadge: View {
         )
     }
 
+    /// Flat key silhouette around the Tamga (same geometry as the app icon, light and dark).
+    @ViewBuilder
+    private var keyCap: some View {
+        let box = size * 0.727
+        let corner = size * 0.164
+        let isDark = colorScheme == .dark
+        ZStack {
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(isDark ? Color(red: 33.0 / 255.0, green: 50.0 / 255.0, blue: 70.0 / 255.0) : Color.white)
+                .shadow(color: Color.black.opacity(isDark ? 0.35 : 0.14), radius: size * 0.02, x: 0, y: size * 0.015)
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .strokeBorder(
+                    isDark ? Color(red: 84.0 / 255.0, green: 108.0 / 255.0, blue: 138.0 / 255.0) : Color(red: 206.0 / 255.0, green: 209.0 / 255.0, blue: 228.0 / 255.0),
+                    lineWidth: max(0.5, size * 0.005)
+                )
+            SharedTaraqTamgaShape()
+                .fill(isDark ? Color.white : Color.black)
+                .frame(width: size * 0.469, height: size * 0.261)
+        }
+        .frame(width: box, height: box)
+    }
+
     private static let hasLogoAsset: Bool = (UIImage(named: "logo") != nil)
 
     private var unitSize: CGFloat {
@@ -957,13 +1093,10 @@ struct TaraqTamgaLogoBadge: View {
                     .antialiased(true)
                     .scaledToFit()
             } else {
-                let unit = unitSize
                 ZStack {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                         .fill(colorScheme == .dark ? darkGradient : lightGradient)
-                    SharedTaraqTamgaShape()
-                        .fill(colorScheme == .dark ? Color.white : Color.black)
-                        .frame(width: unit * 9.0, height: unit * 5.0)
+                    keyCap
                 }
             }
         }
@@ -1025,9 +1158,19 @@ enum AppConfiguration {
     static let appBundleId = "crh.key.keyboard"
     static let keyboardBundleId = "crh.key.keyboard.keyboard"
     static let cyrillicKeyboardBundleId = "crh.key.keyboard.KeyboardCyrillic"
+    static let ukrainianKeyboardBundleId = "crh.key.keyboard.KeyboardUkrainian"
+    static let ukrainianDeviceKeyboardBundleId = "crh.key.keyboard.pro"
     static let keyboardBundleIdPattern = "crh.key.keyboard*"
     static let fallbackDocumentID = UUID()
     static var lastValidDocumentIdentifier: UUID?
+
+    static func isUkrainianCyrillicKeyboardExtensionBundleId(_ bundleId: String?) -> Bool {
+        bundleId == ukrainianKeyboardBundleId || bundleId == ukrainianDeviceKeyboardBundleId
+    }
+
+    static func isCyrillicKeyboardExtensionBundleId(_ bundleId: String?) -> Bool {
+        bundleId == cyrillicKeyboardBundleId || isUkrainianCyrillicKeyboardExtensionBundleId(bundleId)
+    }
 
     static var appGroupContainerURL: URL? {
         guard let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupID),
@@ -1120,10 +1263,116 @@ enum SystemKeyboardSettings {
         return true
     }
 
-    /// Controls QırımKey's built-in emoji picker. Public language observations
-    /// cannot establish whether Apple's Emoji keyboard is installed; its
-    /// installation does not determine availability of this app-owned picker.
-    static var isEmojiKeyboardEnabled: Bool { isFeatureEnabled(.emojiPicker) }
+    private static var lastEmojiCheckTime: TimeInterval = 0
+    private static var cachedEmojiEnabled: Bool?
+    static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
+
+    /// Refreshes and persists whether the system Emoji keyboard is in the user's enabled keyboards list (`Settings → General → Keyboard → Keyboards`).
+    @discardableResult
+    static func refreshSystemEmojiKeyboardState() -> Bool {
+        if Bundle.main.bundleIdentifier == AppConfiguration.appBundleId {
+            let args = CommandLine.arguments
+            if args.contains("-qt_emoji_disabled") {
+                KeyboardPreferences.defaults.set(false, forKey: "crh.key.test.sysPref.EmojiEnabled")
+            } else if args.contains("-qt_emoji_enabled") || args.contains("-UITesting") {
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.EmojiEnabled")
+            } else {
+                KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.EmojiEnabled")
+            }
+        }
+        lastEmojiCheckTime = 0
+        cachedEmojiEnabled = nil
+        return isEmojiKeyboardEnabled
+    }
+
+    /// Checks whether the Emoji keyboard is enabled in the user's keyboard list (`Settings → General → Keyboard → Keyboards`)
+    /// using public APIs (`AppleKeyboards` in `NSGlobalDomain` and `UITextInputMode.activeInputModes`) cached across the App Group.
+    static var isEmojiKeyboardEnabled: Bool {
+        let args = CommandLine.arguments
+        if args.contains("-qt_emoji_disabled") {
+            return false
+        }
+        if args.contains("-qt_emoji_enabled") {
+            return true
+        }
+        if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.EmojiEnabled") as? Bool {
+            let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.uiTestingTimestamp")
+            if args.contains("-UITesting") || (ts > 0 && abs(Date().timeIntervalSince1970 - ts) < 120.0) {
+                return testOverride
+            }
+        }
+        if let explicitFeature = KeyboardPreferences.defaults.object(forKey: Feature.emojiPicker.preferenceKey) as? Bool,
+           !explicitFeature {
+            return false
+        }
+        let now = ProcessInfo.processInfo.systemUptime
+        if let cached = cachedEmojiEnabled, (now - lastEmojiCheckTime) < 2.0 {
+            return cached
+        }
+        lastEmojiCheckTime = now
+
+        let activeModes = UITextInputMode.activeInputModes
+        let isHostApp = Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
+        let hasActiveInputModesInfo = (isHostApp && !activeModes.isEmpty) || activeModes.count > 1
+        let activeModesHasEmoji = activeModes.contains { mode in
+            guard let lang = mode.primaryLanguage?.trimmingCharacters(in: .whitespacesAndNewlines), !lang.isEmpty else {
+                return false
+            }
+            return lang.localizedCaseInsensitiveContains("emoji")
+        }
+
+        let globalKeyboards = UserDefaults.standard.stringArray(forKey: "AppleKeyboards")
+            ?? (CFPreferencesCopyAppValue("AppleKeyboards" as CFString, kCFPreferencesAnyApplication) as? [String])
+        let hasGlobalKeyboardsInfo = (globalKeyboards?.isEmpty == false)
+        let globalKeyboardsHasEmoji = globalKeyboards?.contains { $0.localizedCaseInsensitiveContains("emoji") } ?? false
+
+        if hasActiveInputModesInfo || hasGlobalKeyboardsInfo {
+            let hasEmoji = activeModesHasEmoji || globalKeyboardsHasEmoji
+            cachedEmojiEnabled = hasEmoji
+            KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+            return hasEmoji
+        }
+
+        let fallback = KeyboardPreferences.defaults.object(forKey: cachedEmojiKeyboardEnabledKey) as? Bool ?? false
+        cachedEmojiEnabled = fallback
+        return fallback
+    }
+
+    /// Returns true when the Standard Cyrillic keyboard extension (`Къырымтатарджа`, `crh-Cyrl`) is enabled in iOS Settings.
+    static var isCyrillicKeyboardExtensionEnabled: Bool {
+        let bundleId = Bundle.main.bundleIdentifier
+        if bundleId == AppConfiguration.cyrillicKeyboardBundleId { return true }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        }
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        if languages.contains(where: { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }) {
+            return true
+        }
+        if !languages.isEmpty && bundleId == AppConfiguration.appBundleId {
+            return false
+        }
+        return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+    }
+
+    /// Returns true when the Ukrainian Cyrillic keyboard extension (`Кʼиримтатарджа`, `crh-Cyrl-UA`) is enabled in iOS Settings.
+    static var isUkrainianKeyboardExtensionEnabled: Bool {
+        let bundleId = Bundle.main.bundleIdentifier
+        if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+        }
+        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") }) {
+            return true
+        }
+        if !languages.isEmpty && bundleId == AppConfiguration.appBundleId {
+            return false
+        }
+        return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+    }
 }
 
 #if canImport(MetricKit) && os(iOS)
