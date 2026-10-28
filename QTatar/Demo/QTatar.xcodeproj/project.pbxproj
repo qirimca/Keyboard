@@ -713,7 +713,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -742,7 +742,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -771,7 +771,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -783,7 +783,6 @@
 				);
 				MARKETING_VERSION = 3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.keyboard.KeyboardUkrainian;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = crh.key.keyboard.pro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -801,7 +800,7 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -813,7 +812,6 @@
 				);
 				MARKETING_VERSION = 3.1;
 				PRODUCT_BUNDLE_IDENTIFIER = crh.key.keyboard.KeyboardUkrainian;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = crh.key.keyboard.pro;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -831,7 +829,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -859,7 +857,7 @@
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = M4LTTVHNN3;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -1011,7 +1009,7 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -1045,7 +1043,7 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
@@ -1076,7 +1074,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -1105,7 +1103,7 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";

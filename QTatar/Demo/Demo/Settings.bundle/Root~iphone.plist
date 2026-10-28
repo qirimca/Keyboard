@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>ApplicationGroupContainerIdentifier</key>
+	<string>group.crh.key.keyboardplus</string>
+	<key>StringsTable</key>
+	<string>Root</string>
+	<key>PreferenceSpecifiers</key>
+	<array>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Söz teklifleri</string>
+			<key>Key</key>
+			<string>crh.key.suggestionsEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>Title</key>
+			<string>Yañı sözlerni aqılda tutuv</string>
+			<key>Key</key>
+			<string>crh.key.wordLearningEnabled</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSGroupSpecifier</string>
+			<key>SupportedUserInterfaceIdioms</key>
+			<array>
+				<string>Phone</string>
+			</array>
+		</dict>
+		<dict>
+			<key>Type</key>
+			<string>PSMultiValueSpecifier</string>
+			<key>SupportedUserInterfaceIdioms</key>
+			<array>
+				<string>Phone</string>
+			</array>
+			<key>Title</key>
+			<string>Bir el rejimi</string>
+			<key>Key</key>
+			<string>crh.key.oneHandedMode</string>
+			<key>DefaultValue</key>
+			<string>off</string>
+			<key>Titles</key>
+			<array>
+				<string>Yoq</string>
+				<string>Sol</string>
+				<string>Sağ</string>
+			</array>
+			<key>Values</key>
+			<array>
+				<string>off</string>
+				<string>left</string>
+				<string>right</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

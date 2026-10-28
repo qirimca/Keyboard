@@ -7,7 +7,6 @@
 //
 
 import SwiftUI
-import StoreKit
 
 struct AboutView: View {
     @Binding var navigationPath: NavigationPath
@@ -149,9 +148,8 @@ private extension AboutView {
             .accessibilityIdentifier("about.rateButton")
             
             ShareLink(
-                item: AppStoreReviewManager.appStoreURL,
-                subject: Text("QırımKey"),
-                message: Text(About.about_first_key.localized)
+                item: "\(About.about_first_key.localized)\n\(AppStoreReviewManager.appStoreURL.absoluteString)",
+                subject: Text("QırımKey")
             ) {
                 cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
             }
