@@ -32,7 +32,7 @@ public extension CalloutContext {
         public var lastActionDate = Date()
         
         /// The minimum callout duration.
-        public var minimumVisibleDuration: TimeInterval = 0.05
+        public var minimumVisibleDuration: TimeInterval = 0.09
         
         
         /// Whether or not input callouts are enabled.
@@ -46,6 +46,12 @@ public extension CalloutContext {
         /// The frame of the currently active button.
         @Published
         public private(set) var buttonFrame: CGRect = .zero
+
+        /// Width of the named coordinate-space container.
+        public var containerWidth: CGFloat = 0
+
+        /// Available vertical space above the key grid inside UIInputViewController.view (e.g. suggestion toolbar height).
+        public var topAvailableSpace: CGFloat = 0
     }
 }
 

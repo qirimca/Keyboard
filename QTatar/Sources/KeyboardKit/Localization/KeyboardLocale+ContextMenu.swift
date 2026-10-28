@@ -183,7 +183,7 @@ public extension View {
     }()
 
     return VStack(spacing: 20) {
-        Text("🌐").keyboardLocaleContextMenu(
+        Image(systemName: "globe").keyboardLocaleContextMenu(
             for: context,
             tapAction: {}
         )

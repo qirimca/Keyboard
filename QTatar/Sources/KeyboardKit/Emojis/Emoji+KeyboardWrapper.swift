@@ -45,11 +45,26 @@ public extension Emoji {
             return config.rowHeight * 4
         }
         
+        private static let sharedAppGroupDefaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+
         private static let defaultFrequentEmojis: [Emoji] = [
             "❤️", "😂", "🥰", "🙏", "👍", "😭", "😊", "🔥", "😍", "😘",
             "👏", "🎉", "😁", "🥺", "😅", "✨", "🤝", "🇺🇦", "💙", "💛",
             "🤔", "😎", "🙌", "💪", "😉", "🤗", "🌹", "☀️", "🌙", "⭐️"
         ].map { Emoji($0) }
+
+        private static let cachedCategoryEmojis: [String: [Emoji]] = {
+            var dict: [String: [Emoji]] = [:]
+            for category in EmojiCategory.all {
+                let raw = category.emojisString.replacingOccurrences(of: "\n", with: "")
+                if !raw.isEmpty {
+                    dict[category.id] = raw.map { Emoji(String($0)) }
+                } else {
+                    dict[category.id] = category.emojis
+                }
+            }
+            return dict
+        }()
 
         private var activeEmojis: [Emoji] {
             if selectedCategory == .frequent {
@@ -57,8 +72,9 @@ public extension Emoji {
                 if !recents.isEmpty { return recents }
                 return Self.defaultFrequentEmojis
             }
-            let catEmojis = selectedCategory.emojis
-            if !catEmojis.isEmpty { return catEmojis }
+            if let cached = Self.cachedCategoryEmojis[selectedCategory.id], !cached.isEmpty {
+                return cached
+            }
             return selectedCategory.emojisString
                 .replacingOccurrences(of: "\n", with: "")
                 .map { Emoji(String($0)) }
@@ -80,7 +96,7 @@ public extension Emoji {
         }
 
         private var activeInterfaceLanguage: String {
-            if let saved = UserDefaults(suiteName: "group.crh.key.keyboardplus")?.string(forKey: "crh.key.interfaceLanguage"),
+            if let saved = Self.sharedAppGroupDefaults?.string(forKey: "crh.key.interfaceLanguage"),
                !saved.isEmpty {
                 return saved
             }
@@ -135,26 +151,36 @@ public extension Emoji {
                     .frame(height: headerH)
                     .accessibilityIdentifier("emoji.categoryHeader")
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHGrid(rows: rows, spacing: 6) {
-                        ForEach(Array(emojisList.enumerated()), id: \.offset) { _, emoji in
-                            Button {
-                                Emoji.frequentEmojiProvider.registerEmoji(emoji)
-                                actionHandler.handle(.press, on: .character(emoji.char))
-                                actionHandler.handle(.release, on: .character(emoji.char))
-                            } label: {
-                                Text(emoji.char)
-                                    .font(.system(size: emojiFontSize))
-                                    .frame(width: 36, height: cellHeight)
-                                    .contentShape(Rectangle())
+                ScrollViewReader { scrollProxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHGrid(rows: rows, spacing: 6) {
+                            ForEach(Array(emojisList.enumerated()), id: \.offset) { idx, emoji in
+                                Button {
+                                    Emoji.frequentEmojiProvider.registerEmoji(emoji)
+                                    actionHandler.handle(.press, on: .character(emoji.char))
+                                    actionHandler.handle(.release, on: .character(emoji.char))
+                                } label: {
+                                    Text(emoji.char)
+                                        .font(.system(size: emojiFontSize))
+                                        .frame(width: 36, height: cellHeight)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .id(idx)
                             }
-                            .buttonStyle(.plain)
+                        }
+                        .id(selectedCategory.id)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 2)
+                    }
+                    .onChange(of: selectedCategory) { _ in
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            scrollProxy.scrollTo(0, anchor: .leading)
                         }
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 2)
                 }
-                .id(selectedCategory.id)
                 .frame(maxWidth: .infinity)
                 .frame(height: gridAvailH)
                 .clipped()
@@ -173,27 +199,54 @@ public extension Emoji {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("key.alphabetic")
                     
-                    HStack(spacing: 0) {
-                        ForEach(categories, id: \.id) { category in
-                            let isSelected = category == selectedCategory
-                            Button {
-                                selectedCategory = category
-                            } label: {
-                                Image(systemName: categorySystemIcon(for: category))
-                                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
-                                    .foregroundColor(isSelected ? fgColor : fgColor.opacity(0.48))
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .background(
-                                        Capsule()
-                                            .fill(isSelected ? fgColor.opacity(0.14) : Color.clear)
-                                            .padding(.horizontal, 2)
-                                            .padding(.vertical, 4)
-                                    )
-                                    .contentShape(Rectangle())
+                    GeometryReader { barGeo in
+                        let catCount = max(1, categories.count)
+                        let slotWidth = barGeo.size.width / CGFloat(catCount)
+                        HStack(spacing: 0) {
+                            ForEach(categories, id: \.id) { category in
+                                let isSelected = category == selectedCategory
+                                Button {
+                                    if selectedCategory != category {
+                                        selectedCategory = category
+                                    }
+                                } label: {
+                                    Image(systemName: categorySystemIcon(for: category))
+                                        .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                                        .foregroundColor(isSelected ? fgColor : fgColor.opacity(0.48))
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .background(
+                                            Capsule()
+                                                .fill(isSelected ? fgColor.opacity(0.14) : Color.clear)
+                                                .padding(.horizontal, 2)
+                                                .padding(.vertical, 4)
+                                        )
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("emoji.category.\(category.id)")
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("emoji.category.\(category.id)")
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard slotWidth > 0, abs(value.translation.width) >= 4 else { return }
+                                    let idx = min(max(Int(value.location.x / slotWidth), 0), catCount - 1)
+                                    let target = categories[idx]
+                                    if selectedCategory != target {
+                                        selectedCategory = target
+                                    }
+                                }
+                                .onEnded { value in
+                                    guard slotWidth > 0, abs(value.translation.height) < 36 else { return }
+                                    let idx = min(max(Int(value.location.x / slotWidth), 0), catCount - 1)
+                                    let target = categories[idx]
+                                    if selectedCategory != target {
+                                        selectedCategory = target
+                                    }
+                                }
+                        )
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     

@@ -32,6 +32,7 @@ extension Keyboard {
         var body: some View {
             let _ = (
                 keyboardContext.renderVersion,
+                keyboardContext.oneHandedMode,
                 keyboardContext.locale.identifier,
                 keyboardContext.keyboardType,
                 keyboardContext.isKeyboardFloating,

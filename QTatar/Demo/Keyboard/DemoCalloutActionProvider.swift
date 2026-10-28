@@ -25,6 +25,20 @@ class DemoCalloutActionProvider: BaseCalloutActionProvider {
         if action == .custom(named: "url_domain") {
             return [".com", ".ua", ".org", ".net", ".edu"].map { .character($0) }
         }
+        if keyboardContext.deviceType == .phone,
+           !keyboardContext.isKeyboardFloating,
+           keyboardContext.interfaceOrientation.isPortrait {
+            switch action {
+            case .keyboardType(.emojis), .keyboardType(.numeric), .primary, .characterMargin(""):
+                return [
+                    .custom(named: "one_handed_left"),
+                    .custom(named: "one_handed_off"),
+                    .custom(named: "one_handed_right")
+                ]
+            default:
+                break
+            }
+        }
         return super.calloutActions(for: action)
     }
 

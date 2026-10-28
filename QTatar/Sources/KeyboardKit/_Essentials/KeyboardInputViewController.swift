@@ -35,6 +35,7 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
 
     open override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        viewWillRegisterSharedController()
         syncKeyboardChromeAppearance()
         viewWillSetupKeyboard()
         viewWillSyncWithContext()

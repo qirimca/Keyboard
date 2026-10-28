@@ -12,16 +12,16 @@
 "home_full_on_key" = "Повний доступ увімкнено";
 
 /* (No Comment) */
-"home_getkeyboard_key" = "Під час введення торкніться 🌐 або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку.";
+"home_getkeyboard_key" = "Під час введення торкніться {{globe}} або натисніть і утримуйте цей значок, а потім оберіть Qırımtatarca зі списку.";
 
 /* (No Comment) */
 "home_keyboard_hidden_key" = "Клавіатуру приховано";
 
 /* (No Comment) */
-"home_keyboard_off_key" = "Клавіатуру не ввімкнено";
+"home_keyboard_off_key" = "Латиницю не додано";
 
 /* (No Comment) */
-"home_keyboard_on_key" = "Клавіатуру ввімкнено";
+"home_keyboard_on_key" = "Латиниця додана";
 
 /* (No Comment) */
 "home_keyboard_visible_key" = "Клавіатуру показано";

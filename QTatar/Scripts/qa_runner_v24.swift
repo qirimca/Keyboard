@@ -173,15 +173,31 @@ struct QARunnerV24 {
         check(maxPhone.letterRowHeight == 56.0 && maxPhone.bottomRowHeight == 55.0 && maxPhone.visibleKeyHeight(forRowAt: 0) == 43.0 && maxPhone.visibleKeyHeight(forRowAt: 3) == 45.0 && maxPhone.totalKeyboardHeight == 263.0 && maxPhoneLand.totalKeyboardHeight == 200.0, "iPhone Plus/Pro Max (430–440 pt): Portrait 263 pt (43/45 pt keys), Landscape 200 pt")
 
         let ipadFloat = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: CGSize(width: 820, height: 1180), hasToolbar: true)
-        check(ipadFloat.letterRowHeight == 45.0 && ipadFloat.bottomRowHeight == 44.0 && ipadFloat.toolbarHeight == 38.0 && ipadFloat.totalKeyboardHeight == 227.0, "iPad Floating (all iPads): 45/44 pt rows + 38 pt toolbar + 10 pt insets = 227.0 pt")
+        let ipadFloatNoSugg = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: true, isPortrait: true, screenSize: CGSize(width: 820, height: 1180), hasToolbar: false)
+        check(ipadFloat.letterRowHeight == 54.0 && ipadFloat.bottomRowHeight == 54.0 && ipadFloat.visibleKeyHeight(forRowAt: 0) == 38.0 && ipadFloat.toolbarHeight == 45.0 && ipadFloat.totalKeyboardHeight == 271.0 && ipadFloatNoSugg.totalKeyboardHeight == 226.0, "iPad Floating (all iPads): 54/54 pt rows (38 pt=76 px keys) + 45 pt toolbar + 10 pt insets = 271.0 pt w/ sugg (669 px platter) & 226.0 pt w/o sugg (579 px platter)")
 
         let ipadMiniP = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 744, height: 1133), hasToolbar: true)
+        let ipadMiniPNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 744, height: 1133), hasToolbar: false)
         let ipadMiniL = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1133, height: 744), hasToolbar: true)
+        let ipadMiniLNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1133, height: 744), hasToolbar: false)
         let ipadAirP = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 820, height: 1180), hasToolbar: true)
+        let ipadAirPNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 820, height: 1180), hasToolbar: false)
         let ipadAirL = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1180, height: 820), hasToolbar: true)
+        let ipadAirLNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1180, height: 820), hasToolbar: false)
         let ipadPro13P = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 1024, height: 1366), hasToolbar: true)
+        let ipadPro13PNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: CGSize(width: 1024, height: 1366), hasToolbar: false)
         let ipadPro13L = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1366, height: 1024), hasToolbar: true)
-        check(ipadMiniP.totalKeyboardHeight == 266.0 && ipadMiniL.totalKeyboardHeight == 338.0 && ipadAirP.totalKeyboardHeight == 274.0 && ipadAirL.totalKeyboardHeight == 347.0 && ipadPro13P.totalKeyboardHeight == 296.0 && ipadPro13L.totalKeyboardHeight == 378.0, "iPad Docked tiers: Mini (266/338 pt), 10.5\" Air 3 & 11\" A16 (274/347 pt), 12.9\"/13\" Pro (296/378 pt)")
+        let ipadPro13LNo = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: 1366, height: 1024), hasToolbar: false)
+        check(
+            ipadMiniP.totalKeyboardHeight == 258.0 && ipadMiniPNo.totalKeyboardHeight == 258.0
+                && ipadMiniL.totalKeyboardHeight == 338.0 && ipadMiniLNo.totalKeyboardHeight == 338.0
+                && ipadAirP.totalKeyboardHeight == 258.0 && ipadAirPNo.totalKeyboardHeight == 258.0
+                && ipadAirL.totalKeyboardHeight == 343.0 && ipadAirLNo.totalKeyboardHeight == 343.0
+                && ipadPro13P.totalKeyboardHeight == 296.0 && ipadPro13PNo.totalKeyboardHeight == 296.0
+                && ipadPro13L.totalKeyboardHeight == 378.0 && ipadPro13LNo.totalKeyboardHeight == 378.0,
+            "iPad Docked tiers keep invariant totalKeyboardHeight across hasToolbar true/false: Mini (258/338 pt), 10.5\" Air 3 & 11\" A16 (258/343 pt), 12.9\"/13\" Pro (296/378 pt)"
+        )
+        check(layoutText.contains("let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey") && layoutText.contains(".percentage(0.12825)") && layoutText.contains(".percentage(0.2565)"), "DemoLayoutProvider always includes .nextKeyboard (key.globe) in iPad Floating mode with 0.12825/0.12825/0.487/0.2565 (0 px overflow)")
 
         // -----------------------------------------------------------------
         // 6. STRICT EXTENSION SCRIPT BINDING, OS-VERSION SYSTEM KEYS & SENTENCE POSITION CONTEXT
@@ -189,7 +205,7 @@ struct QARunnerV24 {
         print("\n--- [6] Strict Extension Script Binding, OS-Version System Keys & Sentence Position Context ---")
         check(kvcText.contains("func resetToExtensionDefaultScript()") && kvcText.contains("var defaultLocaleIdentifierForExtension: String") && kvcText.contains("guard state.keyboardContext.deviceType == .pad") && !kvcText.contains("self.advanceToNextInputMode()"), "KeyboardViewController strictly binds crh.key.Keyboard to crh-Latn and crh.key.KeyboardCyrillic to crh-Cyrl on iPhone, resets on viewWillAppear on iPad, and never invokes self.advanceToNextInputMode()")
         check(layoutText.contains("isCyrillicOnlyOnPhone") && layoutText.contains("isLatinOnlyOnPhone") && layoutText.contains("if isPadDevice {"), "DemoLayoutProvider skips CrimeanTatarIPadKeyboardLayoutProvider on iPhone and isolates Latin vs Cyrillic InputSets")
-        check(styleText.contains("static var usesClassicSystemKeyStyle: Bool") && styleText.contains("#available(iOS 26.0, *)") && styleText.contains("Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0)"), "DemoStyleProvider uses white Liquid Glass system keys on iOS 26+ and opaque classic gray (#ACB3BE) on pre-iOS 26")
+        check(styleText.contains("static var usesClassicSystemKeyStyle: Bool") && styleText.contains("#available(iOS 26.0, *)") && styleText.contains("Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0)") && styleText.contains("let primaryLabelColor = isDark ? Color.white : Color.black") && styleText.contains("if Self.usesClassicSystemKeyStyle && !keyboardContext.isKeyboardFloating"), "DemoStyleProvider uses white Liquid Glass system keys on iOS 26+, opaque classic gray (#ACB3BE) on pre-iOS 26, 1.0 primaryLabelColor opacity, and preserves 10 pt cornerRadius in iPad Floating mode")
 
         let sliceAfterPeriod = String(SuggestionsDataBaseManager.currentSentenceSlice(in: "Men baram. "))
         let sliceAfterClosingPeriod = String(SuggestionsDataBaseManager.currentSentenceSlice(in: "Sağ ol. "))
@@ -302,6 +318,65 @@ struct QARunnerV24 {
         check(
             buttonGesturesText.contains("localDragDistance >= 10.0") && kvcText.contains("pan.cancelsTouchesInView = false"),
             "Floating keyboard 300 CPM 2-key rollover protection active in Gestures+KeyboardButtonGestures and KeyboardViewController"
+        )
+        let inputCalloutText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Callouts/Callouts+InputCallout.swift", encoding: .utf8)) ?? ""
+        let actionCalloutText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Callouts/Callouts+ActionCallout.swift", encoding: .utf8)) ?? ""
+        let actionContextText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Callouts/CalloutContext+ActionContext.swift", encoding: .utf8)) ?? ""
+        let curveText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Callouts/Callouts+Curve.swift", encoding: .utf8)) ?? ""
+        let buttonAreaText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Callouts/Callouts+ButtonArea.swift", encoding: .utf8)) ?? ""
+        let systemKeyboardText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/_Essentials/SystemKeyboard.swift", encoding: .utf8)) ?? ""
+        let calloutProviderText = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Keyboard/DemoCalloutActionProvider.swift", encoding: .utf8)) ?? ""
+        let styleProviderText = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Keyboard/DemoStyleProvider.swift", encoding: .utf8)) ?? ""
+        let actionsText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Actions/KeyboardAction+Actions.swift", encoding: .utf8)) ?? ""
+        check(
+            !inputCalloutText.contains("minCenterY")
+                && !actionCalloutText.contains("minCenterY")
+                && inputCalloutText.contains("bottomLeft: 0")
+                && inputCalloutText.contains("leftCurveWidth: leftExpand")
+                && buttonAreaText.contains("resolvedLeftCurveWidth")
+                && curveText.contains("rect.minY + rect.height * 0.45")
+                && curveText.contains("rect.maxY - rect.height * 0.45")
+                && styleProviderText.contains("Color(red: 98.0 / 255.0, green: 98.0 / 255.0, blue: 102.0 / 255.0)")
+                && styleProviderText.contains("CGSize(width: 45.0, height: 52.0)"),
+            "InputCallout & ActionCallout remove minCenterY downward clamping on Row 0, use S-curve vertical tangents, 100% opaque callout background (no ghost glyph bleed), 52pt/48pt height, and asymmetric edge-key curves"
+        )
+        check(
+            systemKeyboardText.contains("effectiveOneHandedMode")
+                && systemKeyboardText.contains("oneHanded.restore")
+                && calloutProviderText.contains("one_handed_left")
+                && actionCalloutText.contains("keyboard.onehanded.left")
+                && actionContextText.contains("deltaCells")
+                && actionsText.contains("case .keyboardType(.emojis): { $0?.setKeyboardType(.emojis) }")
+                && settingsRootPlistText.contains("crh.key.oneHandedMode"),
+            "iPhone Portrait One-Handed Keyboard mode (left, right, off) + side-gutter restore chevron + Emoji/123/Return long-press & Settings.bundle MultiValue specifier active"
+        )
+        let demoActionText = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Keyboard/DemoActionHandler.swift", encoding: .utf8)) ?? ""
+        check(
+            kvcText.contains("guard UIDevice.current.userInterfaceIdiom == .pad")
+                && kvcText.contains("updateTwoFingerTrackpadEligibility()")
+                && kvcText.contains("!state.keyboardContext.isKeyboardFloating")
+                && kvcText.contains("isTwoFingerTrackpadActive")
+                && demoActionText.contains("cancelActiveKeyGesturesForTrackpad()")
+                && demoActionText.contains("markTwoFingerTrackpadEnded()")
+                && buttonGesturesText.contains("abs(existing.origin.x - frame.origin.x) < 0.5"),
+            "Two-finger trackpad gesture recognizer is strictly gated to full-size iPad Docked mode only, suppresses underlying key release/flick on trackpad activation, and uses O(1) registerKeyFrame fast-return"
+        )
+        let emojiWrapperText = (try? String(contentsOfFile: repoRoot + "/QTatar/Sources/KeyboardKit/Emojis/Emoji+KeyboardWrapper.swift", encoding: .utf8)) ?? ""
+        let ukInterfaceStrings = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Demo/Utilities/Localization/uk.lproj/Interface.strings", encoding: .utf8)) ?? ""
+        let enInterfaceStrings = (try? String(contentsOfFile: repoRoot + "/QTatar/Demo/Demo/Utilities/Localization/en.lproj/Interface.strings", encoding: .utf8)) ?? ""
+        check(
+            homeViewText.contains("let keyboardAdded = isPrimaryKeyboardAdded || isCyrillicKeyboardAdded || isUkrainianKeyboardAdded")
+                && ukInterfaceStrings.contains("«Параметри» → «Програми» → QırımKey → «Клавіатури» → «Дозволити повний доступ»")
+                && enInterfaceStrings.contains("“Settings” → “Apps” → QırımKey → “Keyboards” → “Allow Full Access”")
+                && systemKeyboardText.contains("restoreFullWidthFromOneHanded")
+                && emojiWrapperText.contains("cachedCategoryEmojis")
+                && emojiWrapperText.contains(".id(selectedCategory.id)")
+                && buttonGesturesText.contains("isMultiTouchSuppressed")
+                && inputCalloutText.contains("modernPillCallout")
+                && appConfigText.contains("KeyboardBias")
+                && settingsRootPlistText.contains("PSMultiValueSpecifier")
+                && FileManager.default.fileExists(atPath: repoRoot + "/QTatar/Demo/Demo/Settings.bundle/ru.lproj/Root.strings"),
+            "Tasks 19.58-19.64: multi-keyboard sandbox detection, Full Access Settings path hint, One-Handed callout & restore responsiveness, Emoji category instant switch, single-finger swipe multi-touch suppression, modern pill InputCallout, and Settings.bundle One-Handed sync (en/uk/crh/ru)"
         )
 
         print("\n=================================================================")

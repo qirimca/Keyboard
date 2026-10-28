@@ -126,6 +126,15 @@ public extension View {
                 keyboardContext: keyboardContext
             )
         )
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onChange(of: geometry.size.width) { width in
+                        calloutContext.containerWidth = width
+                    }
+            }
+        }
         .coordinateSpace(name: calloutContext.coordinateSpace)
     }
     
@@ -142,6 +151,15 @@ public extension View {
                 style: style
             )
         )
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onChange(of: geometry.size.width) { width in
+                        calloutContext.containerWidth = width
+                    }
+            }
+        }
         .coordinateSpace(name: calloutContext.coordinateSpace)
     }
 }

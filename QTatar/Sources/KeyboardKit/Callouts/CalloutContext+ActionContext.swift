@@ -53,6 +53,9 @@ public extension CalloutContext {
 
         /// Width of the named coordinate-space container, including floating keyboards.
         public var containerWidth: CGFloat = 0
+
+        /// Available vertical space above the key grid inside UIInputViewController.view (e.g. suggestion toolbar height).
+        public var topAvailableSpace: CGFloat = 0
         
         /// The currently selected action index.
         @Published
@@ -126,6 +129,15 @@ public extension CalloutContext.ActionContext {
         if Self.isMenuCalloutActions(actions) {
             self.actions = actions
             self.selectedIndex = actions.isEmpty ? -1 : 0
+        } else if Self.isOneHandedCalloutActions(actions) {
+            self.actions = actions
+            let suite = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+            let mode = suite?.string(forKey: "crh.key.oneHandedMode") ?? "off"
+            switch mode {
+            case "left": self.selectedIndex = 0
+            case "right": self.selectedIndex = min(2, max(0, actions.count - 1))
+            default: self.selectedIndex = min(1, max(0, actions.count - 1))
+            }
         } else {
             self.actions = isLeading ? actions : actions.reversed()
             self.selectedIndex = startIndex
@@ -189,6 +201,41 @@ public extension CalloutContext.ActionContext {
             self.selectedIndex = newIndex
             return
         }
+        if Self.isOneHandedCalloutActions(actions) {
+            guard abs(value.width) > 4 || value.height < -8 || (location?.y ?? 0) < -4 else { return }
+            let limitedWidth = min(buttonFrame.width, Callouts.ActionCalloutStyle.standard.maxButtonSize.width)
+            let cellPitch: CGFloat = max(limitedWidth * 1.12, 46)
+            let clamped: Int
+            if let loc = location {
+                if isLeading {
+                    if loc.x < cellPitch {
+                        clamped = 0
+                    } else if loc.x < cellPitch * 2.0 {
+                        clamped = min(1, actions.count - 1)
+                    } else {
+                        clamped = actions.count - 1
+                    }
+                } else {
+                    let distFromRight = buttonFrame.width - loc.x
+                    if distFromRight < cellPitch {
+                        clamped = actions.count - 1
+                    } else if distFromRight < cellPitch * 2.0 {
+                        clamped = max(0, actions.count - 2)
+                    } else {
+                        clamped = 0
+                    }
+                }
+            } else {
+                let deltaCells = Int((value.width / cellPitch).rounded())
+                let baseIndex = isLeading ? 0 : actions.count - 1
+                clamped = min(max(baseIndex + deltaCells, 0), actions.count - 1)
+            }
+            if self.selectedIndex != clamped {
+                triggerHapticFeedbackForSelectionChange()
+            }
+            self.selectedIndex = clamped
+            return
+        }
         guard shouldUpdateSelection(for: value) else { return }
         let translation = value.width
         let standardStyle = Callouts.ActionCalloutStyle.standard
@@ -217,12 +264,6 @@ public extension CalloutContext.ActionContext {
             tapAction: { _ in }
         )
     }
-}
-
-
-// MARK: - Private functionality
-
-private extension CalloutContext.ActionContext {
 
     static func isMenuCalloutActions(_ actions: [KeyboardAction]) -> Bool {
         actions.contains {
@@ -232,6 +273,21 @@ private extension CalloutContext.ActionContext {
             return false
         }
     }
+
+    static func isOneHandedCalloutActions(_ actions: [KeyboardAction]) -> Bool {
+        actions.contains {
+            if case .custom(let name) = $0 {
+                return name == "one_handed_left" || name == "one_handed_right" || name == "one_handed_off"
+            }
+            return false
+        }
+    }
+}
+
+
+// MARK: - Private functionality
+
+private extension CalloutContext.ActionContext {
     
     var startIndex: Int {
         isLeading ? 0 : actions.count - 1
@@ -243,8 +299,19 @@ private extension CalloutContext.ActionContext {
     
     func getAlignment(for geo: GeometryProxy) -> HorizontalAlignment {
         #if os(iOS)
-        let width = containerWidth > 0 ? containerWidth : UIScreen.main.bounds.size.width
-        let isTrailing = buttonFrame.midX > width / 2
+        if containerWidth > 0 {
+            return (buttonFrame.midX > containerWidth / 2) ? .trailing : .leading
+        }
+        let width = UIScreen.main.bounds.size.width
+        let suite = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+        let mode = suite?.string(forKey: "crh.key.oneHandedMode") ?? "off"
+        let midpoint: CGFloat
+        switch mode {
+        case "left": midpoint = width * 0.41
+        case "right": midpoint = width * 0.59
+        default: midpoint = width * 0.5
+        }
+        let isTrailing = buttonFrame.midX > midpoint
         return isTrailing ? .trailing : .leading
         #else
         return .leading
@@ -252,7 +319,7 @@ private extension CalloutContext.ActionContext {
     }
     
     func shouldReset(for dragTranslation: CGSize) -> Bool {
-        if Self.isMenuCalloutActions(actions) {
+        if Self.isMenuCalloutActions(actions) || Self.isOneHandedCalloutActions(actions) {
             return dragTranslation.height > buttonFrame.height * 1.5
         }
         return dragTranslation.height > buttonFrame.height
@@ -260,6 +327,9 @@ private extension CalloutContext.ActionContext {
     
     func shouldUpdateSelection(for dragTranslation: CGSize) -> Bool {
         let translation = dragTranslation.width
+        if Self.isOneHandedCalloutActions(actions) {
+            return abs(translation) >= 6
+        }
         if translation == 0 { return true }
         return isLeading ? translation > 0 : translation < 0
     }

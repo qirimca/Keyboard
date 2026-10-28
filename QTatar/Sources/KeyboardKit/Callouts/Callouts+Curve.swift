@@ -20,10 +20,13 @@ public extension Callouts {
             guard rect.isValidForPath else { return path }
             let curveStart = CGPoint(x: rect.minX, y: rect.maxY)
             let curveStop  = CGPoint(x: rect.maxX, y: rect.minY)
-            let corner = CGPoint(x: rect.minY, y: rect.minY)
+            let corner = CGPoint(x: rect.minX, y: rect.minY)
             path.move(to: curveStart)
-            path.addCurve(to: curveStop, control1: .init(x: rect.minX, y: rect.maxY - rect.minY), control2: .zero)
-            path.addLine(to: curveStop)
+            path.addCurve(
+                to: curveStop,
+                control1: CGPoint(x: rect.minX, y: rect.minY + rect.height * 0.45),
+                control2: CGPoint(x: rect.maxX, y: rect.maxY - rect.height * 0.45)
+            )
             path.addLine(to: corner)
             path.addLine(to: curveStart)
             return path

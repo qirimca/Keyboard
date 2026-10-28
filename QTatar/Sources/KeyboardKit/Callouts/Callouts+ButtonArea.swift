@@ -19,22 +19,32 @@ public extension Callouts {
         /// - Parameters:
         ///   - frame: The button area frame.
         public init(
-            frame: CGRect
+            frame: CGRect,
+            leftCurveWidth: CGFloat? = nil,
+            rightCurveWidth: CGFloat? = nil
         ) {
             self.frame = frame
+            self.leftCurveWidth = leftCurveWidth
+            self.rightCurveWidth = rightCurveWidth
             self.initStyle = nil
         }
         
         private let frame: CGRect
+        private let leftCurveWidth: CGFloat?
+        private let rightCurveWidth: CGFloat?
         
         @Environment(\.calloutStyle)
         private var envStyle
         
         public var body: some View {
             HStack(alignment: .top, spacing: 0) {
-                calloutCurve.rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                if resolvedLeftCurveWidth > 0 {
+                    leftCalloutCurve.rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                }
                 buttonBody
-                calloutCurve
+                if resolvedRightCurveWidth > 0 {
+                    rightCalloutCurve
+                }
             }
         }
         
@@ -46,6 +56,8 @@ public extension Callouts {
             style: Callouts.CalloutStyle = .standard
         ) {
             self.frame = frame
+            self.leftCurveWidth = nil
+            self.rightCurveWidth = nil
             self.initStyle = style
         }
         
@@ -60,6 +72,8 @@ private extension Callouts.ButtonArea {
     var backgroundColor: Color { style.backgroundColor }
     var cornerRadius: CGFloat { style.buttonCornerRadius }
     var curveSize: CGSize { style.curveSize }
+    var resolvedLeftCurveWidth: CGFloat { max(0, leftCurveWidth ?? curveSize.width) }
+    var resolvedRightCurveWidth: CGFloat { max(0, rightCurveWidth ?? curveSize.width) }
     
     var buttonBody: some View {
         CustomRoundedRectangle(bottomLeft: cornerRadius, bottomRight: cornerRadius)
@@ -67,9 +81,15 @@ private extension Callouts.ButtonArea {
             .frame(width: frame.size.width, height: frame.size.height)
     }
     
-    var calloutCurve: some View {
+    var leftCalloutCurve: some View {
         Callouts.Curve()
-            .frame(width: curveSize.width, height: curveSize.height)
+            .frame(width: resolvedLeftCurveWidth, height: curveSize.height)
+            .foregroundColor(backgroundColor)
+    }
+
+    var rightCalloutCurve: some View {
+        Callouts.Curve()
+            .frame(width: resolvedRightCurveWidth, height: curveSize.height)
             .foregroundColor(backgroundColor)
     }
 }

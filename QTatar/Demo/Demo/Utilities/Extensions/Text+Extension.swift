@@ -13,14 +13,17 @@ import UIKit
 /// Keep rendering and measurement on the same font when GeneralSans lacks the script.
 enum InterfaceFont {
     static func usesSystem(for text: String = "") -> Bool {
-        KeyboardPreferences.interfaceLanguage == "uk"
-            || text.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) }
+        true
+    }
+
+    static func brandFont(_ name: String = "GeneralSans-Semibold", size: CGFloat) -> Font {
+        let weight: UIFont.Weight = name.contains("Semibold") ? .semibold : name.contains("Medium") ? .medium : .regular
+        return Font(UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight))
     }
 
     static func uiFont(_ name: String, size: CGFloat, text: String = "") -> UIFont {
         let weight: UIFont.Weight = name.contains("Semibold") ? .semibold : name.contains("Medium") ? .medium : .regular
-        if usesSystem(for: text) { return .systemFont(ofSize: size, weight: weight) }
-        return UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight)
+        return .systemFont(ofSize: size, weight: weight)
     }
 
     static func font(_ name: String, size: CGFloat, text: String = "") -> Font {
@@ -30,11 +33,11 @@ enum InterfaceFont {
 
 typealias TextFonts = Text
 
-private let globeEmojiSymbol = "🌐"
+private let globeTokenSymbol = "{{globe}}"
 
 extension TextFonts {
     
-    /// Renders localized copy with GeneralSans while replacing 🌐 with the system globe icon.
+    /// Renders localized copy with GeneralSans while replacing {{globe}} with the system globe icon.
     static func customFontText(
         _ string: String,
         fontName: String,
@@ -42,7 +45,7 @@ extension TextFonts {
         color: Color = Color(.label)
     ) -> Text {
         let fontSize = Device.iPad ? size + 4 : size
-        let segments = string.components(separatedBy: globeEmojiSymbol)
+        let segments = string.components(separatedBy: globeTokenSymbol)
         
         guard segments.count > 1 else {
             return Text(string)

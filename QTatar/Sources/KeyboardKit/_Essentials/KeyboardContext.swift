@@ -137,6 +137,50 @@ public class KeyboardContext: ObservableObject {
     /// the preferred keyboard type no longer forces the numeric page back.
     public var hasChosenLettersInNumericField = false
 
+    private static let sharedAppGroupDefaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+
+    /// The active iPhone Portrait one-handed mode ("off", "left", "right").
+    @Published
+    public var oneHandedMode: String = {
+        let raw = KeyboardContext.sharedAppGroupDefaults?.string(forKey: "crh.key.oneHandedMode")
+            ?? UserDefaults.standard.string(forKey: "crh.key.oneHandedMode")
+            ?? "off"
+        return (raw == "left" || raw == "right") ? raw : "off"
+    }()
+
+    /// Effective one-handed mode (active only on iPhone in Portrait orientation).
+    public var effectiveOneHandedMode: String {
+        guard deviceType == .phone, !isKeyboardFloating, interfaceOrientation.isPortrait else { return "off" }
+        return (oneHandedMode == "left" || oneHandedMode == "right") ? oneHandedMode : "off"
+    }
+
+    /// Persist and publish an updated one-handed mode ("off", "left", "right").
+    public func setOneHandedMode(_ mode: String) {
+        let normalized = (mode == "left" || mode == "right") ? mode : "off"
+        if oneHandedMode != normalized {
+            oneHandedMode = normalized
+        }
+        renderVersion &+= 1
+        Self.sharedAppGroupDefaults?.set(normalized, forKey: "crh.key.oneHandedMode")
+        if Bundle.main.bundleIdentifier == "crh.key.keyboard" {
+            Self.sharedAppGroupDefaults?.set(normalized, forKey: "crh.key.lastSeenStd.crh.key.oneHandedMode")
+            Self.sharedAppGroupDefaults?.set(normalized, forKey: "crh.key.lastSynced.crh.key.oneHandedMode")
+            UserDefaults.standard.set(normalized, forKey: "crh.key.oneHandedMode")
+        }
+        #if os(iOS)
+        DispatchQueue.global(qos: .userInitiated).async {
+            CFPreferencesAppSynchronize("group.crh.key.keyboardplus" as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName("crh.key.oneHandedModeDidChange" as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
+        #endif
+    }
+
     /// Incremented whenever non-published traits or shared preferences change so SwiftUI rebuilds the keyboard layout immediately.
     @Published
     public var renderVersion: Int = 0

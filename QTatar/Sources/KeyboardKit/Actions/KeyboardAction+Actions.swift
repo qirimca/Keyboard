@@ -58,6 +58,7 @@ public extension KeyboardAction {
         switch self {
         case .backspace: { $0?.deleteBackward() }
         case .capsLock: { $0?.setKeyboardType(.alphabetic(.capsLocked)) }
+        case .keyboardType(.emojis): nil
         case .keyboardType(let type): { $0?.setKeyboardType(type) }
         default: nil
         }
@@ -72,6 +73,7 @@ public extension KeyboardAction {
         case .dictation: { $0?.performDictation() }
         case .dismissKeyboard: { $0?.dismissKeyboard() }
         case .emoji(let emoji): { $0?.insertText(emoji.char) }
+        case .keyboardType(.emojis): { $0?.setKeyboardType(.emojis) }
         case .moveCursorBackward: { $0?.adjustTextPosition(by: -1) }
         case .moveCursorForward: { $0?.adjustTextPosition(by: 1) }
         case .nextLocale: { $0?.selectNextLocale() }

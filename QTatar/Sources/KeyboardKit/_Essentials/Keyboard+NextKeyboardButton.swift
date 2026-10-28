@@ -67,22 +67,28 @@ private struct NextKeyboardButtonOverlay: UIViewRepresentable {
         controller: UIInputViewController?,
         throwAssertionForMissingController: Bool
     ) {
-        button = UIButton()
+        self.controller = controller
         if controller == nil && throwAssertionForMissingController && !ProcessInfo.isSwiftUIPreview { assertionFailure("Input view controller is nil") }
-        controller?.setupNextKeyboardButton(button)
     }
 
-    let button: UIButton
+    weak var controller: UIInputViewController?
 
-    func makeUIView(context: Context) -> UIButton { button }
+    func makeUIView(context: Context) -> UIButton {
+        let button = UIButton()
+        (controller ?? Keyboard.NextKeyboardController.shared)?.setupNextKeyboardButton(button)
+        return button
+    }
 
-    func updateUIView(_ uiView: UIButton, context: Context) {}
+    func updateUIView(_ uiView: UIButton, context: Context) {
+        (controller ?? Keyboard.NextKeyboardController.shared)?.setupNextKeyboardButton(uiView)
+    }
 }
 
 private extension UIInputViewController {
 
     func setupNextKeyboardButton(_ button: UIButton) {
         let action = #selector(handleInputModeList(from:with:))
+        button.removeTarget(nil, action: action, for: .allTouchEvents)
         button.addTarget(self, action: action, for: .allTouchEvents)
     }
 }

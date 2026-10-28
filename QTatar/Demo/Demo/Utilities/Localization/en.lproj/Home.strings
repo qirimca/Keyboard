@@ -12,16 +12,16 @@
 "home_full_on_key" = "Full Access Enabled";
 
 /* (No Comment) */
-"home_getkeyboard_key" = "While typing, tap or touch and hold 🌐, then choose Qırımtatarca from the list.";
+"home_getkeyboard_key" = "While typing, tap or touch and hold {{globe}}, then choose Qırımtatarca from the list.";
 
 /* (No Comment) */
 "home_keyboard_hidden_key" = "Keyboard Hidden";
 
 /* (No Comment) */
-"home_keyboard_off_key" = "Keyboard Not Enabled";
+"home_keyboard_off_key" = "Latin Keyboard Not Added";
 
 /* (No Comment) */
-"home_keyboard_on_key" = "Keyboard Enabled";
+"home_keyboard_on_key" = "Latin Keyboard Added";
 
 /* (No Comment) */
 "home_keyboard_visible_key" = "Keyboard Visible";

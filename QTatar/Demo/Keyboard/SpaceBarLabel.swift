@@ -140,16 +140,11 @@ final class BreathingTamgaUIView: UIView {
     private var minOpacity: Float = 0.25
     private var maxOpacity: Float = 0.52
 
-    private var isActivelyUITesting: Bool {
-        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || CommandLine.arguments.contains("-UITesting") {
+    private var isAllowSpaceBarBreathing: Bool {
+        if CommandLine.arguments.contains("-qt_enable_animations") {
             return true
         }
-        guard KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") else {
-            return false
-        }
-        let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.overrideTimestamp")
-        return ts > 0 && abs(Date().timeIntervalSince1970 - ts) < 60.0
+        return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.allowSpaceBarBreathing")
     }
 
     override init(frame: CGRect) {
@@ -232,7 +227,7 @@ final class BreathingTamgaUIView: UIView {
     }
 
     private func startContinuousBreathIfNeeded() {
-        if isActivelyUITesting || UIAccessibility.isReduceMotionEnabled {
+        if UIAccessibility.isReduceMotionEnabled {
             exertionTimer?.invalidate()
             exertionTimer = nil
             idleStopWorkItem?.cancel()
@@ -327,14 +322,16 @@ final class BreathingTamgaUIView: UIView {
     }
 
     private func registerCharacterExertion() {
-        guard !isActivelyUITesting else { return }
         idleStopWorkItem?.cancel()
         idleStopWorkItem = nil
         startContinuousBreathIfNeeded()
         // Calibrated per-keystroke impulse (+0.055) with 0.90 decay per 0.2s tick:
         // scales proportionally across human typing speeds (15 WPM -> 1.38x, 25 WPM -> 1.63x,
         // 40 WPM -> 2.01x, 55 WPM -> 2.39x, reaching max 1.0 exertion / 2.90x at 75 WPM).
-        targetExertion = min(1.0, targetExertion + 0.055)
+        // When recording automated preview videos (-qt_enable_animations), compensate for XCUITest
+        // per-key IPC latency (~0.35s/key) so typing a word reaches full human exertion.
+        let impulse: CGFloat = isAllowSpaceBarBreathing ? 0.22 : 0.055
+        targetExertion = min(1.0, targetExertion + impulse)
         guard exertionTimer == nil else { return }
         let timer = Timer(timeInterval: 0.2, repeats: true) { [weak self] _ in
             self?.stepExertion()
@@ -345,8 +342,9 @@ final class BreathingTamgaUIView: UIView {
     }
 
     private func stepExertion() {
+        let decay: CGFloat = isAllowSpaceBarBreathing ? 0.93 : 0.90
         currentExertion += (targetExertion - currentExertion) * 0.28
-        targetExertion *= 0.90
+        targetExertion *= decay
         if currentExertion < 0.005 && targetExertion < 0.005 {
             currentExertion = 0
             targetExertion = 0

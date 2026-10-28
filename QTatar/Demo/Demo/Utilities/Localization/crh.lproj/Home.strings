@@ -12,16 +12,16 @@
 "home_full_on_key" = "Tam irişim berildi";
 
 /* (No Comment) */
-"home_getkeyboard_key" = "Yazğanda 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız.";
+"home_getkeyboard_key" = "Yazğanda {{globe}} işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız.";
 
 /* (No Comment) */
 "home_keyboard_hidden_key" = "Klaviatura körünmey";
 
 /* (No Comment) */
-"home_keyboard_off_key" = "Klaviatura qoşulmağan";
+"home_keyboard_off_key" = "Latin klaviaturası qoşulmağan";
 
 /* (No Comment) */
-"home_keyboard_on_key" = "Klaviatura qoşulğan";
+"home_keyboard_on_key" = "Latin klaviaturası qoşulğan";
 
 /* (No Comment) */
 "home_keyboard_visible_key" = "Klaviatura peyda oldı";

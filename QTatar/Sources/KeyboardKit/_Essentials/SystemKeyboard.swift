@@ -206,10 +206,6 @@ public struct SystemKeyboard<
             .overlay(emojiKeyboard(), alignment: .bottom)
             .foregroundColor(styleProvider.foregroundColor)
             .background(renderBackground ? styleProvider.backgroundStyle : nil)
-            .keyboardCalloutContainer(
-                calloutContext: calloutContext,
-                keyboardContext: keyboardContext
-            )
             .actionCalloutStyle(actionCalloutStyle)
             .inputCalloutStyle(inputCalloutStyle)
     }
@@ -235,6 +231,7 @@ private extension SystemKeyboard {
 private extension SystemKeyboard {
     
     var geoContent: some View {
+        let _ = (keyboardContext.oneHandedMode, keyboardContext.renderVersion)
         let insets = styleProvider.keyboardEdgeInsets
         let height = layout.itemRows.indices.reduce(CGFloat.zero) { $0 + rowHeight(forRowAt: $1) }
             + insets.top + insets.bottom + toolbarHeight()
@@ -262,13 +259,78 @@ private extension SystemKeyboard {
     }
     
     func bodyContent(for size: CGSize) -> some View {
+        let mode = keyboardContext.effectiveOneHandedMode
+        let isOneHanded = (mode == "left" || mode == "right") && size.width > 0
+        let gridWidth = isOneHanded ? round(size.width * 0.82) : size.width
+        let gutterWidth = max(0, size.width - gridWidth)
+        let gridHeight = max(0, size.height - toolbarHeight())
+        let gridSize = CGSize(width: gridWidth, height: size.height)
         return VStack(spacing: 0) {
             toolbar()
                 .frame(width: size.width)
-            systemKeyboard(for: size)
+            HStack(spacing: 0) {
+                if isOneHanded && mode == "right" {
+                    oneHandedGutterButton(isLeftMode: false, width: gutterWidth, height: gridHeight)
+                        .zIndex(25)
+                }
+                systemKeyboard(for: gridSize)
+                    .frame(width: gridWidth)
+                    .zIndex(10)
+                if isOneHanded && mode == "left" {
+                    oneHandedGutterButton(isLeftMode: true, width: gutterWidth, height: gridHeight)
+                        .zIndex(25)
+                }
+            }
+            .id(mode)
+            .frame(width: size.width)
+            .zIndex(10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .clipShape(RoundedRectangle(cornerRadius: keyboardContext.isKeyboardFloating ? 13 : 0, style: .continuous))
+    }
+
+    private func restoreFullWidthFromOneHanded() {
+        guard keyboardContext.effectiveOneHandedMode != "off" else { return }
+        #if os(iOS) || os(macOS) || os(watchOS)
+        SwipeTypingState.shared.clearKeyFrames()
+        #endif
+        if keyboardContext.oneHandedMode != "off" {
+            keyboardContext.oneHandedMode = "off"
+        }
+        keyboardContext.setOneHandedMode("off")
+        keyboardContext.renderVersion &+= 1
+        actionHandler.handle(.release, on: .custom(named: "one_handed_off"))
+    }
+
+    func oneHandedGutterButton(isLeftMode: Bool, width: CGFloat, height: CGFloat) -> some View {
+        Button {
+            restoreFullWidthFromOneHanded()
+        } label: {
+            ZStack {
+                Color.white.opacity(0.015)
+                Image(systemName: isLeftMode ? "chevron.right" : "chevron.left")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(keyboardContext.hasDarkColorScheme ? Color.white.opacity(0.85) : Color.black.opacity(0.65))
+            }
+            .frame(width: width, height: height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(width: width, height: height)
+        .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onEnded { value in
+                    if hypot(value.translation.width, value.translation.height) < 45 {
+                        restoreFullWidthFromOneHanded()
+                    }
+                }
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isLeftMode ? "chevron.right" : "chevron.left")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("oneHanded.restore")
     }
     
     func toolbarHeight() -> CGFloat {
@@ -279,6 +341,9 @@ private extension SystemKeyboard {
         for size: CGSize
     ) -> some View {
         let insets = styleProvider.keyboardEdgeInsets
+        let availableTop = toolbarHeight()
+        calloutContext.inputContext.topAvailableSpace = availableTop
+        calloutContext.actionContext.topAvailableSpace = availableTop
         let adjustedSize = CGSize(
             width: max(0, size.width - insets.leading - insets.trailing),
             height: max(0, size.height - insets.top - insets.bottom)
@@ -300,6 +365,10 @@ private extension SystemKeyboard {
         .coordinateSpace(name: SwipeTypingState.coordinateSpaceName)
         .overlay(SwipeTrailOverlay(isDark: keyboardContext.hasDarkColorScheme))
         #endif
+        .keyboardCalloutContainer(
+            calloutContext: calloutContext,
+            keyboardContext: keyboardContext
+        )
     }
     
     func rowHeight(forRowAt rowIndex: Int) -> CGFloat {
@@ -415,7 +484,10 @@ private struct SwipeTrailOverlay: View {
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: swipeState.activeTrailSamples.isEmpty)) { timeline in
+            let isFrozenDemoTrail = swipeState.activeTrailSamples.last.map {
+                $0.timestamp > ProcessInfo.processInfo.systemUptime + 0.5
+            } ?? false
+            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: swipeState.activeTrailSamples.isEmpty || isFrozenDemoTrail)) { timeline in
                 let _ = timeline.date
                 Canvas { context, _ in
                     let now = ProcessInfo.processInfo.systemUptime
@@ -469,21 +541,22 @@ private struct SwipeTrailOverlay: View {
                     }
                     guard rawSpine.count >= 2 else { return }
 
-                    // 2. Trim the tail to maxCometArcLength so the comet never stretches into a long worm.
+                    // 2. Trim the tail to maxCometArcLength so the comet never stretches into a long worm (or 900 pt for full-word demo trail).
+                    let effectiveMaxArcLength: CGFloat = (head.timestamp > now + 0.5) ? 900.0 : maxCometArcLength
                     var reverseSpine: [CGPoint] = [rawSpine.last!]
                     var accumulatedLen: CGFloat = 0
                     for idx in stride(from: rawSpine.count - 2, through: 0, by: -1) {
                         let p = rawSpine[idx]
                         let prevP = reverseSpine.last!
                         let d = hypot(prevP.x - p.x, prevP.y - p.y)
-                        if accumulatedLen + d >= maxCometArcLength {
-                            let remain = maxCometArcLength - accumulatedLen
+                        if accumulatedLen + d >= effectiveMaxArcLength {
+                            let remain = effectiveMaxArcLength - accumulatedLen
                             if d > 0.001 {
                                 let ratio = remain / d
                                 let tip = CGPoint(x: prevP.x + (p.x - prevP.x) * ratio, y: prevP.y + (p.y - prevP.y) * ratio)
                                 reverseSpine.append(tip)
                             }
-                            accumulatedLen = maxCometArcLength
+                            accumulatedLen = effectiveMaxArcLength
                             break
                         }
                         accumulatedLen += d

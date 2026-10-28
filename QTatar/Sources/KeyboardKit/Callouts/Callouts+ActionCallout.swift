@@ -104,16 +104,36 @@ private extension Callouts.ActionCallout {
             return false
         }
     }
+    var isOneHandedCallout: Bool {
+        calloutActions.contains {
+            if case .custom(let name) = $0 {
+                return name == "one_handed_left" || name == "one_handed_right" || name == "one_handed_off"
+            }
+            return false
+        }
+    }
     var calloutButtonSize: CGSize {
         let frameSize = buttonFrame.size
         if isFloatingMenuCallout {
             return CGSize(width: max(frameSize.width * 1.8, 156), height: 44)
         }
+        if isOneHandedCallout {
+            let limitedWidth = min(frameSize.width, style.maxButtonSize.width)
+            return CGSize(width: max(limitedWidth * 1.12, 46), height: max(frameSize.height, 44))
+        }
         let widthScale = (calloutActions.count == 1) ? 1.2 : 1
         let buttonSize = CGSize(width: frameSize.width * widthScale, height: frameSize.height)
         return buttonSize.limited(to: style.maxButtonSize)
     }
-    var calloutStyle: Callouts.CalloutStyle { style.callout }
+    var calloutStyle: Callouts.CalloutStyle {
+        var s = style.callout
+        if s.curveSize.width <= 0.01 || s.curveSize.height <= 0.01 {
+            s.curveSize = keyboardContext.isKeyboardFloating
+                ? CGSize(width: 5.0, height: 10.0)
+                : CGSize(width: 6.0, height: 11.0)
+        }
+        return s
+    }
     var cornerRadius: CGFloat { calloutStyle.cornerRadius }
     var curveSize: CGSize { calloutStyle.curveSize }
     var isLeading: Bool { calloutContext.isLeading }
@@ -121,7 +141,7 @@ private extension Callouts.ActionCallout {
     
     var buttonArea: some View {
         Callouts.ButtonArea(
-            frame: buttonFrame
+            frame: CGRect(origin: buttonFrame.origin, size: CGSize(width: buttonFrameSize.width, height: effectiveButtonAreaHeight))
         )
         .opacity(isPad ? 0 : 1)
         .calloutStyle(calloutStyle)
@@ -151,20 +171,26 @@ private extension Callouts.ActionCallout {
                     }
                 }
             }
-            .padding(.horizontal, curveSize.width)
+            .padding(.horizontal, max(curveSize.width, 6.0))
             .background(calloutBackground)
         } else {
             HStack(spacing: 0) {
-                ForEach(Array(calloutActions.enumerated()), id: \.offset) {
-                    calloutView(for: $0.element)
+                ForEach(Array(calloutActions.enumerated()), id: \.offset) { item in
+                    calloutView(for: item.element)
                         .frame(width: calloutButtonSize.width, height: calloutButtonSize.height)
-                        .background(isSelected($0.offset) ? style.selectedBackgroundColor : .clear)
-                        .foregroundColor(isSelected($0.offset) ? style.selectedForegroundColor : style.callout.textColor)
+                        .background(isSelected(item.offset) ? style.selectedBackgroundColor : .clear)
+                        .foregroundColor(isSelected(item.offset) ? style.selectedForegroundColor : style.callout.textColor)
                         .cornerRadius(cornerRadius)
                         .padding(.vertical, style.verticalTextPadding)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            TapGesture().onEnded {
+                                calloutContext.selectAndTrigger(index: item.offset)
+                            }
+                        )
                 }
             }
-            .padding(.horizontal, curveSize.width)
+            .padding(.horizontal, max(curveSize.width, 6.0))
             .background(calloutBackground)
         }
     }
@@ -205,6 +231,21 @@ private extension Callouts.ActionCallout {
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("callout.merge_keyboard")
+        case .custom(let name) where name == "one_handed_left":
+            Image(systemName: "keyboard.onehanded.left")
+                .font(.system(size: 18, weight: .regular))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.one_handed_left")
+        case .custom(let name) where name == "one_handed_off":
+            Image(systemName: "keyboard")
+                .font(.system(size: 18, weight: .regular))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.one_handed_off")
+        case .custom(let name) where name == "one_handed_right":
+            Image(systemName: "keyboard.onehanded.right")
+                .font(.system(size: 18, weight: .regular))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("callout.one_handed_right")
         default: EmptyView()
         }
     }
@@ -265,19 +306,33 @@ private extension Callouts.ActionCallout {
         return buttonFrame.origin.x + signedAdjustment
     }
     
+    var minVisibleY: CGFloat {
+        -calloutContext.topAvailableSpace + 1.5
+    }
+
+    var bubbleHeight: CGFloat {
+        let verticalCount = isFloatingMenuCallout ? CGFloat(calloutActions.count) : 1
+        return verticalCount * (calloutButtonSize.height + 2 * style.verticalTextPadding)
+    }
+
+    var effectiveButtonAreaHeight: CGFloat {
+        guard !isFloatingMenuCallout, !isPad, buttonFrameSize.height > 0 else { return buttonFrameSize.height }
+        let unclampedTop = buttonFrame.minY - bubbleHeight + style.verticalOffset
+        guard unclampedTop < minVisibleY else { return buttonFrameSize.height }
+        let availableTotal = max(bubbleHeight + 12.0, (buttonFrame.maxY + 4.0) - minVisibleY)
+        return min(buttonFrameSize.height, max(12.0, availableTotal - bubbleHeight))
+    }
+
     var positionY: CGFloat {
-        let ideal = buttonFrame.maxY - totalCalloutHeight / 2
-        let minCenterY = totalCalloutHeight / 2 + Self.topEdgeInset
-        return max(ideal, minCenterY)
+        let baseCenterY = buttonFrame.maxY - totalCalloutHeight / 2
+        guard !isFloatingMenuCallout, !isPad, buttonFrameSize.height > 0 else { return baseCenterY }
+        let clampedTopCenterY = minVisibleY - style.verticalOffset + totalCalloutHeight / 2
+        return max(baseCenterY, clampedTopCenterY)
     }
     
     var totalCalloutHeight: CGFloat {
-        let verticalCount = isFloatingMenuCallout ? CGFloat(calloutActions.count) : 1
-        let bubbleHeight = verticalCount * (calloutButtonSize.height + 2 * style.verticalTextPadding)
-        return bubbleHeight + buttonFrameSize.height
+        bubbleHeight + effectiveButtonAreaHeight
     }
-    
-    static let topEdgeInset: CGFloat = 4
 }
 
 

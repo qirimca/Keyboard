@@ -42,7 +42,16 @@ enum L10n {
     }
 
     static func label(_ key: String, table: String = "Interface") -> Text {
-        Text(LocalizedStringKey(key), tableName: table, bundle: KeyboardPreferences.interfaceBundle)
+        let raw = tr(key, table: table)
+        let parts = raw.components(separatedBy: "{{globe}}")
+        guard parts.count > 1 else {
+            return Text(LocalizedStringKey(key), tableName: table, bundle: KeyboardPreferences.interfaceBundle)
+        }
+        var result = Text(parts[0])
+        for part in parts.dropFirst() {
+            result = result + Text(Image(systemName: "globe")) + Text(part)
+        }
+        return result
     }
 
     static func dailyPhrase(_ key: String, language: String = KeyboardPreferences.interfaceLanguage) -> String {

@@ -71,26 +71,64 @@ public extension Callouts {
 
 private extension Callouts.InputCallout {
 
+    var usesModernPillStyle: Bool {
+        style.callout.curveSize.width <= 0.01 && style.callout.curveSize.height <= 0.01
+    }
+
+    @ViewBuilder
     var callout: some View {
-        VStack(spacing: 0) {
-            calloutBubble.offset(y: 1)
-            calloutButton
+        if usesModernPillStyle {
+            modernPillCallout
+        } else {
+            VStack(spacing: 0) {
+                calloutBubble.offset(y: 1)
+                calloutButton
+            }
+            .compositingGroup()
         }
+    }
+
+    var modernPillCallout: some View {
+        let pillWidth = modernPillWidth
+        let pillHeight = modernPillHeight
+        return ZStack(alignment: .center) {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(style.callout.backgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(style.callout.borderColor, lineWidth: 0.5)
+                )
+            Text(calloutContext.input ?? "")
+                .font(isTopConstrained ? .system(size: 30.0, weight: .regular) : style.font.font)
+                .foregroundColor(style.callout.textColor)
+                .frame(width: pillWidth, height: pillHeight, alignment: .center)
+        }
+        .frame(width: pillWidth, height: pillHeight)
         .compositingGroup()
     }
 
     var calloutBubble: some View {
         Text(calloutContext.input ?? "")
-            .font(style.font.font)
-            .frame(minWidth: calloutSize.width, minHeight: calloutSize.height)
+            .font(isTopConstrained ? .system(size: 30.0, weight: .regular) : style.font.font)
+            .frame(width: calloutSize.width, height: effectiveCalloutHeight * 0.96)
+            .frame(width: calloutSize.width, height: effectiveCalloutHeight, alignment: .top)
             .foregroundColor(style.callout.textColor)
-            .background(style.callout.backgroundColor)
-            .cornerRadius(cornerRadius)
+            .background(
+                CustomRoundedRectangle(
+                    topLeft: cornerRadius,
+                    topRight: cornerRadius,
+                    bottomLeft: 0,
+                    bottomRight: 0
+                )
+                .foregroundColor(style.callout.backgroundColor)
+            )
     }
     
     var calloutButton: some View {
         Callouts.ButtonArea(
-            frame: buttonFrame
+            frame: CGRect(origin: buttonFrame.origin, size: CGSize(width: buttonSize.width, height: effectiveButtonHeight)),
+            leftCurveWidth: leftExpand,
+            rightCurveWidth: rightExpand
         )
         .calloutStyle(style.callout)
     }
@@ -111,6 +149,89 @@ private extension Callouts.InputCallout {
     var buttonSize: CGSize {
         buttonFrame.size
     }
+
+    var minVisibleY: CGFloat {
+        -calloutContext.topAvailableSpace + 1.0
+    }
+
+    var isTopConstrained: Bool {
+        buttonSize.height > 0 && (buttonFrame.minY - calloutSizeHeight) < minVisibleY - 4.0
+    }
+
+    var effectiveCalloutHeight: CGFloat {
+        guard isTopConstrained else { return calloutSizeHeight }
+        let maxBottomY = buttonFrame.maxY + 4.0
+        let totalAvailable = max(36.0, maxBottomY - minVisibleY)
+        return max(28.0, totalAvailable - effectiveButtonHeight)
+    }
+
+    var effectiveButtonHeight: CGFloat {
+        guard isTopConstrained else { return buttonSize.height }
+        let maxBottomY = buttonFrame.maxY + 4.0
+        let totalAvailable = max(36.0, maxBottomY - minVisibleY)
+        return min(buttonSize.height, max(16.0, totalAvailable * 0.34))
+    }
+    
+    var resolvedContainerWidth: CGFloat {
+        if calloutContext.containerWidth > 0 {
+            return calloutContext.containerWidth
+        }
+        #if os(iOS)
+        if keyboardContext.screenSize.width > 0 {
+            return keyboardContext.screenSize.width
+        }
+        return UIScreen.main.bounds.width
+        #else
+        return 0
+        #endif
+    }
+
+    var edgeThreshold: CGFloat {
+        max(buttonSize.width * 0.65, 18)
+    }
+
+    var isLeadingEdge: Bool {
+        buttonFrame.width > 0 && buttonFrame.minX < edgeThreshold
+    }
+
+    var isTrailingEdge: Bool {
+        buttonFrame.width > 0 && resolvedContainerWidth > 0 && (resolvedContainerWidth - buttonFrame.maxX) < edgeThreshold
+    }
+
+    var baseCurveWidth: CGFloat {
+        style.callout.curveSize.width
+    }
+
+    var leftExpand: CGFloat {
+        if isLeadingEdge { return 0 }
+        if isTrailingEdge { return round(1.35 * baseCurveWidth) }
+        return baseCurveWidth
+    }
+
+    var rightExpand: CGFloat {
+        if isTrailingEdge { return 0 }
+        if isLeadingEdge { return round(1.35 * baseCurveWidth) }
+        return baseCurveWidth
+    }
+
+    var modernPillHorizontalExpand: CGFloat {
+        shouldEnforceSmallSize ? 8.0 : (keyboardContext.isKeyboardFloating ? 12.0 : 16.0)
+    }
+
+    var modernPillWidth: CGFloat {
+        guard buttonSize.width > 0 else { return style.calloutSize.width }
+        return max(buttonSize.width + modernPillHorizontalExpand, style.calloutSize.width)
+    }
+
+    var modernPillHeight: CGFloat {
+        if shouldEnforceSmallSize {
+            return max(buttonSize.height + 6.0, 40.0)
+        }
+        if isTopConstrained {
+            return max(buttonSize.height + 6.0, 48.0)
+        }
+        return keyboardContext.isKeyboardFloating ? 52.0 : 60.0
+    }
     
     var calloutSize: CGSize {
         CGSize(
@@ -125,8 +246,8 @@ private extension Callouts.InputCallout {
     }
     
     var calloutSizeWidth: CGFloat {
-        let minSize = buttonSize.width + 2 * style.callout.curveSize.width + style.callout.cornerRadius
-        return max(style.calloutSize.width, minSize)
+        guard buttonSize.width > 0 else { return style.calloutSize.width }
+        return buttonSize.width + leftExpand + rightExpand
     }
     
     var cornerRadius: CGFloat {
@@ -145,22 +266,37 @@ private extension Callouts.InputCallout {
     }
 
     var positionX: CGFloat {
-        buttonFrame.origin.x + buttonSize.width/2
+        if usesModernPillStyle {
+            let rawCenter = buttonFrame.midX
+            let halfW = modernPillWidth / 2
+            let minX = halfW + 3
+            if resolvedContainerWidth > modernPillWidth + 6 {
+                let maxX = resolvedContainerWidth - halfW - 3
+                return min(max(rawCenter, minX), maxX)
+            }
+            return max(rawCenter, minX)
+        }
+        return buttonFrame.origin.x + buttonSize.width / 2 + (rightExpand - leftExpand) / 2
     }
 
     var positionY: CGFloat {
-        let base = buttonFrame.origin.y + buttonSize.height/2 - calloutSize.height/2
+        if usesModernPillStyle {
+            let desiredBottomY = buttonFrame.minY + 1.0
+            let rawCenterY = desiredBottomY - modernPillHeight / 2.0
+            let clampedTopY = minVisibleY + modernPillHeight / 2.0
+            return max(rawCenterY, clampedTopY)
+        }
+        if isTopConstrained {
+            return minVisibleY + totalCalloutHeight / 2
+        }
+        let base = buttonFrame.origin.y + buttonSize.height / 2 - effectiveCalloutHeight / 2
         let isEmoji = calloutContext.action?.isEmojiAction == true
-        let ideal = isEmoji ? base + 5 : base
-        let minCenterY = totalCalloutHeight / 2 + Self.topEdgeInset
-        return max(ideal, minCenterY)
+        return isEmoji ? base + 5 : base
     }
     
     var totalCalloutHeight: CGFloat {
-        calloutSize.height + buttonSize.height
+        effectiveCalloutHeight + effectiveButtonHeight
     }
-    
-    static let topEdgeInset: CGFloat = 4
 }
 
 

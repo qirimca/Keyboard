@@ -46,6 +46,109 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         context.deviceType == .pad && !context.isKeyboardFloating && context.isKeyboardSplit
     }
 
+    static func isIPadPro5RowLayout(_ context: KeyboardContext) -> Bool {
+        guard context.deviceType == .pad, !context.isKeyboardFloating, !context.isKeyboardSplit else { return false }
+        let screen = DemoStyleProvider.effectiveScreenSize(for: context)
+        let portraitWidth: CGFloat
+        if screen.width > 0 && screen.height > 0 {
+            portraitWidth = min(screen.width, screen.height)
+        } else if screen.width > 0 {
+            portraitWidth = screen.width
+        } else {
+            portraitWidth = 834.0
+        }
+        return portraitWidth >= 960.0
+    }
+
+    static let proKeyPitch: Double = 1.0 / 15.0
+
+    static func iPadProTopNumberRowActions(for context: KeyboardContext) -> KeyboardAction.Row {
+        let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let isShifted = context.keyboardType == .alphabetic(.uppercased) || context.keyboardType == .alphabetic(.capsLocked)
+        let firstKey = isCyrillic ? "\\" : (isShifted ? "Â" : "â")
+        let chars = [firstKey, "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="]
+        return chars.map { .character($0) } + [.backspace]
+    }
+
+    static func iPadProDualLegend(for action: KeyboardAction, row: Int?, context: KeyboardContext) -> (top: String, bottom: String)? {
+        guard isIPadPro5RowLayout(context), context.keyboardType.isAlphabetic else { return nil }
+        if row == 3 || row == 4 { return nil } // Bottom spacebar row character items
+        guard case .character(let char) = action else { return nil }
+        let isCyrillic = context.locale.identifier.contains("Cyrl")
+        let isUkrainianCyr = isCyrillic && KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+        let isTopRowNumberSymbol = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="].contains(char)
+
+        if row == 0 || (row == nil && isTopRowNumberSymbol) {
+            if isCyrillic {
+                switch char {
+                case "\\", "/": return ("/", "\\")
+                case "1", "!": return ("!", "1")
+                case "2", "\"": return ("\"", "2")
+                case "3", "№": return ("№", "3")
+                case "4", ";": return (";", "4")
+                case "5", "%": return ("%", "5")
+                case "6", ":": return (":", "6")
+                case "7", "?": return ("?", "7")
+                case "8", "*": return ("*", "8")
+                case "9", "(": return ("(", "9")
+                case "0", ")": return (")", "0")
+                case "-", "_": return ("_", "-")
+                case "=", "+": return ("+", "=")
+                default:
+                    return nil
+                }
+            } else {
+                switch char {
+                case "1", "!": return ("!", "1")
+                case "2", "'": return ("'", "2")
+                case "3", "^": return ("^", "3")
+                case "4", "+": return ("+", "4")
+                case "5", "%": return ("%", "5")
+                case "6", "&": return ("&", "6")
+                case "7", "/": return ("/", "7")
+                case "8", "(": return ("(", "8")
+                case "9", ")": return (")", "9")
+                case "0": return ("=", "0")
+                case "-", "_": return ("_", "-")
+                case "=", "*": return ("*", "=")
+                default:
+                    return nil
+                }
+            }
+        }
+
+        // Rows 1..3 (letter/punctuation rows on 5-row iPad Pro)
+        if isCyrillic {
+            switch char {
+            case "\\", "/":
+                return ("/", "\\")
+            case ";":
+                return (";", ",")
+            case ":":
+                return isUkrainianCyr ? (":", ",") : nil
+            case "\u{02BC}":
+                return isUkrainianCyr ? (".", "\u{02BC}") : nil
+            case ".":
+                return isUkrainianCyr ? (".", "\u{02BC}") : (",", ".")
+            case ",":
+                return isUkrainianCyr ? (":", ",") : (";", ",")
+            default:
+                return nil
+            }
+        } else {
+            switch char {
+            case "\\", "/":
+                return ("/", "\\")
+            case ",", ";":
+                return (";", ",")
+            case ".", ":":
+                return (":", ".")
+            default:
+                return nil
+            }
+        }
+    }
+
     static func splitHalfFraction(for context: KeyboardContext) -> Double {
         let isPortrait = context.interfaceOrientation.isPortrait
         let rawScreen = context.screenSize
@@ -76,9 +179,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         ).actions(for: inputs, context: context)
         guard actions.count == 3 else { return actions }
         
-        // In email fields on iPad, replace the trailing comma in row 2 with '@'
-        // In URL fields on iPad, replace the trailing comma in row 2 with '.' (matching native iPadOS Web layout)
-        if context.keyboardType.isAlphabetic {
+        // In email fields on 4-row iPad, replace the trailing comma in row 2 with '@'
+        // In URL fields on 4-row iPad, replace the trailing comma in row 2 with '.' (matching native iPadOS Web layout)
+        if context.keyboardType.isAlphabetic && !Self.isIPadPro5RowLayout(context) {
             if isEmailContext(context) {
                 if let lastCharIndex = actions[2].lastIndex(where: { $0 == .character(",") }) {
                     actions[2][lastCharIndex] = .character("@")
@@ -116,6 +219,17 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             return result
         }
 
+        if Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic {
+            let row1TrailingAction: KeyboardAction = .character("\\")
+            let returnAction = keyboardReturnAction(for: context)
+            result.append(Self.iPadProTopNumberRowActions(for: context))
+            result.append([.tab] + actions[0] + [row1TrailingAction])
+            result.append(middleLeadingActions(for: context) + actions[1] + [returnAction])
+            result.append(lowerLeadingActions(for: context) + actions[2] + lowerTrailingActions(for: context))
+            result.append(bottomActions(for: context))
+            return result
+        }
+
         result.append(topLeadingActions(for: context) + actions[0] + topTrailingActions(for: context))
         result.append(middleLeadingActions(for: context) + actions[1] + middleTrailingActions(for: context))
         result.append(lowerLeadingActions(for: context) + actions[2] + lowerTrailingActions(for: context))
@@ -131,8 +245,11 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     /// Returns whether a layout item is a character key on the bottom (spacebar) row.
     static func isBottomRowCharacterItem(_ item: KeyboardLayout.Item, context: KeyboardContext) -> Bool {
         guard case .character(let char) = item.action else { return false }
-        if context.keyboardType.isAlphabetic && char == "/" { return true }
+        if context.keyboardType.isAlphabetic && char == "/" && !Self.isIPadPro5RowLayout(context) { return true }
         if case .percentage(let pct) = item.size.width {
+            if Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic {
+                return abs(pct - Self.proKeyPitch) > 0.001
+            }
             let dockedPitch = Self.letterPitch
             let half = Self.splitHalfFraction(for: context)
             let splitSide = half * 0.175
@@ -147,6 +264,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     /// Returns the top secondary flick-down symbol for a Docked iPad key in `.alphabetic` or `.numeric` mode.
     static func flickSymbol(for action: KeyboardAction, row: Int? = nil, context: KeyboardContext) -> String? {
         guard context.deviceType == .pad && !context.isKeyboardFloating else { return nil }
+        if Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic {
+            return Self.iPadProDualLegend(for: action, row: row, context: context)?.top
+        }
         guard SystemKeyboardSettings.isKeyFlicksEnabled else { return nil }
         if let row, row >= 3 { return nil }
         guard case .character(let char) = action, !char.isEmpty else { return nil }
@@ -263,6 +383,9 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             result.append(.space)
         }
         if isEmailContext(context) && context.keyboardType.isAlphabetic {
+            if Self.isIPadPro5RowLayout(context) || (context.locale.identifier.contains("Cyrl") && KeyboardPreferences.ukrainianCyrillicLayoutEnabled) {
+                result.append(.character("@"))
+            }
             result.append(.character("."))
             result.append(.character("_"))
             result.append(.character("-"))
@@ -289,7 +412,8 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         case .characterMargin, .none:
             return EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
         default:
-            return DemoStyleProvider.itemEdgeInsets(forRowAt: row, context: context)
+            let totalRows = (Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic) ? 5 : 4
+            return DemoStyleProvider.itemEdgeInsets(forRowAt: row, totalRows: totalRows, context: context)
         }
     }
 
@@ -299,7 +423,8 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         index: Int,
         context: KeyboardContext
     ) -> CGFloat {
-        DemoStyleProvider.rowHeight(forRowAt: row, context: context)
+        let totalRows = (Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic) ? 5 : 4
+        return DemoStyleProvider.rowHeight(forRowAt: row, totalRows: totalRows, context: context)
     }
 
     override func itemAlignment(
@@ -394,28 +519,59 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             return .percentage(half - side * 2.1)
         }
 
-        // Fixed fractions keep side keys 100% invariant across Latin/Cyrillic and Alphabetic/Numeric/Symbolic pages.
-        // Every character key has the exact same pitch, so row 1 / row 2 are offset by exact half keys
-        // (A between Q and W, Z between A and S; Ф between Й and Ц, Я between Ф and Ы / І).
+        if Self.isIPadPro5RowLayout(context) && context.keyboardType.isAlphabetic {
+            let p = Self.proKeyPitch // 1.0 / 15.0
+            if row == 0 {
+                if action == .backspace { return .available }
+                return .percentage(p)
+            }
+            if row == 1 {
+                if index == 0 { return .percentage(1.5 * p) }
+                if index >= 13 { return .available }
+                if case .primary = action { return .available }
+                return .percentage(p)
+            }
+            if row == 2 {
+                if index == 0 { return .percentage(1.75 * p) }
+                if case .primary = action { return .available }
+                return .percentage(p)
+            }
+            if row == 3 {
+                if index == 0 { return .percentage((isCyrillic ? 1.25 : 2.25) * p) }
+                if case .shift = action { return .available }
+                return .percentage(p)
+            }
+            // Row 4 (bottom row on 5-row iPad Pro)
+            if action == .space || action == .custom(named: "url_domain") { return .available }
+            if case .character = action { return isURLContext(context) ? .percentage(0.115) : .percentage(0.07) }
+            if action == .nextKeyboard || action == .dismissKeyboard {
+                return .percentage(1.0 * p)
+            }
+            return .percentage(1.25 * p)
+        }
+
+        // Standard 4-row Docked iPad (9.7" / 10.5" / 10.9" / 11"):
+        // Uniform stagger across Portrait and Landscape so Q - A - Z (and Й - Ф - Я) lie on one straight diagonal line:
+        // x(Q) = tab + 0.5*pitch, x(A) = tab + 1.0*pitch, x(Z) = tab + 1.5*pitch.
+        let isPortrait = context.interfaceOrientation.isPortrait
+        let tab = Self.tabFraction
+        let bs = Self.backspaceFraction
         let pitch = Self.letterPitch
         if row == 0 {
-            if action == .tab { return .percentage(Self.tabFraction) }
-            if action == .backspace { return .percentage(Self.backspaceFraction) }
+            if action == .tab { return .percentage(tab) }
+            if action == .backspace { return .percentage(bs) }
             return .available
         }
         if row == 1 {
             if index == 0 {
-                // 12-key Row 1 (Latin): left control key ends half a key before first letter;
-                // 11-key Row 1 (Standard Cyrillic ФЫВА & Docked iPad Ukrainian ФІВА): ends half a key before 'ф'.
-                return .percentage(is11KeyRow1Cyr ? Self.tabFraction + pitch / 2 : Self.tabFraction - pitch / 2)
+                return .percentage(is11KeyRow1Cyr ? tab + pitch / 2.0 : tab - pitch / 2.0)
             }
             if case .primary = action { return .available }
             return .percentage(pitch)
         }
         if row == 2 {
             if index == 0 {
-                // Row 2 keys start at tab + pitch so row 3 sits another half key to the right.
-                return .percentage(Self.tabFraction + pitch)
+                return .percentage(tab + pitch)
             }
             switch action {
             case .shift, .keyboardType:
@@ -426,13 +582,15 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
         if action == .space || action == .custom(named: "url_domain") { return .available }
         if case .character = action { return isURLContext(context) ? .percentage(0.115) : .percentage(0.07) }
+        let leftBottomFrac = isPortrait ? 0.083942 : 0.092
+        let rightBottomFrac = isPortrait ? 0.118005 : 0.131
         if action == .nextKeyboard || action == .keyboardType(.emojis) {
-            return .percentage(0.092)
+            return .percentage(leftBottomFrac)
         }
         if action == .dismissKeyboard {
-            return .percentage(0.131)
+            return .percentage(rightBottomFrac)
         }
-        return .percentage(index <= 1 ? 0.092 : 0.131)
+        return .percentage(index <= 1 ? leftBottomFrac : rightBottomFrac)
     }
     
     override func keyboardReturnAction(

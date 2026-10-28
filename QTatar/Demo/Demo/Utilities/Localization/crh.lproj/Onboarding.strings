@@ -24,7 +24,7 @@
 "onb_onb2_ios26_key" = "Klaviaturanı qoşuñız: «Settings» > «General» > «Keyboard» > «Keyboards» > «Add New Keyboard» > QırımKey";
 
 /* (No Comment) */
-"onb_onb3_key" = "Yazğanda klaviaturanı saylañız: 🌐 işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız";
+"onb_onb3_key" = "Yazğanda klaviaturanı saylañız: {{globe}} işaretine basıñız ya da basıp tutuñız ve cedvelden Qırımtatarcanı saylañız";
 
 /* (No Comment) */
 "onb_onb4_key" = "Yazmağa başlañız: QırımKeyniñ titrev bildirüvi, söz teklifleri ve avtomatik transliteratsiya kibi imkânlarından faydalanıñız";
@@ -36,5 +36,7 @@
 "onb_settings_key" = "Klaviatura sazlamaları";
 
 "onb_remove_cyrillic_title" = "Kirill klaviaturasını söndürüv";
-"onb_remove_cyrillic_desc" = "Kirill klaviaturasını söndürüñiz: «Settings» → «General» → «Keyboard» → «Keyboards» bölüginde «Qırımtatarca (Kirill)» satırını solğa çekip «Delete» basıñız";
+"onb_remove_cyrillic_desc" = "Kirill klaviaturasını söndürüñiz: «Settings» → «General» → «Keyboard» → «Keyboards» bölüginde «Къырымтатарджа» ya da «Кʼиримтатарджа» satırını solğa çekip «Delete» basıñız";
+"onb_ipad_floating_only_note" = "iPad-de ayrı kirill klaviaturasını Sazlamalarda qoşmaq tek yüzüci pencere (floating) içün kerek. Tam ölçülü (docked) rejimde «абв» dögmesinen almaştıruv deral çalışa.";
+
 
