@@ -73,7 +73,7 @@ Archive/
 
 # Local AI assistant chat exports, handoffs, & agent rules (private)
 QTatar/Demo/ШІ/
-**/Handoffs/
+**/Handoffs/CONVERSATION_EXPORT_*
 .agents/
 AGENTS.md
 

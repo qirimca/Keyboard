@@ -30,6 +30,23 @@
 		9B5976BB48744E91AFB8CFC1 /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
 		9C2112BC30824B700031FE0A /* KeyboardCyrillic.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9C2112C530824BBB0031FE0A /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
+		9D2112BC30824B700031FE0A /* KeyboardUkrainian.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		9D2112D130824B700031FE0A /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921153B25D58AC7003510D9 /* KeyboardViewController.swift */; };
+		9D2112D230824B700031FE0A /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
+		9D2112D330824B700031FE0A /* SuggestionsDataBaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */; };
+		9D2112D430824B700031FE0A /* CrimeanTatarAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B02D3AFD6A007D41BC /* CrimeanTatarAutocompleteProvider.swift */; };
+		9D2112D530824B700031FE0A /* SpaceBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973BF2D3B1000007D41BC /* SpaceBarLabel.swift */; };
+		9D2112D630824B700031FE0A /* Autocomplete+NativeToolbarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973C12D3B1001007D41BC /* Autocomplete+NativeToolbarStyle.swift */; };
+		9D2112D730824B700031FE0A /* CrimeanTatarIPadKeyboardLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973D22D3B3000007D41BC /* CrimeanTatarIPadKeyboardLayoutProvider.swift */; };
+		9D2112D830824B700031FE0A /* DemoStyleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C672642A7BCE37004A5721 /* DemoStyleProvider.swift */; };
+		9D2112D930824B700031FE0A /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
+		9D2112DA30824B700031FE0A /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
+		9D2112DB30824B700031FE0A /* DemoActionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */; };
+		9D2112DC30824B700031FE0A /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B42D3AFD6A007D41BC /* AppConfiguration.swift */; };
+		9D2112DD30824B700031FE0A /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 41F4DEFC2CF4D96D00D1D7E8 /* libsqlite3.tbd */; };
+		9D2112DE30824B700031FE0A /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 41C4AA8D2BBA597E0094EF1C /* KeyboardKit */; };
+		9D2112DF30824B700031FE0A /* TransliterationRules.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C302550732D493EA99DF6ED /* TransliterationRules.json */; };
+		9D2112E030824B700031FE0A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 		A443539D51694B189C28CB8B /* Autocomplete+NativeToolbarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973C12D3B1001007D41BC /* Autocomplete+NativeToolbarStyle.swift */; };
 		A91322652AB9C5BE00780625 /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
 		A921152625D58A94003510D9 /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921152525D58A94003510D9 /* DemoApp.swift */; };
@@ -49,23 +66,6 @@
 		E1A2B3C4D5E6478990123451 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 		E1A2B3C4D5E6478990123452 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 		E1A2B3C4D5E6478990123453 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
-		9D2112BC30824B700031FE0A /* KeyboardUkrainian.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		9D2112D130824B700031FE0A /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A921153B25D58AC7003510D9 /* KeyboardViewController.swift */; };
-		9D2112D230824B700031FE0A /* CrimeanTatarTransliterator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */; };
-		9D2112D330824B700031FE0A /* SuggestionsDataBaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41F4DEFA2CF4D4F400D1D7E8 /* SuggestionsDataBaseManager.swift */; };
-		9D2112D430824B700031FE0A /* CrimeanTatarAutocompleteProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B02D3AFD6A007D41BC /* CrimeanTatarAutocompleteProvider.swift */; };
-		9D2112D530824B700031FE0A /* SpaceBarLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973BF2D3B1000007D41BC /* SpaceBarLabel.swift */; };
-		9D2112D630824B700031FE0A /* Autocomplete+NativeToolbarStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973C12D3B1001007D41BC /* Autocomplete+NativeToolbarStyle.swift */; };
-		9D2112D730824B700031FE0A /* CrimeanTatarIPadKeyboardLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973D22D3B3000007D41BC /* CrimeanTatarIPadKeyboardLayoutProvider.swift */; };
-		9D2112D830824B700031FE0A /* DemoStyleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C672642A7BCE37004A5721 /* DemoStyleProvider.swift */; };
-		9D2112D930824B700031FE0A /* DemoCalloutActionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */; };
-		9D2112DA30824B700031FE0A /* DemoLayoutProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F227B165B600BC9376 /* DemoLayoutProvider.swift */; };
-		9D2112DB30824B700031FE0A /* DemoActionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9EAA6F327B165B600BC9376 /* DemoActionHandler.swift */; };
-		9D2112DC30824B700031FE0A /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE973B42D3AFD6A007D41BC /* AppConfiguration.swift */; };
-		9D2112DD30824B700031FE0A /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 41F4DEFC2CF4D96D00D1D7E8 /* libsqlite3.tbd */; };
-		9D2112DE30824B700031FE0A /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 41C4AA8D2BBA597E0094EF1C /* KeyboardKit */; };
-		9D2112DF30824B700031FE0A /* TransliterationRules.json in Resources */ = {isa = PBXBuildFile; fileRef = 4C302550732D493EA99DF6ED /* TransliterationRules.json */; };
-		9D2112E030824B700031FE0A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = E1A2B3C4D5E6478990123450 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -123,9 +123,9 @@
 		9C2112AA30824B320031FE0A /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		9C2112AB30824B320031FE0A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardCyrillic.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardUkrainian.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		9C2112C430824BBB0031FE0A /* CrimeanTatarTransliterator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrimeanTatarTransliterator.swift; sourceTree = "<group>"; };
 		9C211365308293930031FE0A /* QirimKeyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QirimKeyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = KeyboardUkrainian.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A91322642AB9C5BE00780625 /* DemoCalloutActionProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoCalloutActionProvider.swift; sourceTree = "<group>"; };
 		A921152225D58A94003510D9 /* QTatar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QTatar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A921152525D58A94003510D9 /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
@@ -174,7 +174,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				KeyboardUkrainian.entitlements,
 			);
 			target = 9D2112B430824B700031FE0A /* KeyboardUkrainian */;
 		};
@@ -184,8 +183,8 @@
 		6AE9732B2D3A9AE8007D41BC /* Utilities */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9C2112B030824B330031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 6AE9732C2D3A9AF2007D41BC /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Utilities; sourceTree = "<group>"; };
 		6AE973562D3AB305007D41BC /* Views */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Views; sourceTree = "<group>"; };
 		9C2112B630824B700031FE0A /* KeyboardCyrillic */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9C2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = KeyboardCyrillic; sourceTree = "<group>"; };
-		9D2112B630824B700031FE0A /* KeyboardUkrainian */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9D2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = KeyboardUkrainian; sourceTree = "<group>"; };
 		9C211366308293930031FE0A /* QirimKeyUITests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = QirimKeyUITests; sourceTree = "<group>"; };
+		9D2112B630824B700031FE0A /* KeyboardUkrainian */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (9D2112C030824B700031FE0A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = KeyboardUkrainian; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -198,19 +197,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9C211362308293930031FE0A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D2112B230824B700031FE0A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				9D2112DD30824B700031FE0A /* libsqlite3.tbd in Frameworks */,
 				9D2112DE30824B700031FE0A /* KeyboardKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9C211362308293930031FE0A /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -370,6 +369,28 @@
 			productReference = 9C2112B530824B700031FE0A /* KeyboardCyrillic.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		9C211364308293930031FE0A /* QirimKeyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9C21136B308293930031FE0A /* Build configuration list for PBXNativeTarget "QirimKeyUITests" */;
+			buildPhases = (
+				9C211361308293930031FE0A /* Sources */,
+				9C211362308293930031FE0A /* Frameworks */,
+				9C211363308293930031FE0A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				9C211366308293930031FE0A /* QirimKeyUITests */,
+			);
+			name = QirimKeyUITests;
+			packageProductDependencies = (
+			);
+			productName = QirimKeyUITests;
+			productReference = 9C211365308293930031FE0A /* QirimKeyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		9D2112B430824B700031FE0A /* KeyboardUkrainian */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D2112BD30824B700031FE0A /* Build configuration list for PBXNativeTarget "KeyboardUkrainian" */;
@@ -392,28 +413,6 @@
 			productName = KeyboardUkrainian;
 			productReference = 9D2112B530824B700031FE0A /* KeyboardUkrainian.appex */;
 			productType = "com.apple.product-type.app-extension";
-		};
-		9C211364308293930031FE0A /* QirimKeyUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 9C21136B308293930031FE0A /* Build configuration list for PBXNativeTarget "QirimKeyUITests" */;
-			buildPhases = (
-				9C211361308293930031FE0A /* Sources */,
-				9C211362308293930031FE0A /* Frameworks */,
-				9C211363308293930031FE0A /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				9C211366308293930031FE0A /* QirimKeyUITests */,
-			);
-			name = QirimKeyUITests;
-			packageProductDependencies = (
-			);
-			productName = QirimKeyUITests;
-			productReference = 9C211365308293930031FE0A /* QirimKeyUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		A921152125D58A94003510D9 /* QTatar */ = {
 			isa = PBXNativeTarget;
@@ -478,10 +477,10 @@
 					9C2112B430824B700031FE0A = {
 						CreatedOnToolsVersion = 27.1;
 					};
-					9D2112B430824B700031FE0A = {
+					9C211364308293930031FE0A = {
 						CreatedOnToolsVersion = 27.1;
 					};
-					9C211364308293930031FE0A = {
+					9D2112B430824B700031FE0A = {
 						CreatedOnToolsVersion = 27.1;
 					};
 					A921152125D58A94003510D9 = {
@@ -528,19 +527,19 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9C211363308293930031FE0A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D2112B330824B700031FE0A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				9D2112DF30824B700031FE0A /* TransliterationRules.json in Resources */,
 				9D2112E030824B700031FE0A /* PrivacyInfo.xcprivacy in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9C211363308293930031FE0A /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,6 +629,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		9C211361308293930031FE0A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9D2112B130824B700031FE0A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -646,13 +652,6 @@
 				9D2112DA30824B700031FE0A /* DemoLayoutProvider.swift in Sources */,
 				9D2112DB30824B700031FE0A /* DemoActionHandler.swift in Sources */,
 				9D2112DC30824B700031FE0A /* AppConfiguration.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		9C211361308293930031FE0A /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -713,7 +712,8 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -742,7 +742,8 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = KeyboardCyrillic/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Къырымтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -764,6 +765,61 @@
 			};
 			name = Release;
 		};
+		9C211369308293930031FE0A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 3.1;
+				PRODUCT_BUNDLE_IDENTIFIER = crh.key.QirimKeyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = QTatar;
+			};
+			name = Debug;
+		};
+		9C21136A308293930031FE0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 10;
+				DEVELOPMENT_TEAM = M4LTTVHNN3;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 3.1;
+				PRODUCT_BUNDLE_IDENTIFIER = crh.key.QirimKeyUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = QTatar;
+			};
+			name = Release;
+		};
 		9D2112BE30824B700031FE0A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -771,7 +827,8 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -801,7 +858,8 @@
 				CODE_SIGN_ENTITLEMENTS = KeyboardUkrainian/KeyboardUkrainian.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = KeyboardUkrainian/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Кʼиримтатарджа";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -821,61 +879,6 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		9C211369308293930031FE0A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 3.1;
-				PRODUCT_BUNDLE_IDENTIFIER = crh.key.QirimKeyUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = QTatar;
-			};
-			name = Debug;
-		};
-		9C21136A308293930031FE0A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
-				DEVELOPMENT_TEAM = M4LTTVHNN3;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 3.1;
-				PRODUCT_BUNDLE_IDENTIFIER = crh.key.QirimKeyUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = NO;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = QTatar;
 			};
 			name = Release;
 		};
@@ -1011,8 +1014,9 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1045,8 +1049,9 @@
 				CODE_SIGN_ENTITLEMENTS = QTatar.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Demo/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "QırımKey";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -1076,7 +1081,8 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -1105,7 +1111,8 @@
 				CODE_SIGN_ENTITLEMENTS = Keyboard/Keyboard.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 10;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				INFOPLIST_FILE = Keyboard/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Qırımtatarca";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2024 Qırımtatar. All rights reserved.";
@@ -1139,20 +1146,20 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		9D2112BD30824B700031FE0A /* Build configuration list for PBXNativeTarget "KeyboardUkrainian" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				9D2112BE30824B700031FE0A /* Debug */,
-				9D2112BF30824B700031FE0A /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		9C21136B308293930031FE0A /* Build configuration list for PBXNativeTarget "QirimKeyUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9C211369308293930031FE0A /* Debug */,
 				9C21136A308293930031FE0A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9D2112BD30824B700031FE0A /* Build configuration list for PBXNativeTarget "KeyboardUkrainian" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9D2112BE30824B700031FE0A /* Debug */,
+				9D2112BF30824B700031FE0A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

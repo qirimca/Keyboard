@@ -8,6 +8,7 @@
 
 #if os(iOS) || os(tvOS)
 import XCTest
+import Testing
 
 @testable import KeyboardKit
 
@@ -51,4 +52,23 @@ class KeyboardStateInspectorTests: XCTestCase {
 }
 
 private class TestInspector: KeyboardStateInspector {}
+
+@Suite("Public keyboard observations")
+struct PublicKeyboardObservationTests {
+    @Test func unobservableBundleIdentifiersRemainUnknown() {
+        let inspector = TestInspector()
+        #expect(!inspector.canInspectKeyboardBundleIds)
+        #expect(inspector.activeKeyboardBundleIds.isEmpty)
+        #expect(inspector.enabledKeyboardBundleIds().isEmpty)
+        #expect(inspector.keyboardActiveState(withBundleId: "crh.key.keyboard.keyboard") == .unknown)
+        #expect(inspector.keyboardEnabledState(withBundleId: "crh.key.keyboard.keyboard") == .unknown)
+    }
+
+    @Test @MainActor func refreshedContextDoesNotReportVerifiedAbsence() {
+        let context = KeyboardStateContext(bundleId: "crh.key.keyboard.keyboard")
+        context.refresh()
+        #expect(context.activeState == .unknown)
+        #expect(context.enabledState == .unknown)
+    }
+}
 #endif

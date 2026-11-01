@@ -44,7 +44,7 @@ enum KeyboardPreferences {
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
         let rawOneHanded = resolveStoredOneHandedMode()
         cachedOneHandedMode = rawOneHanded
-        SystemKeyboardSettings.refreshSystemEmojiKeyboardState()
+        SystemKeyboardSettings.triggerAsyncRefreshIfNeeded()
     }
 
     private static func resolveStoredOneHandedMode() -> String {
@@ -122,7 +122,7 @@ enum KeyboardPreferences {
         if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
         if bundleId == AppConfiguration.cyrillicKeyboardBundleId {
             let isUITesting = defaults.bool(forKey: "crh.key.test.isUITesting")
-            if !isUITesting && SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled {
+            if !isUITesting {
                 return false
             }
         }
@@ -180,22 +180,30 @@ enum KeyboardPreferences {
     }
 
     static func setCyrillicEnabled(_ enabled: Bool) {
+        let existing = defaults.object(forKey: cyrillicKey) as? Bool
+        guard cachedCyrillic != enabled || existing != enabled else { return }
         cachedCyrillic = enabled
-        defaults.set(enabled, forKey: cyrillicKey)
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        if existing != enabled {
+            defaults.set(enabled, forKey: cyrillicKey)
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        }
     }
 
     static func setUkrainianCyrillicLayoutEnabled(_ enabled: Bool) {
+        let existing = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool
+        guard cachedUkrainianCyrillicLayout != enabled || existing != enabled else { return }
         cachedUkrainianCyrillicLayout = enabled
-        defaults.set(enabled, forKey: ukrainianCyrillicLayoutKey)
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
-            nil,
-            nil,
-            true
-        )
+        if existing != enabled {
+            defaults.set(enabled, forKey: ukrainianCyrillicLayoutKey)
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
     }
 
     static func setSplitKeyboardEnabled(_ enabled: Bool) {
@@ -422,6 +430,7 @@ enum KeyboardUsageStats {
         guard KeyboardPreferences.statsEnabled else { return }
         if immediate {
             syncQueue.async {
+                KeyboardPreferences.defaults.synchronize()
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 CFNotificationCenterPostNotification(
                     CFNotificationCenterGetDarwinNotifyCenter(),
@@ -683,6 +692,9 @@ enum KeyboardUsageStats {
         } else {
             sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
             sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+            if let db {
+                reconcileUserLexiconWithBundledLexiconIfNeeded(userDB: db)
+            }
         }
         sqlite3_busy_timeout(db, 150)
         defer { sqlite3_close_v2(db) }
@@ -756,6 +768,9 @@ enum KeyboardUsageStats {
         } else {
             sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
             sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+            if let db {
+                reconcileUserLexiconWithBundledLexiconIfNeeded(userDB: db)
+            }
         }
         sqlite3_busy_timeout(db, 150)
         defer { sqlite3_close_v2(db) }
@@ -768,8 +783,11 @@ enum KeyboardUsageStats {
         }
         var words: [(word: String, freq: Int, lastUsed: Int64)] = []
         while sqlite3_step(stmt) == SQLITE_ROW {
-            if let ptr = sqlite3_column_text(stmt, 0) {
-                let word = String(cString: ptr)
+            if let rawPtr = sqlite3_column_text(stmt, 0) {
+                let byteCount = Int(sqlite3_column_bytes(stmt, 0))
+                let word = byteCount > 0
+                    ? String(decoding: UnsafeBufferPointer(start: rawPtr, count: byteCount), as: UTF8.self)
+                    : ""
                 let freq = Int(sqlite3_column_int(stmt, 1))
                 let lastUsed = sqlite3_column_int64(stmt, 2)
                 words.append((word: word, freq: max(1, freq), lastUsed: lastUsed))
@@ -778,39 +796,129 @@ enum KeyboardUsageStats {
         return words
     }
 
+    private static let bundledLexiconSignatureKey = "crh.key.stats.bundledLexiconSignature.v2"
+
+    /// Reconciles `user_unigrams` (`is_custom = 1`) against the current bundled `qırım_tatar.db` whenever the app
+    /// is installed or updated so words present in the bundled dictionary (including capitalized proper nouns like `Qırım`) are demoted to `is_custom = 0`.
+    private static func reconcileUserLexiconWithBundledLexiconIfNeeded(userDB: OpaquePointer) {
+        let resolvedPath = Bundle.main.path(forResource: "qırım_tatar", ofType: "db")
+            ?? Bundle.main.builtInPlugInsURL?.appendingPathComponent("Keyboard.appex/qırım_tatar.db").path
+        guard let bundledPath = resolvedPath,
+              FileManager.default.fileExists(atPath: bundledPath) else { return }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: bundledPath)
+        let size = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
+        let mtime = Int64((attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)
+        let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0"
+        let buildNumber = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String) ?? "1"
+        let currentSignature = "\(appVersion)-\(buildNumber)-\(size)-\(mtime)"
+        let defaults = KeyboardPreferences.defaults
+        guard defaults.string(forKey: bundledLexiconSignatureKey) != currentSignature else { return }
+
+        var bundledDB: OpaquePointer?
+        guard sqlite3_open_v2(bundledPath, &bundledDB, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK,
+              let bundledDB else {
+            if let bundledDB { sqlite3_close_v2(bundledDB) }
+            return
+        }
+        defer { sqlite3_close_v2(bundledDB) }
+
+        var customWords: [String] = []
+        do {
+            var stmt: OpaquePointer?
+            defer { sqlite3_finalize(stmt) }
+            if sqlite3_prepare_v2(userDB, "SELECT word FROM user_unigrams WHERE is_custom = 1;", -1, &stmt, nil) == SQLITE_OK {
+                while sqlite3_step(stmt) == SQLITE_ROW {
+                    if let rawPtr = sqlite3_column_text(stmt, 0) {
+                        let byteCount = Int(sqlite3_column_bytes(stmt, 0))
+                        if byteCount > 0 {
+                            let w = String(decoding: UnsafeBufferPointer(start: rawPtr, count: byteCount), as: UTF8.self)
+                            customWords.append(w)
+                        }
+                    }
+                }
+            }
+        }
+
+        if !customWords.isEmpty {
+            let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+            var checkStmt: OpaquePointer?
+            defer { sqlite3_finalize(checkStmt) }
+            let checkSQL = "SELECT 1 FROM words WHERE word = ?1 OR word = ?2 OR word = ?3 OR word = ?1 COLLATE NOCASE LIMIT 1;"
+            if sqlite3_prepare_v2(bundledDB, checkSQL, -1, &checkStmt, nil) == SQLITE_OK {
+                let crhLocale = Locale(identifier: "tr")
+                for word in customWords {
+                    let norm = word.lowercased(with: crhLocale)
+                    let cap = norm.isEmpty ? norm : (String(norm.prefix(1)).uppercased(with: crhLocale) + String(norm.dropFirst()))
+                    sqlite3_reset(checkStmt)
+                    sqlite3_clear_bindings(checkStmt)
+                    _ = word.withCString { cStr in
+                        sqlite3_bind_text(checkStmt, 1, cStr, Int32(word.utf8.count), sqlTransient)
+                    }
+                    _ = norm.withCString { cStr in
+                        sqlite3_bind_text(checkStmt, 2, cStr, Int32(norm.utf8.count), sqlTransient)
+                    }
+                    _ = cap.withCString { cStr in
+                        sqlite3_bind_text(checkStmt, 3, cStr, Int32(cap.utf8.count), sqlTransient)
+                    }
+                    if sqlite3_step(checkStmt) == SQLITE_ROW {
+                        var updStmt: OpaquePointer?
+                        defer { sqlite3_finalize(updStmt) }
+                        if sqlite3_prepare_v2(userDB, "UPDATE user_unigrams SET is_custom = 0 WHERE word = ?1 OR word = ?2;", -1, &updStmt, nil) == SQLITE_OK {
+                            _ = word.withCString { cStr in
+                                sqlite3_bind_text(updStmt, 1, cStr, Int32(word.utf8.count), sqlTransient)
+                            }
+                            _ = norm.withCString { cStr in
+                                sqlite3_bind_text(updStmt, 2, cStr, Int32(norm.utf8.count), sqlTransient)
+                            }
+                            sqlite3_step(updStmt)
+                        }
+                    }
+                }
+            }
+        }
+        defaults.set(currentSignature, forKey: bundledLexiconSignatureKey)
+    }
+
     /// Deletes a single learned word from `user_unigrams` and `user_bigrams`, updates `learnedWordsKey`, and returns the exact remaining count.
     @discardableResult
     static func deleteLearnedWord(_ word: String) -> Int {
-        let normalized = word.trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased(with: Locale(identifier: "crh-Latn"))
-        guard !normalized.isEmpty,
+        let trimmed = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trLocale = Locale(identifier: "tr")
+        let normTr = trimmed.lowercased(with: trLocale)
+        let capTr = normTr.capitalized(with: trLocale)
+        let normDefault = trimmed.lowercased()
+        guard !trimmed.isEmpty,
               let dbURL = userLexiconDatabaseURL(),
               FileManager.default.fileExists(atPath: dbURL.path) else {
             return fetchLearnedWords().count
         }
         let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+        let variants = Array(Set([trimmed, normTr, capTr, normDefault])).filter { !$0.isEmpty }
         var db: OpaquePointer?
         var remainingTotalUnique = 0
         if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
             sqlite3_busy_timeout(db, 150)
-            do {
-                var stmt: OpaquePointer?
-                defer { sqlite3_finalize(stmt) }
-                if sqlite3_prepare_v2(db, "DELETE FROM user_unigrams WHERE word = ?1;", -1, &stmt, nil) == SQLITE_OK {
-                    _ = normalized.withCString { cStr in
-                        sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+            for v in variants {
+                let vBytes = Int32(v.utf8.count)
+                do {
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    if sqlite3_prepare_v2(db, "DELETE FROM user_unigrams WHERE word = ?1 OR word = ?1 COLLATE NOCASE;", -1, &stmt, nil) == SQLITE_OK {
+                        _ = v.withCString { cStr in
+                            sqlite3_bind_text(stmt, 1, cStr, vBytes, sqlTransient)
+                        }
+                        sqlite3_step(stmt)
                     }
-                    sqlite3_step(stmt)
                 }
-            }
-            do {
-                var stmt: OpaquePointer?
-                defer { sqlite3_finalize(stmt) }
-                if sqlite3_prepare_v2(db, "DELETE FROM user_bigrams WHERE word1 = ?1 OR word2 = ?1;", -1, &stmt, nil) == SQLITE_OK {
-                    _ = normalized.withCString { cStr in
-                        sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+                do {
+                    var stmt: OpaquePointer?
+                    defer { sqlite3_finalize(stmt) }
+                    if sqlite3_prepare_v2(db, "DELETE FROM user_bigrams WHERE word1 = ?1 OR word2 = ?1 OR word1 = ?1 COLLATE NOCASE OR word2 = ?1 COLLATE NOCASE;", -1, &stmt, nil) == SQLITE_OK {
+                        _ = v.withCString { cStr in
+                            sqlite3_bind_text(stmt, 1, cStr, vBytes, sqlTransient)
+                        }
+                        sqlite3_step(stmt)
                     }
-                    sqlite3_step(stmt)
                 }
             }
             do {
@@ -854,7 +962,20 @@ enum KeyboardUsageStats {
             if sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
                 sqlite3_busy_timeout(db, 150)
                 sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
-                sqlite3_exec(db, "DELETE FROM user_unigrams WHERE is_custom = 1;", nil, nil, nil)
+                sqlite3_exec(
+                    db,
+                    """
+                    DELETE FROM user_bigrams
+                    WHERE word1 IN (SELECT word FROM user_unigrams WHERE is_custom = 1)
+                       OR word2 IN (SELECT word FROM user_unigrams WHERE is_custom = 1)
+                       OR word1 IN (SELECT LOWER(word) FROM user_unigrams WHERE is_custom = 1)
+                       OR word2 IN (SELECT LOWER(word) FROM user_unigrams WHERE is_custom = 1);
+                    DELETE FROM user_unigrams WHERE is_custom = 1;
+                    """,
+                    nil,
+                    nil,
+                    nil
+                )
                 var stmt: OpaquePointer?
                 defer { sqlite3_finalize(stmt) }
                 if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &stmt, nil) == SQLITE_OK,
@@ -890,6 +1011,8 @@ enum KeyboardUsageStats {
 
     /// Seeds demo learned words into `user_lexicon.sqlite` when `-qt_demo_stats` is active and the lexicon is empty.
     static func seedDemoLearnedWordsIfNeeded() {
+        guard CommandLine.arguments.contains("-qt_demo_stats")
+            || CommandLine.arguments.contains("-qt_seed_demo_stats") else { return }
         guard let dbURL = AppConfiguration.appGroupContainerURL?.appendingPathComponent("user_lexicon.sqlite") else { return }
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
@@ -919,13 +1042,13 @@ enum KeyboardUsageStats {
         do {
             var countStmt: OpaquePointer?
             defer { sqlite3_finalize(countStmt) }
-            if sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams WHERE is_custom = 1 AND word = 'Spotify';", -1, &countStmt, nil) == SQLITE_OK,
-               sqlite3_step(countStmt) == SQLITE_ROW,
-               sqlite3_column_int(countStmt, 0) > 0 {
-                return
-            }
+            // Demo data must never replace or mix with an existing user's lexicon.
+            guard sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM user_unigrams;", -1, &countStmt, nil) == SQLITE_OK,
+                  sqlite3_step(countStmt) == SQLITE_ROW,
+                  sqlite3_column_int(countStmt, 0) == 0 else { return }
         }
-        sqlite3_exec(db, "DELETE FROM user_unigrams WHERE is_custom = 1;", nil, nil, nil)
+        // These familiar names are absent from the bundled lexicon and demonstrate
+        // explicitly saved words without teaching misspelled Crimean Tatar toponyms.
         let demoWords = [
             "Spotify", "Netflix", "Telegram", "WhatsApp", "GitHub",
             "LinkedIn", "Coursera", "Duolingo", "Airbnb", "PayPal",
@@ -937,10 +1060,11 @@ enum KeyboardUsageStats {
         for (idx, word) in demoWords.enumerated() {
             var stmt: OpaquePointer?
             defer { sqlite3_finalize(stmt) }
-            let sql = "INSERT OR REPLACE INTO user_unigrams(word, freq, last_used, is_custom) VALUES (?1, ?2, ?3, 1);"
+            let sql = "INSERT OR IGNORE INTO user_unigrams(word, freq, last_used, is_custom) VALUES (?1, ?2, ?3, 1);"
             if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+                let wordBytes = Int32(word.utf8.count)
                 _ = word.withCString { cStr in
-                    sqlite3_bind_text(stmt, 1, cStr, -1, sqlTransient)
+                    sqlite3_bind_text(stmt, 1, cStr, wordBytes, sqlTransient)
                 }
                 sqlite3_bind_int(stmt, 2, Int32(max(1, 5 - (idx % 4))))
                 sqlite3_bind_int64(stmt, 3, now - Int64(idx * 60))
@@ -1209,19 +1333,21 @@ extension UITextDocumentProxy {
 }
 
 /// Reads live iOS/iPadOS system keyboard settings (`Settings → General → Keyboards`)
-/// from `CFPreferences`, `UserDefaults`, App Group cache, and `UITextDocumentProxy`.
+/// from system preferences controllers, `CFPreferences`, `UserDefaults`, App Group cache, and `UITextDocumentProxy`.
 enum SystemKeyboardSettings {
 
     enum Feature: String {
         case capsLock, periodShortcut, keyFlicks, slideToType, deleteSlideToTypeByWord
-        case smartPunctuation, predictiveText, autoCorrection, autoCapitalization
+        case smartPunctuation, shortcuts, checkSpelling, predictiveText, autoCorrection, autoCapitalization
         case mathResults, emojiPicker
 
         var preferenceKey: String { "crh.key.feature.\(rawValue)" }
     }
 
     static func isFeatureEnabled(_ feature: Feature) -> Bool {
-        KeyboardPreferences.defaults.object(forKey: feature.preferenceKey) as? Bool ?? true
+        (KeyboardPreferences.defaults.object(forKey: feature.preferenceKey) as? Bool)
+            ?? (UserDefaults.standard.object(forKey: feature.preferenceKey) as? Bool)
+            ?? true
     }
 
     static func setFeature(_ feature: Feature, enabled: Bool) {
@@ -1239,21 +1365,39 @@ enum SystemKeyboardSettings {
         (["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], true),
         (["KeyboardAutocapitalization", "UIKeyboardAutocapitalization"], true),
         (["KeyboardAutocorrection", "UIKeyboardAutocorrection"], true),
-        (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "KeyboardShowPredictionBar"], true),
+        (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "UIKeyboardPredictions", "KeyboardShowPredictionBar"], true),
         (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
-        (["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled"], true),
+        (["KeyboardShortcuts", "UIKeyboardShortcuts", "KeyboardAllowShortcuts"], true),
+        (["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"], true),
         (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
-        (["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled"], true),
+        (["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
         (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
         (["KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation", "SmartQuotesEnabled", "KeyboardSmartQuotesEnabled", "UIKeyboardSmartQuotesEnabled"], true),
-        (["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled"], true),
-        (["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], true),
+        (["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled", "KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation"], true),
+        (["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "MathExpressionCompletionEnabled", "KeyboardShowMathResults", "UIKeyboardShowMathResults", "ShowMathResults", "KeyboardCalculationEnabled", "CalculateResultsEnabled"], true),
         (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
     ]
 
+    private static func setCachedSysPrefIfNeeded(_ value: Bool, forKey key: String) {
+        let cacheKey = "crh.key.cachedSysPref.\(key)"
+        if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
+            if Thread.isMainThread {
+                refreshQueue.async {
+                    if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
+                        KeyboardPreferences.defaults.set(value, forKey: cacheKey)
+                    }
+                }
+            } else {
+                KeyboardPreferences.defaults.set(value, forKey: cacheKey)
+            }
+        }
+    }
+
     private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
+        var sawExplicitTrue = false
+        let prefsDomain = "com.apple.Preferences" as CFString
         let domains: [CFString] = [
-            "com.apple.Preferences" as CFString,
+            prefsDomain,
             kCFPreferencesAnyApplication
         ]
         if shouldSync {
@@ -1264,50 +1408,78 @@ enum SystemKeyboardSettings {
         for key in keys {
             for domain in domains {
                 if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
-                    KeyboardPreferences.defaults.set(val.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
-                    return val.boolValue
+                    if !val.boolValue {
+                        setCachedSysPrefIfNeeded(false, forKey: keys[0])
+                        return false
+                    }
+                    sawExplicitTrue = true
                 }
                 if let hostVal = CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
-                    KeyboardPreferences.defaults.set(hostVal.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
-                    return hostVal.boolValue
+                    if !hostVal.boolValue {
+                        setCachedSysPrefIfNeeded(false, forKey: keys[0])
+                        return false
+                    }
+                    sawExplicitTrue = true
                 }
             }
             if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
-                KeyboardPreferences.defaults.set(num.boolValue, forKey: "crh.key.cachedSysPref.\(keys[0])")
-                return num.boolValue
+                if !num.boolValue {
+                    setCachedSysPrefIfNeeded(false, forKey: keys[0])
+                    return false
+                }
+                sawExplicitTrue = true
             }
         }
-        if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(keys[0])") as? Bool {
-            return appGroupCached
+        if sawExplicitTrue {
+            setCachedSysPrefIfNeeded(true, forKey: keys[0])
+            return true
+        }
+        if Bundle.main.bundleIdentifier != AppConfiguration.appBundleId,
+           let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(keys[0])") as? Bool,
+           !appGroupCached {
+            return false
         }
         return defaultValue
+    }
+
+    static func refreshAllSynchronously(shouldSync: Bool = true) {
+        var updated: [String: Bool] = [:]
+        for (index, entry) in knownKeyGroups.enumerated() {
+            if let primaryKey = entry.0.first {
+                updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: shouldSync && index == 0, default: entry.1)
+            }
+        }
+        os_unfair_lock_lock(&cacheLock)
+        for (k, v) in updated {
+            cachedValues[k] = v
+        }
+        lastSyncTimestamp = ProcessInfo.processInfo.systemUptime
+        isRefreshing = false
+        os_unfair_lock_unlock(&cacheLock)
     }
 
     static func triggerAsyncRefreshIfNeeded(force: Bool = false) {
         let now = ProcessInfo.processInfo.systemUptime
         os_unfair_lock_lock(&cacheLock)
-        let needsRefresh = !isRefreshing && (force || cachedValues.isEmpty || (now - lastSyncTimestamp) >= 1.5)
+        let isCacheEmpty = cachedValues.isEmpty
+        let age = now - lastSyncTimestamp
+        let needsRefresh = !isRefreshing && (force || isCacheEmpty || age >= 10.0)
         if needsRefresh {
             isRefreshing = true
             lastSyncTimestamp = now
         }
         os_unfair_lock_unlock(&cacheLock)
         guard needsRefresh else { return }
+        if Thread.isMainThread {
+            _ = activeInputModeLanguages(forceRefresh: force)
+            if isCacheEmpty {
+                refreshAllSynchronously(shouldSync: false)
+            }
+        }
 
         refreshQueue.async {
-            var updated: [String: Bool] = [:]
-            for (index, entry) in knownKeyGroups.enumerated() {
-                if let primaryKey = entry.0.first {
-                    updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: index == 0, default: entry.1)
-                }
-            }
+            refreshAllSynchronously(shouldSync: true)
             _ = enabledSystemKeyboardIdentifiers(forceRefresh: true)
-            os_unfair_lock_lock(&cacheLock)
-            for (k, v) in updated {
-                cachedValues[k] = v
-            }
-            isRefreshing = false
-            os_unfair_lock_unlock(&cacheLock)
         }
     }
 
@@ -1323,17 +1495,23 @@ enum SystemKeyboardSettings {
             }
         }
         guard let primaryKey = keys.first else { return defaultValue }
+        let now = ProcessInfo.processInfo.systemUptime
         os_unfair_lock_lock(&cacheLock)
         let cached = cachedValues[primaryKey]
+        let isStale = (now - lastSyncTimestamp) >= 10.0
         os_unfair_lock_unlock(&cacheLock)
-        triggerAsyncRefreshIfNeeded()
         if let cached {
+            if isStale {
+                triggerAsyncRefreshIfNeeded()
+            }
             return cached
         }
-        if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
-            return appGroupCached
-        }
-        return pollSystemPreferenceFromOS(keys, shouldSync: false, default: defaultValue)
+        let fresh = pollSystemPreferenceFromOS(keys, shouldSync: false, default: defaultValue)
+        os_unfair_lock_lock(&cacheLock)
+        cachedValues[primaryKey] = fresh
+        os_unfair_lock_unlock(&cacheLock)
+        triggerAsyncRefreshIfNeeded()
+        return fresh
     }
 
     static var isCapsLockEnabled: Bool {
@@ -1346,9 +1524,22 @@ enum SystemKeyboardSettings {
         return readSystemPreferenceBool(["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], default: true)
     }
 
+    static var isShortcutsEnabled: Bool {
+        guard isFeatureEnabled(.shortcuts) else { return false }
+        return readSystemPreferenceBool(["KeyboardShortcuts", "UIKeyboardShortcuts", "KeyboardAllowShortcuts"], default: true)
+    }
+
+    static var isCheckSpellingEnabled: Bool { isCheckSpellingEnabled(for: nil) }
+
+    static func isCheckSpellingEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        guard isFeatureEnabled(.checkSpelling) else { return false }
+        if let proxy, proxy.spellCheckingType == .no { return false }
+        return readSystemPreferenceBool(["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], default: true)
+    }
+
     static var isKeyFlicksEnabled: Bool {
         guard isFeatureEnabled(.keyFlicks) else { return false }
-        return readSystemPreferenceBool(["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled"], default: true)
+        return readSystemPreferenceBool(["KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"], default: true)
     }
 
     static var isSlideToTypeEnabled: Bool {
@@ -1382,6 +1573,15 @@ enum SystemKeyboardSettings {
         )
     }
 
+    static func isSmartDashesEnabled(for proxy: UITextDocumentProxy?) -> Bool {
+        guard isSmartPunctuationEnabled(for: proxy) else { return false }
+        if let proxy, proxy.smartDashesType == .no { return false }
+        return readSystemPreferenceBool(
+            ["SmartDashesEnabled", "KeyboardSmartDashesEnabled", "UIKeyboardSmartDashesEnabled", "KeyboardSmartPunctuation", "UIKeyboardSmartPunctuation"],
+            default: true
+        )
+    }
+
     static var isPredictiveTextEnabled: Bool { isPredictiveTextEnabled(for: nil) }
 
     static func isPredictiveTextEnabled(for proxy: UITextDocumentProxy?) -> Bool {
@@ -1390,13 +1590,13 @@ enum SystemKeyboardSettings {
         if #available(iOS 17.0, *), proxy?.inlinePredictionType == .no && proxy?.spellCheckingType == .no {
             return false
         }
-        return readSystemPreferenceBool(["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
+        return readSystemPreferenceBool(["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "UIKeyboardPredictions", "KeyboardShowPredictionBar"], default: true)
     }
 
     static var isAutoCorrectionEnabled: Bool { isAutoCorrectionEnabled(for: nil) }
 
     static func isAutoCorrectionEnabled(for proxy: UITextDocumentProxy?) -> Bool {
-        guard isPredictiveTextEnabled(for: proxy), isFeatureEnabled(.autoCorrection) else { return false }
+        guard KeyboardPreferences.suggestionsEnabled, isFeatureEnabled(.autoCorrection) else { return false }
         if let proxy, proxy.autocorrectionType == .no { return false }
         return readSystemPreferenceBool(["KeyboardAutocorrection", "UIKeyboardAutocorrection"], default: true)
     }
@@ -1413,28 +1613,72 @@ enum SystemKeyboardSettings {
 
     static func isShowMathResultsEnabled(for proxy: UITextDocumentProxy?) -> Bool {
         guard isFeatureEnabled(.mathResults), proxy?.isSecureTextEntry != true else { return false }
-        if #available(iOS 18.0, *), proxy?.mathExpressionCompletionType == .no {
-            return false
+        if #available(iOS 18.0, *) {
+            if proxy?.mathExpressionCompletionType == .no {
+                return false
+            }
+            if let proxy,
+               proxy.mathExpressionCompletionType != .yes,
+               (proxy.returnKeyType == .search || proxy.keyboardType == .webSearch),
+               proxy.autocorrectionType == .no,
+               proxy.spellCheckingType == .no {
+                return false
+            }
         }
-        return readSystemPreferenceBool(["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "ShowMathResults"], default: true)
+        return readSystemPreferenceBool(
+            ["KeyboardMathExpressionCompletion", "UIKeyboardMathExpressionCompletion", "MathExpressionCompletionEnabled", "KeyboardShowMathResults", "UIKeyboardShowMathResults", "ShowMathResults", "KeyboardCalculationEnabled", "CalculateResultsEnabled"],
+            default: true
+        )
     }
 
     private static var lastEmojiCheckTime: TimeInterval = 0
     private static var cachedEmojiEnabled: Bool?
     private static var lastKeyboardsCheckTime: TimeInterval = 0
     private static var cachedEnabledKeyboardIds: [String]?
+    private static var cachedHasAuthoritativeList: Bool?
+    private static var lastActiveInputModesCheckTime: TimeInterval = 0
+    private static var cachedActiveInputModeLanguages: [String] = []
     static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
     static let cachedEnabledKeyboardsKey = "crh.key.cachedEnabledKeyboards"
+
+    /// Safely returns lowercased `UITextInputMode.activeInputModes` languages on the main thread,
+    /// or the most recent main-thread snapshot when queried from a background queue.
+    static func activeInputModeLanguages(forceRefresh: Bool = false) -> [String] {
+        if Thread.isMainThread {
+            let now = ProcessInfo.processInfo.systemUptime
+            os_unfair_lock_lock(&cacheLock)
+            if !forceRefresh, !cachedActiveInputModeLanguages.isEmpty, (now - lastActiveInputModesCheckTime) < 2.0 {
+                let cached = cachedActiveInputModeLanguages
+                os_unfair_lock_unlock(&cacheLock)
+                return cached
+            }
+            lastActiveInputModesCheckTime = now
+            os_unfair_lock_unlock(&cacheLock)
+            let langs = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
+                .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+            os_unfair_lock_lock(&cacheLock)
+            cachedActiveInputModeLanguages = langs
+            os_unfair_lock_unlock(&cacheLock)
+            return langs
+        }
+        os_unfair_lock_lock(&cacheLock)
+        let langs = cachedActiveInputModeLanguages
+        os_unfair_lock_unlock(&cacheLock)
+        return langs
+    }
 
     /// Reads the list of enabled keyboard identifiers from system preferences (`AppleKeyboards`),
     /// `UITextInputMode.activeInputModes`, and the App Group cache.
     @discardableResult
     static func enabledSystemKeyboardIdentifiers(forceRefresh: Bool = false) -> [String] {
         let now = ProcessInfo.processInfo.systemUptime
+        os_unfair_lock_lock(&cacheLock)
         if !forceRefresh, let cached = cachedEnabledKeyboardIds, (now - lastKeyboardsCheckTime) < 1.5 {
+            os_unfair_lock_unlock(&cacheLock)
             return cached
         }
         lastKeyboardsCheckTime = now
+        os_unfair_lock_unlock(&cacheLock)
 
         var collected: [String] = []
         var didReadAuthoritativeList = false
@@ -1458,58 +1702,60 @@ enum SystemKeyboardSettings {
             }
         }
 
-        let activeModes = UITextInputMode.activeInputModes
-        for mode in activeModes {
-            if let id = (mode as AnyObject).value(forKey: "identifier") as? String, !id.isEmpty {
-                collected.append(id)
-            }
-            if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
-                if lang.hasPrefix("crh-cyrl-ua") {
-                    collected.append(AppConfiguration.ukrainianKeyboardBundleId)
-                    collected.append(AppConfiguration.ukrainianDeviceKeyboardBundleId)
-                } else if lang.hasPrefix("crh-cyrl") {
-                    collected.append(AppConfiguration.cyrillicKeyboardBundleId)
-                } else if lang == "crh" || lang.hasPrefix("crh-latn") {
-                    collected.append(AppConfiguration.keyboardBundleId)
-                }
+        let activeLanguages = activeInputModeLanguages()
+        for lang in activeLanguages {
+            if lang.hasPrefix("crh-cyrl-ua") {
+                collected.append(AppConfiguration.ukrainianKeyboardBundleId)
+                collected.append(AppConfiguration.ukrainianDeviceKeyboardBundleId)
+            } else if lang.hasPrefix("crh-cyrl") {
+                collected.append(AppConfiguration.cyrillicKeyboardBundleId)
+            } else if lang == "crh" || lang.hasPrefix("crh-latn") {
+                collected.append(AppConfiguration.keyboardBundleId)
             }
         }
 
         if didReadAuthoritativeList {
-            let unique = Array(Set(collected))
+            let unique = Array(Set(collected)).sorted()
+            os_unfair_lock_lock(&cacheLock)
             cachedEnabledKeyboardIds = unique
-            KeyboardPreferences.defaults.set(unique, forKey: cachedEnabledKeyboardsKey)
+            cachedHasAuthoritativeList = true
+            os_unfair_lock_unlock(&cacheLock)
+            if KeyboardPreferences.defaults.stringArray(forKey: cachedEnabledKeyboardsKey) != unique {
+                KeyboardPreferences.defaults.set(unique, forKey: cachedEnabledKeyboardsKey)
+            }
             return unique
         }
 
         if let stored = KeyboardPreferences.defaults.stringArray(forKey: cachedEnabledKeyboardsKey), !stored.isEmpty {
-            let merged = Array(Set(stored + collected))
+            let merged = Array(Set(stored + collected)).sorted()
+            os_unfair_lock_lock(&cacheLock)
             cachedEnabledKeyboardIds = merged
+            cachedHasAuthoritativeList = false
+            os_unfair_lock_unlock(&cacheLock)
             return merged
         }
 
-        let unique = Array(Set(collected))
+        let unique = Array(Set(collected)).sorted()
+        os_unfair_lock_lock(&cacheLock)
         cachedEnabledKeyboardIds = unique
+        cachedHasAuthoritativeList = false
+        os_unfair_lock_unlock(&cacheLock)
         return unique
     }
 
     static func hasAuthoritativeSystemKeyboardsList() -> Bool {
-        if let stdList = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !stdList.isEmpty {
-            return true
+        let now = ProcessInfo.processInfo.systemUptime
+        os_unfair_lock_lock(&cacheLock)
+        if let cached = cachedHasAuthoritativeList, (now - lastKeyboardsCheckTime) < 1.5 {
+            os_unfair_lock_unlock(&cacheLock)
+            return cached
         }
-        let domains: [CFString] = [
-            "com.apple.Preferences" as CFString,
-            kCFPreferencesAnyApplication
-        ]
-        for domain in domains {
-            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
-                return true
-            }
-            if let hostList = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostList.isEmpty {
-                return true
-            }
-        }
-        return false
+        os_unfair_lock_unlock(&cacheLock)
+        _ = enabledSystemKeyboardIdentifiers()
+        os_unfair_lock_lock(&cacheLock)
+        let result = cachedHasAuthoritativeList ?? false
+        os_unfair_lock_unlock(&cacheLock)
+        return result
     }
 
     /// Refreshes and persists whether the system Emoji keyboard is in the user's enabled keyboards list (`Settings → General → Keyboard → Keyboards`).
@@ -1517,18 +1763,23 @@ enum SystemKeyboardSettings {
     static func refreshSystemEmojiKeyboardState() -> Bool {
         if Bundle.main.bundleIdentifier == AppConfiguration.appBundleId {
             let args = CommandLine.arguments
+            let key = "crh.key.test.sysPref.EmojiEnabled"
+            let current = KeyboardPreferences.defaults.object(forKey: key) as? Bool
             if args.contains("-qt_emoji_disabled") {
-                KeyboardPreferences.defaults.set(false, forKey: "crh.key.test.sysPref.EmojiEnabled")
+                if current != false { KeyboardPreferences.defaults.set(false, forKey: key) }
             } else if args.contains("-qt_emoji_enabled") || args.contains("-UITesting") {
-                KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.EmojiEnabled")
-            } else {
-                KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.EmojiEnabled")
+                if current != true { KeyboardPreferences.defaults.set(true, forKey: key) }
+            } else if current != nil {
+                KeyboardPreferences.defaults.removeObject(forKey: key)
             }
         }
+        os_unfair_lock_lock(&cacheLock)
         lastEmojiCheckTime = 0
         cachedEmojiEnabled = nil
         lastKeyboardsCheckTime = 0
         cachedEnabledKeyboardIds = nil
+        cachedHasAuthoritativeList = nil
+        os_unfair_lock_unlock(&cacheLock)
         triggerAsyncRefreshIfNeeded(force: true)
         return isEmojiKeyboardEnabled
     }
@@ -1553,21 +1804,30 @@ enum SystemKeyboardSettings {
             return false
         }
         let now = ProcessInfo.processInfo.systemUptime
+        os_unfair_lock_lock(&cacheLock)
         if let cached = cachedEmojiEnabled, (now - lastEmojiCheckTime) < 2.0 {
+            os_unfair_lock_unlock(&cacheLock)
             return cached
         }
         lastEmojiCheckTime = now
+        os_unfair_lock_unlock(&cacheLock)
 
         let ids = enabledSystemKeyboardIdentifiers()
         if !ids.isEmpty {
             let hasEmoji = ids.contains { $0.localizedCaseInsensitiveContains("emoji") }
+            os_unfair_lock_lock(&cacheLock)
             cachedEmojiEnabled = hasEmoji
-            KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+            os_unfair_lock_unlock(&cacheLock)
+            if (KeyboardPreferences.defaults.object(forKey: cachedEmojiKeyboardEnabledKey) as? Bool) != hasEmoji {
+                KeyboardPreferences.defaults.set(hasEmoji, forKey: cachedEmojiKeyboardEnabledKey)
+            }
             return hasEmoji
         }
 
         let fallback = KeyboardPreferences.defaults.object(forKey: cachedEmojiKeyboardEnabledKey) as? Bool ?? false
+        os_unfair_lock_lock(&cacheLock)
         cachedEmojiEnabled = fallback
+        os_unfair_lock_unlock(&cacheLock)
         return fallback
     }
 
@@ -1592,8 +1852,7 @@ enum SystemKeyboardSettings {
                 || lower.hasPrefix("crh.key.keyboard.keyboard@")
         }
         if matchesLatin { return true }
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        let languages = activeInputModeLanguages()
         if languages.contains(where: { $0 == "crh" || $0.hasPrefix("crh-latn") }) {
             return true
         }
@@ -1622,8 +1881,7 @@ enum SystemKeyboardSettings {
                 || lower.contains("crh.key.keyboard.keyboardcyrillic")
         }
         if matchesCyrillic { return true }
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        let languages = activeInputModeLanguages()
         if languages.contains(where: { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }) {
             return true
         }
@@ -1654,8 +1912,7 @@ enum SystemKeyboardSettings {
                 || lower.contains("crh.key.keyboard.pro")
         }
         if matchesUkrainian { return true }
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        let languages = activeInputModeLanguages()
         if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") }) {
             return true
         }

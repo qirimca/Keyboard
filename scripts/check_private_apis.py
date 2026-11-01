@@ -181,7 +181,9 @@ def literal_expression(tokens: list[Token], start: int):
 
 
 def denied_values(value: str):
-    return [needle for needle in DENIED if needle.casefold() in value.casefold()]
+    cf = value.casefold()
+    dehash = cf.replace('#', '')
+    return [needle for needle in DENIED if needle.casefold() in cf or needle.casefold() in dehash]
 
 
 def source_findings(source: str) -> list[tuple[int, str]]:

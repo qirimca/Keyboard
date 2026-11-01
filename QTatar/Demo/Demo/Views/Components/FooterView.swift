@@ -15,6 +15,7 @@ struct FooterView: View {
             TaraqTamgaLogoBadge(size: 36, cornerRadius: 12)
                 .saturation(0)
                 .layoutPriority(0)
+                .accessibilityHidden(true)
 
             Text("\(About.about_rights_key.localized) • v\(BuildInfo.fullVersion)")
                 .regularText(color: Color(.secondaryLabel))

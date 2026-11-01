@@ -1079,7 +1079,7 @@ struct NativeAutocompleteToolbar: View {
                     if suggestion.isAutocorrect {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
-                            .foregroundStyle(primaryColor)
+                            .foregroundStyle(isDark ? Color.white.opacity(0.96) : Color.black.opacity(0.92))
                             .lineLimit(allowTwoLines ? 2 : 1)
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
@@ -1097,7 +1097,7 @@ struct NativeAutocompleteToolbar: View {
                     } else {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
-                            .foregroundStyle(primaryColor)
+                            .foregroundStyle(isDark ? Color.white.opacity(0.88) : Color.black.opacity(0.85))
                             .lineLimit(allowTwoLines ? 2 : 1)
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
@@ -1113,6 +1113,8 @@ struct NativeAutocompleteToolbar: View {
         .buttonStyle(FullSlotButtonStyle(isDark: isDark))
         .frame(width: width, height: height)
         .contentShape(Rectangle())
+        .accessibilityLabel(suggestion?.title ?? "")
+        .accessibilityAddTraits(suggestion?.isAutocorrect == true ? [.isButton, .isSelected] : [.isButton])
         .accessibilityIdentifier("autocomplete.slot.\(index)")
         .accessibilityHidden(suggestion == nil)
     }
@@ -1338,6 +1340,13 @@ struct NativeAutocompleteToolbar: View {
                     .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel({
+                switch KeyboardPreferences.interfaceLanguage {
+                case "uk": return "Наступна фраза"
+                case "en": return "Next phrase"
+                default: return "Növbetteki ibare"
+                }
+            }())
             .accessibilityIdentifier("autocomplete.greetingNext")
         }
         .padding(.horizontal, 6)
@@ -1391,6 +1400,13 @@ struct NativeAutocompleteToolbar: View {
                     .background(greetingPlatterBackground)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel({
+                switch KeyboardPreferences.interfaceLanguage {
+                case "uk": return "Наступна фраза"
+                case "en": return "Next phrase"
+                default: return "Növbetteki ibare"
+                }
+            }())
             .accessibilityIdentifier("autocomplete.greetingNext")
         }
         .frame(maxWidth: maxPillWidth)

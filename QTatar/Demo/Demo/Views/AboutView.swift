@@ -14,6 +14,7 @@ struct AboutView: View {
     
     @Environment(\.openURL) var openURL
     @Environment(\.dismiss) var dismiss
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     private var socialMediaLinks: [(String, String)] {
         [
@@ -29,27 +30,30 @@ struct AboutView: View {
         let _ = language
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
-            ScrollViewReader { scroll in
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 18) {
-                        headerSection
-                        projectSection
-                        contactSection
-                            .id("contactSection")
-                        feedbackSection
-                        FooterView()
+            GeometryReader { geo in
+                let isCompactWidth = Device.iPhone || (geo.size.width > 0 && geo.size.width < 560)
+                ScrollViewReader { scroll in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 18) {
+                            headerSection
+                            projectSection
+                            contactSection
+                                .id("contactSection")
+                            feedbackSection
+                            FooterView()
+                        }
+                        .padding(.horizontal, isCompactWidth ? 12 : 24)
+                        .padding(.vertical, 12)
+                        // iPad: keep a readable column instead of stretching cards/illustrations edge-to-edge.
+                        .frame(maxWidth: Device.iPad ? min(geo.size.width > 0 ? geo.size.width : 720, 720) : .infinity)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(.horizontal, Device.iPhone ? 12 : 24)
-                    .padding(.vertical, 12)
-                    // iPad: keep a readable column instead of stretching cards/illustrations edge-to-edge.
-                    .frame(maxWidth: Device.iPad ? 720 : .infinity)
-                    .frame(maxWidth: .infinity)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .onAppear {
-                    if ProcessInfo.processInfo.arguments.contains("-qt_open_about") {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            scroll.scrollTo("contactSection", anchor: .center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear {
+                        if ProcessInfo.processInfo.arguments.contains("-qt_open_about") {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                scroll.scrollTo("contactSection", anchor: .center)
+                            }
                         }
                     }
                 }
@@ -79,6 +83,7 @@ private extension AboutView {
     var headerSection: some View {
         VStack(spacing: 12) {
             TaraqTamgaLogoBadge(size: 84, cornerRadius: 20)
+                .accessibilityHidden(true)
             Text(About.about_first_key.localized)
                 .titleText()
                 .multilineTextAlignment(.center)
@@ -94,9 +99,17 @@ private extension AboutView {
     var projectSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             containerTitle(title: About.about_init_key.localized, icon: "atom")
-            HStack(alignment: .top, spacing: 12) {
-                projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
-                projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) {
+                    projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
+                        .frame(minWidth: 210)
+                    projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
+                        .frame(minWidth: 210)
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
+                    projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
+                }
             }
         }
         .padding(14)
@@ -111,23 +124,39 @@ private extension AboutView {
         return VStack(alignment: .leading, spacing: 8) {
             containerTitle(title: About.about_join_key.localized, icon: "hand.thumbsup")
 
-            if Device.iPhone {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 10) {
+                    ForEach(links, id: \.0) { social, link in
+                        linkButton(name: social, link: link, fixedHorizontal: true)
+                    }
+                }
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
                         ForEach(Array(links.prefix(3)), id: \.0) { social, link in
-                            linkButton(name: social, link: link)
+                            linkButton(name: social, link: link, fixedHorizontal: true)
                         }
                     }
                     HStack(spacing: 8) {
                         ForEach(Array(links.dropFirst(3)), id: \.0) { social, link in
-                            linkButton(name: social, link: link)
+                            linkButton(name: social, link: link, fixedHorizontal: true)
                         }
                     }
                 }
-            } else {
-                HStack(alignment: .center, spacing: 10) {
-                    ForEach(links, id: \.0) { social, link in
-                        linkButton(name: social, link: link)
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.prefix(2)), id: \.0) { social, link in
+                            linkButton(name: social, link: link)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.dropFirst(2).prefix(2)), id: \.0) { social, link in
+                            linkButton(name: social, link: link)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.dropFirst(4)), id: \.0) { social, link in
+                            linkButton(name: social, link: link)
+                        }
                     }
                 }
             }
@@ -178,11 +207,14 @@ private extension AboutView {
             Image(systemName: icon)
                 .imageScale(.large)
                 .foregroundStyle(Color(.label))
+                .accessibilityHidden(true)
         }
         .padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
     
-    func linkButton(name: String, link: String) -> some View {
+    func linkButton(name: String, link: String, fixedHorizontal: Bool = false) -> some View {
         Button {
             withAnimation {
                 HapticFeedback.playSelection()
@@ -193,10 +225,12 @@ private extension AboutView {
                 Text(name)
                     .regularText(size: 13.5, color: Color(.systemBackground))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(fixedHorizontal ? 1.0 : 0.85)
+                    .fixedSize(horizontal: fixedHorizontal, vertical: false)
                 Image(systemName: "arrow.up.forward.app")
                     .imageScale(.small)
                     .foregroundStyle(Color(.systemBackground))
+                    .accessibilityHidden(true)
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 8)
@@ -205,6 +239,8 @@ private extension AboutView {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(name)
+        .accessibilityAddTraits(.isLink)
     }
     
     func feedbackButton(
@@ -222,12 +258,14 @@ private extension AboutView {
     }
     
     func cellItem(title: String, icon: String) -> some View {
-        HStack {
+        let isHighContrast = colorSchemeContrast == .increased
+        return HStack {
             Text(title).regularText(size: 14)
             Spacer(minLength: 8)
             Image(systemName: icon)
                 .imageScale(.medium)
                 .foregroundStyle(Color(.label))
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -238,13 +276,14 @@ private extension AboutView {
             Capsule()
                 .stroke(
                     LinearGradient(
-                        colors: [Color.french, Color.primary.opacity(0.35)],
+                        colors: [Color.french, Color.primary.opacity(isHighContrast ? 0.65 : 0.35)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 1.5
+                    lineWidth: isHighContrast ? 2.0 : 1.5
                 )
         }
+        .accessibilityElement(children: .combine)
     }
     
     func projectContainer(illustration: String, projectName: String, description: String, link: String) -> some View {
@@ -275,12 +314,15 @@ private extension AboutView {
                     Image(systemName: "arrow.up.forward.app")
                         .imageScale(.small)
                         .foregroundStyle(Color(.systemBackground))
+                        .accessibilityHidden(true)
                 }
                 .padding(7)
                 .frame(maxWidth: .infinity)
                 .background(Color(.label))
                 .clipShape(Capsule())
             }
+            .accessibilityLabel("\(About.about_more_key.localized), \(projectName)")
+            .accessibilityAddTraits(.isLink)
             
             Text(description)
                 .regularText(color: Color(.secondaryLabel))

@@ -249,11 +249,13 @@ private extension OnboardingView {
                 }
                 .opacity(page == .onboard1 ? 0 : 1)
                 .disabled(page == .onboard1)
+                .accessibilityHidden(page == .onboard1)
                 
                 Spacer()
                 
                 Text("\(page.index + 1)/\(Page.allCases.count)")
                     .mediumText()
+                    .accessibilityLabel("\(page.index + 1) / \(Page.allCases.count)")
                 
                 Spacer()
                 

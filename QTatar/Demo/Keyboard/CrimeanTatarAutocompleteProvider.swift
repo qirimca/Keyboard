@@ -9,10 +9,12 @@
 import Foundation
 import KeyboardKit
 import UIKit
+import os
 
 /// Crimean Tatar autocomplete backed by the local SQLite dictionary.
 class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 
+    private static let perfSignposter = OSSignposter(subsystem: "crh.key.perf", category: "AutocompleteProvider")
     private let manager = SuggestionsDataBaseManager.shared
     private let keyboardContext: KeyboardContext
     private weak var controller: UIInputViewController?
@@ -73,6 +75,8 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
     /// Synchronous suggestions for the current document state; used on the async path and directly on Space.
     func suggestionsNow(for text: String) -> [Autocomplete.Suggestion] {
         guard DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext) else { return [] }
+        let spState = Self.perfSignposter.beginInterval("SuggestionsNow")
+        defer { Self.perfSignposter.endInterval("SuggestionsNow", spState) }
         let snapshot = captureQuerySnapshot(fallbackText: text)
         return computeSuggestions(for: snapshot)
     }
@@ -201,7 +205,8 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
                 contextWords: snapshot.completedContextWords,
                 positionContext: snapshot.positionContext
             )
-            if let shortcutText = manager.shortcutReplacement(for: snapshot.query) {
+            if SystemKeyboardSettings.isShortcutsEnabled,
+               let shortcutText = manager.shortcutReplacement(for: snapshot.query) {
                 var updated = suggestions.filter { $0.text != shortcutText }.map { item -> Autocomplete.Suggestion in
                     var copy = item
                     copy.isAutocorrect = false
@@ -231,7 +236,8 @@ class CrimeanTatarAutocompleteProvider: AutocompleteProvider {
 enum AutocompleteQueryResolver {
 
     static func queryText(for proxy: UITextDocumentProxy) -> String? {
-        if let mathQuery = MathExpressionEvaluator.trailingMathQuery(in: proxy.documentContextBeforeInput) {
+        if SystemKeyboardSettings.isShowMathResultsEnabled(for: proxy),
+           let mathQuery = MathExpressionEvaluator.trailingMathQuery(in: proxy.documentContextBeforeInput) {
             return mathQuery
         }
 

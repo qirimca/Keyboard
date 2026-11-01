@@ -163,14 +163,22 @@ struct HomeView: View {
         var id: String { "\(mode.rawValue)-\(initialPage)" }
     }
 
-    @StateObject private var keyboardState = KeyboardStateContext(bundleId: AppConfiguration.keyboardBundleIdPattern)
+    private struct LocalKeyboardInspector: KeyboardStateInspector {}
+    private static let keyboardInspector = LocalKeyboardInspector()
 
-    @AppStorage("crh.key.primaryExtensionSeen", store: KeyboardPreferences.defaults) private var primaryExtensionSeen = false
-    @AppStorage("crh.key.cyrillicExtensionSeen", store: KeyboardPreferences.defaults) private var cyrillicExtensionSeen = false
-    @AppStorage("crh.key.ukrainianExtensionSeen", store: KeyboardPreferences.defaults) private var ukrainianExtensionSeen = false
-    @AppStorage("crh.key.lastRenderedPrimaryAdded", store: KeyboardPreferences.defaults) private var lastRenderedPrimaryAdded = false
-    @AppStorage("crh.key.lastRenderedCyrillicAdded", store: KeyboardPreferences.defaults) private var lastRenderedCyrillicAdded = false
-    @AppStorage("crh.key.lastRenderedUkrainianAdded", store: KeyboardPreferences.defaults) private var lastRenderedUkrainianAdded = false
+    @State private var primaryExtensionSeen: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+    @State private var cyrillicExtensionSeen: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+    @State private var ukrainianExtensionSeen: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+    @State private var lastRenderedPrimaryAdded: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.lastRenderedPrimaryAdded")
+    @State private var lastRenderedCyrillicAdded: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.lastRenderedCyrillicAdded")
+    @State private var lastRenderedUkrainianAdded: Bool = KeyboardPreferences.defaults.bool(forKey: "crh.key.lastRenderedUkrainianAdded")
+    @State private var isPrimaryKeyboardAddedState: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_keyboard_missing") { return false }
+        if args.contains("-qt_keyboard_added") || args.contains("-qt_demo_stats") { return true }
+        return SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled
+            || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+    }()
     @State private var didCheckColdLaunchExtensionDiff = false
     @State private var activeOnboardingSheet: OnboardingSheetRequest?
     @State private var pendingCyrillicRemovalCheck = false
@@ -260,13 +268,17 @@ struct HomeView: View {
                             AnyView(cyrillicLayoutsSection)
                         }
                     }
-                    // iPad: single column (portrait / split view) stays at a readable width; very wide
-                    // two-column windows (13" iPad, Stage Manager) are capped and centered.
-                    .frame(maxWidth: Device.iPad ? (twoColumns ? 1180 : 680) : .infinity)
+                    // iPad: single column (portrait / split view / narrow Stage Manager) stays within the window width;
+                    // very wide two-column windows (13" iPad, Stage Manager) are capped and centered.
+                    .frame(
+                        maxWidth: Device.iPad
+                            ? min(effectiveContainerSize.width > 0 ? effectiveContainerSize.width : (twoColumns ? 1180 : 680), twoColumns ? 1180 : 680)
+                            : .infinity
+                    )
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, (Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
+                    .padding(.horizontal, (Device.iPhone || (effectiveContainerSize.width > 0 && effectiveContainerSize.width < 600)) ? 12 : 24)
                     .padding(.top, Device.iPhone ? 8 : 14)
-                    .padding(.bottom, shouldShowStartOverlay ? 76 : (isKeyboardVisible ? 24 : (Device.iPhone ? 16 : 24)))
+                    .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
                 }
                 .softTopScrollEdgeEffect()
                 .background {
@@ -280,6 +292,7 @@ struct HomeView: View {
                         .onAppear { containerSize = geometry.size }
                         .onChange(of: geometry.size) { _, size in containerSize = size }
                 }
+                .ignoresSafeArea(.keyboard)
             }
             .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: language)
             .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: cyrillicEnabled)
@@ -374,20 +387,13 @@ struct HomeView: View {
                 }
             }
             .onChange(of: isLandscapeCompactHeight) { _, isCompactHeight in
-                if isCompactHeight {
-                    if isWritingFieldFocused {
-                        scroll.scrollTo("testingSandbox", anchor: .top)
-                    } else if !areAllIndicatorsEnabled && Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize) {
-                        scroll.scrollTo("statusIndicators", anchor: .top)
-                    }
+                if isCompactHeight && !isWritingFieldFocused && !areAllIndicatorsEnabled && Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize) {
+                    scroll.scrollTo("statusIndicators", anchor: .top)
                 }
             }
             .onChange(of: isWritingFieldFocused) { _, focused in
                 syncSandboxFocusToAppGroup(focused)
                 refreshCyrillicStatus()
-                if focused && isLandscapeCompactHeight {
-                    scroll.scrollTo("testingSandbox", anchor: .top)
-                }
             }
             .onChange(of: isKeyboardVisible) { _, _ in
                 refreshCyrillicStatus()
@@ -399,18 +405,10 @@ struct HomeView: View {
                 if statsEnabled {
                     refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
                 }
-                if isWritingFieldFocused && isLandscapeCompactHeight {
-                    scroll.scrollTo("testingSandbox", anchor: .top)
-                }
             }
             .onChange(of: isTestingExpanded) { _, expanded in
                 if expanded {
                     shouldAutoFocusSandbox = true
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                            scroll.scrollTo("testingSection", anchor: .top)
-                        }
-                    }
                 } else {
                     shouldAutoFocusSandbox = false
                     clearThemeOverride()
@@ -434,6 +432,7 @@ struct HomeView: View {
                     }
                 }
                 applyLaunchArguments()
+                Self.lastLifecycleRefreshTime = CFAbsoluteTimeGetCurrent()
                 syncPreferencesFromSettingsBundleAndAppGroup()
                 if UIApplication.shared.applicationState == .active && (isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride) {
                     syncThemeToAppGroup(selectedThemeMode)
@@ -441,7 +440,6 @@ struct HomeView: View {
                     clearThemeOverride()
                 }
                 refreshCyrillicStatus()
-                keyboardState.refresh()
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 AppStoreReviewManager.recordForegroundSession()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -458,9 +456,9 @@ struct HomeView: View {
                 let now = CFAbsoluteTimeGetCurrent()
                 let elapsed = now - Self.lastPreferencesSyncTime
                 if elapsed >= 0.4 {
-                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: true)
+                    refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 } else {
-                    refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
+                    refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: false)
                     if !Self.isTrailingPreferencesSyncPending {
                         Self.isTrailingPreferencesSyncPending = true
                         let delay = max(0.05, 0.4 - elapsed)
@@ -481,17 +479,21 @@ struct HomeView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                let now = CFAbsoluteTimeGetCurrent()
+                guard now - Self.lastLifecycleRefreshTime > 0.35 else { return }
+                Self.lastLifecycleRefreshTime = now
                 syncPreferencesFromSettingsBundleAndAppGroup()
                 refreshCyrillicStatus()
-                keyboardState.refresh()
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 AppStoreReviewManager.recordForegroundSession()
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                let now = CFAbsoluteTimeGetCurrent()
+                guard now - Self.lastLifecycleRefreshTime > 0.35 else { return }
+                Self.lastLifecycleRefreshTime = now
                 syncPreferencesFromSettingsBundleAndAppGroup()
                 refreshCyrillicStatus()
-                keyboardState.refresh()
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -513,6 +515,7 @@ struct HomeView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                shouldAutoFocusSandbox = false
                 withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
                     isKeyboardVisible = false
                 }
@@ -611,6 +614,9 @@ struct HomeView: View {
                 if newPhase == .active {
                     isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
                     Self.enforceFullScreenWindowIfNeeded()
+                    let now = CFAbsoluteTimeGetCurrent()
+                    guard now - Self.lastLifecycleRefreshTime > 0.35 else { return }
+                    Self.lastLifecycleRefreshTime = now
                     syncPreferencesFromSettingsBundleAndAppGroup()
                     if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
                         syncThemeToAppGroup(selectedThemeMode)
@@ -618,7 +624,6 @@ struct HomeView: View {
                         clearThemeOverride()
                     }
                     refreshCyrillicStatus()
-                    keyboardState.refresh()
                     refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 } else if newPhase == .inactive {
                     shouldAutoFocusSandbox = false
@@ -638,8 +643,10 @@ struct HomeView: View {
 
     private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
     private static let localOneHandedRefreshNotification = Notification.Name("crh.key.localOneHandedRefresh")
+    fileprivate static let bgPrefsAndSQLiteQueue = DispatchQueue(label: "crh.key.home.bgSync", qos: .utility)
     private static var didRegisterStatsObserver = false
     private static var lastPreferencesSyncTime: CFAbsoluteTime = 0
+    private static var lastLifecycleRefreshTime: CFAbsoluteTime = 0
     private static var isTrailingPreferencesSyncPending = false
 
     private static func registerStatsSyncObserverIfNeeded() {
@@ -739,6 +746,7 @@ struct HomeView: View {
         let newUkrainian = (groupDefaults.object(forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey) as? Bool) ?? false
         let newSuggestions = reconcileBool(key: KeyboardPreferences.suggestionsKey, defaultValue: true)
         let newWordLearning = reconcileBool(key: KeyboardPreferences.wordLearningKey, defaultValue: true)
+        _ = reconcileBool(key: SystemKeyboardSettings.Feature.keyFlicks.preferenceKey, defaultValue: true)
         let newStats = (groupDefaults.object(forKey: KeyboardPreferences.statsEnabledKey) as? Bool) ?? true
 
         let oneHandedKey = KeyboardPreferences.oneHandedModeKey
@@ -806,7 +814,26 @@ struct HomeView: View {
         }
         guard statsEnabled else { return }
         if syncSQLite {
-            KeyboardUsageStats.syncLearnedWordsCountFromSQLite()
+            let sheetOpen = showLearnedWordsSheet
+            Self.bgPrefsAndSQLiteQueue.async {
+                let updatedLearned = KeyboardUsageStats.syncLearnedWordsCountFromSQLite()
+                let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
+                let fetchedEntries = sheetOpen ? KeyboardUsageStats.fetchLearnedWords() : nil
+                DispatchQueue.main.async {
+                    if self.learnedWordsCount != updatedLearned {
+                        self.learnedWordsCount = updatedLearned
+                    }
+                    if self.uniqueWordsCount != updatedUnique {
+                        self.uniqueWordsCount = updatedUnique
+                    }
+                    if let fetchedEntries {
+                        self.learnedWordsEntries = fetchedEntries
+                        if self.learnedWordsCount != fetchedEntries.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetchedEntries.isEmpty) {
+                            self.learnedWordsCount = fetchedEntries.count
+                        }
+                    }
+                }
+            }
         }
         let d = KeyboardPreferences.defaults
         let newTotalWords = d.integer(forKey: KeyboardUsageStats.totalWordsKey)
@@ -862,14 +889,48 @@ struct HomeView: View {
         openAppSettings()
     }
 
+    private func setDefaultsBoolIfNeeded(_ value: Bool, forKey key: String) {
+        if (KeyboardPreferences.defaults.object(forKey: key) as? Bool) != value {
+            KeyboardPreferences.defaults.set(value, forKey: key)
+        }
+    }
+
+    private func computeIsPrimaryKeyboardAdded(
+        args: [String],
+        hasActiveLatinMode: Bool,
+        hasAnyActiveCRHMode: Bool
+    ) -> Bool {
+        if args.contains("-qt_keyboard_missing") {
+            return false
+        }
+        if args.contains("-qt_keyboard_added") {
+            return true
+        }
+        if hasActiveLatinMode {
+            return true
+        }
+        if !hasAnyActiveCRHMode && isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive && !args.contains("-qt_wrong_keyboard") {
+            return false
+        }
+        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
+            return true
+        }
+        if SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled {
+            return true
+        }
+        if primaryExtensionSeen || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
+            return true
+        }
+        return false
+    }
+
     private func refreshCyrillicStatus() {
         CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         _ = SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh: true)
-        cachedIsFullAccessEnabled = keyboardState.isFullAccessEnabled
-        cachedIsRtl = keyboardState.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
+        cachedIsFullAccessEnabled = Self.keyboardInspector.isFullAccessEnabled
+        cachedIsRtl = Self.keyboardInspector.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
         let args = ProcessInfo.processInfo.arguments
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+        let languages = SystemKeyboardSettings.activeInputModeLanguages()
         let hasActiveLatinMode = languages.contains { $0 == "crh" || $0.hasPrefix("crh-latn") }
         let hasActiveStandardCyrillicMode = languages.contains { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }
         let hasActiveUkrainianMode = languages.contains { $0.hasPrefix("crh-cyrl-ua") }
@@ -882,33 +943,27 @@ struct HomeView: View {
         let prevUkrainian = lastRenderedUkrainianAdded
 
         if hasActiveLatinMode && !args.contains("-qt_keyboard_missing") {
-            primaryExtensionSeen = true
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
+            if !primaryExtensionSeen { primaryExtensionSeen = true }
+            setDefaultsBoolIfNeeded(true, forKey: "crh.key.primaryExtensionSeen")
         } else if !isSimulatedUITest && !args.contains("-qt_keyboard_missing") && SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled {
-            primaryExtensionSeen = true
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
-        } else if !isSimulatedUITest && !args.contains("-qt_keyboard_added") && hasAuthoritativeList && !SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled && !hasActiveLatinMode {
-            primaryExtensionSeen = false
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.primaryExtensionSeen")
-        } else if !hasAnyActiveCRHMode && isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive && !args.contains("-qt_keyboard_added") && !args.contains("-qt_wrong_keyboard") {
-            primaryExtensionSeen = false
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.primaryExtensionSeen")
+            if !primaryExtensionSeen { primaryExtensionSeen = true }
+            setDefaultsBoolIfNeeded(true, forKey: "crh.key.primaryExtensionSeen")
         }
 
         if pendingCyrillicRemovalCheck && didEnterBackgroundForCyrillicCheck {
             pendingCyrillicRemovalCheck = false
             didEnterBackgroundForCyrillicCheck = false
             if !hasActiveLatinMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled) {
-                primaryExtensionSeen = false
-                KeyboardPreferences.defaults.set(false, forKey: "crh.key.primaryExtensionSeen")
+                if primaryExtensionSeen { primaryExtensionSeen = false }
+                setDefaultsBoolIfNeeded(false, forKey: "crh.key.primaryExtensionSeen")
             }
             if !hasActiveStandardCyrillicMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled) {
-                cyrillicExtensionSeen = false
-                KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
+                if cyrillicExtensionSeen { cyrillicExtensionSeen = false }
+                setDefaultsBoolIfNeeded(false, forKey: "crh.key.cyrillicExtensionSeen")
             }
             if !hasActiveUkrainianMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled) {
-                ukrainianExtensionSeen = false
-                KeyboardPreferences.defaults.set(false, forKey: "crh.key.ukrainianExtensionSeen")
+                if ukrainianExtensionSeen { ukrainianExtensionSeen = false }
+                setDefaultsBoolIfNeeded(false, forKey: "crh.key.ukrainianExtensionSeen")
             }
         }
 
@@ -923,16 +978,15 @@ struct HomeView: View {
                 || (Self.isUITestingEnvironment && !args.contains("-qt_cyrillic_missing"))
             targetCyrillicStatus = hasSeenCyrillic ? .enabled : .missing
         } else if hasActiveStandardCyrillicMode || SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled {
-            cyrillicExtensionSeen = true
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+            if !cyrillicExtensionSeen { cyrillicExtensionSeen = true }
+            setDefaultsBoolIfNeeded(true, forKey: "crh.key.cyrillicExtensionSeen")
             targetCyrillicStatus = .enabled
-        } else if hasAuthoritativeList && !SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled {
-            cyrillicExtensionSeen = false
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.cyrillicExtensionSeen")
-            targetCyrillicStatus = .missing
         } else {
             let hasSeenCyrillic = cyrillicExtensionSeen
                 || KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+            if hasSeenCyrillic && !cyrillicExtensionSeen {
+                cyrillicExtensionSeen = true
+            }
             targetCyrillicStatus = hasSeenCyrillic ? .enabled : .missing
         }
 
@@ -946,22 +1000,34 @@ struct HomeView: View {
                 || KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
             targetUkrainianStatus = hasSeenUkrainian ? .enabled : .missing
         } else if hasActiveUkrainianMode || SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled {
-            ukrainianExtensionSeen = true
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+            if !ukrainianExtensionSeen { ukrainianExtensionSeen = true }
+            setDefaultsBoolIfNeeded(true, forKey: "crh.key.ukrainianExtensionSeen")
             targetUkrainianStatus = .enabled
-        } else if hasAuthoritativeList && !SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled {
-            ukrainianExtensionSeen = false
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.ukrainianExtensionSeen")
-            targetUkrainianStatus = .missing
         } else {
             let hasSeenUkrainian = ukrainianExtensionSeen
                 || KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+            if hasSeenUkrainian && !ukrainianExtensionSeen {
+                ukrainianExtensionSeen = true
+            }
             targetUkrainianStatus = hasSeenUkrainian ? .enabled : .missing
         }
 
+        let computedPrimaryAdded = computeIsPrimaryKeyboardAdded(
+            args: args,
+            hasActiveLatinMode: hasActiveLatinMode,
+            hasAnyActiveCRHMode: hasAnyActiveCRHMode
+        )
+
         let applyStatusUpdates = {
-            cyrillicStatus = targetCyrillicStatus
-            ukrainianStatus = targetUkrainianStatus
+            if isPrimaryKeyboardAddedState != computedPrimaryAdded {
+                isPrimaryKeyboardAddedState = computedPrimaryAdded
+            }
+            if cyrillicStatus != targetCyrillicStatus {
+                cyrillicStatus = targetCyrillicStatus
+            }
+            if ukrainianStatus != targetUkrainianStatus {
+                ukrainianStatus = targetUkrainianStatus
+            }
             syncCyrillicToggleWithExtensionState()
         }
 
@@ -973,7 +1039,7 @@ struct HomeView: View {
             applyStatusUpdates()
         }
 
-        let currentPrimary = isPrimaryKeyboardAdded
+        let currentPrimary = computedPrimaryAdded
         let currentCyrillic = (targetCyrillicStatus == .enabled)
         let currentUkrainian = (targetUkrainianStatus == .enabled)
 
@@ -985,6 +1051,9 @@ struct HomeView: View {
             lastRenderedPrimaryAdded = currentPrimary
             lastRenderedCyrillicAdded = currentCyrillic
             lastRenderedUkrainianAdded = currentUkrainian
+            setDefaultsBoolIfNeeded(currentPrimary, forKey: "crh.key.lastRenderedPrimaryAdded")
+            setDefaultsBoolIfNeeded(currentCyrillic, forKey: "crh.key.lastRenderedCyrillicAdded")
+            setDefaultsBoolIfNeeded(currentUkrainian, forKey: "crh.key.lastRenderedUkrainianAdded")
             if activeOnboardingSheet != nil {
                 withAnimation(animationsAllowed ? .spring(response: 0.35, dampingFraction: 0.84) : nil) {
                     activeOnboardingSheet = nil
@@ -1079,55 +1148,81 @@ struct HomeView: View {
 
     private func syncSandboxFocusToAppGroup(_ focused: Bool) {
         let isActiveFocus = focused && UIApplication.shared.applicationState == .active
+        let isDark = selectedThemeMode.isDark
+        let fieldRaw = selectedFieldMode.rawValue
         let defaults = KeyboardPreferences.defaults
         defaults.set(isActiveFocus, forKey: "crh.key.test.sandboxFocused")
         if isActiveFocus {
-            defaults.set(selectedThemeMode.isDark, forKey: "crh.key.test.isDark")
-            defaults.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
+            defaults.set(isDark, forKey: "crh.key.test.isDark")
+            defaults.set(fieldRaw, forKey: "crh.key.test.fieldMode")
             defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
         } else {
             defaults.removeObject(forKey: "crh.key.test.isDark")
             defaults.removeObject(forKey: "crh.key.test.fieldMode")
             defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
         }
-        defaults.synchronize()
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        notifySandboxTraitsChanged()
+        Self.bgPrefsAndSQLiteQueue.async {
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
     }
 
     private func applyWindowUserInterfaceStyle(_ theme: KeyboardTestThemeMode) {
         guard hasManualThemeOverride else { return }
         let style: UIUserInterfaceStyle = theme.isDark ? .dark : .light
-        let apply = {
-            for scene in UIApplication.shared.connectedScenes {
-                if let windowScene = scene as? UIWindowScene {
-                    for window in windowScene.windows {
-                        if window.overrideUserInterfaceStyle != style {
-                            window.overrideUserInterfaceStyle = style
-                        }
-                        if window.rootViewController?.overrideUserInterfaceStyle != style {
-                            window.rootViewController?.overrideUserInterfaceStyle = style
-                        }
+        let shouldAnimate = animationsAllowed && Self.canAnimateUserChanges
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                guard window.windowLevel == .normal, window.rootViewController != nil else {
+                    continue
+                }
+                if window.rootViewController?.overrideUserInterfaceStyle != .unspecified {
+                    window.rootViewController?.overrideUserInterfaceStyle = .unspecified
+                }
+                guard window.overrideUserInterfaceStyle != style else { continue }
+                if shouldAnimate {
+                    UIView.transition(
+                        with: window,
+                        duration: 0.18,
+                        options: [.transitionCrossDissolve, .allowUserInteraction, .allowAnimatedContent]
+                    ) {
+                        window.overrideUserInterfaceStyle = style
                     }
+                } else {
+                    window.overrideUserInterfaceStyle = style
                 }
             }
         }
-        apply()
-        DispatchQueue.main.async(execute: apply)
     }
 
     private func syncThemeToAppGroup(_ theme: KeyboardTestThemeMode) {
         applyWindowUserInterfaceStyle(theme)
         guard UIApplication.shared.applicationState == .active else { return }
-        let defaults = KeyboardPreferences.defaults
         if isWritingFieldFocused || shouldAutoFocusSandbox || hasManualThemeOverride {
-            defaults.set(theme.isDark, forKey: "crh.key.test.isDark")
-            defaults.set(selectedFieldMode.rawValue, forKey: "crh.key.test.fieldMode")
+            let isDark = theme.isDark
+            let fieldRaw = selectedFieldMode.rawValue
+            let defaults = KeyboardPreferences.defaults
+            defaults.set(isDark, forKey: "crh.key.test.isDark")
+            defaults.set(fieldRaw, forKey: "crh.key.test.fieldMode")
             defaults.set(true, forKey: "crh.key.test.sandboxFocused")
             defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
-            defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            notifySandboxTraitsChanged()
+            Self.bgPrefsAndSQLiteQueue.async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+            }
         }
     }
 
@@ -1166,6 +1261,7 @@ struct HomeView: View {
             let isXCTestRun = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || args.contains("-UITesting")
             let isUITestLaunch = args.contains(where: { $0.hasPrefix("-qt_") }) || isXCTestRun
             let allowSpaceBarBreathing = !isUITestLaunch || args.contains("-qt_enable_animations")
+            Self.cachedIsUITesting = isUITestLaunch
             KeyboardPreferences.defaults.set(isUITestLaunch, forKey: "crh.key.test.isUITesting")
             KeyboardPreferences.defaults.set(allowSpaceBarBreathing, forKey: "crh.key.test.allowSpaceBarBreathing")
             if isUITestLaunch {
@@ -1293,7 +1389,13 @@ struct HomeView: View {
                 KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
                 defaults.set(false, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
             }
-            KeyboardPreferences.defaults.synchronize()
+            Self.bgPrefsAndSQLiteQueue.async {
+                KeyboardPreferences.defaults.synchronize()
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                DispatchQueue.main.async {
+                    notifySandboxTraitsChanged()
+                }
+            }
             if args.contains("-qt_stats_disabled") {
                 statsEnabled = false
                 isStatsExpanded = false
@@ -1411,8 +1513,10 @@ struct HomeView: View {
                 d.set(18, forKey: KeyboardUsageStats.learnedWordsKey)
                 d.set(64, forKey: KeyboardUsageStats.uniqueWordsKey)
                 d.set(7, forKey: KeyboardUsageStats.phrasesInsertedKey)
-                d.synchronize()
-                KeyboardUsageStats.seedDemoLearnedWordsIfNeeded()
+                Self.bgPrefsAndSQLiteQueue.async {
+                    d.synchronize()
+                    KeyboardUsageStats.seedDemoLearnedWordsIfNeeded()
+                }
             }
             if args.contains("-qt_open_about") {
                 shouldAutoFocusSandbox = false
@@ -1442,30 +1546,38 @@ struct HomeView: View {
         defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
         let hasUITestArgs = CommandLine.arguments.contains(where: { $0.hasPrefix("-qt_") || $0 == "-UITesting" })
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil && !hasUITestArgs {
+            Self.cachedIsUITesting = false
             defaults.removeObject(forKey: "crh.key.test.isUITesting")
             defaults.removeObject(forKey: "crh.key.test.uiTestingTimestamp")
         }
         defaults.set(false, forKey: "crh.key.test.sandboxFocused")
-        defaults.synchronize()
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        notifySandboxTraitsChanged()
+        Self.bgPrefsAndSQLiteQueue.async {
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
     }
 
     /// Allows flexible window resizing across Slide Over, Split View, Stage Manager, and full screen.
     static func enforceFullScreenWindowIfNeeded() {
         guard Device.iPad else { return }
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
-            scene.sizeRestrictions?.minimumSize = CGSize(width: 280, height: 320)
+            scene.sizeRestrictions?.minimumSize = CGSize(width: 375, height: 420)
             scene.sizeRestrictions?.maximumSize = CGSize(width: 4096, height: 4096)
         }
     }
 
     /// Use the window's actual dimensions independently of device orientation or keyboard height,
-    /// so narrow Slide Over / Split View windows on a landscape iPad always render in 1 column.
+    /// so narrow Slide Over / Split View / Stage Manager windows on a landscape iPad render in 1 column without overlapping.
     static func usesTwoColumns(_ size: CGSize, containerSize: CGSize = .zero) -> Bool {
         guard Device.iPad else { return false }
         let windowSize = (size.width > 0 && size.height > 0) ? size : containerSize
-        return windowSize.width > windowSize.height && windowSize.width >= 560
+        return windowSize.width > windowSize.height && windowSize.width >= 820
     }
 }
 
@@ -1558,15 +1670,21 @@ private extension HomeView {
 
     private static var appearedBadgeIDs: Set<String> = []
     static var canAnimateUserChanges: Bool = false
+    private static var cachedIsUITesting: Bool?
 
     static func shouldAnimateInitialAppear(for badgeID: String) -> Bool {
         false
     }
 
     static var isUITestingEnvironment: Bool {
-        KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+        if let cached = cachedIsUITesting {
+            return cached
+        }
+        let resolved = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
             || ProcessInfo.processInfo.arguments.contains("-qt_reset_text")
+        cachedIsUITesting = resolved
+        return resolved
     }
 
     func settingsIconBadge(
@@ -1695,7 +1813,7 @@ private extension HomeView {
                                 fontName: "GeneralSans-Medium",
                                 fontSize: 15,
                                 color: primaryInk,
-                                lineLimit: 1,
+                                lineLimit: nil,
                                 minimumScaleFactor: 0.85
                             )
                             StableLocalizedText(
@@ -1742,26 +1860,68 @@ private extension HomeView {
     /// Block 1: Main 3 Keyboard Settings (`Мова інтерфейсу`, `Налаштування програми`, `Системні налаштування`).
     var keyboardSettingsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Language selector row (single horizontal row on both iPhone and iPad)
-            HStack(spacing: 12) {
-                settingsIconBadge(
-                    interfaceLanguageIconName,
-                    color: brandBlue,
-                    triggerToken: language,
-                    badgeID: "settings.language.globe"
-                )
-                StableLocalizedText(
-                    key: "settings.language",
-                    fontName: "GeneralSans-Medium",
-                    fontSize: 15,
-                    color: primaryInk,
-                    lineLimit: 1,
-                    minimumScaleFactor: 0.85
-                )
-                .layoutPriority(1)
-                Spacer(minLength: 8)
-                languageSegmentedControl(fullWidth: false, compact: !Device.iPad)
-                    .fixedSize(horizontal: true, vertical: false)
+            // Language selector row (adapts between full titles when wide enough and compact codes when narrower, never truncating with `...`)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    settingsIconBadge(
+                        interfaceLanguageIconName,
+                        color: brandBlue,
+                        triggerToken: language,
+                        badgeID: "settings.language.globe"
+                    )
+                    StableLocalizedText(
+                        key: "settings.language",
+                        fontName: "GeneralSans-Medium",
+                        fontSize: 15,
+                        color: primaryInk,
+                        lineLimit: 1,
+                        fixedHorizontal: true
+                    )
+                    Spacer(minLength: 8)
+                    languageSegmentedControl(fullWidth: false, compact: false)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                HStack(spacing: 12) {
+                    settingsIconBadge(
+                        interfaceLanguageIconName,
+                        color: brandBlue,
+                        triggerToken: language,
+                        badgeID: "settings.language.globe"
+                    )
+                    StableLocalizedText(
+                        key: "settings.language",
+                        fontName: "GeneralSans-Medium",
+                        fontSize: 15,
+                        color: primaryInk,
+                        lineLimit: 1,
+                        fixedHorizontal: true
+                    )
+                    Spacer(minLength: 8)
+                    languageSegmentedControl(fullWidth: false, compact: true)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        settingsIconBadge(
+                            interfaceLanguageIconName,
+                            color: brandBlue,
+                            triggerToken: language,
+                            badgeID: "settings.language.globe"
+                        )
+                        StableLocalizedText(
+                            key: "settings.language",
+                            fontName: "GeneralSans-Medium",
+                            fontSize: 15,
+                            color: primaryInk,
+                            lineLimit: nil,
+                            minimumScaleFactor: 0.9
+                        )
+                        Spacer(minLength: 0)
+                    }
+                    languageSegmentedControl(fullWidth: true, compact: false)
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
@@ -1781,7 +1941,7 @@ private extension HomeView {
                             fontName: "GeneralSans-Medium",
                             fontSize: 15,
                             color: primaryInk,
-                            lineLimit: 1,
+                            lineLimit: nil,
                             minimumScaleFactor: 0.85
                         )
                         StableLocalizedText(
@@ -1820,7 +1980,7 @@ private extension HomeView {
                             fontName: "GeneralSans-Medium",
                             fontSize: 15,
                             color: primaryInk,
-                            lineLimit: 1,
+                            lineLimit: nil,
                             minimumScaleFactor: 0.85
                         )
                         StableLocalizedText(
@@ -1894,16 +2054,15 @@ private extension HomeView {
                                     fontName: "GeneralSans-Medium",
                                     fontSize: 15,
                                     color: primaryInk,
-                                    lineLimit: 1,
+                                    lineLimit: nil,
                                     minimumScaleFactor: 0.85
                                 )
                             }
                             .buttonStyle(.plain)
                         }
-                        .frame(height: 20, alignment: .leading)
 
                         latinLettersMiniCapsules(isEnabled: primaryAdded)
-                            .frame(height: 18, alignment: .leading)
+                            .frame(minHeight: 18, alignment: .leading)
                     }
                     Spacer(minLength: 8)
                     Toggle("", isOn: animationsAllowed ? primaryKeyboardToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : primaryKeyboardToggleBinding)
@@ -1933,10 +2092,18 @@ private extension HomeView {
             && Device.iPad
             && !args.contains("-qt_cyrillic_added")
             && !args.contains("-qt_cyrillic_missing")
+        let allowAutomatedUkrainianToggle = Self.isUITestingEnvironment
+            && !args.contains("-qt_ukrainian_added")
+            && !args.contains("-qt_ukrainian_missing")
+            && !args.contains("-qt_cyrillic_added")
+            && !args.contains("-qt_cyrillic_missing")
+            && !args.contains("-qt_keyboard_missing")
         let isCyrillicEffectiveOn = allowAutomatedIPadInMemoryToggle
             ? (cyrillicEnabled && !didManuallyDisableCyrillicOnIPad)
             : isCyrillicKeyboardAdded
-        let isUkrainianEffectiveOn = isUkrainianKeyboardAdded
+        let isUkrainianEffectiveOn = allowAutomatedUkrainianToggle
+            ? ukrainianCyrillicLayout
+            : isUkrainianKeyboardAdded
         let showIPadAbvSelector = Device.iPad && language == "uk" && isCyrillicEffectiveOn && isUkrainianEffectiveOn
 
         let cyrillicToggleBinding = Binding<Bool>(
@@ -1959,9 +2126,22 @@ private extension HomeView {
         )
         let ukrainianToggleBinding = Binding<Bool>(
             get: { isUkrainianEffectiveOn },
-            set: { _ in
+            set: { wantOn in
                 HapticFeedback.playSelection()
                 ukrainianBadgeTrigger &+= 1
+                if allowAutomatedUkrainianToggle {
+                    didManuallyDisableUkrainianOnIPad = !wantOn
+                    ukrainianExtensionSeen = wantOn
+                    setDefaultsBoolIfNeeded(wantOn, forKey: "crh.key.ukrainianExtensionSeen")
+                    ukrainianStatus = wantOn ? .enabled : .missing
+                    ukrainianCyrillicLayout = wantOn
+                    KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(wantOn)
+                    if wantOn && !cyrillicEnabled {
+                        cyrillicEnabled = true
+                        KeyboardPreferences.setCyrillicEnabled(true)
+                    }
+                    return
+                }
                 pendingCyrillicRemovalCheck = true
                 didEnterBackgroundForCyrillicCheck = false
                 activeOnboardingSheet = OnboardingSheetRequest(
@@ -1990,16 +2170,15 @@ private extension HomeView {
                                     fontName: "GeneralSans-Medium",
                                     fontSize: 15,
                                     color: primaryInk,
-                                    lineLimit: 1,
+                                    lineLimit: nil,
                                     minimumScaleFactor: 0.85
                                 )
                             }
                             .buttonStyle(.plain)
                         }
-                        .frame(height: 20, alignment: .leading)
 
                         cyrillicTransliterationMiniCapsules(isEnabled: isCyrillicEffectiveOn)
-                            .frame(height: 18, alignment: .leading)
+                            .frame(minHeight: 18, alignment: .leading)
                     }
                     Spacer(minLength: 6)
                     if showIPadAbvSelector {
@@ -2051,16 +2230,15 @@ private extension HomeView {
                                         fontName: "GeneralSans-Medium",
                                         fontSize: 15,
                                         color: primaryInk,
-                                        lineLimit: 1,
+                                        lineLimit: nil,
                                         minimumScaleFactor: 0.85
                                     )
                                 }
                                 .buttonStyle(.plain)
                             }
-                            .frame(height: 20, alignment: .leading)
 
                             ukrainianTransliterationMiniCapsules(isEnabled: isUkrainianEffectiveOn)
-                                .frame(height: 18, alignment: .leading)
+                                .frame(minHeight: 18, alignment: .leading)
                         }
                         Spacer(minLength: 6)
                         if showIPadAbvSelector {
@@ -2105,52 +2283,21 @@ private extension HomeView {
         accessibilityID: String,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            ZStack {
-                // Physical 3D keycap shadow / lower lip
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(
-                        isActive
-                            ? accentColor.opacity(colorScheme == .dark ? 0.55 : 0.72)
-                            : Color.black.opacity(colorScheme == .dark ? 0.45 : 0.16)
-                    )
-                    .offset(y: 1.5)
-
-                // Raised 3D keycap top surface
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(
-                        isActive
-                            ? LinearGradient(
-                                colors: [accentColor.opacity(0.96), accentColor],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            : LinearGradient(
-                                colors: [
-                                    colorScheme == .dark ? Color(white: 0.28) : Color.white,
-                                    colorScheme == .dark ? Color(white: 0.22) : Color(white: 0.94)
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                    )
-
-                // Inner keycap rim highlight
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .strokeBorder(
-                        isActive ? Color.white.opacity(0.42) : Color.primary.opacity(0.14),
-                        lineWidth: 1.0
-                    )
-                    .padding(1.2)
-
-                Text("абв")
-                    .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
-                    .foregroundStyle(isActive ? Color.white : primaryInk.opacity(0.85))
-                    .padding(.horizontal, 9)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .frame(height: 27)
-            .contentShape(Rectangle())
+        let inactiveFill = colorScheme == .dark
+            ? Color(white: 0.27)
+            : Color(red: 0.68, green: 0.70, blue: 0.75).opacity(0.42)
+        return Button(action: action) {
+            Text("абв")
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(isActive ? Color.white : primaryInk.opacity(0.90))
+                .padding(.horizontal, 10)
+                .frame(height: 27)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isActive ? accentColor : inactiveFill)
+                )
+                .fixedSize(horizontal: true, vertical: false)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -2169,6 +2316,7 @@ private extension HomeView {
             selection: Binding(
                 get: { language },
                 set: { newValue in
+                    shouldAutoFocusSandbox = false
                     withAnimation(animationsAllowed ? .easeInOut(duration: 0.2) : nil) {
                         language = newValue
                     }
@@ -2241,6 +2389,7 @@ private extension HomeView {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(localizedInterfaceString(Onboarding.onb_check_key.rawValue, table: "Onboarding"))
                     .accessibilityIdentifier("testing.toggle")
                 }
                 .padding(.horizontal, 14)
@@ -2260,9 +2409,9 @@ private extension HomeView {
                             fontName: "GeneralSans-Semibold",
                             fontSize: 15,
                             color: primaryInk,
-                            lineLimit: 1,
+                            lineLimit: nil,
                             minimumScaleFactor: 0.85,
-                            fixedHorizontal: true
+                            fixedHorizontal: false
                         )
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -2270,6 +2419,7 @@ private extension HomeView {
                             .foregroundStyle(Color(.tertiaryLabel))
                             .rotationEffect(.degrees(isTestingExpanded ? 90 : 0))
                             .frame(width: 16, height: 22, alignment: .center)
+                            .accessibilityHidden(true)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
@@ -2365,10 +2515,7 @@ private extension HomeView {
                         set: { newValue in
                             if let mode = KeyboardTestThemeMode(rawValue: newValue) {
                                 hasManualThemeOverride = true
-                                shouldAutoFocusSandbox = true
-                                withAnimation(animationsAllowed ? .easeInOut(duration: 0.2) : nil) {
-                                    selectedThemeMode = mode
-                                }
+                                selectedThemeMode = mode
                             }
                         }
                     ),
@@ -2440,6 +2587,8 @@ private extension HomeView {
             .padding(.trailing, 6)
             .opacity(text.isEmpty ? 0 : 1)
             .disabled(text.isEmpty)
+            .accessibilityHidden(text.isEmpty)
+            .accessibilityLabel(localizedInterfaceString("sandbox.clear"))
             .accessibilityIdentifier("sandbox.clear")
         }
         .overlay(alignment: .bottomLeading) {
@@ -2561,6 +2710,7 @@ private extension HomeView {
         learnedWordsEntries = fetched
         if learnedWordsCount != fetched.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetched.isEmpty) {
             learnedWordsCount = fetched.count
+            KeyboardUsageStats.setLearnedWordsCount(fetched.count)
         }
         showLearnedWordsSheet = true
     }
@@ -2568,9 +2718,11 @@ private extension HomeView {
     private func deleteLearnedWordFromSheet(_ word: String) {
         HapticFeedback.playSelection()
         let newCount = KeyboardUsageStats.deleteLearnedWord(word)
+        let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
-            learnedWordsEntries.removeAll { $0.word == word }
+            learnedWordsEntries.removeAll { $0.word.caseInsensitiveCompare(word) == .orderedSame }
             learnedWordsCount = newCount
+            uniqueWordsCount = updatedUnique
         }
     }
 
@@ -2696,52 +2848,74 @@ private extension HomeView {
                         isStatsExpanded.toggle()
                     }
                 } label: {
-                    Group {
-                        if Device.iPad {
-                            singleRowHeader
-                        } else {
-                            ViewThatFits(in: .horizontal) {
-                                singleRowHeader
+                    ViewThatFits(in: .horizontal) {
+                        singleRowHeader
 
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(spacing: 8) {
-                                        settingsIconBadge(
-                                            "chart.bar.xaxis",
-                                            color: Color(red: 0.58, green: 0.29, blue: 0.92),
-                                            isEnabled: statsEnabled,
-                                            triggerToken: "\(statsEnabled)-\(isStatsExpanded)",
-                                            badgeID: "stats.header.chart"
-                                        )
-                                        StableLocalizedText(
-                                            key: "stats.title",
-                                            fontName: "GeneralSans-Semibold",
-                                            fontSize: 15,
-                                            color: statsEnabled ? primaryInk : secondaryInk,
-                                            lineLimit: 1,
-                                            fixedHorizontal: true
-                                        )
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                settingsIconBadge(
+                                    "chart.bar.xaxis",
+                                    color: Color(red: 0.58, green: 0.29, blue: 0.92),
+                                    isEnabled: statsEnabled,
+                                    triggerToken: "\(statsEnabled)-\(isStatsExpanded)",
+                                    badgeID: "stats.header.chart"
+                                )
+                                StableLocalizedText(
+                                    key: "stats.title",
+                                    fontName: "GeneralSans-Semibold",
+                                    fontSize: 15,
+                                    color: statsEnabled ? primaryInk : secondaryInk,
+                                    lineLimit: nil,
+                                    minimumScaleFactor: 0.85,
+                                    fixedHorizontal: false
+                                )
 
-                                        Spacer(minLength: 6)
+                                Spacer(minLength: 6)
 
-                                        HStack(spacing: 8) {
-                                            Color.clear
-                                                .frame(width: 58, height: 22)
-                                            statsHeaderChevron
-                                        }
+                                HStack(spacing: 8) {
+                                    Color.clear
+                                        .frame(width: 58, height: 22)
+                                    statsHeaderChevron
+                                }
+                            }
+
+                            if statsEnabled && !isStatsExpanded {
+                                ViewThatFits(in: .horizontal) {
+                                    HStack(spacing: 0) {
+                                        compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
+                                        Spacer(minLength: 2)
+                                        compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
+                                        Spacer(minLength: 2)
+                                        compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
+                                        Spacer(minLength: 2)
+                                        walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
                                     }
+                                    .frame(maxWidth: .infinity)
 
-                                    if statsEnabled && !isStatsExpanded {
-                                        HStack(spacing: 0) {
+                                    HStack(spacing: 3) {
+                                        compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
+                                        Spacer(minLength: 1)
+                                        compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
+                                        Spacer(minLength: 1)
+                                        compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
+                                        Spacer(minLength: 1)
+                                        walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
+                                    }
+                                    .frame(maxWidth: .infinity)
+
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        HStack(spacing: 6) {
                                             compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
-                                            Spacer(minLength: 2)
                                             compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
-                                            Spacer(minLength: 2)
-                                            compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
-                                            Spacer(minLength: 2)
-                                            walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
+                                            Spacer(minLength: 0)
                                         }
-                                        .frame(maxWidth: .infinity)
+                                        HStack(spacing: 6) {
+                                            compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
+                                            walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
+                                            Spacer(minLength: 0)
+                                        }
                                     }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
                         }
@@ -2959,7 +3133,8 @@ private extension HomeView {
 
     @ViewBuilder
     private func expandedAchievementsGridView(bestWPM: Int) -> some View {
-        if Device.iPhone {
+        let effectiveWidth = containerSize.width > 0 ? containerSize.width : viewportSize.width
+        if Device.iPhone || (effectiveWidth > 0 && effectiveWidth < 540) {
             VStack(spacing: 8) {
                 progressiveAchievementBadge(
                     icon: "flag.checkered",
@@ -3045,7 +3220,8 @@ private extension HomeView {
                 Text(title)
                     .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
                     .foregroundStyle(secondaryInk)
-                    .lineLimit(1)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .minimumScaleFactor(0.85)
             }
             Text(value)
@@ -3077,7 +3253,8 @@ private extension HomeView {
                     Text(title)
                         .font(InterfaceFont.font("GeneralSans-Medium", size: Device.iPhone ? 11.5 : 12))
                         .foregroundStyle(secondaryInk)
-                        .lineLimit(1)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.85)
                     Spacer(minLength: 4)
                     Image(systemName: "chevron.right")
@@ -3119,7 +3296,8 @@ private extension HomeView {
                     Text(localizedInterfaceString("settings.wordLearning"))
                         .font(InterfaceFont.font("GeneralSans-Medium", size: 15.5))
                         .foregroundStyle(primaryInk)
-                        .lineLimit(1)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .minimumScaleFactor(0.85)
                     Spacer(minLength: 8)
                     Toggle("", isOn: $wordLearningEnabled)
@@ -3266,7 +3444,8 @@ private extension HomeView {
                 Text(title)
                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 12.5))
                     .foregroundStyle(primaryInk)
-                    .lineLimit(1)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .minimumScaleFactor(0.85)
                 Spacer(minLength: 4)
                 Text(levelBadgeText)
@@ -3281,7 +3460,8 @@ private extension HomeView {
             Text(subtitleText)
                 .font(InterfaceFont.font("GeneralSans-Regular", size: 11))
                 .foregroundStyle(secondaryInk)
-                .lineLimit(1)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
                 .minimumScaleFactor(0.85)
                 .contentTransition(.numericText())
 
@@ -3364,33 +3544,7 @@ private extension HomeView {
     }
 
     var isPrimaryKeyboardAdded: Bool {
-        let args = ProcessInfo.processInfo.arguments
-        if args.contains("-qt_keyboard_missing") {
-            return false
-        }
-        if args.contains("-qt_keyboard_added") {
-            return true
-        }
-        let languages = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-            .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
-        let hasActiveLatinMode = languages.contains { $0 == "crh" || $0.hasPrefix("crh-latn") }
-        let hasAnyActiveCRHMode = languages.contains { $0 == "crh" || $0.hasPrefix("crh-") }
-        if hasActiveLatinMode {
-            return true
-        }
-        if !hasAnyActiveCRHMode && isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive && !args.contains("-qt_wrong_keyboard") {
-            return false
-        }
-        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
-            return true
-        }
-        if SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled {
-            return true
-        }
-        if primaryExtensionSeen || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
-            return true
-        }
-        return false
+        isPrimaryKeyboardAddedState
     }
 
     var isFullAccessGranted: Bool {
@@ -3452,9 +3606,9 @@ private struct NativeSegmentedControl: UIViewRepresentable {
 
     func updateUIView(_ uiView: AccessibleUISegmentedControl, context: Context) {
         context.coordinator.parent = self
-        uiView.apportionsSegmentWidthsByContent = apportionsWidthsByContent
-        uiView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        uiView.setContentHuggingPriority(expandsToFillWidth ? .defaultLow : .required, for: .horizontal)
+        if uiView.apportionsSegmentWidthsByContent != apportionsWidthsByContent {
+            uiView.apportionsSegmentWidthsByContent = apportionsWidthsByContent
+        }
         if uiView.numberOfSegments != items.count {
             uiView.removeAllSegments()
             for (idx, item) in items.enumerated() {
@@ -3467,12 +3621,14 @@ private struct NativeSegmentedControl: UIViewRepresentable {
                 }
             }
         }
-        uiView.segmentIdentifiers = items.map(\.accessibilityIdentifier)
+        let newIDs = items.map(\.accessibilityIdentifier)
+        if uiView.segmentIdentifiers != newIDs {
+            uiView.segmentIdentifiers = newIDs
+        }
         if let idx = items.firstIndex(where: { $0.id == selection }),
            uiView.selectedSegmentIndex != idx {
             uiView.selectedSegmentIndex = idx
         }
-        uiView.applySegmentAccessibilityIdentifiers()
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: AccessibleUISegmentedControl, context: Context) -> CGSize {
@@ -3480,14 +3636,14 @@ private struct NativeSegmentedControl: UIViewRepresentable {
         if let fixedWidth {
             return CGSize(width: fixedWidth, height: height)
         }
+        if let proposedWidth = proposal.width, proposedWidth.isFinite, expandsToFillWidth {
+            return CGSize(width: max(proposedWidth, 120), height: height)
+        }
         let intrinsicWidth = uiView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).width
         if let proposedWidth = proposal.width, proposedWidth.isFinite {
-            if expandsToFillWidth {
-                return CGSize(width: max(proposedWidth, 120), height: height)
-            }
-            return CGSize(width: min(proposedWidth, max(intrinsicWidth, 160)), height: height)
+            return CGSize(width: min(proposedWidth, max(intrinsicWidth, 116)), height: height)
         }
-        return CGSize(width: max(intrinsicWidth, 160), height: height)
+        return CGSize(width: max(intrinsicWidth, 116), height: height)
     }
 
     final class Coordinator: NSObject {
@@ -3503,7 +3659,13 @@ private struct NativeSegmentedControl: UIViewRepresentable {
             let newID = parent.items[idx].id
             if parent.selection != newID {
                 HapticFeedback.playSelection()
-                parent.selection = newID
+                if HomeView.isUITestingEnvironment {
+                    parent.selection = newID
+                } else {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.parent.selection = newID
+                    }
+                }
             }
         }
     }
@@ -3511,42 +3673,57 @@ private struct NativeSegmentedControl: UIViewRepresentable {
 
 private final class AccessibleUISegmentedControl: UISegmentedControl {
     var segmentIdentifiers: [String] = [] {
-        didSet { applySegmentAccessibilityIdentifiers() }
+        didSet {
+            if segmentIdentifiers != oldValue {
+                applySegmentAccessibilityIdentifiers()
+            }
+        }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         configureSegmentLabels(in: self)
-        applySegmentAccessibilityIdentifiers()
+        applySegmentViewIdentifiers()
     }
 
     private func configureSegmentLabels(in view: UIView) {
         for subview in view.subviews {
             if let label = subview as? UILabel {
-                label.adjustsFontSizeToFitWidth = true
-                label.minimumScaleFactor = 0.82
-                label.allowsDefaultTighteningForTruncation = true
+                if !label.adjustsFontSizeToFitWidth {
+                    label.adjustsFontSizeToFitWidth = true
+                    label.minimumScaleFactor = 0.82
+                    label.allowsDefaultTighteningForTruncation = true
+                }
             }
             configureSegmentLabels(in: subview)
         }
     }
 
-    func applySegmentAccessibilityIdentifiers() {
-        let count = accessibilityElementCount()
-        if count == segmentIdentifiers.count {
-            for index in segmentIdentifiers.indices {
-                if let element = accessibilityElement(at: index) as? UIAccessibilityIdentification {
-                    element.accessibilityIdentifier = segmentIdentifiers[index]
-                }
-            }
-        }
+    private func applySegmentViewIdentifiers() {
         let segmentViews = subviews
             .filter { $0.frame.width > 10 }
             .sorted { $0.frame.minX < $1.frame.minX }
         guard segmentViews.count == segmentIdentifiers.count else { return }
         for (index, segView) in segmentViews.enumerated() {
-            segView.accessibilityIdentifier = segmentIdentifiers[index]
+            let id = segmentIdentifiers[index]
+            if segView.accessibilityIdentifier != id {
+                segView.accessibilityIdentifier = id
+            }
         }
+    }
+
+    func applySegmentAccessibilityIdentifiers() {
+        if UIAccessibility.isVoiceOverRunning || HomeView.isUITestingEnvironment {
+            let count = accessibilityElementCount()
+            if count == segmentIdentifiers.count {
+                for index in segmentIdentifiers.indices {
+                    if let element = accessibilityElement(at: index) as? UIAccessibilityIdentification {
+                        element.accessibilityIdentifier = segmentIdentifiers[index]
+                    }
+                }
+            }
+        }
+        applySegmentViewIdentifiers()
     }
 
 }
@@ -4245,6 +4422,7 @@ private struct InteractiveSettingsIconBadge: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -4314,6 +4492,7 @@ private struct InteractiveWalnutIconBadge: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -4526,6 +4705,7 @@ private struct TransliterationKeycapBadge: View {
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
+        .accessibilityHidden(true)
     }
 }
 
@@ -4573,12 +4753,12 @@ private struct LatinCharactersMiniCapsulesView: View {
     }
 
     @ViewBuilder
-    private func letterPill(_ letter: String) -> some View {
+    private func letterPill(_ letter: String, compact: Bool = false) -> some View {
         Text(letter)
-            .font(.system(size: Device.iPad ? 11 : 10.5, weight: .bold, design: .rounded))
+            .font(.system(size: compact ? 9.5 : (Device.iPad ? 11 : 10.5), weight: .bold, design: .rounded))
             .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, Device.iPad ? 5.5 : 4.5)
+            .padding(.horizontal, compact ? 3.5 : (Device.iPad ? 5.5 : 4.5))
             .padding(.vertical, 2)
             .background(
                 isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
@@ -4595,12 +4775,21 @@ private struct LatinCharactersMiniCapsulesView: View {
     }
 
     var body: some View {
-        HStack(spacing: Device.iPad ? 4 : 3) {
-            ForEach(letters, id: \.self) { letter in
-                letterPill(letter)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Device.iPad ? 4 : 3) {
+                ForEach(letters, id: \.self) { letter in
+                    letterPill(letter, compact: false)
+                }
             }
+            .fixedSize(horizontal: true, vertical: false)
+
+            HStack(spacing: 2) {
+                ForEach(letters, id: \.self) { letter in
+                    letterPill(letter, compact: true)
+                }
+            }
+            .minimumScaleFactor(0.75)
         }
-        .fixedSize(horizontal: true, vertical: false)
         .lineLimit(1)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
@@ -4675,24 +4864,24 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     }
 
     @ViewBuilder
-    private func capsulePill(for pair: (src: String, dst: String)) -> some View {
-        HStack(spacing: Device.iPad ? 2 : 1.5) {
+    private func capsulePill(for pair: (src: String, dst: String), compact: Bool = false) -> some View {
+        HStack(spacing: compact ? 1 : (Device.iPad ? 2 : 1.5)) {
             Text(pair.src)
-                .font(.system(size: Device.iPad ? 11 : 10.5, weight: .semibold, design: .rounded))
+                .font(.system(size: compact ? 9.5 : (Device.iPad ? 11 : 10.5), weight: .semibold, design: .rounded))
                 .foregroundStyle(isEnabled ? primaryInk : secondaryInk)
                 .fixedSize(horizontal: true, vertical: false)
             Text("→")
-                .font(.system(size: Device.iPad ? 9.5 : 9.0, weight: .medium, design: .rounded))
+                .font(.system(size: compact ? 8.0 : (Device.iPad ? 9.5 : 9.0), weight: .medium, design: .rounded))
                 .foregroundStyle(secondaryInk.opacity(0.8))
                 .fixedSize(horizontal: true, vertical: false)
             Text(pair.dst)
-                .font(.system(size: Device.iPad ? 11 : 10.5, weight: .bold, design: .rounded))
+                .font(.system(size: compact ? 9.5 : (Device.iPad ? 11 : 10.5), weight: .bold, design: .rounded))
                 .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .fixedSize(horizontal: true, vertical: false)
         .lineLimit(1)
-        .padding(.horizontal, Device.iPad ? 5 : 4)
+        .padding(.horizontal, compact ? 3 : (Device.iPad ? 5 : 4))
         .padding(.vertical, 2)
         .background(
             isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
@@ -4709,12 +4898,21 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     }
 
     var body: some View {
-        HStack(spacing: Device.iPad ? 4 : 3) {
-            ForEach(pairs, id: \.src) { pair in
-                capsulePill(for: pair)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Device.iPad ? 4 : 3) {
+                ForEach(pairs, id: \.src) { pair in
+                    capsulePill(for: pair, compact: false)
+                }
             }
+            .fixedSize(horizontal: true, vertical: false)
+
+            HStack(spacing: 2) {
+                ForEach(pairs, id: \.src) { pair in
+                    capsulePill(for: pair, compact: true)
+                }
+            }
+            .minimumScaleFactor(0.75)
         }
-        .fixedSize(horizontal: true, vertical: false)
         .lineLimit(1)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
@@ -4775,10 +4973,8 @@ private struct SandboxTextView: UIViewRepresentable {
         textView.text = currentText
         textView.autocorrectionType = .default
         textView.spellCheckingType = .default
-        if UIDevice.current.userInterfaceIdiom != .pad {
-            textView.inputAssistantItem.leadingBarButtonGroups = []
-            textView.inputAssistantItem.trailingBarButtonGroups = []
-        }
+        textView.inputAssistantItem.leadingBarButtonGroups = []
+        textView.inputAssistantItem.trailingBarButtonGroups = []
 
         applyTraits(to: textView, coordinator: context.coordinator)
 
@@ -4824,6 +5020,12 @@ private struct SandboxTextView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.textView = uiView
         uiView.textColor = .label
+        if !uiView.inputAssistantItem.leadingBarButtonGroups.isEmpty {
+            uiView.inputAssistantItem.leadingBarButtonGroups = []
+        }
+        if !uiView.inputAssistantItem.trailingBarButtonGroups.isEmpty {
+            uiView.inputAssistantItem.trailingBarButtonGroups = []
+        }
         context.coordinator.refreshActiveInputMode(for: uiView)
         if currentText != context.coordinator.lastSyncedText || uiView.text != currentText {
             let delta = currentText.count - uiView.text.count
@@ -4853,11 +5055,22 @@ private struct SandboxTextView: UIViewRepresentable {
         let fieldOrThemeChanged = fieldChanged || themeChanged || manualOverrideChanged
         let focusChanged = context.coordinator.lastIsFocused != isFocused
         let prefsChanged = context.coordinator.lastPreferencesToken != preferencesToken
-        let needsAutoFocus = autoFocusOnAppear && uiView.window != nil && UIApplication.shared.applicationState == .active && !uiView.isFirstResponder
+        if autoFocusOnAppear && uiView.isFirstResponder {
+            let coordinator = context.coordinator
+            coordinator.didPerformInitialAutoFocus = true
+            DispatchQueue.main.async {
+                coordinator.parent.onDidAutoFocus()
+            }
+        }
+        let needsAutoFocus = autoFocusOnAppear
+            && !context.coordinator.didScheduleUpdateAutoFocus
+            && uiView.window != nil
+            && UIApplication.shared.applicationState == .active
+            && !uiView.isFirstResponder
 
         if fieldOrThemeChanged || (focusChanged && isFocused) || needsAutoFocus {
             applyTraits(to: uiView, coordinator: context.coordinator)
-            if fieldOrThemeChanged && uiView.isFirstResponder && !isFullAccessGranted {
+            if fieldChanged && uiView.isFirstResponder && !isFullAccessGranted {
                 let coordinator = context.coordinator
                 DispatchQueue.main.async {
                     coordinator.isReloadingTraits = true
@@ -4867,7 +5080,9 @@ private struct SandboxTextView: UIViewRepresentable {
             }
             if needsAutoFocus {
                 let coordinator = context.coordinator
+                coordinator.didScheduleUpdateAutoFocus = true
                 DispatchQueue.main.async {
+                    coordinator.didScheduleUpdateAutoFocus = false
                     if uiView.window != nil && !uiView.isFirstResponder {
                         uiView.becomeFirstResponder()
                     }
@@ -4875,13 +5090,6 @@ private struct SandboxTextView: UIViewRepresentable {
                     coordinator.parent.onDidAutoFocus()
                 }
             }
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                nil,
-                nil,
-                true
-            )
             if fieldOrThemeChanged {
                 DispatchQueue.main.async {
                     CFNotificationCenterPostNotification(
@@ -4913,13 +5121,37 @@ private struct SandboxTextView: UIViewRepresentable {
         let isActiveSandbox = UIApplication.shared.applicationState == .active &&
             (textView.isFirstResponder || isFocused || autoFocusOnAppear)
         if isActiveSandbox {
-            let defaults = KeyboardPreferences.defaults
-            defaults.set(themeMode.isDark, forKey: "crh.key.test.isDark")
-            defaults.set(fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
-            defaults.set(true, forKey: "crh.key.test.sandboxFocused")
-            defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
-            defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            let wantDark = themeMode.isDark
+            let wantField = fieldMode.rawValue
+            DispatchQueue.main.async {
+                let defaults = KeyboardPreferences.defaults
+                var didMutate = false
+                if (defaults.object(forKey: "crh.key.test.isDark") as? Bool) != wantDark {
+                    defaults.set(wantDark, forKey: "crh.key.test.isDark")
+                    didMutate = true
+                }
+                if defaults.string(forKey: "crh.key.test.fieldMode") != wantField {
+                    defaults.set(wantField, forKey: "crh.key.test.fieldMode")
+                    didMutate = true
+                }
+                if (defaults.object(forKey: "crh.key.test.sandboxFocused") as? Bool) != true {
+                    defaults.set(true, forKey: "crh.key.test.sandboxFocused")
+                    didMutate = true
+                }
+                if didMutate {
+                    defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
+                    HomeView.bgPrefsAndSQLiteQueue.async {
+                        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                        CFNotificationCenterPostNotification(
+                            CFNotificationCenterGetDarwinNotifyCenter(),
+                            CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                            nil,
+                            nil,
+                            true
+                        )
+                    }
+                }
+            }
         }
 
         let isStructuredField = (fieldMode == .email || fieldMode == .url || fieldMode == .numbers)
@@ -4944,6 +5176,8 @@ private struct SandboxTextView: UIViewRepresentable {
         var lastSyncedText: String
         var isReloadingTraits = false
         var didPerformInitialAutoFocus = false
+        var didScheduleUpdateAutoFocus = false
+        private var preKeyboardOuterScrollOffset: CGPoint?
         private var observers: [NSObjectProtocol] = []
         private var keystrokeTimestamps: [CFTimeInterval] = []
         private lazy var inlineMathPreviewLabel: UILabel = {
@@ -5088,6 +5322,87 @@ private struct SandboxTextView: UIViewRepresentable {
                     self.updateInlineMathPreview(for: tv)
                 }
             })
+            observers.append(nc.addObserver(
+                forName: UIResponder.keyboardWillShowNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.adjustOuterScrollViewForKeyboard(notification: notification)
+            })
+            observers.append(nc.addObserver(
+                forName: UIResponder.keyboardDidShowNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.adjustOuterScrollViewForKeyboard(notification: notification)
+            })
+            observers.append(nc.addObserver(
+                forName: UIResponder.keyboardWillChangeFrameNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                self?.adjustOuterScrollViewForKeyboard(notification: notification)
+            })
+        }
+
+        private func findOuterScrollView(for textView: UITextView) -> UIScrollView? {
+            var current = textView.superview
+            while let view = current {
+                if let scrollView = view as? UIScrollView, scrollView !== textView {
+                    return scrollView
+                }
+                current = view.superview
+            }
+            return nil
+        }
+
+        private func adjustOuterScrollViewForKeyboard(notification: Notification) {
+            guard let tv = textView,
+                  tv.isFirstResponder,
+                  let window = tv.window,
+                  let outerScrollView = findOuterScrollView(for: tv),
+                  let kbValue = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue else {
+                return
+            }
+            let kbFrameInWindow = window.convert(kbValue.cgRectValue, from: nil)
+            guard kbFrameInWindow.height > 40, kbFrameInWindow.minY < window.bounds.maxY else { return }
+
+            let savedOffset = preKeyboardOuterScrollOffset ?? outerScrollView.contentOffset
+            let fieldContainer = tv.superview ?? tv
+            let currentRectInWindow = fieldContainer.convert(fieldContainer.bounds, to: window)
+            let scrollShift = outerScrollView.contentOffset.y - savedOffset.y
+            let fieldBottomAtSavedOffset = currentRectInWindow.maxY + scrollShift + 8.0
+            let keyboardTopY = kbFrameInWindow.minY
+
+            if fieldBottomAtSavedOffset <= keyboardTopY {
+                // Entire writing field fits completely above the keyboard without scrolling:
+                // keep the scroll position stationary and cancel any automatic downward scroll.
+                let restoreIfNeeded = { [weak outerScrollView] in
+                    guard let outerScrollView else { return }
+                    if abs(outerScrollView.contentOffset.y - savedOffset.y) > 0.5 {
+                        UIView.performWithoutAnimation {
+                            outerScrollView.setContentOffset(savedOffset, animated: false)
+                        }
+                    }
+                }
+                restoreIfNeeded()
+                DispatchQueue.main.async(execute: restoreIfNeeded)
+                for delay in [0.025, 0.08, 0.18, 0.30] {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: restoreIfNeeded)
+                }
+            } else {
+                // Field does not fit completely above the keyboard: scroll down only by the needed overflow.
+                let neededOverflow = (fieldBottomAtSavedOffset + 6.0) - keyboardTopY
+                let minOffsetY = -outerScrollView.adjustedContentInset.top
+                let maxOffsetY = max(
+                    minOffsetY,
+                    outerScrollView.contentSize.height - outerScrollView.bounds.height + outerScrollView.adjustedContentInset.bottom
+                )
+                let targetOffsetY = min(max(savedOffset.y + neededOverflow, minOffsetY), maxOffsetY)
+                if abs(outerScrollView.contentOffset.y - targetOffsetY) > 1.0 {
+                    outerScrollView.setContentOffset(CGPoint(x: savedOffset.x, y: targetOffsetY), animated: true)
+                }
+            }
         }
 
         deinit {
@@ -5104,19 +5419,31 @@ private struct SandboxTextView: UIViewRepresentable {
                 isCRH = lang.hasPrefix("crh")
                 let args = ProcessInfo.processInfo.arguments
                 if !HomeView.isUITestingEnvironment && !args.contains("-qt_demo_stats") {
+                    let defaults = KeyboardPreferences.defaults
                     if lang.hasPrefix("crh-cyrl-ua") {
-                        KeyboardPreferences.defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+                        if !defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
+                            defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+                        }
                     } else if lang == "crh-cyrl" || lang.hasPrefix("crh-cyrl-") {
-                        KeyboardPreferences.defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                        if !defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+                            defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                        }
                     } else if lang == "crh" || lang.hasPrefix("crh-latn") {
-                        KeyboardPreferences.defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
+                        if !defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
+                            defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
+                        }
                     }
                 }
             } else {
                 isCRH = true
             }
             if parent.isCrimeanTatarKeyboardActive != isCRH {
-                parent.isCrimeanTatarKeyboardActive = isCRH
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    if self.parent.isCrimeanTatarKeyboardActive != isCRH {
+                        self.parent.isCrimeanTatarKeyboardActive = isCRH
+                    }
+                }
             }
         }
 
@@ -5161,25 +5488,39 @@ private struct SandboxTextView: UIViewRepresentable {
             if parent.liveWPM != wpm { parent.liveWPM = wpm }
         }
 
+        func textViewShouldBeginEditing(_ textView: UITextView) -> Bool {
+            if let outerScrollView = findOuterScrollView(for: textView) {
+                preKeyboardOuterScrollOffset = outerScrollView.contentOffset
+            }
+            return true
+        }
+
         func textViewDidBeginEditing(_ textView: UITextView) {
             SandboxTextView.forceSoftwareKeyboardShownIfUITesting()
+            didPerformInitialAutoFocus = true
+            if parent.autoFocusOnAppear {
+                parent.onDidAutoFocus()
+            }
             if !isReloadingTraits {
                 textView.keyboardAppearance = parent.themeMode.keyboardAppearance
                 if UIApplication.shared.applicationState == .active {
+                    let isDark = parent.themeMode.isDark
+                    let fieldRaw = parent.fieldMode.rawValue
                     let defaults = KeyboardPreferences.defaults
-                    defaults.set(parent.themeMode.isDark, forKey: "crh.key.test.isDark")
-                    defaults.set(parent.fieldMode.rawValue, forKey: "crh.key.test.fieldMode")
+                    defaults.set(isDark, forKey: "crh.key.test.isDark")
+                    defaults.set(fieldRaw, forKey: "crh.key.test.fieldMode")
                     defaults.set(true, forKey: "crh.key.test.sandboxFocused")
                     defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.overrideTimestamp")
-                    defaults.synchronize()
-                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                    CFNotificationCenterPostNotification(
-                        CFNotificationCenterGetDarwinNotifyCenter(),
-                        CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                        nil,
-                        nil,
-                        true
-                    )
+                    HomeView.bgPrefsAndSQLiteQueue.async {
+                        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                        CFNotificationCenterPostNotification(
+                            CFNotificationCenterGetDarwinNotifyCenter(),
+                            CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                            nil,
+                            nil,
+                            true
+                        )
+                    }
                 }
                 if !parent.isFocused {
                     parent.isFocused = true
@@ -5204,20 +5545,25 @@ private struct SandboxTextView: UIViewRepresentable {
 
         func textViewDidEndEditing(_ textView: UITextView) {
             guard !isReloadingTraits else { return }
+            preKeyboardOuterScrollOffset = nil
+            if parent.autoFocusOnAppear {
+                parent.onDidAutoFocus()
+            }
             let defaults = KeyboardPreferences.defaults
             defaults.removeObject(forKey: "crh.key.test.isDark")
             defaults.removeObject(forKey: "crh.key.test.fieldMode")
             defaults.removeObject(forKey: "crh.key.test.overrideTimestamp")
             defaults.set(false, forKey: "crh.key.test.sandboxFocused")
-            defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                nil,
-                nil,
-                true
-            )
+            HomeView.bgPrefsAndSQLiteQueue.async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+            }
             if parent.isFocused {
                 parent.isFocused = false
             }

@@ -12,6 +12,13 @@ struct PrimaryButton: View {
     var text: String
     var background: Color
     var action: () -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    
+    private var buttonColor: Color {
+        colorSchemeContrast == .increased
+            ? Color(red: 0.0, green: 0.42, blue: 0.72)
+            : Color(red: 0.0, green: 0.53, blue: 0.86)
+    }
     
     var body: some View {
         Button {
@@ -25,9 +32,16 @@ struct PrimaryButton: View {
                 .foregroundStyle(.white)
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity)
-                .background(Color(red: 0.0, green: 0.53, blue: 0.86), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .shadow(color: Color(red: 0.0, green: 0.53, blue: 0.86).opacity(0.25), radius: 8, x: 0, y: 3)
+                .background(buttonColor, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    if colorSchemeContrast == .increased {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.35), lineWidth: 1)
+                    }
+                }
+                .shadow(color: buttonColor.opacity(0.25), radius: 8, x: 0, y: 3)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(text)
     }
 }

@@ -104,7 +104,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return context.textDocumentProxy.enablesReturnKeyAutomatically == true
     }
 
-    static func effectiveIsDark(for context: KeyboardContext) -> Bool {
+    static func effectiveIsDark(for context: KeyboardContext, systemDark: Bool? = nil) -> Bool {
         if isSandboxOverrideActive(for: context),
            KeyboardPreferences.defaults.object(forKey: "crh.key.test.isDark") != nil {
             return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isDark")
@@ -114,6 +114,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         if context.keyboardAppearance == .light {
             return false
+        }
+        if let systemDark {
+            return systemDark
         }
         if context.traitCollection.userInterfaceStyle == .dark || context.colorScheme == .dark {
             return true
@@ -478,16 +481,21 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let context = keyboardContext
         let isDark = Self.effectiveIsDark(for: context)
         let useClassicStyle = Self.usesClassicSystemKeyStyle
+        #if canImport(UIKit)
+        let increaseContrast = UIAccessibility.isDarkerSystemColorsEnabled
+        #else
+        let increaseContrast = false
+        #endif
 
         let darkInputKey = useClassicStyle
-            ? Color.white.opacity(0.24)
-            : Color(white: 0.71).opacity(0.24)
+            ? Color.white.opacity(increaseContrast ? 0.32 : 0.24)
+            : Color(white: 0.71).opacity(increaseContrast ? 0.32 : 0.24)
         let darkInputKeyPressed = useClassicStyle
             ? Color.white.opacity(0.46)
             : Color(white: 0.96).opacity(0.52)
         let darkSystemKeyGray = useClassicStyle
-            ? Color.white.opacity(0.15)
-            : Color(white: 0.71).opacity(0.24)
+            ? Color.white.opacity(increaseContrast ? 0.22 : 0.15)
+            : Color(white: 0.71).opacity(increaseContrast ? 0.32 : 0.24)
         let darkSystemKeyGrayPressed = useClassicStyle
             ? Color.white.opacity(0.42)
             : Color(white: 0.96).opacity(0.52)
@@ -495,15 +503,15 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
         let lightInputKey = useClassicStyle
-            ? Color.white.opacity(0.92)
-            : Color.white.opacity(0.84)
+            ? Color.white.opacity(increaseContrast ? 0.98 : 0.92)
+            : Color.white.opacity(increaseContrast ? 0.94 : 0.84)
         // Native iPadOS/iOS Light Mode pressed keys depress with a crisp gray-translucent tint
         let lightInputKeyPressed = useClassicStyle
             ? Color(red: 0.54, green: 0.57, blue: 0.63).opacity(0.68)
             : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.68)
         let lightSystemKeyGray = useClassicStyle
-            ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0).opacity(0.68) // Translucent #ACB3BE
-            : Color.black.opacity(0.17)
+            ? Color(red: 172.0 / 255.0, green: 177.0 / 255.0, blue: 185.0 / 255.0).opacity(increaseContrast ? 0.80 : 0.68) // Translucent #ACB3BE
+            : Color.black.opacity(increaseContrast ? 0.24 : 0.17)
         let lightSystemKeyGrayPressed = lightInputKey
 
         let lightSystemKey = useClassicStyle ? lightSystemKeyGray : lightInputKey

@@ -22,32 +22,45 @@ final class TextHistoryManager {
     
     private var undoStack: [HistoryAction] = []
     private var redoStack: [HistoryAction] = []
+    private static let maxStackDepth = 64
+    private static let maxSingleStepDeleteCount = 128
     
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
     
+    private func trimUndoStackIfNeeded() {
+        if undoStack.count > Self.maxStackDepth {
+            undoStack.removeFirst(undoStack.count - Self.maxStackDepth)
+        }
+    }
+
     func recordInsert(_ text: String) {
         guard !text.isEmpty else { return }
         undoStack.append(.insert(text))
+        trimUndoStackIfNeeded()
         redoStack.removeAll()
     }
     
     func recordDelete(_ text: String) {
         guard !text.isEmpty else { return }
         undoStack.append(.delete(text))
+        trimUndoStackIfNeeded()
         redoStack.removeAll()
     }
     
     func recordReplace(oldText: String, newText: String) {
         undoStack.append(.replace(oldText: oldText, newText: newText))
+        trimUndoStackIfNeeded()
         redoStack.removeAll()
     }
     
     func undo(proxy: UITextDocumentProxy) {
         guard let action = undoStack.popLast() else { return }
+        let beforeCount = proxy.documentContextBeforeInput?.count ?? Self.maxSingleStepDeleteCount
         switch action {
         case .insert(let text):
-            for _ in 0..<text.count {
+            let deleteCount = min(text.count, min(beforeCount, Self.maxSingleStepDeleteCount))
+            for _ in 0..<deleteCount {
                 proxy.deleteBackward()
             }
             redoStack.append(.insert(text))
@@ -55,7 +68,8 @@ final class TextHistoryManager {
             proxy.insertText(text)
             redoStack.append(.delete(text))
         case .replace(let oldText, let newText):
-            for _ in 0..<newText.count {
+            let deleteCount = min(newText.count, min(beforeCount, Self.maxSingleStepDeleteCount))
+            for _ in 0..<deleteCount {
                 proxy.deleteBackward()
             }
             proxy.insertText(oldText)
@@ -65,22 +79,26 @@ final class TextHistoryManager {
     
     func redo(proxy: UITextDocumentProxy) {
         guard let action = redoStack.popLast() else { return }
+        let beforeCount = proxy.documentContextBeforeInput?.count ?? Self.maxSingleStepDeleteCount
         switch action {
         case .insert(let text):
             proxy.insertText(text)
             undoStack.append(.insert(text))
         case .delete(let text):
-            for _ in 0..<text.count {
+            let deleteCount = min(text.count, min(beforeCount, Self.maxSingleStepDeleteCount))
+            for _ in 0..<deleteCount {
                 proxy.deleteBackward()
             }
             undoStack.append(.delete(text))
         case .replace(let oldText, let newText):
-            for _ in 0..<oldText.count {
+            let deleteCount = min(oldText.count, min(beforeCount, Self.maxSingleStepDeleteCount))
+            for _ in 0..<deleteCount {
                 proxy.deleteBackward()
             }
             proxy.insertText(newText)
             undoStack.append(.replace(oldText: oldText, newText: newText))
         }
+        trimUndoStackIfNeeded()
     }
     
     func reset() {
@@ -205,6 +223,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         timestamps: [TimeInterval] = [],
         keyFrames: [String: CGRect] = [:]
     ) {
+        let spState = Self.perfSignposter.beginInterval("HandleSwipePath")
+        defer { Self.perfSignposter.endInterval("HandleSwipePath", spState) }
         let controllerWidth = (keyboardController as? UIViewController)?.view.bounds.width ?? 0
         let isPadFloatingWidth = keyboardContext.deviceType == .pad && controllerWidth > 0 && controllerWidth < 420
         guard (keyboardContext.deviceType == .phone || keyboardContext.isKeyboardFloating || isPadFloatingWidth),
@@ -231,6 +251,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             contextWords: contextWords
         )
 
+        let isToolbarVisible = autocompleteContext.isAutocompleteEnabled
+            && DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext)
+
         var suggestions = SuggestionsDataBaseManager.shared.matchSwipePath(
             keySequence: keys,
             isCyrillic: isCyrillic,
@@ -240,7 +263,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             trailPoints: trailPoints,
             timestamps: timestamps,
             keyFrames: keyFrames,
-            limit: 10
+            limit: isToolbarVisible ? 10 : 6
         )
         if isAllCaps {
             suggestions = suggestions.map {
@@ -256,21 +279,37 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             && keys.first?.lowercased() == lastSwipeKeySequence.first?.lowercased()
             && keys.last?.lowercased() == lastSwipeKeySequence.last?.lowercased()
             && abs(keys.count - lastSwipeKeySequence.count) <= 2
-            && lastSwipeCandidateQueue.count >= 4
+            && lastSwipeCandidateQueue.count >= 2
 
         let best: String
         let primaryAlternatives: [String]
         if isSameRepeatSwipeAfterBackspace {
-            best = lastSwipeCandidateQueue[3]
-            primaryAlternatives = Array(lastSwipeCandidateQueue.prefix(3))
+            let nonDeletedPool: [String]
+            if isToolbarVisible && lastSwipeCandidateQueue.count >= 4 {
+                nonDeletedPool = (Array(lastSwipeCandidateQueue.dropFirst(3)) + Array(lastSwipeCandidateQueue.dropFirst().prefix(2))).filter {
+                    !lastDeletedSwipeWords.contains($0.lowercased(with: Self.casingLocale))
+                }
+            } else {
+                nonDeletedPool = lastSwipeCandidateQueue.dropFirst().filter {
+                    !lastDeletedSwipeWords.contains($0.lowercased(with: Self.casingLocale))
+                }
+            }
+            best = nonDeletedPool.first
+                ?? lastSwipeCandidateQueue.dropFirst().first
+                ?? lastSwipeCandidateQueue[0]
+            primaryAlternatives = lastSwipeCandidateQueue.filter {
+                $0.caseInsensitiveCompare(best) != .orderedSame
+                    && !lastDeletedSwipeWords.contains($0.lowercased(with: Self.casingLocale))
+            }.prefix(3).map { $0 }
             isPostSwipeBackspaceState = false
         } else {
+            lastDeletedSwipeWords.removeAll()
             let candidateTexts = suggestions.map(\.text)
             lastSwipeCandidateQueue = candidateTexts
             lastSwipeKeySequence = keys
             isPostSwipeBackspaceState = false
             best = candidateTexts[0]
-            primaryAlternatives = Array(candidateTexts.dropFirst().prefix(3))
+            primaryAlternatives = isToolbarVisible ? Array(candidateTexts.dropFirst().prefix(3)) : []
         }
         guard !best.isEmpty else { return }
 
@@ -293,10 +332,16 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         KeyboardUsageStats.recordManualWordCompleted()
         lastCompletedTypedWord = best
         lastSwipedWordInsertion = textToInsert
-        hasActivePostSwipeSuggestions = true
+        hasActivePostSwipeSuggestions = isToolbarVisible
         typedWordBuffer = ""
         if keyboardContext.keyboardType == .alphabetic(.uppercased) {
             keyboardController?.setKeyboardType(.alphabetic(.lowercased))
+        }
+
+        // When Predictive Text / top suggestion bar is disabled, skip building toolbar suggestions to save CPU/SQLite work.
+        guard isToolbarVisible else {
+            autocompleteContext.suggestions = []
+            return
         }
 
         // Do not repeat the already-inserted word in Slot 0; offer alternative swipe candidates + next-word continuations.
@@ -320,7 +365,8 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             )
             for cont in continuations where toolbarSuggestions.count < 3 {
                 if !toolbarSuggestions.contains(where: { $0.text.caseInsensitiveCompare(cont.text) == .orderedSame })
-                    && cont.text.caseInsensitiveCompare(best) != .orderedSame {
+                    && cont.text.caseInsensitiveCompare(best) != .orderedSame
+                    && !lastDeletedSwipeWords.contains(cont.text.lowercased(with: Self.casingLocale)) {
                     let formattedCont = isAllCaps
                         ? Autocomplete.Suggestion(text: cont.text.uppercased(with: Self.casingLocale), isAutocorrect: false)
                         : cont
@@ -351,11 +397,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
 
         var chars = Array(before)
         var deleteCount = 0
-        while let last = chars.last, last.isWhitespace && last != "\n" {
+        while let last = chars.last, last.isWhitespace && last != "\n", deleteCount < 64 {
             chars.removeLast()
             deleteCount += 1
         }
-        while let last = chars.last, !last.isWhitespace {
+        while let last = chars.last, !last.isWhitespace, deleteCount < 64 {
             chars.removeLast()
             deleteCount += 1
         }
@@ -465,6 +511,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
     private var lastSwipedWordInsertion: String?
     private var lastSwipeCandidateQueue: [String] = []
     private var lastSwipeKeySequence: [String] = []
+    private var lastDeletedSwipeWords: Set<String> = []
     private var isPostSwipeBackspaceState = false
     private var postSwipeNeedsLeadingSpace = false
     private(set) var hasActivePostSwipeSuggestions = false
@@ -741,7 +788,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             replacement,
             previousWord: prevWord,
             proxy: proxy,
-            explicitlyConfirmed: suggestion.isUnknown
+            explicitlyConfirmed: true
         )
         super.handle(suggestion)
     }
@@ -751,18 +798,24 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         on action: KeyboardAction,
         replaced: Bool = false
     ) {
-        #if DEBUG
-        let started = CFAbsoluteTimeGetCurrent()
+        let spState = Self.perfSignposter.beginInterval("KeyGestureHandle")
+        let startedNs = DispatchTime.now().uptimeNanoseconds
         defer {
-            let ms = (CFAbsoluteTimeGetCurrent() - started) * 1000
+            let ms = Double(DispatchTime.now().uptimeNanoseconds - startedNs) / 1_000_000.0
+            if ms > 16.0 {
+                Self.perfSignposter.emitEvent("MainThreadFrameBudgetExceeded", "KeyGestureHandle \(ms, format: .fixed(precision: 1))ms")
+            }
+            Self.perfSignposter.endInterval("KeyGestureHandle", spState)
+            #if DEBUG
             if gesture == .release || ms > 8 {
                 Self.perfLog.info("handle \(String(describing: gesture), privacy: .public) \(String(describing: action), privacy: .public) \(ms, format: .fixed(precision: 1), privacy: .public)ms")
             }
+            #endif
         }
-        #endif
         handleUntimed(gesture, on: action, replaced: replaced)
     }
 
+    private static let perfSignposter = OSSignposter(subsystem: "crh.key.perf", category: "DemoActionHandler")
     #if DEBUG
     private static let perfLog = Logger(subsystem: "crh.key.perf", category: "handler")
     #endif
@@ -842,20 +895,32 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 }
                 TextHistoryManager.shared.recordDelete(swipedInsertion)
                 typedWordBuffer = ""
+                let deletedWordNorm = swipedInsertion
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased(with: Self.casingLocale)
+                if !deletedWordNorm.isEmpty {
+                    lastDeletedSwipeWords.insert(deletedWordNorm)
+                }
+                isPostSwipeBackspaceState = true
+                let isToolbarVisible = autocompleteContext.isAutocompleteEnabled
+                    && DemoStyleProvider.shouldShowTopToolbar(for: keyboardContext)
 
-                // Offer the next 3 swipe candidates [W_5, W_6, W_7] (after W_1 and [W_2, W_3, W_4]) right after Backspace
+                // Offer the next 3 swipe candidates [W_5, W_6, W_7] (after W_1 and [W_2, W_3, W_4]) right after Backspace,
+                // excluding any candidate that the user has already deleted on this swipe path.
                 let rotatedCandidates: [String] = {
-                    guard lastSwipeCandidateQueue.count >= 2 else { return [] }
+                    guard isToolbarVisible, lastSwipeCandidateQueue.count >= 2 else { return [] }
+                    let nonDeletedQueue = lastSwipeCandidateQueue.filter {
+                        !lastDeletedSwipeWords.contains($0.lowercased(with: Self.casingLocale))
+                    }
+                    guard !nonDeletedQueue.isEmpty else { return [] }
                     var nextBatch: [String]
-                    if lastSwipeCandidateQueue.count >= 5 {
-                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst(4).prefix(3))
-                    } else if lastSwipeCandidateQueue.count >= 4 {
-                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst(3).prefix(3))
+                    if nonDeletedQueue.count >= 4 {
+                        nextBatch = Array(nonDeletedQueue.dropFirst(3).prefix(3))
                     } else {
-                        nextBatch = Array(lastSwipeCandidateQueue.dropFirst().prefix(3))
+                        nextBatch = Array(nonDeletedQueue.prefix(3))
                     }
                     if nextBatch.count < 3 {
-                        for fallback in lastSwipeCandidateQueue.dropFirst() where nextBatch.count < 3 {
+                        for fallback in nonDeletedQueue where nextBatch.count < 3 {
                             if !nextBatch.contains(fallback) {
                                 nextBatch.append(fallback)
                             }
@@ -864,7 +929,6 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     return nextBatch
                 }()
                 if !rotatedCandidates.isEmpty {
-                    isPostSwipeBackspaceState = true
                     hasActivePostSwipeSuggestions = true
                     GreetingBannerState.shared.dismissForTyping()
                     let rotatedSuggestions = rotatedCandidates.map {
@@ -880,9 +944,9 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                         self.autocompleteContext.suggestions = rotatedSuggestions
                     }
                 } else {
+                    autocompleteContext.suggestions = []
                     if remainingBefore.isEmpty && (proxy.documentContextAfterInput ?? "").isEmpty {
-                        if !DemoStyleProvider.isSearchField(for: keyboardContext) {
-                            autocompleteContext.suggestions = []
+                        if isToolbarVisible && !DemoStyleProvider.isSearchField(for: keyboardContext) {
                             GreetingBannerState.shared.prepareForAppearance(reshuffle: false)
                         } else {
                             GreetingBannerState.shared.dismissForTyping()
@@ -904,7 +968,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 } else {
                     tryChangeKeyboardType(after: .release, on: action)
                 }
-                if rotatedCandidates.isEmpty {
+                if rotatedCandidates.isEmpty && isToolbarVisible {
                     keyboardController?.performAutocomplete()
                 }
                 return
@@ -1064,7 +1128,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         if gesture == .release {
             let proxy = keyboardContext.textDocumentProxy
             let effectiveKeyboardType = DemoStyleProvider.effectiveProxyKeyboardType(for: keyboardContext)
-            if proxy.smartDashesType != .no,
+            if SystemKeyboardSettings.isSmartDashesEnabled(for: proxy),
                effectiveKeyboardType != .URL,
                effectiveKeyboardType != .emailAddress {
                 switch action {

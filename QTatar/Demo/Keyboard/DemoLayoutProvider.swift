@@ -262,6 +262,16 @@ extension InputSet {
         ])
     }
 
+    /// Docked 4-row iPad Crimean Tatar Latin layout (`12 / 11 / 12` so `q – a – z` align on one diagonal line,
+    /// moving `â` from Row 1 Col 0 down to Row 2 Col 0 right before `z`, widening `абв` and shortening left `Shift`).
+    static var crimeanTatarPadLatin: InputSet {
+        .init(rows: [
+            .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
+            .init(lowercased: "asdfghjklşi", uppercased: "ASDFGHJKLŞİ"),
+            .init(lowercased: "âzxcvbnmöçñ,", uppercased: "ÂZXCVBNMÖÇÑ,")
+        ])
+    }
+
     /// 5-row iPad Pro (12.9" / 13") Crimean Tatar Latin layout based on Turkish iPad Pro + `ñ` (with `â` on Row 0 Col 0).
     static var crimeanTatarPadProLatin: InputSet {
         .init(rows: [
@@ -325,21 +335,22 @@ extension InputSet {
         ])
     }
     
-    /// Docked iPad Latin numeric set (12 / 12 / 11 matching Latin alphabetic key counts and English symbol order)
+    /// Docked iPad Latin numeric set (12 / 11 / 12 matching 4-row Docked iPad Latin alphabetic key counts:
+    /// `@` on `a`, `#` on `s`, `$` on `d`, `₴` on `f`, `&` on `g`, `*` on `h`, `_` on `j`, `(` on `k`, `)` on `l`, `'` on `ş`, `"` on `i`, and `№` on `â` before `%` on `z`)
     static var crimeanTatarPadNumeric: InputSet {
         .init(rows: [
             .init(chars: "1234567890—°"),
-            .init(chars: "@#$₴&*_()'\"№"),
-            .init(chars: "%-+=/;:,.!?")
+            .init(chars: "@#$₴&*_()'\""),
+            .init(chars: "№%-+=/;:,.!?")
         ])
     }
     
-    /// Docked iPad Latin symbolic set (12 / 12 / 11 matching Latin alphabetic key counts and English symbol order, with Turkish Lira ₺)
+    /// Docked iPad Latin symbolic set (12 / 11 / 12 matching 4-row Docked iPad Latin alphabetic key counts, with Turkish Lira ₺)
     static var crimeanTatarPadSymbolic: InputSet {
         .init(rows: [
             .init(chars: "1234567890—°"),
-            .init(chars: "€£₺•`^|[]{}±"),
-            .init(chars: "§~…≠\\<>«»!?")
+            .init(chars: "€£₺•`^|[]{}"),
+            .init(chars: "±§~…≠\\<>«»!?")
         ])
     }
 
@@ -395,7 +406,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
         )
         if isPadDevice {
             baseProvider.iPadProvider = CrimeanTatarIPadKeyboardLayoutProvider(
-                alphabeticInputSet: initialAlpha,
+                alphabeticInputSet: .crimeanTatarPadLatin,
                 numericInputSet: .crimeanTatarPadNumeric,
                 symbolicInputSet: .crimeanTatarPadSymbolic
             )
@@ -447,7 +458,7 @@ class DemoLayoutProvider: StandardKeyboardLayoutProvider {
             } else {
                 padInputSet = isCyrillic
                     ? (KeyboardPreferences.ukrainianCyrillicLayoutEnabled ? .crimeanTatarPadUkrainianCyrillic : .crimeanTatarStandardCyrillic)
-                    : .crimeanTatar
+                    : .crimeanTatarPadLatin
             }
             pad.alphabeticInputSet = padInputSet
             pad.numericInputSet = isCyrillic ? .crimeanTatarPadCyrillicNumeric : .crimeanTatarPadNumeric

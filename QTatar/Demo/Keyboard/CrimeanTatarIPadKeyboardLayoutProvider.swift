@@ -275,7 +275,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         let is11KeyRow1Cyr = isCyrillic
         let alphaRows = (isCyrillic
             ? (KeyboardPreferences.ukrainianCyrillicLayoutEnabled ? InputSet.crimeanTatarPadUkrainianCyrillic : InputSet.crimeanTatarStandardCyrillic)
-            : InputSet.crimeanTatar).rows
+            : InputSet.crimeanTatarPadLatin).rows
         let numRows = (is11KeyRow1Cyr ? InputSet.crimeanTatarPadCyrillicNumeric : InputSet.crimeanTatarPadNumeric).rows
         let symRows = (is11KeyRow1Cyr ? InputSet.crimeanTatarPadCyrillicSymbolic : InputSet.crimeanTatarPadSymbolic).rows
 
@@ -327,7 +327,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         case .symbolic:
             return [.custom(named: "redo")]
         case .alphabetic:
-            return KeyboardPreferences.cyrillicEnabled ? [.custom(named: "toggle_script")] : [.capsLock]
+            return (KeyboardPreferences.cyrillicEnabled || context.locale.identifier.contains("Cyrl")) ? [.custom(named: "toggle_script")] : [.capsLock]
         default:
             return [.characterMargin("â")]
         }
@@ -452,7 +452,6 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         context: KeyboardContext
     ) -> KeyboardLayout.ItemWidth {
         let isCyrillic = context.locale.identifier.contains("Cyrl")
-        let is11KeyRow1Cyr = isCyrillic
         if isSplitMode(context) {
             let gap = Self.splitGapFraction(for: context)
             let half = Self.splitHalfFraction(for: context)
@@ -469,7 +468,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             }
             if row == 1 {
                 if index == 0 {
-                    return .percentage(is11KeyRow1Cyr ? (side + pitch) : side)
+                    return .percentage(side + pitch)
                 }
                 if case .primary = action {
                     return .percentage(side)
@@ -478,7 +477,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
             }
             if row == 2 {
                 if index == 0 {
-                    return .percentage(side + pitch)
+                    return .percentage(isCyrillic ? (side + pitch) : side)
                 }
                 switch action {
                 case .shift, .keyboardType:
@@ -552,7 +551,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
 
         // Standard 4-row Docked iPad (9.7" / 10.5" / 10.9" / 11"):
         // Uniform stagger across Portrait and Landscape so Q - A - Z (and Й - Ф - Я) lie on one straight diagonal line:
-        // x(Q) = tab + 0.5*pitch, x(A) = tab + 1.0*pitch, x(Z) = tab + 1.5*pitch.
+        // x(Q) = tab + 0.5*pitch, x(A) = tab + 1.0*pitch, x(Z) = tab + 1.5*pitch, with Â placed at [tab, tab + pitch] before Z in Latin.
         let isPortrait = context.interfaceOrientation.isPortrait
         let tab = Self.tabFraction
         let bs = Self.backspaceFraction
@@ -564,14 +563,14 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         }
         if row == 1 {
             if index == 0 {
-                return .percentage(is11KeyRow1Cyr ? tab + pitch / 2.0 : tab - pitch / 2.0)
+                return .percentage(tab + pitch / 2.0)
             }
             if case .primary = action { return .available }
             return .percentage(pitch)
         }
         if row == 2 {
             if index == 0 {
-                return .percentage(tab + pitch)
+                return .percentage(isCyrillic ? tab + pitch : tab)
             }
             switch action {
             case .shift, .keyboardType:

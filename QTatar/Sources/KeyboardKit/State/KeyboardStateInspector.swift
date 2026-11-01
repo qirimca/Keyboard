@@ -33,70 +33,23 @@ public extension KeyboardStateInspector {
         Array(Set(UITextInputMode.activeInputModes.compactMap(\.primaryLanguage))).sorted()
     }
 
-    /// True when keyboard bundle identifiers can be inspected via system preferences or input modes.
-    var canInspectKeyboardBundleIds: Bool { true }
+    /// Public input-mode APIs expose languages, not extension bundle identifiers.
+    var canInspectKeyboardBundleIds: Bool { false }
 
-    /// Get a list of all active keyboard bundle IDs.
-    var activeKeyboardBundleIds: [String] {
-        let modes = UITextInputMode.activeInputModes
-        let displayed = modes.filter { ($0.value(forKey: "isDisplayed") as? Int) == 1 }
-        var ids = displayed.compactMap { $0.value(forKey: "identifier") as? String }
-        if ids.isEmpty {
-            for mode in modes {
-                if let id = mode.value(forKey: "identifier") as? String {
-                    ids.append(id)
-                } else if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
-                    if lang.hasPrefix("crh-cyrl-ua") {
-                        ids.append("crh.key.keyboard.KeyboardUkrainian")
-                        ids.append("crh.key.keyboard.pro")
-                    } else if lang.hasPrefix("crh-cyrl") {
-                        ids.append("crh.key.keyboard.KeyboardCyrillic")
-                    } else if lang.hasPrefix("crh") {
-                        ids.append("crh.key.keyboard.keyboard")
-                    }
-                }
-            }
-        }
-        return ids
-    }
+    /// No bundle IDs can be verified through public UIKit APIs.
+    var activeKeyboardBundleIds: [String] { [] }
 
-    /// Get a list of all enabled keyboard bundle IDs from system preferences and active input modes.
+    /// Retained for source compatibility. System preference keys are not a
+    /// supported registry of keyboard extensions; an empty result means unknown.
     func enabledKeyboardBundleIds(
         defaults: UserDefaults = .standard
     ) -> [String] {
-        var ids = defaults.object(forKey: "AppleKeyboards") as? [String] ?? []
-        let domains: [CFString] = [
-            "com.apple.Preferences" as CFString,
-            kCFPreferencesAnyApplication
-        ]
-        for domain in domains {
-            if let domainIds = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !domainIds.isEmpty {
-                ids.append(contentsOf: domainIds)
-            }
-            if let hostIds = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostIds.isEmpty {
-                ids.append(contentsOf: hostIds)
-            }
-        }
-        let modeIds = UITextInputMode.activeInputModes.compactMap { $0.value(forKey: "identifier") as? String }
-        ids.append(contentsOf: modeIds)
-        for mode in UITextInputMode.activeInputModes {
-            if let lang = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
-                if lang.hasPrefix("crh-cyrl-ua") {
-                    ids.append("crh.key.keyboard.KeyboardUkrainian")
-                    ids.append("crh.key.keyboard.pro")
-                } else if lang.hasPrefix("crh-cyrl") {
-                    ids.append("crh.key.keyboard.KeyboardCyrillic")
-                } else if lang == "crh" || lang.hasPrefix("crh-latn") {
-                    ids.append("crh.key.keyboard.keyboard")
-                }
-            }
-        }
-        return Array(Set(ids))
+        []
     }
 
     /// Whether the full access is enabled in System Settings.
     var isFullAccessEnabled: Bool {
-        FullAccessInspector().hasFullAccess
+        FullAccessInspector.sharedHasFullAccess()
     }
 
     /// Tri-state active status for a keyboard extension bundle identifier.
@@ -161,5 +114,28 @@ extension String {
     }
 }
 
-private class FullAccessInspector: UIInputViewController {}
+private final class FullAccessInspector: UIInputViewController {
+    private static var sharedInstance: FullAccessInspector?
+    private static var cachedValue: Bool?
+    private static var lastCheckUptime: TimeInterval = 0
+
+    static func sharedHasFullAccess() -> Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let cached = cachedValue, (now - lastCheckUptime) < 1.5 {
+            return cached
+        }
+        guard Thread.isMainThread else {
+            return cachedValue ?? false
+        }
+        lastCheckUptime = now
+        let inspector = sharedInstance ?? {
+            let instance = FullAccessInspector()
+            sharedInstance = instance
+            return instance
+        }()
+        let result = inspector.hasFullAccess
+        cachedValue = result
+        return result
+    }
+}
 #endif

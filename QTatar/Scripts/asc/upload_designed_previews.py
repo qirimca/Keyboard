@@ -1,104 +1,135 @@
 #!/usr/bin/env python3
-"""
-Upload ONLY 1 clean copy of AppPreview_PureScreen_iPhone_6_9.mp4 (IPHONE_67)
-and 1 clean copy of AppPreview_PureScreen_iPad_13.mp4 (IPAD_PRO_3GEN_129)
-to en-US, uk, and ru in App Store Connect via REST API v1, removing any old/duplicate previews.
+"""Add missing designed previews without deleting or replacing remote assets.
+
+Existing sets must be empty or contain one checksum-identical COMPLETE preview.
+Conflicts require separate review; this script never deletes previews.
 """
 import hashlib
 import os
+from pathlib import Path
 import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import upload_pure_screenshots_planb as asc
 
-MEDIA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "AppStoreMetadata/Media_Designed")
+MEDIA_ROOT = Path(__file__).resolve().parents[3] / "AppStoreMetadata/Media_Designed"
+VERSION_ID = "c09b51f2-b581-454d-b153-9176d2fcc700"
+LOCALES = {"en-US": "en", "uk": "uk", "ru": "crh"}
+PREVIEWS = {
+    "IPHONE_67": "AppPreview_Designed_iPhone_6_9.mp4",
+    "IPAD_PRO_3GEN_129": "AppPreview_Designed_iPad_13.mp4",
+}
+
+
+def file_identity(path):
+    digest = hashlib.md5()
+    size = 0
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+            size += len(chunk)
+    if not size:
+        raise ValueError(f"Empty preview: {path}")
+    return size, digest.hexdigest()
+
+
+def preflight(root):
+    """Read every intended file before authentication or API mutations."""
+    files = []
+    for locale, folder in LOCALES.items():
+        for preview_type, name in PREVIEWS.items():
+            path = Path(root) / folder / name
+            if not path.exists():
+                path = Path(root) / name
+            size, checksum = file_identity(path)
+            files.append((locale, preview_type, path, size, checksum))
+    return files
+
+
+def collection(api, url, token):
+    items = []
+    seen = set()
+    while url:
+        if url in seen:
+            raise RuntimeError("Repeated pagination URL")
+        seen.add(url)
+        response = api.api_req("GET", url, token=token)
+        items.extend(response["data"])
+        url = response.get("links", {}).get("next")
+    return items
+
+
+def matches(previews, size, checksum):
+    if not previews:
+        return False
+    if len(previews) == 1:
+        attributes = previews[0]["attributes"]
+        if (attributes.get("assetDeliveryState", {}).get("state") == "COMPLETE"
+                and attributes.get("sourceFileChecksum", "").lower() == checksum
+                and attributes.get("fileSize") == size):
+            return True
+    raise RuntimeError("Existing preview differs, is incomplete, or has duplicates; review it separately")
+
+
+def upload_previews(api, files, version_id=VERSION_ID):
+    token = api.make_token()
+    localizations = collection(api, f"/appStoreVersions/{version_id}/appStoreVersionLocalizations", token)
+    loc_map = {item["attributes"]["locale"]: item["id"] for item in localizations}
+    missing = set(LOCALES) - loc_map.keys()
+    if missing:
+        raise RuntimeError(f"Missing localizations: {sorted(missing)}")
+    # Inspect the entire remote plan before creating any set or asset.
+    plan = []
+    for locale, preview_type, path, size, checksum in files:
+        loc_id = loc_map[locale]
+        sets = collection(api, f"/appStoreVersionLocalizations/{loc_id}/appPreviewSets", token)
+        sets = [item for item in sets if item["attributes"]["previewType"] == preview_type]
+        if len(sets) > 1:
+            raise RuntimeError(f"Duplicate preview sets: {locale}/{preview_type}")
+        set_id = sets[0]["id"] if sets else None
+        previews = collection(api, f"/appPreviewSets/{set_id}/appPreviews", token) if set_id else []
+        if matches(previews, size, checksum):
+            print(f"SKIP COMPLETE: {locale}/{preview_type}")
+        else:
+            plan.append((loc_id, preview_type, path, size, checksum, set_id))
+
+    for loc_id, preview_type, path, size, checksum, set_id in plan:
+        content = path.read_bytes()
+        if len(content) != size or hashlib.md5(content).hexdigest() != checksum:
+            raise RuntimeError(f"Preview changed after preflight: {path}")
+        if set_id:
+            # Catch remote edits since planning; never overwrite a concurrent upload.
+            previews = collection(api, f"/appPreviewSets/{set_id}/appPreviews", token)
+            if matches(previews, size, checksum):
+                continue
+        else:
+            result = api.api_req("POST", "/appPreviewSets", data={"data": {
+                "type": "appPreviewSets", "attributes": {"previewType": preview_type},
+                "relationships": {"appStoreVersionLocalization": {
+                    "data": {"type": "appStoreVersionLocalizations", "id": loc_id}}}}}, token=token)
+            set_id = result["data"]["id"]
+        result = api.api_req("POST", "/appPreviews", data={"data": {
+            "type": "appPreviews", "attributes": {
+                "fileSize": size, "fileName": path.name, "mimeType": "video/mp4",
+                "previewFrameTimeCode": "00:00:05:00"},
+            "relationships": {"appPreviewSet": {"data": {"type": "appPreviewSets", "id": set_id}}}}}, token=token)
+        preview_id = result["data"]["id"]
+        operations = result["data"]["attributes"].get("uploadOperations")
+        if not operations:
+            raise RuntimeError(f"Missing upload operations for {preview_id}; remote reservation retained")
+        api.upload_asset_operations(operations, content)
+        result = api.api_req("PATCH", f"/appPreviews/{preview_id}", data={"data": {
+            "type": "appPreviews", "id": preview_id,
+            "attributes": {"uploaded": True, "sourceFileChecksum": checksum}}}, token=token)
+        state = result["data"]["attributes"].get("assetDeliveryState", {}).get("state")
+        if state in ("FAILED", "ERROR"):
+            raise RuntimeError(f"Preview processing failed: {preview_id}: {state}")
+        print(f"Uploaded {path.name}: {preview_id}, processing state={state}; verify COMPLETE before release")
+
 
 def main():
-    token = asc.make_token()
-    version_id = "c09b51f2-b581-454d-b153-9176d2fcc700"
-    locs = asc.api_req("GET", f"/appStoreVersions/{version_id}/appStoreVersionLocalizations", token=token)
-    loc_map = {item["attributes"]["locale"]: item["id"] for item in locs["data"]}
+    files = preflight(MEDIA_ROOT)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import upload_pure_screenshots_planb as asc
+    upload_previews(asc, files)
 
-    locale_folder_map = {
-        "en-US": "en",
-        "uk": "uk",
-        "ru": "crh",
-    }
-    preview_type_map = {
-        "IPHONE_67": ("iphone_6.9", "AppPreview_Designed_iPhone_6_9.mp4"),
-        "IPAD_PRO_3GEN_129": ("ipad_13", "AppPreview_Designed_iPad_13.mp4"),
-    }
-
-    for asc_locale, folder in locale_folder_map.items():
-        loc_id = loc_map.get(asc_locale)
-        if not loc_id:
-            continue
-        print(f"\n=== Processing Previews for {asc_locale} ({loc_id}) ===")
-        psets_resp = asc.api_req("GET", f"/appStoreVersionLocalizations/{loc_id}/appPreviewSets", token=token)
-        existing_psets = {p["attributes"]["previewType"]: p["id"] for p in psets_resp.get("data", [])}
-
-        for preview_type, (device_sub, fname) in preview_type_map.items():
-            pset_id = existing_psets.get(preview_type)
-            if not pset_id:
-                create_pset = asc.api_req("POST", "/appPreviewSets", data={
-                    "data": {
-                        "type": "appPreviewSets",
-                        "attributes": {"previewType": preview_type},
-                        "relationships": {
-                            "appStoreVersionLocalization": {
-                                "data": {"type": "appStoreVersionLocalizations", "id": loc_id}
-                            }
-                        }
-                    }
-                }, token=token)
-                pset_id = create_pset["data"]["id"]
-                print(f"Created preview set {preview_type}: {pset_id}")
-
-            prevs = asc.api_req("GET", f"/appPreviewSets/{pset_id}/appPreviews", token=token)
-            for p in prevs.get("data", []):
-                pid = p["id"]
-                pname = p["attributes"].get("fileName")
-                print(f"  Deleting existing preview {pname} ({pid}) in {asc_locale}/{preview_type}...")
-                asc.api_req("DELETE", f"/appPreviews/{pid}", token=token)
-
-            fpath = os.path.join(MEDIA_ROOT, folder, fname)
-            if not os.path.exists(fpath):
-                fpath = os.path.join(MEDIA_ROOT, fname)
-            with open(fpath, "rb") as f:
-                fbytes = f.read()
-            fsize = len(fbytes)
-            fmd5 = hashlib.md5(fbytes).hexdigest()
-            print(f"  Uploading PURE screen-recorded preview {fname} ({fsize} bytes, md5={fmd5}) to {asc_locale}/{preview_type}...")
-            res = asc.api_req("POST", "/appPreviews", data={
-                "data": {
-                    "type": "appPreviews",
-                    "attributes": {
-                        "fileSize": fsize,
-                        "fileName": fname,
-                        "mimeType": "video/mp4",
-                        "previewFrameTimeCode": "00:00:05:00"
-                    },
-                    "relationships": {
-                        "appPreviewSet": {
-                            "data": {"type": "appPreviewSets", "id": pset_id}
-                        }
-                    }
-                }
-            }, token=token)
-            pid = res["data"]["id"]
-            ops = res["data"]["attributes"].get("uploadOperations", [])
-            asc.upload_asset_operations(ops, fbytes)
-            commit = asc.api_req("PATCH", f"/appPreviews/{pid}", data={
-                "data": {
-                    "type": "appPreviews",
-                    "id": pid,
-                    "attributes": {
-                        "uploaded": True,
-                        "sourceFileChecksum": fmd5
-                    }
-                }
-            }, token=token)
-            state = commit["data"]["attributes"].get("assetDeliveryState", {}).get("state")
-            print(f"    -> Committed {fname} ({pid}): state={state}")
 
 if __name__ == "__main__":
     main()

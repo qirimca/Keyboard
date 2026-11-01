@@ -11,8 +11,22 @@ import SwiftUI
 struct NavButton: View {
     var symbol: String
     var action: () -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     private let size: CGFloat = 34
+    
+    private var defaultAccessibilityLabel: String {
+        switch symbol {
+        case "chevron.backward", "chevron.left":
+            return Onboarding.onb_back_key.localized
+        case "questionmark":
+            return Onboarding.onb_settings_key.localized
+        case "info", "info.circle":
+            return About.about_title_key.localized
+        default:
+            return symbol
+        }
+    }
     
     var body: some View {
         Button {
@@ -28,11 +42,15 @@ struct NavButton: View {
                 .background(Color(.secondarySystemGroupedBackground), in: Circle())
                 .overlay {
                     Circle()
-                        .strokeBorder(Color.primary.opacity(0.10), lineWidth: 1)
+                        .strokeBorder(
+                            Color.primary.opacity(colorSchemeContrast == .increased ? 0.28 : 0.10),
+                            lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                        )
                 }
                 .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(defaultAccessibilityLabel)
     }
 }
 

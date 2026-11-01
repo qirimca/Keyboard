@@ -28,6 +28,7 @@ struct BackgroundGrid: View {
             }
         }
         .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
 

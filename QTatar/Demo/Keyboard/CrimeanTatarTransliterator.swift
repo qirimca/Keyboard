@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Faithful port of the qirimca/ctcorpus_translit `mod_translit` engine (translit/TranslitProcessor.php,
 /// assets/mod_translit.js) for the Cyrillic → Latin direction. Rule data is exported from the same
@@ -414,8 +415,12 @@ struct CrimeanTatarTransliterator {
         return String(out)
     }
 
+    private static let signposter = OSSignposter(subsystem: "crh.key.perf", category: "Transliteration")
+
     static func transliterate(_ source: String, ukrainianLayout: Bool = false) -> String {
         guard !source.isEmpty else { return "" }
+        let spState = signposter.beginInterval("Transliterate")
+        defer { signposter.endInterval("Transliterate", spState) }
         var text = normalizeUkrainianCyrillic(source, ukrainianLayout: ukrainianLayout)
         if let exact = engine.wholeWordMap[text] {
             return exact

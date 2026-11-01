@@ -53,7 +53,7 @@ public extension Callouts {
         @available(*, deprecated, message: "Use .calloutStyle to apply the style instead.")
         public init(
             frame: CGRect,
-            style: Callouts.CalloutStyle = .standard
+            style: Callouts.CalloutStyle
         ) {
             self.frame = frame
             self.leftCurveWidth = nil

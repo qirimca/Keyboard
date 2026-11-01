@@ -34,6 +34,20 @@
 		</dict>
 		<dict>
 			<key>Type</key>
+			<string>PSToggleSwitchSpecifier</string>
+			<key>SupportedUserInterfaceIdioms</key>
+			<array>
+				<string>Pad</string>
+			</array>
+			<key>Title</key>
+			<string>Tüşme belgi jesti</string>
+			<key>Key</key>
+			<string>crh.key.feature.keyFlicks</string>
+			<key>DefaultValue</key>
+			<true/>
+		</dict>
+		<dict>
+			<key>Type</key>
 			<string>PSGroupSpecifier</string>
 			<key>SupportedUserInterfaceIdioms</key>
 			<array>

@@ -371,6 +371,7 @@ struct SpaceBarLabel: View {
     var isDarkOverride: Bool? = nil
     var isSpaceDragActive: Bool = false
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @ObservedObject private var spaceBarState = SpaceBarState.shared
 
@@ -408,12 +409,22 @@ struct SpaceBarLabel: View {
         }
     }
 
+    private var isHighContrast: Bool {
+        colorSchemeContrast == .increased || UIAccessibility.isDarkerSystemColorsEnabled
+    }
+
     private var fullNameOpacity: Double {
-        effectiveIsDark ? 0.42 : 0.34
+        if isHighContrast {
+            return effectiveIsDark ? 1.0 : 0.94
+        }
+        return effectiveIsDark ? 1.0 : 0.88
     }
 
     private var cornerCodeOpacity: Double {
-        effectiveIsDark ? 0.30 : 0.20
+        if isHighContrast {
+            return effectiveIsDark ? 0.48 : 0.38
+        }
+        return effectiveIsDark ? 0.30 : 0.20
     }
 
     var body: some View {
@@ -447,5 +458,6 @@ struct SpaceBarLabel: View {
         .animation(.easeOut(duration: 0.15), value: isSpaceDragActive)
         .animation(.easeInOut(duration: 0.4), value: spaceBarState.isShowingFullName)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityHidden(true)
     }
 }

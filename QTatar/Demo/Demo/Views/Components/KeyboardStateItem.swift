@@ -139,9 +139,15 @@ struct KeyboardStateItem: View {
     let state: KeyboardState
     var titleFontSize: CGFloat = Device.iPad ? 15 : 12.5
     var action: () -> Void
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     
     private var tintColor: Color {
-        state.state
+        if colorSchemeContrast == .increased {
+            return state.state
+                ? Color(red: 0.10, green: 0.56, blue: 0.24)
+                : Color(red: 0.80, green: 0.38, blue: 0.04)
+        }
+        return state.state
             ? Color(red: 0.18, green: 0.72, blue: 0.34)
             : Color(red: 0.95, green: 0.55, blue: 0.15)
     }
@@ -156,12 +162,13 @@ struct KeyboardStateItem: View {
             HStack(spacing: Device.iPad ? 10 : 6) {
                 ZStack {
                     Circle()
-                        .fill(tintColor.opacity(0.14))
+                        .fill(tintColor.opacity(colorSchemeContrast == .increased ? 0.22 : 0.14))
                         .frame(width: Device.iPad ? 32 : 26, height: Device.iPad ? 32 : 26)
                     Image(systemName: state.stateSymbol)
                         .font(.system(size: Device.iPad ? 15 : 13, weight: .semibold))
                         .foregroundStyle(tintColor)
                 }
+                .accessibilityHidden(true)
                 
                 Text(state.title)
                     .font(InterfaceFont.font("GeneralSans-Medium", size: titleFontSize, text: state.title))
@@ -177,11 +184,17 @@ struct KeyboardStateItem: View {
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(
+                        Color.primary.opacity(colorSchemeContrast == .increased ? 0.24 : 0.08),
+                        lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                    )
             }
             .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
         }
         .buttonStyle(.plain)
         .allowsHitTesting(!state.state)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(state.title)
+        .accessibilityAddTraits(state.state ? [.isStaticText] : [.isButton])
     }
 }

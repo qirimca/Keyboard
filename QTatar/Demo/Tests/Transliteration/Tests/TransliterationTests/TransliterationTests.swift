@@ -13,6 +13,9 @@ private let parityCases: [(String, String)] = {
     return raw.compactMap { $0.count == 2 ? ($0[0], $0[1]) : nil }
 }()
 
+@Suite(.serialized)
+struct TransliterationAndDatabaseSuite {
+
 @Test func matchesReferenceEngine() {
     #expect(parityCases.count > 5000)
     let mismatches = parityCases.filter { CrimeanTatarTransliterator.transliterate($0.0) != $0.1 }
@@ -654,8 +657,7 @@ private let parityCases: [(String, String)] = {
     }
 }
 
-@Suite(.serialized)
-struct DatabaseAndSwipeTests {
+// MARK: - Database & Swipe Tests
 
 @Test func phase8SwipeProperNounsAndSenNeVerification() throws {
     // 1. Verify Cyrillic swipe path "машала" / "машла" transliterates to "maşala" / "maşla" and matches "maşalla" in qırım_tatar.db
@@ -1322,6 +1324,126 @@ struct DatabaseAndSwipeTests {
     #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("nkvd", contextWords: [], typedQuery: "nkv"))
     #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("putin", contextWords: [], typedQuery: "put"))
     #expect(SuggestionsDataBaseManager.isBlockedContextualCandidate("stalin", contextWords: [], typedQuery: "sta"))
+}
+
+@Test func deepAtypicalEventsModeSwitchingCBoundsAndLatencyStress() {
+    let dbm = SuggestionsDataBaseManager.shared
+    let sem = DispatchSemaphore(value: 0)
+    dbm.prepareAsync { sem.signal() }
+    _ = sem.wait(timeout: .now() + 10.0)
+    #expect(dbm.isReady)
+
+    // 1. C-Bounds Safety & Atypical Inputs: empty strings, multi-scalar emoji/ZWJ sequences, combining diacritics, >512-byte tokens, SQL metacharacters
+    let longToken = String(repeating: "qırımtatarca", count: 60) // > 720 UTF-8 bytes
+    let atypicalQueries: [String] = [
+        "",
+        "   ",
+        "🇺🇦🫡🔥👨‍👩‍👧‍👦",
+        "a\u{0301}e\u{0308}i\u{0302}o\u{0308}u\u{0308}",
+        "'\"; DROP TABLE words; --",
+        "%_[]^$*+?()|",
+        "\0",
+        longToken
+    ]
+    for query in atypicalQueries {
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        let suggs = dbm.suggestions(for: query, shouldCapitalize: false, contextWords: ["Selâm", "🇺🇦", longToken])
+        let nextSuggs = dbm.nextWordSuggestions(contextWords: [query], shouldCapitalize: true)
+        let elapsedMs = Double(DispatchTime.now().uptimeNanoseconds - t0) / 1_000_000.0
+        #expect(elapsedMs < 16.0, "Atypical query latency exceeded 16ms frame budget: \(elapsedMs)ms")
+        _ = suggs
+        _ = nextSuggs
+    }
+
+    // 2. Rapid Layout & Script Switching (Latin <-> Standard Cyrillic ФЫВА <-> Ukrainian Cyrillic ФІВА) + Mid-Word Document ID / Cursor Jump
+    var engine = CrimeanTatarTransliterator()
+    let docA = UUID()
+    let docB = UUID()
+    var textA = ""
+    engine.ukrainianLayout = false
+    for ch in "къы" {
+        let edit = engine.append(String(ch), context: textA, documentID: docA)
+        textA = String(textA.dropLast(edit.deleteCount)) + edit.insertion
+    }
+    #expect(textA == "qı")
+
+    // Simulate sudden switch to Ukrainian layout mid-session and new document ID (e.g. switching apps or text fields)
+    engine.ukrainianLayout = true
+    var textB = ""
+    for ch in "кʼіїв" {
+        let edit = engine.append(String(ch), context: textB, documentID: docB)
+        textB = String(textB.dropLast(edit.deleteCount)) + edit.insertion
+    }
+    #expect(textB == "qiyiv")
+
+    // Simulate cursor jump / external paste in docB: backspace must safely return nil without deleting unowned text
+    #expect(engine.backspace(context: "Pasted text outside composition", documentID: docB) == nil)
+    let postJumpEdit = engine.append("ʼ", context: "Pasted к", documentID: docB)
+    #expect(postJumpEdit.deleteCount == 0, "Unowned prefix before cursor jump must never be deleted")
+
+    // 3. Sustained 120-Operation Mixed Typing + Swipe + Mode Switch Frame-Budget (< 16ms) Hang-Trace Verification
+    let sampleQueries = ["sel", "qır", "mer", "yah", "vat", "bal", "dos", "kit", "mek", "bay"]
+    let sampleSwipes: [([String], Bool)] = [
+        (["s", "e", "l", "a", "m"], false),
+        (["с", "е", "л", "я", "м"], true),
+        (["m", "a", "ş", "l", "a"], false),
+        (["м", "а", "ш", "л", "а"], true),
+        (["b", "i", "r"], false),
+        (["с", "о", "н", "ъ"], true)
+    ]
+    var totalSuggestionMs: Double = 0
+    var totalSwipeMs: Double = 0
+    var maxSingleSuggestionMs: Double = 0
+    for step in 0..<60 {
+        let q = sampleQueries[step % sampleQueries.count]
+        let (swipeKeys, isCyr) = sampleSwipes[step % sampleSwipes.count]
+        KeyboardPreferences.ukrainianCyrillicLayoutEnabled = (step % 3 == 2)
+        let tSugg0 = DispatchTime.now().uptimeNanoseconds
+        let s = dbm.suggestions(for: q, shouldCapitalize: step % 2 == 0, contextWords: ["Men"])
+        let suggMs = Double(DispatchTime.now().uptimeNanoseconds - tSugg0) / 1_000_000.0
+        totalSuggestionMs += suggMs
+        if suggMs > maxSingleSuggestionMs {
+            maxSingleSuggestionMs = suggMs
+        }
+
+        let tSwipe0 = DispatchTime.now().uptimeNanoseconds
+        let sw = dbm.matchSwipePath(
+            keySequence: swipeKeys,
+            isCyrillic: isCyr,
+            shouldCapitalize: step % 2 == 0,
+            contextWords: ["Men"],
+            limit: 4
+        )
+        let swipeMs = Double(DispatchTime.now().uptimeNanoseconds - tSwipe0) / 1_000_000.0
+        totalSwipeMs += swipeMs
+
+        #expect(!s.isEmpty)
+        #expect(!sw.isEmpty)
+        #expect(suggMs < 16.0, "Typing suggestion step \(step) exceeded 16ms frame budget: \(suggMs)ms")
+    }
+    KeyboardPreferences.ukrainianCyrillicLayoutEnabled = false
+    let meanSuggestionMs = totalSuggestionMs / 60.0
+    let meanSwipeMs = totalSwipeMs / 60.0
+    #expect(meanSuggestionMs < 8.0, "Mean typing suggestion latency must be < 8ms: \(meanSuggestionMs)ms")
+    #expect(meanSwipeMs < 16.0, "Mean swipe path decoding latency must be < 16ms: \(meanSwipeMs)ms")
+}
+
+@Test func bundledProperNounsAndUserLexiconReconciliationVerification() {
+    let dbm = SuggestionsDataBaseManager.shared
+
+    // Capitalized proper nouns stored as 'Qırım', 'Aqmescit', 'Bağçasaray' in words must return positive bundledFrequency across all cases
+    for proper in ["Qırım", "qırım", "Aqmescit", "aqmescit", "Bağçasaray", "bağçasaray"] {
+        let freq = dbm.bundledFrequency(of: proper)
+        #expect(freq > 0, "\(proper) is in bundled qırım_tatar.db and must return bundledFrequency > 0 (got \(freq))")
+    }
+    for capProper in ["Qırım", "Aqmescit", "Bağçasaray"] {
+        let suggs = dbm.suggestions(for: capProper, shouldCapitalize: true, contextWords: [])
+        #expect(!suggs.isEmpty, "Suggestions for \(capProper) must not be empty")
+        if let first = suggs.first {
+            #expect(!first.isUnknown, "\(capProper) is in bundled qırım_tatar.db and must not be marked isUnknown")
+        }
+    }
+    #expect(dbm.bundledFrequency(of: "Spotify") == 0, "OOV word Spotify must have bundledFrequency == 0")
 }
 
 }
