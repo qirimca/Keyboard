@@ -1097,7 +1097,7 @@ struct NativeAutocompleteToolbar: View {
                     } else {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
-                            .foregroundStyle(isDark ? Color.white.opacity(0.88) : Color.black.opacity(0.85))
+                            .foregroundStyle(isDark ? Color.white.opacity(0.70) : Color.black.opacity(0.70))
                             .lineLimit(allowTwoLines ? 2 : 1)
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)

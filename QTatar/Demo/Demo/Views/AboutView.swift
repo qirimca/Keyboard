@@ -31,13 +31,14 @@ struct AboutView: View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             GeometryReader { geo in
-                let isCompactWidth = Device.iPhone || (geo.size.width > 0 && geo.size.width < 560)
+                let effectiveWidth = geo.size.width > 0 ? geo.size.width : (Device.iPhone ? 393 : 720)
+                let isCompactWidth = Device.iPhone || effectiveWidth < 560
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: 18) {
                             headerSection
-                            projectSection
-                            contactSection
+                            projectSection(isCompactWidth: isCompactWidth)
+                            contactSection(containerWidth: min(effectiveWidth, 720))
                                 .id("contactSection")
                             feedbackSection
                             FooterView()
@@ -45,7 +46,7 @@ struct AboutView: View {
                         .padding(.horizontal, isCompactWidth ? 12 : 24)
                         .padding(.vertical, 12)
                         // iPad: keep a readable column instead of stretching cards/illustrations edge-to-edge.
-                        .frame(maxWidth: Device.iPad ? min(geo.size.width > 0 ? geo.size.width : 720, 720) : .infinity)
+                        .frame(maxWidth: Device.iPad ? min(effectiveWidth, 720) : .infinity)
                         .frame(maxWidth: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -72,7 +73,7 @@ struct AboutView: View {
                 Text(About.about_title_key.localized)
                     .titleText(size: 24)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(0.9)
             }
         }
     }
@@ -96,19 +97,20 @@ private extension AboutView {
         .frame(maxWidth: .infinity)
     }
     
-    var projectSection: some View {
+    func projectSection(isCompactWidth: Bool) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             containerTitle(title: About.about_init_key.localized, icon: "atom")
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 12) {
-                    projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
-                        .frame(minWidth: 210)
-                    projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
-                        .frame(minWidth: 210)
-                }
+            if isCompactWidth {
                 VStack(alignment: .leading, spacing: 12) {
                     projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
                     projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
+                }
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    projectContainer(illustration: "quizlet", projectName: About.about_spell_title_key.localized, description: About.about_spell_description_key.localized, link: Configurations.quizlet)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    projectContainer(illustration: "languagetool", projectName: About.about_language_title_key.localized, description: About.about_language_description_key.localized, link: Configurations.languagetool)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
         }
@@ -119,17 +121,30 @@ private extension AboutView {
         .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
     }
     
-    var contactSection: some View {
+    func contactSection(containerWidth: CGFloat) -> some View {
         let links = socialMediaLinks
         return VStack(alignment: .leading, spacing: 8) {
             containerTitle(title: About.about_join_key.localized, icon: "hand.thumbsup")
 
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: 10) {
-                    ForEach(links, id: \.0) { social, link in
-                        linkButton(name: social, link: link, fixedHorizontal: true)
+            if containerWidth < 460 {
+                VStack(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.prefix(2)), id: \.0) { social, link in
+                            linkButton(name: social, link: link, fixedHorizontal: true)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.dropFirst(2).prefix(2)), id: \.0) { social, link in
+                            linkButton(name: social, link: link, fixedHorizontal: true)
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        ForEach(Array(links.dropFirst(4)), id: \.0) { social, link in
+                            linkButton(name: social, link: link, fixedHorizontal: true)
+                        }
                     }
                 }
+            } else if containerWidth < 640 {
                 VStack(spacing: 8) {
                     HStack(spacing: 8) {
                         ForEach(Array(links.prefix(3)), id: \.0) { social, link in
@@ -142,20 +157,23 @@ private extension AboutView {
                         }
                     }
                 }
-                VStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(links.prefix(2)), id: \.0) { social, link in
-                            linkButton(name: social, link: link)
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 10) {
+                        ForEach(links, id: \.0) { social, link in
+                            linkButton(name: social, link: link, fixedHorizontal: true)
                         }
                     }
-                    HStack(spacing: 8) {
-                        ForEach(Array(links.dropFirst(2).prefix(2)), id: \.0) { social, link in
-                            linkButton(name: social, link: link)
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            ForEach(Array(links.prefix(3)), id: \.0) { social, link in
+                                linkButton(name: social, link: link, fixedHorizontal: true)
+                            }
                         }
-                    }
-                    HStack(spacing: 8) {
-                        ForEach(Array(links.dropFirst(4)), id: \.0) { social, link in
-                            linkButton(name: social, link: link)
+                        HStack(spacing: 8) {
+                            ForEach(Array(links.dropFirst(3)), id: \.0) { social, link in
+                                linkButton(name: social, link: link, fixedHorizontal: true)
+                            }
                         }
                     }
                 }
@@ -225,7 +243,6 @@ private extension AboutView {
                 Text(name)
                     .regularText(size: 13.5, color: Color(.systemBackground))
                     .lineLimit(1)
-                    .minimumScaleFactor(fixedHorizontal ? 1.0 : 0.85)
                     .fixedSize(horizontal: fixedHorizontal, vertical: false)
                 Image(systemName: "arrow.up.forward.app")
                     .imageScale(.small)
@@ -310,7 +327,6 @@ private extension AboutView {
                     Text(About.about_more_key.localized)
                         .regularText(size: 14, color: Color(.systemBackground))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                     Image(systemName: "arrow.up.forward.app")
                         .imageScale(.small)
                         .foregroundStyle(Color(.systemBackground))

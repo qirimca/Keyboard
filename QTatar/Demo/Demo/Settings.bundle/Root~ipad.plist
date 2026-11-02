@@ -16,29 +16,9 @@
 			<key>Type</key>
 			<string>PSToggleSwitchSpecifier</string>
 			<key>Title</key>
-			<string>Söz teklifleri</string>
-			<key>Key</key>
-			<string>crh.key.suggestionsEnabled</string>
-			<key>DefaultValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
 			<string>Yañı sözlerni aqılda tutuv</string>
 			<key>Key</key>
 			<string>crh.key.wordLearningEnabled</string>
-			<key>DefaultValue</key>
-			<true/>
-		</dict>
-		<dict>
-			<key>Type</key>
-			<string>PSToggleSwitchSpecifier</string>
-			<key>Title</key>
-			<string>Tüşme belgi jesti</string>
-			<key>Key</key>
-			<string>crh.key.feature.keyFlicks</string>
 			<key>DefaultValue</key>
 			<true/>
 		</dict>

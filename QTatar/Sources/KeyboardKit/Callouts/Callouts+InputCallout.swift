@@ -155,21 +155,15 @@ private extension Callouts.InputCallout {
     }
 
     var isTopConstrained: Bool {
-        buttonSize.height > 0 && (buttonFrame.minY - calloutSizeHeight) < minVisibleY - 4.0
+        false
     }
 
     var effectiveCalloutHeight: CGFloat {
-        guard isTopConstrained else { return calloutSizeHeight }
-        let maxBottomY = buttonFrame.maxY + 4.0
-        let totalAvailable = max(36.0, maxBottomY - minVisibleY)
-        return max(28.0, totalAvailable - effectiveButtonHeight)
+        calloutSizeHeight
     }
 
     var effectiveButtonHeight: CGFloat {
-        guard isTopConstrained else { return buttonSize.height }
-        let maxBottomY = buttonFrame.maxY + 4.0
-        let totalAvailable = max(36.0, maxBottomY - minVisibleY)
-        return min(buttonSize.height, max(16.0, totalAvailable * 0.34))
+        buttonSize.height
     }
     
     var resolvedContainerWidth: CGFloat {
@@ -203,34 +197,27 @@ private extension Callouts.InputCallout {
     }
 
     var leftExpand: CGFloat {
-        if isLeadingEdge { return 0 }
-        if isTrailingEdge { return round(1.35 * baseCurveWidth) }
-        return baseCurveWidth
+        baseCurveWidth
     }
 
     var rightExpand: CGFloat {
-        if isTrailingEdge { return 0 }
-        if isLeadingEdge { return round(1.35 * baseCurveWidth) }
-        return baseCurveWidth
+        baseCurveWidth
     }
 
     var modernPillHorizontalExpand: CGFloat {
-        shouldEnforceSmallSize ? 8.0 : (keyboardContext.isKeyboardFloating ? 12.0 : 16.0)
+        shouldEnforceSmallSize ? 6.0 : (keyboardContext.isKeyboardFloating ? 8.0 : 10.0)
     }
 
     var modernPillWidth: CGFloat {
         guard buttonSize.width > 0 else { return style.calloutSize.width }
-        return max(buttonSize.width + modernPillHorizontalExpand, style.calloutSize.width)
+        return max(buttonSize.width + modernPillHorizontalExpand, 36.0)
     }
 
     var modernPillHeight: CGFloat {
         if shouldEnforceSmallSize {
             return max(buttonSize.height + 6.0, 40.0)
         }
-        if isTopConstrained {
-            return max(buttonSize.height + 6.0, 48.0)
-        }
-        return keyboardContext.isKeyboardFloating ? 52.0 : 60.0
+        return keyboardContext.isKeyboardFloating ? 48.0 : 54.0
     }
     
     var calloutSize: CGSize {
@@ -266,28 +253,13 @@ private extension Callouts.InputCallout {
     }
 
     var positionX: CGFloat {
-        if usesModernPillStyle {
-            let rawCenter = buttonFrame.midX
-            let halfW = modernPillWidth / 2
-            let minX = halfW + 3
-            if resolvedContainerWidth > modernPillWidth + 6 {
-                let maxX = resolvedContainerWidth - halfW - 3
-                return min(max(rawCenter, minX), maxX)
-            }
-            return max(rawCenter, minX)
-        }
-        return buttonFrame.origin.x + buttonSize.width / 2 + (rightExpand - leftExpand) / 2
+        buttonFrame.midX
     }
 
     var positionY: CGFloat {
         if usesModernPillStyle {
-            let desiredBottomY = buttonFrame.minY + 1.0
-            let rawCenterY = desiredBottomY - modernPillHeight / 2.0
-            let clampedTopY = minVisibleY + modernPillHeight / 2.0
-            return max(rawCenterY, clampedTopY)
-        }
-        if isTopConstrained {
-            return minVisibleY + totalCalloutHeight / 2
+            let desiredBottomY = buttonFrame.minY - 3.0
+            return desiredBottomY - modernPillHeight / 2.0
         }
         let base = buttonFrame.origin.y + buttonSize.height / 2 - effectiveCalloutHeight / 2
         let isEmoji = calloutContext.action?.isEmojiAction == true

@@ -46,9 +46,34 @@ struct DemoApp: App {
         } else {
             KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.useModernPillCallout")
         }
+        if args.contains("-qt_force_suggestions_on") {
+            KeyboardPreferences.defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.uiTestingTimestamp")
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.KeyboardPrediction")
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.KeyboardAutocorrection")
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.KeyboardMathExpressionCompletion")
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.holdCallout")
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        } else {
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardPrediction")
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardAutocorrection")
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardMathExpressionCompletion")
+            if !args.contains("-qt_hold_callout") {
+                KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.holdCallout")
+            }
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        }
         SystemKeyboardSettings.refreshSystemEmojiKeyboardState()
     }
     
+    private var simulatedWindowWidth: CGFloat? {
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "-qt_sim_width"), idx + 1 < args.count,
+           let val = Double(args[idx + 1]), val >= 300 {
+            return CGFloat(val)
+        }
+        return nil
+    }
+
     var body: some Scene {
         WindowGroup {
             NavigationStack(path: $navigationPath) {
@@ -62,6 +87,9 @@ struct DemoApp: App {
                         }
                     }
             }
+            .frame(maxWidth: simulatedWindowWidth ?? .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .environment(\.locale, Locale(identifier: interfaceLanguage))
         }
     }

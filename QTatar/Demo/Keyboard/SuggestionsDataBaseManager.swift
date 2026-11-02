@@ -944,7 +944,7 @@ final class SuggestionsDataBaseManager {
                 normalizedWord: normalizedWord,
                 previousWord: effectivePrev,
                 timestamp: now,
-                isCustom: explicitlyConfirmed && baseFreq == 0,
+                isCustom: (baseFreq == 0) || explicitlyConfirmed,
                 updateCasing: explicitlyConfirmed
             )
             let totalCustom = self.countCustomUserUnigrams()
@@ -998,17 +998,8 @@ final class SuggestionsDataBaseManager {
         ensureUserDB()
         guard let userDB, db != nil else { return }
         didDemoteBundledCustomWords = true
-        var stmt: OpaquePointer?
-        var candidates: [String] = []
-        if sqlite3_prepare_v2(userDB, "SELECT word FROM user_unigrams WHERE is_custom = 1;", -1, &stmt, nil) == SQLITE_OK {
-            while sqlite3_step(stmt) == SQLITE_ROW {
-                if let word = Self.columnString(stmt, index: 0) {
-                    candidates.append(word)
-                }
-            }
-        }
-        sqlite3_finalize(stmt)
-        for word in candidates where bundledFrequency(of: word) > 0 {
+        let legacySeedWords = ["selam", "qirim", "bağçasaray", "aqmescit", "Qırım", "Aqmescit", "Bağçasaray"]
+        for word in legacySeedWords {
             var upd: OpaquePointer?
             defer { sqlite3_finalize(upd) }
             if sqlite3_prepare_v2(userDB, "UPDATE user_unigrams SET is_custom = 0 WHERE word = ?1;", -1, &upd, nil) == SQLITE_OK,

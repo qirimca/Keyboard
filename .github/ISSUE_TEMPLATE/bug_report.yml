@@ -1,0 +1,66 @@
+name: Bug report
+description: Report a problem with QırımKey
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Дякуємо за допомогу. Будь ласка, не додавайте приватні тексти, паролі, токени або листування.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Що сталося?
+      description: Коротко опишіть проблему.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Як відтворити?
+      description: Покроково опишіть дії.
+      placeholder: |
+        1. Відкрити ...
+        2. Увімкнути ...
+        3. Побачити ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Очікуваний результат
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактичний результат
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Пристрій
+      placeholder: iPhone 15, iPad Pro, simulator
+  - type: input
+    id: ios
+    attributes:
+      label: Версія iOS/iPadOS
+      placeholder: iOS 18.5
+  - type: dropdown
+    id: full-access
+    attributes:
+      label: Full Access
+      options:
+        - Увімкнено
+        - Вимкнено
+        - Не знаю
+  - type: input
+    id: app
+    attributes:
+      label: У якому застосунку помітно?
+      placeholder: Safari, Chrome, Notes, Telegram
+  - type: textarea
+    id: notes
+    attributes:
+      label: Додаткові нотатки, фото або відео

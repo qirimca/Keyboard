@@ -415,7 +415,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if let override = KeyboardPreferences.defaults.object(forKey: "crh.key.test.useModernPillCallout") as? Bool {
             return override
         }
-        if #available(iOS 27.0, *) {
+        if #available(iOS 26.0, *) {
             return true
         }
         return false
@@ -454,8 +454,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let isFloating = keyboardContext.isKeyboardFloating
         style.callout = calloutStyle
         style.calloutSize = isFloating
-            ? CGSize(width: 41.0, height: 48.0)
-            : CGSize(width: 45.0, height: 52.0)
+            ? CGSize(width: 37.0, height: 46.0)
+            : CGSize(width: 40.0, height: 50.0)
         style.calloutPadding = isFloating ? 5.0 : 6.0
         style.font = .system(size: isFloating ? 29.0 : 34.0, weight: .regular)
         return style

@@ -26,13 +26,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     private var twoFingerTrackpadPanRecognizer: UIPanGestureRecognizer?
     private var twoFingerTrackpadStartLocation: CGPoint = .zero
     private var cancellables = Set<AnyCancellable>()
-    private var lastObservedUkrainianCyrillic = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+    private var lastObservedUkrainianCyrillic = false
     private static let prefsSyncQueue = DispatchQueue(label: "crh.key.prefsSyncQueue", qos: .utility)
     private static let perfSignposter = OSSignposter(subsystem: "crh.key.perf", category: "KeyboardViewController")
 
     override var hasDictationKey: Bool {
-        get { false }
-        set { super.hasDictationKey = false }
+        get { true }
+        set { super.hasDictationKey = true }
     }
 
     /// Tracks whether this process is the Cyrillic extension (`crh.key.KeyboardCyrillic` or `crh.key.KeyboardUkrainian`) or a standalone keyboard extension.
@@ -245,7 +245,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         Self.prefsSyncQueue.async { [weak self] in
             KeyboardPreferences.defaults.synchronize()
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            SystemKeyboardSettings.refreshAllSynchronously(shouldSync: true)
+            SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: true)
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.isViewLoaded else { return }
                 KeyboardPreferences.refreshCachedPreferences()
@@ -283,20 +283,26 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         state.autocompleteContext.isAutocompleteEnabled = suggestionsOn
         state.autocompleteContext.isAutocorrectEnabled = autocorrectOn
         state.keyboardContext.isAutoCapitalizationEnabled = SystemKeyboardSettings.isAutoCapitalizationEnabled(for: textDocumentProxy)
+        let shouldShowCallout = (state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating)
+            && SystemKeyboardSettings.isCharacterPreviewEnabled
+        if state.calloutContext.inputContext.isEnabled != shouldShowCallout {
+            state.calloutContext.inputContext.isEnabled = shouldShowCallout
+        }
         if !suggestionsOn { state.autocompleteContext.suggestions = [] }
         if !KeyboardPreferences.statsEnabled {
             KeyboardUsageStats.reclaimResourcesWhenDisabled()
         }
+        let slideToTypeActive = SystemKeyboardSettings.isSlideToTypeEnabled
         SuggestionsDataBaseManager.shared.reclaimResourcesForDisabledFeatures(
-            suggestionsActive: suggestionsMasterOn,
+            suggestionsActive: suggestionsMasterOn || slideToTypeActive,
             wordLearningActive: KeyboardPreferences.wordLearningEnabled,
             autocorrectActive: KeyboardPreferences.suggestionsEnabled && SystemKeyboardSettings.isAutoCorrectionEnabled(for: textDocumentProxy)
         )
-        if suggestionsMasterOn {
+        if suggestionsMasterOn || slideToTypeActive {
             SuggestionsDataBaseManager.shared.prepareAsync { [weak self] in
                 guard let self, self.isViewLoaded, self.view.window != nil else { return }
                 let hasText = self.textDocumentProxy.hasText || !(self.textDocumentProxy.documentContextBeforeInput?.isEmpty ?? true)
-                if hasText {
+                if hasText && suggestionsMasterOn {
                     self.performAutocomplete()
                 }
             }
@@ -552,7 +558,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                     KeyboardPreferences.defaults.synchronize()
                     CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                     DispatchQueue.main.async { [weak controller] in
-                        guard let controller, controller.isViewLoaded, controller.view.window != nil else { return }
+                        guard let controller, controller.isViewLoaded else { return }
                         KeyboardPreferences.refreshCachedPreferences()
                         controller.applyPreferences(syncDisk: false)
                         controller.refreshProxyState(forceRender: true)
@@ -626,7 +632,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
 
         /// Configure initial preferences and default script BEFORE `super.viewDidLoad()` mounts `SystemKeyboard`,
         /// preventing redundant SwiftUI hierarchy rebuilds on cold start.
-        self.hasDictationKey = false
+        self.hasDictationKey = true
         resetToExtensionDefaultScript()
         syncExtensionAddedPreferencesIfNeeded()
         applyPreferences(syncDisk: false)
@@ -791,7 +797,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     override func viewWillAppear(_ animated: Bool) {
         let spState = Self.perfSignposter.beginInterval("ViewWillAppear")
         defer { Self.perfSignposter.endInterval("ViewWillAppear", spState) }
-        self.hasDictationKey = false
+        self.hasDictationKey = true
         SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: true)
         SuggestionsDataBaseManager.shared.resumeAccess()
         isResettingDocumentState = false
@@ -991,7 +997,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
         }
         let holdCalloutForUITest = isSandboxActive && KeyboardPreferences.defaults.bool(forKey: "crh.key.test.holdCallout")
-        state.calloutContext.inputContext.minimumVisibleDuration = holdCalloutForUITest ? 0.55 : 0.09
+        state.calloutContext.inputContext.minimumVisibleDuration = holdCalloutForUITest ? 0.95 : 0.09
         Gestures.Defaults.longPressDelay = holdCalloutForUITest ? 0.60 : 0.30
         let topBarAllowed = DemoStyleProvider.shouldShowTopToolbar(for: context)
         let suggestionsOn = KeyboardPreferences.suggestionsEnabled
@@ -1045,25 +1051,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         if !isDocEmpty || isSearchField {
             GreetingBannerState.shared.dismissForTyping()
             if suggestionsOn {
-                let dbReady = SuggestionsDataBaseManager.shared.isReady
-                if isSearchField && isDocEmpty {
-                    let starter = dbReady
-                        ? ((services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: "") ?? [])
-                        : []
-                    if !starter.isEmpty {
-                        state.autocompleteContext.suggestions = starter
-                    } else {
-                        performAutocomplete()
-                    }
-                } else if forceRender || lastRenderSignature?.hasText != signature.hasText || lastRenderSignature?.keyboardType != signature.keyboardType {
-                    let immediate = dbReady
-                        ? ((services.autocompleteProvider as? CrimeanTatarAutocompleteProvider)?.suggestionsNow(for: autocompleteText ?? "") ?? [])
-                        : []
-                    if !immediate.isEmpty {
-                        state.autocompleteContext.suggestions = immediate
-                    } else {
-                        performAutocomplete()
-                    }
+                if (isSearchField && isDocEmpty) || forceRender || lastRenderSignature?.hasText != signature.hasText || lastRenderSignature?.keyboardType != signature.keyboardType {
+                    performAutocomplete()
                 }
             }
         } else {
@@ -1170,7 +1159,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         }
         updateKeyboardHeightConstraint()
         updateTwoFingerTrackpadEligibility()
-        let shouldEnableInputCallout = state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating
+        let shouldEnableInputCallout = (state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating)
+            && SystemKeyboardSettings.isCharacterPreviewEnabled
         if state.calloutContext.inputContext.isEnabled != shouldEnableInputCallout {
             state.calloutContext.inputContext.isEnabled = shouldEnableInputCallout
         }

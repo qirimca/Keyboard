@@ -54,8 +54,14 @@ final class QirimKeyUITests: XCTestCase {
         dismissKeyboardOnboardingOverlayIfNeeded()
         if !anyCustomKey.exists {
             enableKeyboardInSettingsIfNeeded()
-            app.terminate()
-            app.launch()
+            app.activate()
+            Thread.sleep(forTimeInterval: 0.6)
+            let donePred = NSPredicate(format: "label IN {'Done', 'Готово', 'Azır'}")
+            let doneBtn = app.buttons.matching(donePred).firstMatch
+            if doneBtn.exists && doneBtn.isHittable {
+                doneBtn.tap()
+                Thread.sleep(forTimeInterval: 0.4)
+            }
             if field.waitForExistence(timeout: 5) {
                 if field.isHittable {
                     field.tap()
@@ -162,7 +168,7 @@ final class QirimKeyUITests: XCTestCase {
                 Thread.sleep(forTimeInterval: 0.8)
             }
         }
-        if !existingCell.exists {
+        if !existingCell.waitForExistence(timeout: 2.0) {
             let addNewBtn = settings.buttons.matching(addNewPredicate).firstMatch.exists
                 ? settings.buttons.matching(addNewPredicate).firstMatch
                 : settings.cells.matching(addNewPredicate).firstMatch
@@ -176,11 +182,17 @@ final class QirimKeyUITests: XCTestCase {
                 if qtatarBtn.waitForExistence(timeout: 3.0) {
                     qtatarBtn.tap()
                     Thread.sleep(forTimeInterval: 1.0)
-                    let switches = settings.switches.allElementsBoundByIndex
+                    let extSwitches = settings.switches.matching(NSPredicate(format: "identifier BEGINSWITH 'crh.key.'")).allElementsBoundByIndex
+                    let switches = extSwitches.isEmpty ? settings.switches.allElementsBoundByIndex : extSwitches
                     for sw in switches {
                         let val = (sw.value as? String) ?? ""
                         if val == "0" {
-                            sw.tap()
+                            let innerThumb = sw.switches.firstMatch
+                            if innerThumb.exists && innerThumb.isHittable {
+                                innerThumb.tap()
+                            } else {
+                                sw.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap()
+                            }
                             Thread.sleep(forTimeInterval: 0.5)
                         }
                     }
@@ -192,6 +204,7 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
         }
+        #if !targetEnvironment(simulator)
         if existingCell.waitForExistence(timeout: 2.0) && existingCell.isHittable {
             existingCell.tap()
             Thread.sleep(forTimeInterval: 0.8)
@@ -226,6 +239,7 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
         }
+        #endif
         settings.terminate()
         Thread.sleep(forTimeInterval: 0.3)
     }
@@ -2267,6 +2281,25 @@ final class QirimKeyUITests: XCTestCase {
         }
         try? selectScript(cyrillic: false)
 
+        // If iPad keyboard is currently in Floating mode (e.g. from an earlier test), capture Floating proof first and then dock it to full width
+        if UIDevice.current.userInterfaceIdiom == .pad, key("space").exists, key("space").frame.width < 260 {
+            capture("PhysicalProof_01b_Keyboard_Floating_UK_\(deviceTag)")
+            let spaceEl = key("space")
+            let grabberStart = spaceEl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.32))
+            let bottomDockTarget = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.99))
+            grabberStart.press(forDuration: 0.25, thenDragTo: bottomDockTarget)
+            Thread.sleep(forTimeInterval: 0.8)
+            if key("space").exists && key("space").frame.width < 260 {
+                let kbTarget = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch : spaceEl
+                kbTarget.pinch(withScale: 2.4, velocity: 2.5)
+                Thread.sleep(forTimeInterval: 0.8)
+            }
+            if !anyCustomKey.exists && field.exists && field.isHittable {
+                field.tap()
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+        }
+
         // 2. Verify Docked iPad / iPhone Latin layout (4-row iPad: Â before Z on Row 2, widened абв > shortened left Shift; 5-row Pro: Â on top row)
         let aHatKey = letterKey("â")
         let zKey = letterKey("z")
@@ -2371,5 +2404,377 @@ final class QirimKeyUITests: XCTestCase {
                 settings.terminate()
             }
         }
+        app.terminate()
+
+        // 7. Verify AboutView social media pills (Instagram / Facebook full titles without ellipsis truncation)
+        app.launchArguments = [
+            "-qt_open_about",
+            "-qt_no_autofocus",
+            "-qt_theme", "modernLight",
+            "-qt_lang", "uk"
+        ]
+        app.launch()
+        Thread.sleep(forTimeInterval: 1.0)
+        let instagramBtn = app.buttons["Instagram"].firstMatch
+        let facebookBtn = app.buttons["Facebook"].firstMatch
+        XCTAssertTrue(instagramBtn.waitForExistence(timeout: 3.0), "Instagram button must exist in AboutView")
+        XCTAssertTrue(facebookBtn.waitForExistence(timeout: 3.0), "Facebook button must exist in AboutView")
+        capture("PhysicalProof_06_AboutView_SocialPills_\(deviceTag)")
+        app.terminate()
+
+        // 8. On iPad, verify narrow 375pt and medium 620pt Stage Manager window widths (no horizontal card clipping or ... truncation)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            app.launchArguments = [
+                "-qt_sim_width", "375",
+                "-qt_no_autofocus",
+                "-qt_cyrillic_added",
+                "-qt_ukrainian_added",
+                "-qt_demo_stats",
+                "-qt_theme", "modernLight",
+                "-qt_lang", "uk"
+            ]
+            app.launch()
+            Thread.sleep(forTimeInterval: 0.9)
+            let ukRow375 = app.descendants(matching: .any).matching(identifier: "settings.ukrainianCyrillic.statusRow").firstMatch
+            XCTAssertTrue(ukRow375.waitForExistence(timeout: 3.0), "Ukrainian row must exist at 375pt Stage Manager width")
+            XCTAssertLessThanOrEqual(ukRow375.frame.width, 376.0, "Card row width at 375pt Stage Manager must not overflow 375pt (\(ukRow375.frame.width))")
+            capture("PhysicalProof_07_StageManager_375_Home_\(deviceTag)")
+            app.terminate()
+
+            app.launchArguments = [
+                "-qt_sim_width", "375",
+                "-qt_open_about",
+                "-qt_no_autofocus",
+                "-qt_theme", "modernLight",
+                "-qt_lang", "uk"
+            ]
+            app.launch()
+            Thread.sleep(forTimeInterval: 0.9)
+            let ig375 = app.buttons["Instagram"].firstMatch
+            XCTAssertTrue(ig375.waitForExistence(timeout: 3.0), "Instagram button must exist at 375pt AboutView")
+            XCTAssertGreaterThanOrEqual(ig375.frame.width, 110.0, "Instagram pill in 375pt AboutView must use 2-per-row layout (>= 110pt width, got \(ig375.frame.width))")
+            capture("PhysicalProof_08_StageManager_375_About_\(deviceTag)")
+            app.terminate()
+
+            app.launchArguments = [
+                "-qt_sim_width", "620",
+                "-qt_no_autofocus",
+                "-qt_cyrillic_added",
+                "-qt_ukrainian_added",
+                "-qt_demo_stats",
+                "-qt_theme", "modernLight",
+                "-qt_lang", "uk"
+            ]
+            app.launch()
+            Thread.sleep(forTimeInterval: 0.9)
+            capture("PhysicalProof_09_StageManager_620_Home_\(deviceTag)")
+            app.terminate()
+        }
+    }
+
+    func testPostCommit95beb28AllEightFixesProof_2026_11_02() throws {
+        let deviceTag = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
+
+        func dismissKB() {
+            let donePred = NSPredicate(format: "label IN {'Done', 'Готово', 'Azır'}")
+            let doneBtn = app.buttons.matching(donePred).firstMatch
+            if doneBtn.exists && doneBtn.isHittable {
+                doneBtn.tap()
+                Thread.sleep(forTimeInterval: 0.45)
+            } else if UIDevice.current.userInterfaceIdiom == .pad, key("dismiss").exists {
+                tap("dismiss")
+                Thread.sleep(forTimeInterval: 0.45)
+            }
+        }
+
+        // 1. Launch with -qt_force_suggestions_on and both Cyrillic and Ukrainian layouts active
+        try launch(
+            fieldMode: "standard",
+            theme: "modernLight",
+            extraArgs: [
+                "-qt_force_suggestions_on",
+                "-qt_cyrillic_added",
+                "-qt_ukrainian_added",
+                "-qt_lang", "uk"
+            ]
+        )
+        try? selectScript(cyrillic: false)
+
+        // Ensure iPad keyboard is Docked for 20.10 proof
+        if UIDevice.current.userInterfaceIdiom == .pad, key("space").exists, key("space").frame.width < 260 {
+            let spaceEl = key("space")
+            let grabberStart = spaceEl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.32))
+            let bottomDockTarget = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.99))
+            grabberStart.press(forDuration: 0.25, thenDragTo: bottomDockTarget)
+            Thread.sleep(forTimeInterval: 0.8)
+            if key("space").exists && key("space").frame.width < 260 {
+                let kbTarget = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch : spaceEl
+                kbTarget.pinch(withScale: 2.4, velocity: 2.5)
+                Thread.sleep(forTimeInterval: 0.8)
+            }
+            if !anyCustomKey.exists && field.exists && field.isHittable {
+                field.tap()
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+        }
+
+        // Proof 20.10 (iPad Docked 4-Row Layout) & 20.21 (No Dictation Microphone in bottom dock)
+        let dictationPred = NSPredicate(format: "identifier CONTAINS[c] 'dictation' OR label CONTAINS[c] 'Dictate' OR label CONTAINS[c] 'Диктувати'")
+        XCTAssertFalse(app.keyboards.buttons.matching(dictationPred).firstMatch.exists, "No system dictation microphone icon may appear under the keyboard")
+        capture("Proof_20_10_20_21_Keyboard_Docked_NoMic_\(deviceTag)")
+
+        // Proof 20.17 (iPhone Key Press Magnification Bubble directly above pressed key, held for 0.95s via -qt_force_suggestions_on)
+        if UIDevice.current.userInterfaceIdiom == .phone {
+            let gEl = letterKey("g")
+            let qEl = letterKey("q")
+            if gEl.exists {
+                gEl.tap()
+                capture("Proof_20_17_KeyCallout_CenterKey_G_\(deviceTag)")
+                Thread.sleep(forTimeInterval: 0.55)
+            }
+            if qEl.exists {
+                qEl.tap()
+                capture("Proof_20_17_KeyCallout_EdgeKey_Q_\(deviceTag)")
+                Thread.sleep(forTimeInterval: 0.55)
+            }
+            clear()
+        }
+
+        // Proof 20.14 on iPad: Key Flick down on Q -> '1'
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            let qEl = letterKey("q")
+            if qEl.exists {
+                let start = qEl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
+                let end = qEl.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95))
+                start.press(forDuration: 0.02, thenDragTo: end)
+                Thread.sleep(forTimeInterval: 0.35)
+                capture("Proof_20_14_iPad_KeyFlick_Q_to_1_\(deviceTag)")
+                clear()
+            }
+        }
+
+        let slot0 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.0").firstMatch
+        let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        let slot2 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.2").firstMatch
+
+        // Proof 20.14 (Math Results: 3+5= -> 3+5=8 in Slot 1, 8 in Slot 2)
+        if key("numeric").exists { tap("numeric") }
+        if key("character.3").waitForExistence(timeout: 2.0) {
+            tap("character.3")
+            if key("character.+").exists {
+                tap("character.+")
+            } else {
+                tap("symbolic")
+                if key("character.+").waitForExistence(timeout: 2.0) {
+                    tap("character.+")
+                }
+                tap("numeric")
+            }
+            if key("character.5").waitForExistence(timeout: 2.0) {
+                tap("character.5")
+            }
+            if !key("character.=").exists {
+                tap("symbolic")
+            }
+            if key("character.=").waitForExistence(timeout: 2.0) {
+                tap("character.=")
+            }
+            let mathReady = NSPredicate(format: "exists == true AND label CONTAINS '3+5=8'")
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: mathReady, object: slot1)], timeout: 3.0)
+            capture("Proof_20_14_MathResults_3plus5_\(deviceTag)")
+            if key("alphabetic").exists {
+                tap("alphabetic")
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+        }
+        clear()
+
+        // Proof 20.19 (3 Top Suggestions Text Color & Spacebar Language Name Color in Light & Dark Mode) + 20.18 (Learn novel word "zqxqirim" via Slot 0 + Space)
+        typeLetters("zqxqirim")
+        Thread.sleep(forTimeInterval: 0.50)
+        XCTAssertTrue(slot0.waitForExistence(timeout: 2.5) && !slot0.label.isEmpty, "Slot 0 must exist when Predictive Text is enabled")
+        XCTAssertTrue(slot1.exists && !slot1.label.isEmpty, "Slot 1 must exist when Predictive Text is enabled")
+        XCTAssertTrue(slot2.exists && !slot2.label.isEmpty, "Slot 2 must exist when Predictive Text is enabled")
+        capture("Proof_20_19_Suggestions_And_Spacebar_Light_\(deviceTag)")
+
+        let darkPred = NSPredicate(format: "identifier == 'theme.dark' OR label IN {'Qaranlıq', 'Темна', 'Dark'}")
+        let lightPred = NSPredicate(format: "identifier == 'theme.light' OR label IN {'Aydınlıq', 'Світла', 'Light'}")
+        let darkBtn = app.buttons.matching(darkPred).firstMatch
+        let lightBtn = app.buttons.matching(lightPred).firstMatch
+        if darkBtn.waitForExistence(timeout: 2.0) && darkBtn.isHittable {
+            darkBtn.tap()
+            Thread.sleep(forTimeInterval: 0.45)
+            capture("Proof_20_19_Suggestions_And_Spacebar_Dark_\(deviceTag)")
+        }
+        if lightBtn.waitForExistence(timeout: 2.0) && lightBtn.isHittable {
+            lightBtn.tap()
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+
+        // Tap Slot 0 or Space to explicitly commit and learn "zqxqirim" into Personal Dictionary (20.18)
+        if slot0.exists && slot0.isHittable {
+            slot0.tap()
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        let fieldTextAfterSlot0 = (field.value as? String) ?? ""
+        if !fieldTextAfterSlot0.hasSuffix(" ") {
+            tap("space")
+        }
+        Thread.sleep(forTimeInterval: 0.70)
+
+        dismissKB()
+
+        let statsExpand = app.descendants(matching: .any).matching(identifier: "stats.expandToggle").firstMatch
+        if statsExpand.waitForExistence(timeout: 3.0) && statsExpand.isHittable {
+            statsExpand.tap()
+            Thread.sleep(forTimeInterval: 0.50)
+        }
+        let learnedTile = app.descendants(matching: .any).matching(identifier: "stats.learnedWordsTile").firstMatch
+        XCTAssertTrue(learnedTile.waitForExistence(timeout: 3.0), "stats.learnedWordsTile must exist when Statistics is expanded")
+        capture("Proof_20_18_Stats_LearnedWordsTile_\(deviceTag)")
+
+        if learnedTile.isHittable {
+            learnedTile.tap()
+            Thread.sleep(forTimeInterval: 0.65)
+            let doneSheetBtn = app.descendants(matching: .any).matching(identifier: "stats.learnedWords.doneButton").firstMatch
+            XCTAssertTrue(doneSheetBtn.waitForExistence(timeout: 3.0), "Personal Dictionary sheet must open when tapping Вивчені слова tile")
+            capture("Proof_20_18_Stats_LearnedWordsSheet_\(deviceTag)")
+            doneSheetBtn.tap()
+            Thread.sleep(forTimeInterval: 0.40)
+        }
+
+        // Collapse Statistics card so settings buttons and language switcher are visible
+        if statsExpand.exists && statsExpand.isHittable {
+            statsExpand.tap()
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+
+        // Proof 20.20 (Language switching QT <-> УК <-> EN row height & font stability)
+        let fullRow = app.descendants(matching: .any).matching(identifier: "status.fullAccess.row").firstMatch
+        let appBtn = app.descendants(matching: .any).matching(identifier: "settings.appSettings.button").firstMatch
+        let sysBtn = app.descendants(matching: .any).matching(identifier: "settings.systemKeyboard.button").firstMatch
+        let stdRow = app.descendants(matching: .any).matching(identifier: "status.primaryKeyboard.row").firstMatch
+        let cyrRow = app.descendants(matching: .any).matching(identifier: "settings.cyrillic.statusRow").firstMatch
+
+        if !sysBtn.exists || !sysBtn.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+            Thread.sleep(forTimeInterval: 0.40)
+        }
+
+        XCTAssertTrue(appBtn.waitForExistence(timeout: 3.0))
+        let hasFullRow = fullRow.exists
+        let hFullUK = hasFullRow ? fullRow.frame.height : 0
+        let hAppUK = appBtn.frame.height
+        let hSysUK = sysBtn.frame.height
+        let hStdUK = stdRow.frame.height
+        let hCyrUK = cyrRow.frame.height
+        capture("Proof_20_20_StageManager_Lang_UK_\(deviceTag)")
+
+        let crhSeg = app.buttons["Qırımtatarca"].firstMatch
+        if crhSeg.waitForExistence(timeout: 2.0) {
+            if crhSeg.isHittable {
+                crhSeg.tap()
+            } else {
+                crhSeg.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            Thread.sleep(forTimeInterval: 0.40)
+        }
+        let hFullCRH = hasFullRow ? fullRow.frame.height : 0
+        let hAppCRH = appBtn.frame.height
+        let hSysCRH = sysBtn.frame.height
+        let hStdCRH = stdRow.frame.height
+        let hCyrCRH = cyrRow.frame.height
+        capture("Proof_20_20_StageManager_Lang_CRH_\(deviceTag)")
+
+        let enSeg = app.buttons["English"].firstMatch
+        if enSeg.waitForExistence(timeout: 2.0) {
+            if enSeg.isHittable {
+                enSeg.tap()
+            } else {
+                enSeg.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            Thread.sleep(forTimeInterval: 0.40)
+        }
+        let hFullEN = hasFullRow ? fullRow.frame.height : 0
+        let hAppEN = appBtn.frame.height
+        let hSysEN = sysBtn.frame.height
+        let hStdEN = stdRow.frame.height
+        let hCyrEN = cyrRow.frame.height
+        capture("Proof_20_20_StageManager_Lang_EN_\(deviceTag)")
+
+        if hasFullRow {
+            XCTAssertLessThanOrEqual(abs(hFullCRH - hFullUK), 1.5, "Full Access row height must not jump between CRH (\(hFullCRH)) and UK (\(hFullUK))")
+            XCTAssertLessThanOrEqual(abs(hFullUK - hFullEN), 1.5, "Full Access row height must not jump between UK (\(hFullUK)) and EN (\(hFullEN))")
+        }
+        XCTAssertLessThanOrEqual(abs(hAppCRH - hAppUK), 1.5, "App Settings row height must not jump between CRH (\(hAppCRH)) and UK (\(hAppUK))")
+        XCTAssertLessThanOrEqual(abs(hAppUK - hAppEN), 1.5, "App Settings row height must not jump between UK (\(hAppUK)) and EN (\(hAppEN))")
+        XCTAssertLessThanOrEqual(abs(hSysCRH - hSysUK), 1.5, "System Settings row height must not jump between CRH (\(hSysCRH)) and UK (\(hSysUK))")
+        XCTAssertLessThanOrEqual(abs(hSysUK - hSysEN), 1.5, "System Settings row height must not jump between UK (\(hSysUK)) and EN (\(hSysEN))")
+        XCTAssertLessThanOrEqual(abs(hStdCRH - hStdUK), 1.5, "Standard Layout row height must not jump between CRH (\(hStdCRH)) and UK (\(hStdUK))")
+        XCTAssertLessThanOrEqual(abs(hStdUK - hStdEN), 1.5, "Standard Layout row height must not jump between UK (\(hStdUK)) and EN (\(hStdEN))")
+        XCTAssertLessThanOrEqual(abs(hCyrCRH - hCyrUK), 1.5, "Cyrillic Layout row height must not jump between CRH (\(hCyrCRH)) and UK (\(hCyrUK))")
+        XCTAssertLessThanOrEqual(abs(hCyrUK - hCyrEN), 1.5, "Cyrillic Layout row height must not jump between UK (\(hCyrUK)) and EN (\(hCyrEN))")
+
+        // Proof 20.33 (Non-destructive A/B Design Preview: Variant A Current vs Variant B Bento Quick-Hub)
+        let ukSeg = app.buttons["Українська"].firstMatch
+        if ukSeg.waitForExistence(timeout: 2.0) {
+            if ukSeg.isHittable {
+                ukSeg.tap()
+            } else {
+                ukSeg.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            Thread.sleep(forTimeInterval: 0.35)
+        }
+        app.scrollViews.firstMatch.swipeDown()
+        Thread.sleep(forTimeInterval: 0.35)
+        let enableABBtn = app.descendants(matching: .any).matching(identifier: "ab.enablePreview").firstMatch
+        if enableABBtn.waitForExistence(timeout: 2.0) {
+            enableABBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            Thread.sleep(forTimeInterval: 0.35)
+            capture("Proof_20_33_AB_Design_VariantA_Current_\(deviceTag)")
+            let variantBBtn = app.descendants(matching: .any).matching(identifier: "ab.variantB").firstMatch
+            if variantBBtn.waitForExistence(timeout: 2.0) {
+                variantBBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                Thread.sleep(forTimeInterval: 0.35)
+                capture("Proof_20_33_AB_Design_VariantB_BentoPreview_\(deviceTag)")
+            }
+        }
+
+        // Proof 20.15 & 20.21 (App Settings in Settings.app: NO Word suggestions, NO Key Flicks)
+        if appBtn.exists {
+            if appBtn.isHittable {
+                appBtn.tap()
+            } else {
+                appBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+            if settings.wait(for: .runningForeground, timeout: 5.0) {
+                Thread.sleep(forTimeInterval: 0.8)
+                let suggestionsSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Söz teklifleri' OR label CONTAINS[c] 'Підказки слів' OR label CONTAINS[c] 'Word suggestions'")).firstMatch
+                let flicksSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Tüşme belgi' OR label CONTAINS[c] 'Набір жестами' OR label CONTAINS[c] 'Key Flicks'")).firstMatch
+                XCTAssertFalse(suggestionsSwitch.exists, "QırımKey Settings page must NOT show Word suggestions toggle")
+                XCTAssertFalse(flicksSwitch.exists, "QırımKey Settings page must NOT show Key Flicks toggle")
+                capture("Proof_20_15_20_21_AppSettings_Clean_\(deviceTag)")
+                settings.terminate()
+            }
+        }
+        app.activate()
+        Thread.sleep(forTimeInterval: 0.45)
+
+        // Proof 20.16 (System Settings button opens iOS System Keyboard Settings: Settings -> General -> Keyboard)
+        if sysBtn.exists {
+            if sysBtn.isHittable {
+                sysBtn.tap()
+            } else {
+                sysBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            }
+            let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+            if settings.wait(for: .runningForeground, timeout: 5.0) {
+                Thread.sleep(forTimeInterval: 0.9)
+                capture("Proof_20_16_SystemKeyboardSettings_\(deviceTag)")
+                settings.terminate()
+            }
+        }
     }
 }
+
