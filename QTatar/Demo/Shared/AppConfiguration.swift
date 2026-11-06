@@ -2141,10 +2141,27 @@ enum SystemKeyboardSettings {
     }
 
     static func hasAuthoritativeSystemKeyboardsList() -> Bool {
+        if hasLiveContainingAppInputModeSnapshot() {
+            return true
+        }
         os_unfair_lock_lock(&cacheLock)
         let result = cachedHasAuthoritativeList ?? false
         os_unfair_lock_unlock(&cacheLock)
         return result
+    }
+
+    /// True only inside the containing app on the main thread once `UITextInputMode.activeInputModes`
+    /// (plus the input-mode controller identifiers) has been read. That live list always contains at least
+    /// one system keyboard, so it is authoritative for both presence and absence of our extensions:
+    /// adding/removing a keyboard in Settings flips the Home toggles on return, while stale caches and
+    /// "seen" flags (written e.g. while cycling keyboards with the Globe key) can no longer keep a removed
+    /// keyboard ON or turn a present keyboard OFF.
+    static func hasLiveContainingAppInputModeSnapshot() -> Bool {
+        guard Thread.isMainThread, Bundle.main.bundleIdentifier == AppConfiguration.appBundleId else { return false }
+        os_unfair_lock_lock(&cacheLock)
+        let live = hasReadMainThreadInputModes && !cachedActiveInputModeLanguages.isEmpty
+        os_unfair_lock_unlock(&cacheLock)
+        return live
     }
 
     /// Refreshes and persists whether the system Emoji keyboard is in the user's enabled keyboards list (`Settings → General → Keyboard → Keyboards`).
@@ -2251,6 +2268,9 @@ enum SystemKeyboardSettings {
             defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
             return true
         }
+        if hasLiveContainingAppInputModeSnapshot() {
+            return false
+        }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesLatin = ids.contains { id in
             let lower = id.lowercased()
@@ -2286,6 +2306,9 @@ enum SystemKeyboardSettings {
             defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
             return true
         }
+        if hasLiveContainingAppInputModeSnapshot() {
+            return false
+        }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesCyrillic = ids.contains { id in
             let lower = id.lowercased()
@@ -2319,6 +2342,9 @@ enum SystemKeyboardSettings {
         if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") || $0.contains("keyboardukrainian") || $0.contains("crh.key.keyboard.pro") }) {
             defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
             return true
+        }
+        if hasLiveContainingAppInputModeSnapshot() {
+            return false
         }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesUkrainian = ids.contains { id in

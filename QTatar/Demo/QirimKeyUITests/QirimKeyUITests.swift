@@ -4568,6 +4568,180 @@ final class QirimKeyUITests: XCTestCase {
             XCTAssertTrue(manualWordsTile.waitForExistence(timeout: 5), "Expanded Statistics must show all 6 tiles")
         }
     }
+
+    /// 2026-11-06: portrait height parity of QırımKey vs the system keyboard for every sandbox field type,
+    /// with suggestions on and off. Prints `QK_HEIGHT` lines (pt) and keeps screenshots as attachments.
+    func testKeyboardHeightParity_2026_11_06() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let tag = isPad ? "ipad" : "iphone"
+        XCUIDevice.shared.orientation = .portrait
+        func shot(_ name: String) {
+            let att = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            att.name = name
+            att.lifetime = .keepAlways
+            add(att)
+        }
+        func ourKeysTop() -> CGFloat {
+            let keys = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'key.'")).allElementsBoundByIndex
+            return keys.map { $0.frame.minY }.filter { $0 > 0 }.min() ?? -1
+        }
+        let nextKeyboardPred = NSPredicate(format: "identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура'}")
+        let spacePred = NSPredicate(format: "label IN[c] {'space', 'пробіл', 'пробел', 'Пробіл', 'Space'}")
+        for suggestions in [true, false] {
+            for mode in ["standard", "email"] {
+                try launch(fieldMode: mode, extraArgs: suggestions ? [] : ["-qt_no_suggestions"])
+                Thread.sleep(forTimeInterval: 1.5)
+                let kb = app.keyboards.firstMatch
+                let name = "H_\(tag)_\(mode)_sugg\(suggestions ? 1 : 0)"
+                print("QK_HEIGHT \(name) kb=ours custom=\(anyCustomKey.exists) kbExists=\(kb.exists) kbFrame=\(kb.exists ? kb.frame : .zero) keysTop=\(ourKeysTop()) screen=\(app.windows.firstMatch.frame.size)")
+                shot("\(name)_ours")
+                // System keyboard references were captured on 2026-11-06 22:10 (baseline run); no Globe cycling here.
+                _ = nextKeyboardPred
+                _ = spacePred
+            }
+        }
+        // Restore defaults (suggestions ON) for the user's device.
+        try launch(fieldMode: "standard")
+    }
+
+    /// 2026-11-06: Home toggles must follow iOS Settings (keyboard removed/added in Settings -> QırımKey -> Keyboards)
+    /// and must NOT change when cycling keyboards with the Globe key. Restores the original Settings state.
+    func testToggleSyncWithSettingsAndGlobe_2026_11_06() throws {
+        let tag = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
+        func shot(_ name: String) {
+            let att = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+            att.name = "TS_\(tag)_\(name)"
+            att.lifetime = .keepAlways
+            add(att)
+        }
+        app.launchArguments = ["-qt_field", "standard"]
+        app.launch()
+        let primary = app.switches["status.primaryKeyboard.toggle"].firstMatch
+        let cyrillic = app.switches["settings.cyrillic.toggle"].firstMatch
+        let ukrainian = app.switches["settings.ukrainianCyrillic.toggle"].firstMatch
+        func state() -> String {
+            for _ in 0..<4 where !cyrillic.exists { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
+            func v(_ e: XCUIElement) -> String { e.exists ? ((e.value as? String) ?? "?") : "absent" }
+            return "primary=\(v(primary)) cyrillic=\(v(cyrillic)) ukrainian=\(v(ukrainian))"
+        }
+        Thread.sleep(forTimeInterval: 2.5)
+        let initial = state()
+        print("QK_TOGGLES \(tag) initial \(initial)")
+        shot("1_initial")
+
+        // Globe cycling inside the sandbox field must not flip any toggle.
+        let globePred = NSPredicate(format: "identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура'}")
+        if field.waitForExistence(timeout: 4) {
+            if field.isHittable { field.tap() }
+            Thread.sleep(forTimeInterval: 1.0)
+            for _ in 0..<4 {
+                let globe = app.descendants(matching: .any).matching(globePred).firstMatch
+                if globe.exists { globe.tap(); Thread.sleep(forTimeInterval: 1.0) }
+            }
+        }
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 1.5)
+        app.activate()
+        Thread.sleep(forTimeInterval: 2.5)
+        let afterGlobe = state()
+        print("QK_TOGGLES \(tag) afterGlobe \(afterGlobe)")
+        shot("2_after_globe")
+        XCTAssertEqual(afterGlobe, initial, "Globe cycling must not change Home toggles")
+
+        // Relaunch from the Home Screen icon so the app runs WITHOUT XCTest launch environment/arguments
+        // (HomeView treats XCTest-launched processes as simulated UI tests and pins the toggles).
+        app.terminate()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 1.0)
+        let icon = springboard.icons.matching(NSPredicate(format: "label == 'QırımKey' OR label == 'QTatar'")).firstMatch
+        for _ in 0..<6 where !(icon.exists && icon.isHittable) {
+            springboard.swipeLeft()
+            Thread.sleep(forTimeInterval: 0.7)
+        }
+        var launchMode = "springboard"
+        if icon.exists && icon.isHittable {
+            icon.tap()
+        } else {
+            launchMode = "xctest"
+            app.launchArguments = []
+            app.launch()
+        }
+        Thread.sleep(forTimeInterval: 3.0)
+        let cleanInitial = state()
+        print("QK_TOGGLES \(tag) launch=\(launchMode) cleanInitial \(cleanInitial)")
+        shot("2b_clean_launch")
+
+        // Flip the Cyrillic keyboard in Settings -> QırımKey -> Keyboards and verify Home follows.
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        func flipCyrillicInSettings() -> String {
+            app.activate()
+            Thread.sleep(forTimeInterval: 1.0)
+            let appSettingsButton = app.descendants(matching: .any)["settings.appSettings.button"].firstMatch
+            for _ in 0..<4 where !appSettingsButton.isHittable { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
+            guard appSettingsButton.exists else { shot("no_app_settings_button"); return "no-button" }
+            appSettingsButton.tap()
+            guard settings.wait(for: .runningForeground, timeout: 8) else { return "no-settings" }
+            Thread.sleep(forTimeInterval: 1.2)
+            let kbCell = settings.descendants(matching: .any).matching(NSPredicate(format: "label == 'Keyboards' OR label == 'Клавіатури' OR label == 'Клавиатуры' OR label == 'Klaviaturalar'")).firstMatch
+            if kbCell.waitForExistence(timeout: 3) { kbCell.tap(); Thread.sleep(forTimeInterval: 1.2) }
+            let sw = settings.switches.matching(NSPredicate(format: "identifier CONTAINS[c] 'KeyboardCyrillic' OR label CONTAINS[c] 'Къырымтатарджа'")).firstMatch
+            guard sw.waitForExistence(timeout: 3) else { shot("settings_no_switch"); return "no-switch" }
+            let before = (sw.value as? String) ?? "?"
+            sw.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+            Thread.sleep(forTimeInterval: 1.0)
+            let after = (sw.value as? String) ?? "?"
+            shot("settings_\(before)_to_\(after)")
+            return "\(before)->\(after)"
+        }
+        let flip1 = flipCyrillicInSettings()
+        app.activate()
+        Thread.sleep(forTimeInterval: 3.0)
+        let afterFlip = state()
+        print("QK_TOGGLES \(tag) settingsFlip=\(flip1) afterFlip \(afterFlip)")
+        shot("3_after_settings_flip")
+        let flip2 = flipCyrillicInSettings()
+        app.activate()
+        Thread.sleep(forTimeInterval: 3.0)
+        let restored = state()
+        print("QK_TOGGLES \(tag) settingsFlip=\(flip2) restored \(restored)")
+        shot("4_after_settings_restore")
+        XCTAssertNotEqual(afterFlip, cleanInitial, "Home Cyrillic toggle must follow Settings removal/addition")
+        XCTAssertEqual(restored, cleanInitial, "Home toggles must return to the original state after restoring Settings")
+    }
+
+    /// Re-enables every QırımKey keyboard in Settings -> QırımKey -> Keyboards (device restore helper) and
+    /// verifies the Home Cyrillic toggle turns ON after returning to the app.
+    func testRestoreKeyboardsAndToggleFollows_2026_11_06() throws {
+        app.launchArguments = []
+        app.launch()
+        Thread.sleep(forTimeInterval: 2.0)
+        let cyrillic = app.switches["settings.cyrillic.toggle"].firstMatch
+        for _ in 0..<4 where !cyrillic.exists { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
+        let before = (cyrillic.value as? String) ?? "absent"
+        let appSettingsButton = app.descendants(matching: .any)["settings.appSettings.button"].firstMatch
+        for _ in 0..<4 where !appSettingsButton.isHittable { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
+        if appSettingsButton.exists { appSettingsButton.tap(); Thread.sleep(forTimeInterval: 2.0) }
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        let kbCell = settings.descendants(matching: .any).matching(NSPredicate(format: "label == 'Keyboards' OR label == 'Клавіатури' OR label == 'Клавиатуры'")).firstMatch
+        if kbCell.waitForExistence(timeout: 4) { kbCell.tap(); Thread.sleep(forTimeInterval: 1.2) }
+        let sw = settings.switches.matching(NSPredicate(format: "identifier CONTAINS[c] 'KeyboardCyrillic' OR label CONTAINS[c] 'Къырымтатарджа'")).firstMatch
+        if sw.waitForExistence(timeout: 3), ((sw.value as? String) ?? "") == "0" {
+            sw.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+        print("QK_TOGGLES restore settingsSwitch=\((sw.value as? String) ?? "absent")")
+        app.activate()
+        Thread.sleep(forTimeInterval: 3.0)
+        for _ in 0..<4 where !cyrillic.exists { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
+        let after = (cyrillic.value as? String) ?? "absent"
+        print("QK_TOGGLES restore before=\(before) after=\(after)")
+        let att = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        att.name = "TS_restore_after"
+        att.lifetime = .keepAlways
+        add(att)
+        XCTAssertEqual(after, "1", "Cyrillic toggle must be ON after the keyboard is re-enabled in Settings")
+    }
 }
 
 

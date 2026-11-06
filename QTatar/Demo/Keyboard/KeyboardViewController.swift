@@ -212,6 +212,24 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         )
     }
 
+    private var lastLayoutDiagnostics = ""
+
+    /// Records the real hosted height vs the requested constraint in the App Group (`crh.key.debug.layout`)
+    /// only when it changes, so keyboard-height parity can be audited from the device container.
+    private func recordLayoutDiagnosticsIfChanged() {
+        let diag = String(
+            format: "view=%.1f constraint=%.1f host=%.1f window=%.1f width=%.1f",
+            view.bounds.height,
+            keyboardHeightConstraint?.constant ?? -1,
+            children.first?.view.bounds.height ?? -1,
+            view.window?.bounds.height ?? -1,
+            view.bounds.width
+        )
+        guard diag != lastLayoutDiagnostics else { return }
+        lastLayoutDiagnostics = diag
+        KeyboardPreferences.defaults.set(diag, forKey: "crh.key.debug.layout")
+    }
+
     private func updateKeyboardHeightConstraint(targetSize: CGSize? = nil) {
         guard isViewLoaded else { return }
         if keyboardHeightConstraint == nil {
@@ -1215,6 +1233,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         }
         updateKeyboardHeightConstraint()
         updateTwoFingerTrackpadEligibility()
+        recordLayoutDiagnosticsIfChanged()
         let shouldEnableInputCallout = (state.keyboardContext.deviceType == .phone || state.keyboardContext.isKeyboardFloating)
             && SystemKeyboardSettings.isCharacterPreviewEnabled
         if state.calloutContext.inputContext.isEnabled != shouldEnableInputCallout {

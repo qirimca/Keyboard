@@ -4809,11 +4809,12 @@ struct KeyboardAdaptiveGeometry: Equatable {
         }
 
         // iPhone (all form factors)
-        // Keep totalKeyboardHeight and bottomRowHeight 100% invariant when the 3-suggestion toolbar is hidden
-        // by redistributing toolbarBaseH across the 3 letter rows (rows 0..2).
+        // Portrait (2026-11-06): match the system keyboard, which is taller WITH its predictive bar and shorter
+        // without it, so the total height follows the toolbar (no redistribution of toolbarBaseH into letter rows).
+        // Landscape keeps the invariant total by redistributing toolbarBaseH across the 3 letter rows (rows 0..2).
         let toolbarBaseH: CGFloat = 40.0
         let toolbarH: CGFloat = hasToolbar ? toolbarBaseH : 0.0
-        let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarBaseH / 3.0)
+        let extraPerLetterRow: CGFloat = (hasToolbar || isPortrait) ? 0.0 : (toolbarBaseH / 3.0)
         if !isPortrait {
             // iPhone Landscape: 38.0 pt on Compact (<= 375 pt), 41.0 pt row step with 4.5 pt vertical inset (32.0 pt visible key, 204.0 pt + safe area = 233.7 pt) on Standard / Pro / Pro Max
             let isCompactPhone = portraitWidth <= 375.0
