@@ -11,12 +11,12 @@ Source files:
 
 ```text
 QırımKey büyük yañartuvı:
-• Qırımtatar latin ve kiril tizilişleri içün tez svayp yazuvı (QırımKey Swipe v2) ve svaypnen yazılğan sözni «⌫» dögmesine bir basuvnen silüv qoşuldı.
-• Kiril klaviaturası içün uyğunlaştırılğan «Ukraina tizilişi» (ФІВА) qoşuldı (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e).
-• Luğat ve avtotüzetüv 2024/2025 resmiy qırımtatar imlâ qaidelerine (ДЕСС № 1722/04-03/25) köre yañartıldı: defisli sözler, -mı/-mi sualukları, Qırım toponimleri ve avtotüzetüvni «⌫» ile qaytaruv.
+• Qırımtatar latin ve kirill tizilişleri içün tez svayp yazuvı (QırımKey Swipe v2) ve svaypnen yazılğan sözni «⌫» dögmesine bir basuvnen silüv qoşuldı.
+• Kirill klaviaturası içün uyğunlaştırılğan «Ukrayin tizilişi» (ФІВА) qoşuldı (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e).
+• Luğat ve avtotüzetüv 2024/2025 resmiy qırımtatar imlâ qaidelerine (ДЕСС № 1722/04-03/25) köre yañartıldı: defisli sözler, -mı/-mi sual derecelikleri, Qırım toponimleri ve avtotüzetüvni «⌫» ile qaytaruv.
 • iOS ve iPadOS 26/27 (Liquid Glass) üslübi, iPad Split ve Floating klaviatura rejimleri qoşuldı.
 • Kündelik qırımtatar atalar sözleri, klassik ikmetler ve yazuv tezligi statistikası qoşuldı.
-• Qoşulma interfeysi ve iOS sistem sazlamaları («Settings → Apps → QırımKey») yañartıldı.
+• Qoşulma interfeysi ve iOS sistem sazlamaları («Settings» → «Apps» → QırımKey) yañartıldı.
 ```
 
 ---
@@ -30,7 +30,7 @@ QırımKey büyük yañartuvı:
 • Оновлено словник та автовиправлення відповідно до офіційного правопису кримськотатарської мови 2024/2025 (ДЕСС № 1722/04-03/25): підтримка дефісних слів, часток -mı/-mi, топонімів та скасування автовиправлення клавішею «⌫».
 • Додано підтримку iOS та iPadOS 26/27 (Liquid Glass), нативної розділеної (Split) і плаваючої (Floating) клавіатури на iPad.
 • Додано щоденні кримськотатарські прислів'я, цитати класиків та локальну статистику й рівні швидкості набору.
-• Оновлено інтерфейс застосунку та інтеграцію з системними налаштуваннями iOS (Параметри → Програми → QırımKey).
+• Оновлено інтерфейс програми та інтеграцію з системними налаштуваннями iOS («Параметри» → «Програми» → QırımKey).
 ```
 
 ---
@@ -41,8 +41,8 @@ QırımKey büyük yañartuvı:
 Major QırımKey update:
 • Added QırımKey Swipe v2 glide typing for Crimean Tatar Latin and Cyrillic layouts, including single-tap Backspace (⌫) deletion of a just-swiped word.
 • Added the Ukrainian-adapted Cyrillic layout (ФІВА) option (ґ → g, г → ğ, кʼ → q, нʼ → ñ, ї → yi, є → ye/e).
-• Updated dictionary and autocorrection engine for compliance with the official 2024/2025 Crimean Tatar Orthography (DESS No. 1722/04-03/25), including hyphenated compounds, -mı/-mi question particles, Crimean Tatar toponyms, and instant Backspace (⌫) undo.
+• Updated dictionary and auto-correction engine for compliance with the official 2024/2025 Crimean Tatar Orthography (DESS No. 1722/04-03/25), including hyphenated compounds, -mı/-mi question particles, Crimean Tatar toponyms, and instant Backspace (⌫) undo.
 • Added full iOS & iPadOS 26/27 Liquid Glass styling and native iPad Split & Floating keyboard support.
 • Added daily Crimean Tatar proverbs, literary quotes, and on-device typing statistics & progression tiers.
-• Streamlined in-app settings and iOS Settings integration (Settings → Apps → QırımKey).
+• Streamlined in-app settings and iOS Settings integration (“Settings” → “Apps” → QırımKey).
 ```

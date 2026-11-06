@@ -9,17 +9,17 @@
 "locale" = "uk";
 
 "capsLock" = "великі літери";
-"continue" = "продовжити";
+"continue" = "Продовжити";
 "done" = "Готово";
-"emergencyCall" = "екстрений виклик";
+"emergencyCall" = "Екстрений виклик";
 "go" = "Перейти";
-"join" = "приєднатися";
-"next" = "далі";
+"join" = "Приєднатися";
+"next" = "Далі";
 "ok" = "OK";
 "return" = "↵";
-"route" = "маршрут";
+"route" = "Маршрут";
 "search" = "Пошук";
-"send" = "надіслати";
+"send" = "Надіслати";
 "space" = "пробіл";
 "switcherAlphabetic" = "АБВ";
 "switcherNumeric" = "123";

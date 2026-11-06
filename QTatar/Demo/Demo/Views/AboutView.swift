@@ -9,13 +9,46 @@
 import SwiftUI
 
 struct AboutView: View {
-    @Binding var navigationPath: NavigationPath
+    var onNavigate: (DemoRoute) -> Void = { _ in }
     @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
     
     @Environment(\.openURL) var openURL
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    
+
+    private static let imageCacheLock = NSLock()
+    private static var cachedImages: [String: UIImage] = [:]
+    private static var didStartPrewarm = false
+
+    static func prewarmImagesIfNeeded() {
+        imageCacheLock.lock()
+        guard !didStartPrewarm else {
+            imageCacheLock.unlock()
+            return
+        }
+        didStartPrewarm = true
+        imageCacheLock.unlock()
+        DispatchQueue.global(qos: .utility).async {
+            for name in ["logo", "quizlet", "languagetool"] {
+                guard let raw = UIImage(named: name) else { continue }
+                let prepared = raw.preparingForDisplay() ?? raw
+                imageCacheLock.lock()
+                cachedImages[name] = prepared
+                imageCacheLock.unlock()
+            }
+        }
+    }
+
+    private static func preparedImage(named name: String) -> UIImage? {
+        imageCacheLock.lock()
+        if let img = cachedImages[name] {
+            imageCacheLock.unlock()
+            return img
+        }
+        imageCacheLock.unlock()
+        return UIImage(named: name)
+    }
+
     private var socialMediaLinks: [(String, String)] {
         [
             (About.about_website_key.localized, Configurations.website),
@@ -35,25 +68,38 @@ struct AboutView: View {
                 let isCompactWidth = Device.iPhone || effectiveWidth < 560
                 ScrollViewReader { scroll in
                     ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 18) {
+                        VStack(spacing: 14) {
                             headerSection
+                                .id("headerSection")
                             projectSection(isCompactWidth: isCompactWidth)
                             contactSection(containerWidth: min(effectiveWidth, 720))
                                 .id("contactSection")
                             feedbackSection
+                                .id("feedbackSection")
                             FooterView()
+                                .id("footerSection")
                         }
                         .padding(.horizontal, isCompactWidth ? 12 : 24)
-                        .padding(.vertical, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 16)
                         // iPad: keep a readable column instead of stretching cards/illustrations edge-to-edge.
                         .frame(maxWidth: Device.iPad ? min(effectiveWidth, 720) : .infinity)
                         .frame(maxWidth: .infinity)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onAppear {
-                        if ProcessInfo.processInfo.arguments.contains("-qt_open_about") {
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                scroll.scrollTo("contactSection", anchor: .center)
+                        Self.prewarmImagesIfNeeded()
+                        if ProcessInfo.processInfo.arguments.contains("-qt_open_about") || ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs") {
+                            for delay in [0.08, 0.20, 0.35] {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                                    withAnimation(.linear(duration: 0.05)) {
+                                        if isCompactWidth {
+                                            scroll.scrollTo("feedbackSection", anchor: .bottom)
+                                        } else {
+                                            scroll.scrollTo("footerSection", anchor: .bottom)
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -62,12 +108,14 @@ struct AboutView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
+        .enableInteractivePopAndLeftEdgeSwipe { dismiss() }
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             NavToolbarItem(placement: .navigationBarLeading, symbol: "chevron.backward") {
                 dismiss()
             }
             NavToolbarItem(placement: .navigationBarTrailing, symbol: "questionmark") {
-                navigationPath.append(DemoRoute.onboarding)
+                onNavigate(.onboarding)
             }
             ToolbarItem(placement: .principal) {
                 Text(About.about_title_key.localized)
@@ -82,8 +130,8 @@ struct AboutView: View {
 private extension AboutView {
     
     var headerSection: some View {
-        VStack(spacing: 12) {
-            TaraqTamgaLogoBadge(size: 84, cornerRadius: 20)
+        VStack(spacing: 8) {
+            TaraqTamgaLogoBadge(size: 72, cornerRadius: 18)
                 .accessibilityHidden(true)
             Text(About.about_first_key.localized)
                 .titleText()
@@ -195,13 +243,9 @@ private extension AboutView {
             }
             .accessibilityIdentifier("about.rateButton")
             
-            ShareLink(
-                item: "\(About.about_first_key.localized)\n\(AppStoreReviewManager.appStoreURL.absoluteString)",
-                subject: Text("QırımKey")
-            ) {
-                cellItem(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward")
+            feedbackButton(title: About.about_share_key.localized, icon: "arrowshape.turn.up.forward") {
+                presentShareSheet()
             }
-            .buttonStyle(.plain)
             .accessibilityIdentifier("about.shareButton")
             
             feedbackButton(title: About.about_send_key.localized, icon: "heart") {
@@ -213,6 +257,19 @@ private extension AboutView {
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+    }
+
+    private func presentShareSheet() {
+        let shareText = "\(About.about_first_key.localized)\n\(AppStoreReviewManager.appStoreURL.absoluteString)"
+        let activityVC = UIActivityViewController(activityItems: [shareText], applicationActivities: nil)
+        guard let windowScene = UIApplication.shared.connectedScenes.first(where: { $0 is UIWindowScene }) as? UIWindowScene,
+              let rootVC = windowScene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { return }
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = rootVC.view
+            popover.sourceRect = CGRect(x: rootVC.view.bounds.midX, y: rootVC.view.bounds.midY, width: 1, height: 1)
+            popover.permittedArrowDirections = []
+        }
+        rootVC.present(activityVC, animated: true)
     }
     
     // MARK: Additional components
@@ -285,8 +342,8 @@ private extension AboutView {
                 .accessibilityHidden(true)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .background(Color(.tertiarySystemGroupedBackground), in: Capsule())
         .contentShape(Capsule())
         .overlay {
@@ -305,17 +362,26 @@ private extension AboutView {
     
     func projectContainer(illustration: String, projectName: String, description: String, link: String) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            Image(illustration)
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: .infinity, maxHeight: Device.iPad ? 170 : .infinity)
-                .accessibilityHidden(true)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.18), lineWidth: 1.5))
+            Group {
+                if let uiImg = Self.preparedImage(named: illustration) {
+                    Image(uiImage: uiImg)
+                        .resizable()
+                } else {
+                    Image(illustration)
+                        .resizable()
+                }
+            }
+            .scaledToFit()
+            .frame(maxWidth: .infinity, maxHeight: Device.iPad ? 132 : 140)
+            .accessibilityHidden(true)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.18), lineWidth: 1.5))
             
             Text(projectName)
                 .mediumText()
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.90)
+                .frame(maxWidth: .infinity, alignment: .leading)
             
             Button {
                 withAnimation {
@@ -343,9 +409,9 @@ private extension AboutView {
             Text(description)
                 .regularText(color: Color(.secondaryLabel))
                 .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 1)
+            Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(12)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
@@ -354,8 +420,7 @@ private extension AboutView {
 }
 
 #Preview {
-    @Previewable @State var navigationPath = NavigationPath()
-    NavigationStack(path: $navigationPath) {
-        AboutView(navigationPath: $navigationPath)
+    NavigationStack {
+        AboutView()
     }
 }

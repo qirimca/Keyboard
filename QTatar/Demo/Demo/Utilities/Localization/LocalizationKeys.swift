@@ -30,22 +30,21 @@ enum Home: String {
 
     var allLocalizedVersions: [String] {
         ["crh", "uk", "en"].map { lang in
-            let bundle = KeyboardPreferences.localizationBundle(for: lang)
-            return NSLocalizedString(self.rawValue, tableName: "Home", bundle: bundle, comment: "")
+            KeyboardPreferences.localizedString(forKey: self.rawValue, value: self.rawValue, table: "Home", language: lang)
         }
     }
 }
 
 enum L10n {
     static func tr(_ key: String, table: String = "Interface") -> String {
-        KeyboardPreferences.interfaceBundle.localizedString(forKey: key, value: key, table: table)
+        KeyboardPreferences.localizedString(forKey: key, value: key, table: table)
     }
 
     static func label(_ key: String, table: String = "Interface") -> Text {
         let raw = tr(key, table: table)
         let parts = raw.components(separatedBy: "{{globe}}")
         guard parts.count > 1 else {
-            return Text(LocalizedStringKey(key), tableName: table, bundle: KeyboardPreferences.interfaceBundle)
+            return Text(raw)
         }
         var result = Text(parts[0])
         for part in parts.dropFirst() {
@@ -55,8 +54,7 @@ enum L10n {
     }
 
     static func dailyPhrase(_ key: String, language: String = KeyboardPreferences.interfaceLanguage) -> String {
-        let bundle = KeyboardPreferences.localizationBundle(for: language)
-        return bundle.localizedString(forKey: key, value: key, table: "DailyPhrases")
+        KeyboardPreferences.localizedString(forKey: key, value: key, table: "DailyPhrases", language: language)
     }
 }
 

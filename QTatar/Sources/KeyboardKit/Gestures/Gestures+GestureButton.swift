@@ -101,6 +101,9 @@ public extension Gestures {
         @State
         private var isPressed = false
         
+        @State
+        private var didPressInActiveGesture = false
+        
         @GestureState
         private var isGestureActive = false
         
@@ -120,9 +123,18 @@ public extension Gestures {
             label(isPressed)
                 .overlay(gestureView)
                 .onChange(of: isPressed) { isPressedBinding.wrappedValue = $0 }
-                .onChange(of: isGestureActive) { active in
-                    if !active && isPressed {
+                .onChange(of: isPressedBinding.wrappedValue) { newValue in
+                    if !newValue && isPressed {
                         isPressed = false
+                        longPressDate = Date()
+                        repeatDate = Date()
+                        repeatTimer.stop()
+                    }
+                }
+                .onChange(of: isGestureActive) { active in
+                    if !active && (isPressed || didPressInActiveGesture) {
+                        isPressed = false
+                        didPressInActiveGesture = false
                         longPressDate = Date()
                         repeatDate = Date()
                         repeatTimer.stop()
@@ -162,7 +174,8 @@ private extension Gestures.GestureButton {
 private extension Gestures.GestureButton {
 
     func tryHandlePressInstant() {
-        if isPressed { return }
+        if isPressed || didPressInActiveGesture { return }
+        didPressInActiveGesture = true
         isPressed = true
         pressAction?()
         tryTriggerLongPressAfterDelay()
@@ -170,7 +183,8 @@ private extension Gestures.GestureButton {
     }
 
     func tryHandlePress(_ value: DragGesture.Value) {
-        if isPressed { return }
+        if isPressed || didPressInActiveGesture { return }
+        didPressInActiveGesture = true
         isPressed = true
         pressAction?()
         dragStartAction?(value)
@@ -179,17 +193,21 @@ private extension Gestures.GestureButton {
     }
 
     func tryHandleRelease(_ value: DragGesture.Value, in geo: GeometryProxy) {
-        if !isPressed { return }
+        if !isPressed && !didPressInActiveGesture { return }
+        let wasPressed = isPressed
         isPressed = false
+        didPressInActiveGesture = false
         longPressDate = Date()
         repeatDate = Date()
         repeatTimer.stop()
         releaseDate = tryTriggerDoubleTap() ? .distantPast : Date()
         dragEndAction?(value)
-        if geo.contains(value.location) {
-            releaseInsideAction?()
-        } else {
-            releaseOutsideAction?()
+        if wasPressed {
+            if geo.contains(value.location) {
+                releaseInsideAction?()
+            } else {
+                releaseOutsideAction?()
+            }
         }
         endAction?()
     }

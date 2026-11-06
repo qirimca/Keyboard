@@ -14,6 +14,10 @@ enum Device {
     }
     
     static var iPad: Bool {
-        return UIDevice.current.userInterfaceIdiom == .pad
+        let idiom = UIDevice.current.userInterfaceIdiom
+        if #available(iOS 17.0, *) {
+            return idiom == .pad || idiom == .vision
+        }
+        return idiom == .pad
     }
 }

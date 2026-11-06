@@ -344,6 +344,8 @@ private extension SystemKeyboard {
         let availableTop = toolbarHeight()
         calloutContext.inputContext.topAvailableSpace = availableTop
         calloutContext.actionContext.topAvailableSpace = availableTop
+        calloutContext.inputContext.containerWidth = size.width
+        calloutContext.actionContext.containerWidth = size.width
         let adjustedSize = CGSize(
             width: max(0, size.width - insets.leading - insets.trailing),
             height: max(0, size.height - insets.top - insets.bottom)
@@ -351,11 +353,14 @@ private extension SystemKeyboard {
         return VStack(spacing: 0) {
             ForEach(Array(layout.itemRows.enumerated()), id: \.offset) { row in
                 let rowHeight = rowHeight(forRowAt: row.offset)
+                let rowY = insets.top + (0..<row.offset).reduce(CGFloat(0)) { $0 + self.rowHeight(forRowAt: $1) }
                 items(
                     for: adjustedSize,
                     layout: layout,
                     itemRow: row.element,
-                    rowHeight: rowHeight
+                    rowHeight: rowHeight,
+                    rowY: rowY,
+                    leadingInset: insets.leading
                 )
             }
         }
@@ -378,21 +383,85 @@ private extension SystemKeyboard {
         return layoutConfig.rowHeight
     }
     
+    func computeRowItemFrames(
+        for itemRow: KeyboardLayout.ItemRow,
+        totalWidth: CGFloat,
+        inputWidth: CGFloat,
+        rowY: CGFloat,
+        rowHeight: CGFloat,
+        leadingInset: CGFloat
+    ) -> [CGRect] {
+        var fixedInnerWidths: [CGFloat?] = []
+        fixedInnerWidths.reserveCapacity(itemRow.count)
+        var fixedAndPaddingSum: CGFloat = 0
+        var flexCount = 0
+        for rawItem in itemRow {
+            let item = layoutItem(rawItem, rowHeight: rowHeight)
+            let hInsets = item.edgeInsets.leading + item.edgeInsets.trailing
+            if let w = item.width(forRowWidth: totalWidth, inputWidth: inputWidth), w > 0 {
+                let cw = CGFloat(w)
+                fixedInnerWidths.append(cw)
+                fixedAndPaddingSum += cw + hInsets
+            } else {
+                fixedInnerWidths.append(nil)
+                fixedAndPaddingSum += hInsets
+                flexCount += 1
+            }
+        }
+        let flexInnerWidth: CGFloat = flexCount > 0
+            ? max(0, (totalWidth - fixedAndPaddingSum) / CGFloat(flexCount))
+            : 0
+        var currentX: CGFloat = flexCount > 0
+            ? leadingInset
+            : leadingInset + max(0, (totalWidth - fixedAndPaddingSum) / 2.0)
+        var frames: [CGRect] = []
+        frames.reserveCapacity(itemRow.count)
+        for (idx, rawItem) in itemRow.enumerated() {
+            let hInsets = rawItem.edgeInsets.leading + rawItem.edgeInsets.trailing
+            let innerW = fixedInnerWidths[idx] ?? flexInnerWidth
+            let outerW = innerW + hInsets
+            frames.append(CGRect(x: currentX, y: rowY, width: outerW, height: rowHeight))
+            currentX += outerW
+        }
+        return frames
+    }
+    
     func items(
         for size: CGSize,
         layout: KeyboardLayout,
         itemRow: KeyboardLayout.ItemRow,
-        rowHeight: CGFloat
+        rowHeight: CGFloat,
+        rowY: CGFloat = 0,
+        leadingInset: CGFloat = 0
     ) -> some View {
-        HStack(spacing: 0) {
+        let inputWidth = layout.inputWidth(for: size.width)
+        let rowFrames = computeRowItemFrames(
+            for: itemRow,
+            totalWidth: size.width,
+            inputWidth: inputWidth,
+            rowY: rowY,
+            rowHeight: rowHeight,
+            leadingInset: leadingInset
+        )
+        #if os(iOS) || os(macOS) || os(watchOS)
+        if size.width > 0 {
+            for (idx, element) in itemRow.enumerated() where idx < rowFrames.count {
+                if case .character(let ch) = element.action, !ch.isEmpty {
+                    SwipeTypingState.shared.registerKeyFrame(character: ch, frame: rowFrames[idx])
+                }
+            }
+        }
+        #endif
+        return HStack(spacing: 0) {
             ForEach(Array(itemRow.enumerated()), id: \.offset) {
                 buttonView(
                     for: $0.element,
                     totalWidth: size.width,
-                    rowHeight: rowHeight
+                    rowHeight: rowHeight,
+                    itemFrame: $0.offset < rowFrames.count ? rowFrames[$0.offset] : .zero
                 )
             }
-            .id("\(keyboardContext.locale.identifier)-\(keyboardContext.hasDarkColorScheme)")
+            .id("\(keyboardContext.locale.identifier)-\(keyboardContext.hasDarkColorScheme)-\(keyboardContext.interfaceOrientation.rawValue)-\(keyboardContext.renderVersion)")
         }
         .frame(height: rowHeight)
     }
@@ -425,7 +494,8 @@ private extension SystemKeyboard {
     func buttonView(
         for item: KeyboardLayout.Item,
         totalWidth width: CGFloat,
-        rowHeight: CGFloat
+        rowHeight: CGFloat,
+        itemFrame: CGRect = .zero
     ) -> ButtonView {
         let item = layoutItem(item, rowHeight: rowHeight)
         return buttonViewBuilder((
@@ -438,6 +508,7 @@ private extension SystemKeyboard {
                 calloutContext: calloutContext,
                 keyboardWidth: width,
                 inputWidth: layout.inputWidth(for: width),
+                itemFrame: itemFrame,
                 content: buttonContent(for: item)
             )
         ))
@@ -478,83 +549,188 @@ private extension SystemKeyboard {
 private struct SwipeTrailOverlay: View {
     let isDark: Bool
     @ObservedObject private var swipeState = SwipeTypingState.shared
-    private let tailDuration: TimeInterval = 0.20
-    private let maxCometArcLength: CGFloat = 175.0
-    private let maxHeadRadius: CGFloat = 8.5
+    private var isHoldCalloutTest: Bool {
+        CommandLine.arguments.contains("-qt_hold_callout")
+            || (UserDefaults(suiteName: "group.crh.key.keyboardplus")?.bool(forKey: "crh.key.test.holdCallout") ?? false)
+            || (UserDefaults(suiteName: "group.crh.key.keyboardplus")?.bool(forKey: "crh.key.test.isUITesting") ?? false)
+    }
+    private var tailDuration: TimeInterval { isHoldCalloutTest ? 1.80 : 0.36 }
+    private var releaseFadeDuration: TimeInterval { isHoldCalloutTest ? 1.80 : 0.24 }
+    private let maxCometArcLength: CGFloat = 340.0
+    private let maxHeadRadius: CGFloat = 8.25
+
+    private struct TimedVertex {
+        let point: CGPoint
+        let timestamp: TimeInterval
+    }
 
     var body: some View {
         if !swipeState.activeTrailSamples.isEmpty {
             let isFrozenDemoTrail = swipeState.activeTrailSamples.last.map {
                 $0.timestamp > ProcessInfo.processInfo.systemUptime + 0.5
             } ?? false
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: swipeState.activeTrailSamples.isEmpty || isFrozenDemoTrail)) { timeline in
+            TimelineView(.animation(minimumInterval: nil, paused: swipeState.activeTrailSamples.isEmpty || isFrozenDemoTrail)) { timeline in
                 let _ = timeline.date
                 Canvas { context, _ in
                     let now = ProcessInfo.processInfo.systemUptime
-                    let live = swipeState.activeTrailSamples.filter { now - $0.timestamp <= tailDuration }
-                    guard live.count >= 2, let head = live.last else { return }
+                    let allSamples = swipeState.activeTrailSamples
+                    guard allSamples.count >= 2, let head = allSamples.last else { return }
 
-                    let headAge = max(0, now - head.timestamp)
-                    let headFade = max(0, min(1, 1.0 - (headAge / tailDuration)))
+                    let isDemo = head.timestamp > now + 0.5
+                    let headAge = (isDemo || swipeState.isSwiping) ? 0.0 : max(0.0, now - head.timestamp)
+                    let headFade = max(0.0, min(1.0, 1.0 - (headAge / releaseFadeDuration)))
                     guard headFade > 0.01 else { return }
 
-                    // 1. Build a dense quadratic-smoothed spine from live samples.
-                    var rawSpine: [CGPoint] = [live[0].point]
-                    if live.count == 2 {
-                        let p0 = live[0].point
-                        let p1 = live[1].point
-                        let dist = hypot(p1.x - p0.x, p1.y - p0.y)
-                        let steps = max(1, Int(ceil(dist / 2.0)))
+                    // 1. Extract live window with continuous tail-tip interpolation at cutoffTime = now - tailDuration
+                    //    so the tail tip glides smoothly into the finger without discrete vertex snapping.
+                    var windowedPts: [TimedVertex] = []
+                    if isDemo {
+                        windowedPts = allSamples.map { TimedVertex(point: $0.point, timestamp: $0.timestamp) }
+                    } else {
+                        let cutoffTime = now - tailDuration
+                        if let firstLiveIdx = allSamples.firstIndex(where: { $0.timestamp >= cutoffTime }) {
+                            if firstLiveIdx > 0 {
+                                let prevSample = allSamples[firstLiveIdx - 1]
+                                let currSample = allSamples[firstLiveIdx]
+                                let dt = max(0.0001, currSample.timestamp - prevSample.timestamp)
+                                let tau = CGFloat(min(1.0, max(0.0, (cutoffTime - prevSample.timestamp) / dt)))
+                                let interpTail = CGPoint(
+                                    x: prevSample.point.x + (currSample.point.x - prevSample.point.x) * tau,
+                                    y: prevSample.point.y + (currSample.point.y - prevSample.point.y) * tau
+                                )
+                                windowedPts.append(TimedVertex(point: interpTail, timestamp: cutoffTime))
+                            }
+                            for idx in firstLiveIdx..<allSamples.count {
+                                let s = allSamples[idx]
+                                windowedPts.append(TimedVertex(point: s.point, timestamp: s.timestamp))
+                            }
+                            if swipeState.isSwiping, now - head.timestamp > 0.008 {
+                                windowedPts.append(TimedVertex(point: head.point, timestamp: now))
+                            }
+                        }
+                    }
+                    guard windowedPts.count >= 2 else { return }
+
+                    // 2. Build macro control points anchored backward from the finger head (windowedPts.last!)
+                    //    so control vertices remain spatially locked on screen as the tail tip slides forward,
+                    //    then apply explicit quadratic Bezier corner filleting on every turn plus Chaikin refinement.
+                    var reversedCtrl: [TimedVertex] = [windowedPts.last!]
+                    if windowedPts.count >= 3 {
+                        for idx in stride(from: windowedPts.count - 2, through: 1, by: -1) {
+                            let candidate = windowedPts[idx]
+                            let prev = reversedCtrl.last!
+                            if hypot(candidate.point.x - prev.point.x, candidate.point.y - prev.point.y) >= 18.0 {
+                                reversedCtrl.append(candidate)
+                            }
+                        }
+                    }
+                    let tailWindowPt = windowedPts[0]
+                    if hypot(tailWindowPt.point.x - reversedCtrl.last!.point.x, tailWindowPt.point.y - reversedCtrl.last!.point.y) >= 2.0 {
+                        reversedCtrl.append(tailWindowPt)
+                    } else if reversedCtrl.count >= 2 {
+                        reversedCtrl[reversedCtrl.count - 1] = tailWindowPt
+                    } else {
+                        reversedCtrl.append(tailWindowPt)
+                    }
+                    var macroCtrl = Array(reversedCtrl.reversed())
+                    guard macroCtrl.count >= 2 else { return }
+
+                    if macroCtrl.count >= 3 {
+                        var filleted: [TimedVertex] = [macroCtrl[0]]
+                        for i in 1..<(macroCtrl.count - 1) {
+                            let prev = macroCtrl[i - 1]
+                            let curr = macroCtrl[i]
+                            let next = macroCtrl[i + 1]
+                            let vIn = CGPoint(x: prev.point.x - curr.point.x, y: prev.point.y - curr.point.y)
+                            let vOut = CGPoint(x: next.point.x - curr.point.x, y: next.point.y - curr.point.y)
+                            let lenIn = max(0.001, hypot(vIn.x, vIn.y))
+                            let lenOut = max(0.001, hypot(vOut.x, vOut.y))
+                            let spanIn = min(0.42 * lenIn, 32.0)
+                            let spanOut = min(0.42 * lenOut, 32.0)
+                            let entryPt = CGPoint(
+                                x: curr.point.x + (vIn.x / lenIn) * spanIn,
+                                y: curr.point.y + (vIn.y / lenIn) * spanIn
+                            )
+                            let exitPt = CGPoint(
+                                x: curr.point.x + (vOut.x / lenOut) * spanOut,
+                                y: curr.point.y + (vOut.y / lenOut) * spanOut
+                            )
+                            let entryTs = curr.timestamp + (prev.timestamp - curr.timestamp) * Double(spanIn / lenIn)
+                            let exitTs = curr.timestamp + (next.timestamp - curr.timestamp) * Double(spanOut / lenOut)
+                            let arcSteps = 6
+                            for s in 0...arcSteps {
+                                let t = CGFloat(s) / CGFloat(arcSteps)
+                                let oneMinusT = 1.0 - t
+                                let bx = oneMinusT * oneMinusT * entryPt.x + 2.0 * oneMinusT * t * curr.point.x + t * t * exitPt.x
+                                let by = oneMinusT * oneMinusT * entryPt.y + 2.0 * oneMinusT * t * curr.point.y + t * t * exitPt.y
+                                let bts = Double(oneMinusT) * entryTs + Double(t) * exitTs
+                                filleted.append(TimedVertex(point: CGPoint(x: bx, y: by), timestamp: bts))
+                            }
+                        }
+                        filleted.append(macroCtrl.last!)
+                        macroCtrl = filleted
+                    }
+
+                    var smoothedPts = macroCtrl
+                    if smoothedPts.count >= 3 {
+                        for _ in 0..<2 {
+                            var nextPass: [TimedVertex] = [smoothedPts[0]]
+                            nextPass.reserveCapacity(smoothedPts.count * 2 + 2)
+                            for i in 0..<(smoothedPts.count - 1) {
+                                let p0 = smoothedPts[i]
+                                let p1 = smoothedPts[i + 1]
+                                let q = TimedVertex(
+                                    point: CGPoint(x: 0.75 * p0.point.x + 0.25 * p1.point.x, y: 0.75 * p0.point.y + 0.25 * p1.point.y),
+                                    timestamp: 0.75 * p0.timestamp + 0.25 * p1.timestamp
+                                )
+                                let r = TimedVertex(
+                                    point: CGPoint(x: 0.25 * p0.point.x + 0.75 * p1.point.x, y: 0.25 * p0.point.y + 0.75 * p1.point.y),
+                                    timestamp: 0.25 * p0.timestamp + 0.75 * p1.timestamp
+                                )
+                                nextPass.append(q)
+                                nextPass.append(r)
+                            }
+                            nextPass.append(smoothedPts.last!)
+                            smoothedPts = nextPass
+                        }
+                    }
+
+                    // 3. Resample smoothedPts at ~6.0 pt intervals (max ~56 vertices for <0.35 ms 120 Hz rendering).
+                    var rawSpine: [TimedVertex] = [smoothedPts[0]]
+                    for i in 1..<smoothedPts.count {
+                        let p0 = rawSpine.last!
+                        let p1 = smoothedPts[i]
+                        let dist = hypot(p1.point.x - p0.point.x, p1.point.y - p0.point.y)
+                        let steps = max(1, min(12, Int(ceil(dist / 6.0))))
                         for s in 1...steps {
                             let t = CGFloat(s) / CGFloat(steps)
-                            rawSpine.append(CGPoint(x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t))
-                        }
-                    } else {
-                        var prev = live[0].point
-                        for i in 1..<(live.count - 1) {
-                            let ctrl = live[i].point
-                            let next = live[i + 1].point
-                            let end = CGPoint(x: (ctrl.x + next.x) * 0.5, y: (ctrl.y + next.y) * 0.5)
-                            let segEst = hypot(ctrl.x - prev.x, ctrl.y - prev.y) + hypot(end.x - ctrl.x, end.y - ctrl.y)
-                            let steps = max(2, min(12, Int(ceil(segEst / 2.0))))
-                            for step in 1...steps {
-                                let t = CGFloat(step) / CGFloat(steps)
-                                let omt = 1.0 - t
-                                let px = omt * omt * prev.x + 2 * omt * t * ctrl.x + t * t * end.x
-                                let py = omt * omt * prev.y + 2 * omt * t * ctrl.y + t * t * end.y
-                                let pt = CGPoint(x: px, y: py)
-                                if hypot(pt.x - rawSpine.last!.x, pt.y - rawSpine.last!.y) >= 1.2 {
-                                    rawSpine.append(pt)
-                                }
-                            }
-                            prev = end
-                        }
-                        let endDist = hypot(head.point.x - prev.x, head.point.y - prev.y)
-                        let endSteps = max(1, min(10, Int(ceil(endDist / 2.0))))
-                        for step in 1...endSteps {
-                            let t = CGFloat(step) / CGFloat(endSteps)
-                            let pt = CGPoint(x: prev.x + (head.point.x - prev.x) * t, y: prev.y + (head.point.y - prev.y) * t)
-                            if hypot(pt.x - rawSpine.last!.x, pt.y - rawSpine.last!.y) >= 0.8 {
-                                rawSpine.append(pt)
+                            let pt = CGPoint(x: p0.point.x + (p1.point.x - p0.point.x) * t, y: p0.point.y + (p1.point.y - p0.point.y) * t)
+                            let ts = p0.timestamp + (p1.timestamp - p0.timestamp) * Double(t)
+                            if hypot(pt.x - rawSpine.last!.point.x, pt.y - rawSpine.last!.point.y) >= 3.5 || (i == smoothedPts.count - 1 && s == steps) {
+                                rawSpine.append(TimedVertex(point: pt, timestamp: ts))
                             }
                         }
                     }
                     guard rawSpine.count >= 2 else { return }
 
-                    // 2. Trim the tail to maxCometArcLength so the comet never stretches into a long worm (or 900 pt for full-word demo trail).
-                    let effectiveMaxArcLength: CGFloat = (head.timestamp > now + 0.5) ? 900.0 : maxCometArcLength
-                    var reverseSpine: [CGPoint] = [rawSpine.last!]
+                    // 4. Trim the tail to maxCometArcLength (340 pt live, or 320 pt for demo trail).
+                    let effectiveMaxArcLength: CGFloat = isDemo ? 320.0 : maxCometArcLength
+                    var reverseSpine: [TimedVertex] = [rawSpine.last!]
                     var accumulatedLen: CGFloat = 0
                     for idx in stride(from: rawSpine.count - 2, through: 0, by: -1) {
                         let p = rawSpine[idx]
                         let prevP = reverseSpine.last!
-                        let d = hypot(prevP.x - p.x, prevP.y - p.y)
+                        let d = hypot(prevP.point.x - p.point.x, prevP.point.y - p.point.y)
                         if accumulatedLen + d >= effectiveMaxArcLength {
                             let remain = effectiveMaxArcLength - accumulatedLen
                             if d > 0.001 {
                                 let ratio = remain / d
-                                let tip = CGPoint(x: prevP.x + (p.x - prevP.x) * ratio, y: prevP.y + (p.y - prevP.y) * ratio)
-                                reverseSpine.append(tip)
+                                let tipPt = CGPoint(
+                                    x: prevP.point.x + (p.point.x - prevP.point.x) * ratio,
+                                    y: prevP.point.y + (p.point.y - prevP.point.y) * ratio
+                                )
+                                let tipTs = prevP.timestamp + (p.timestamp - prevP.timestamp) * Double(ratio)
+                                reverseSpine.append(TimedVertex(point: tipPt, timestamp: tipTs))
                             }
                             accumulatedLen = effectiveMaxArcLength
                             break
@@ -565,117 +741,72 @@ private struct SwipeTrailOverlay: View {
                     let spine = Array(reverseSpine.reversed())
                     guard spine.count >= 2, accumulatedLen > 1.0 else { return }
 
-                    // 3. Compute cumulative arc-length progress s in [0, 1] and comet normal offsets.
+                    // 5. Compute cumulative arc-length progress s in [0, 1] and smooth temporal life u_i in [0, 1].
                     let count = spine.count
+                    let lastIdx = count - 1
                     var arcProgress = [CGFloat](repeating: 0, count: count)
+                    var combinedProgress = [CGFloat](repeating: 0, count: count)
                     var running: CGFloat = 0
                     for i in 1..<count {
-                        running += hypot(spine[i].x - spine[i - 1].x, spine[i].y - spine[i - 1].y)
+                        running += hypot(spine[i].point.x - spine[i - 1].point.x, spine[i].point.y - spine[i - 1].point.y)
                         arcProgress[i] = min(1.0, running / max(1.0, accumulatedLen))
                     }
 
-                    let headRadius = maxHeadRadius * (0.45 + 0.55 * headFade)
-                    var leftSide = [CGPoint](repeating: spine[0], count: count)
-                    var rightSide = [CGPoint](repeating: spine[0], count: count)
+                    let headRadius = maxHeadRadius * (0.55 + 0.45 * headFade)
                     var radii = [CGFloat](repeating: 0, count: count)
-
-                    let lastIdx = count - 1
                     for i in 0...lastIdx {
                         let s = arcProgress[i]
-                        // Razor-sharp 0.0 pt tail tip flaring with pow(s, 1.45) into a 17 pt rounded comet head.
-                        let r = (i == 0) ? 0.0 : (headRadius * pow(s, 1.45))
-                        radii[i] = r
-                        let pPrev = spine[max(0, i - 1)]
-                        let pNext = spine[min(lastIdx, i + 1)]
-                        let dx = pNext.x - pPrev.x
-                        let dy = pNext.y - pPrev.y
-                        let len = max(0.001, hypot(dx, dy))
-                        let nx = -dy / len
-                        let ny = dx / len
-                        let p = spine[i]
-                        leftSide[i] = CGPoint(x: p.x + nx * r, y: p.y + ny * r)
-                        rightSide[i] = CGPoint(x: p.x - nx * r, y: p.y - ny * r)
+                        let p: CGFloat
+                        if isDemo {
+                            p = s
+                        } else {
+                            let age = max(0.0, now - spine[i].timestamp)
+                            let u = min(1.0, max(0.0, 1.0 - (age / tailDuration)))
+                            p = s * CGFloat(pow(u, 0.55))
+                        }
+                        combinedProgress[i] = p
+                        radii[i] = (i == 0) ? 0.35 : max(0.35, headRadius * pow(p, 0.85))
                     }
 
-                    // 4. Construct a single unified comet silhouette path (0 pt tip -> flared body -> forward semicircular head).
-                    var cometPath = Path()
-                    cometPath.move(to: spine[0])
+                    // 6. Construct a 100% fold-free comet silhouette path as the non-zero winding union
+                    //    of round-capped capsule segments along the spine (never pinches on 60°-180° turns).
+                    var cometSilhouette = Path()
                     for i in 1...lastIdx {
-                        cometPath.addLine(to: leftSide[i])
+                        var seg = Path()
+                        seg.move(to: spine[i - 1].point)
+                        seg.addLine(to: spine[i].point)
+                        let r = radii[i]
+                        cometSilhouette.addPath(
+                            seg.strokedPath(
+                                StrokeStyle(lineWidth: max(0.7, r * 2.0), lineCap: .round, lineJoin: .round)
+                            )
+                        )
                     }
-                    let headPt = spine[lastIdx]
-                    let prevPt = spine[max(0, lastIdx - 1)]
-                    let hdx = headPt.x - prevPt.x
-                    let hdy = headPt.y - prevPt.y
-                    let hLen = max(0.001, hypot(hdx, hdy))
-                    let htx = hdx / hLen
-                    let hty = hdy / hLen
-                    let hnx = -hty
-                    let hny = htx
-                    let capSteps = 16
-                    for step in 1...capSteps {
-                        let phi = (.pi / 2.0) - (.pi * CGFloat(step) / CGFloat(capSteps))
-                        let c = cos(phi)
-                        let s = sin(phi)
-                        let px = headPt.x + headRadius * (c * htx + s * hnx)
-                        let py = headPt.y + headRadius * (c * hty + s * hny)
-                        cometPath.addLine(to: CGPoint(x: px, y: py))
-                    }
-                    for i in stride(from: lastIdx, through: 1, by: -1) {
-                        cometPath.addLine(to: rightSide[i])
-                    }
-                    cometPath.closeSubpath()
 
                     let baseTone = isDark
                         ? Color(red: 0.86, green: 0.88, blue: 0.92)
                         : Color(red: 0.44, green: 0.46, blue: 0.49)
-                    let maxAlpha = (isDark ? 0.48 : 0.46) * headFade
+                    let maxAlpha = (isDark ? 0.50 : 0.48) * headFade
 
-                    // 5. Render inside an isolated layer clipped to cometPath using .copy blendMode so
-                    //    opacity follows the curve (even on loops) with zero internal rings or joint seams.
+                    // 7. Render inside an isolated layer clipped to cometSilhouette using .copy blendMode
+                    //    with slightly oversized round-capped strokes so opacity follows the curve seamlessly
+                    //    (even on tight hairpin turns and self-crossing loops) with zero internal joint seams.
                     context.drawLayer { layerCtx in
-                        layerCtx.clip(to: cometPath)
+                        layerCtx.clip(to: cometSilhouette, style: FillStyle(eoFill: false))
                         layerCtx.blendMode = .copy
                         for i in 1...lastIdx {
-                            let s = arcProgress[i]
-                            let alpha = maxAlpha * (0.04 + 0.96 * pow(s, 1.30))
-                            let p0 = spine[i - 1]
-                            let p1 = spine[i]
-                            let dx = p1.x - p0.x
-                            let dy = p1.y - p0.y
-                            let segLen = max(0.001, hypot(dx, dy))
-                            let tx = (dx / segLen) * 0.9
-                            let ty = (dy / segLen) * 0.9
-
-                            var quad = Path()
-                            quad.move(to: CGPoint(x: leftSide[i - 1].x - tx, y: leftSide[i - 1].y - ty))
-                            quad.addLine(to: CGPoint(x: leftSide[i].x + tx, y: leftSide[i].y + ty))
-                            quad.addLine(to: CGPoint(x: rightSide[i].x + tx, y: rightSide[i].y + ty))
-                            quad.addLine(to: CGPoint(x: rightSide[i - 1].x - tx, y: rightSide[i - 1].y - ty))
-                            quad.closeSubpath()
-                            layerCtx.fill(quad, with: .color(baseTone.opacity(alpha)))
+                            let p = combinedProgress[i]
+                            let alpha = maxAlpha * (0.05 + 0.95 * pow(p, 0.72))
+                            let r = radii[i]
+                            var seg = Path()
+                            seg.move(to: spine[i - 1].point)
+                            seg.addLine(to: spine[i].point)
+                            layerCtx.stroke(
+                                seg,
+                                with: .color(baseTone.opacity(alpha)),
+                                style: StrokeStyle(lineWidth: max(2.4, r * 2.0 + 2.8), lineCap: .round, lineJoin: .round)
+                            )
                         }
-                        let capR = headRadius + 0.5
-                        let backOverlap: CGFloat = 0.6
-                        var headCap = Path()
-                        headCap.move(to: CGPoint(
-                            x: headPt.x - htx * backOverlap + hnx * capR,
-                            y: headPt.y - hty * backOverlap + hny * capR
-                        ))
-                        for step in 0...capSteps {
-                            let phi = (.pi / 2.0) - (.pi * CGFloat(step) / CGFloat(capSteps))
-                            let c = cos(phi)
-                            let s = sin(phi)
-                            let px = headPt.x + capR * (c * htx + s * hnx)
-                            let py = headPt.y + capR * (c * hty + s * hny)
-                            headCap.addLine(to: CGPoint(x: px, y: py))
-                        }
-                        headCap.addLine(to: CGPoint(
-                            x: headPt.x - htx * backOverlap - hnx * capR,
-                            y: headPt.y - hty * backOverlap - hny * capR
-                        ))
-                        headCap.closeSubpath()
-                        layerCtx.fill(headCap, with: .color(baseTone.opacity(maxAlpha)))
                     }
                 }
             }

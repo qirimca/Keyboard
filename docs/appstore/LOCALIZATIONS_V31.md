@@ -39,9 +39,9 @@ Source files in repository:
 > **Storefront Policy (`ru` slot)**: In App Store Connect, the `ru` localization slot is retained solely so Crimean Tatars in temporarily occupied Crimea can discover and update the app. **100% of visible storefront text** (`subtitle`, `promotionalText`, `description`, `whatsNew`) MUST be written in pure **Crimean Tatar Latin (`Qırımtatarca`)** with explicit references to **`Ukrayna`** and **`Qırım (Ukrayna)`**, while combined search terms remain strictly in the hidden `keywords` field.
 
 - **Name**: `QırımKey`
-- **Subtitle**: `Latin, Kiril ve Svayp yazuv`
+- **Subtitle**: `Latin, Kirill ve Svayp yazuv`
 - **Promotional Text**:
-  `Yañartılğan QırımKey iOS 26/27: QırımKey Swipe v2 svayp yazuvı, 2024/2025 resmiy imlâsı, Ukraina ФІВА tizilişi, aqıllı söz tevsiyeleri ve 100% internetsiz mahremiyet!`
+  `Yañartılğan QırımKey iOS 26/27: QırımKey Swipe v2 svayp yazuvı, 2024/2025 resmiy imlâsı, Ukrayin ФІВА tizilişi, aqıllı söz teklifleri ve 100% internetsiz mahremiyet!`
 - **Keywords (`crh`)**:
   `qirim,qirimtatarca,kirim,tatar,tatarca,luğat,imla,elifbe,tercime,swipe,ctcorpus,ana,tili,crh,uk`
 - **Keywords (`ru` storefront slot — hidden search index only)**:

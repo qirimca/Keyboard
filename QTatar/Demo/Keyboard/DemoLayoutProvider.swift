@@ -156,7 +156,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             return .percentage(0.12825)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
-        return .percentage(isPortrait ? 0.112 : 0.11)
+        return .percentage(isPortrait ? 0.118 : 0.11)
     }
     
     override func itemSizeWidth(
@@ -171,7 +171,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
                 return .percentage(0.12825)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
-            return .percentage(isPortrait ? 0.112 : 0.095)
+            return .percentage(isPortrait ? 0.118 : 0.095)
         case .keyboardType(let type):
             // Row 2 contains the #+= (symbolic) or 123 (numeric) switcher button
             if row != 3 {
@@ -182,7 +182,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {
-                return .percentage(isPortrait ? 0.112 : 0.095)
+                return .percentage(isPortrait ? 0.118 : 0.095)
             }
             let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
             let canShowPhoneEmoji = context.deviceType == .phone && !context.isKeyboardFloating && SystemKeyboardSettings.isEmojiKeyboardEnabled
@@ -196,7 +196,7 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             if !shouldIncludeGlobe && !canShowPhoneEmoji && !isURL {
                 return .percentage(isPortrait ? 0.242 : 0.195)
             }
-            return .percentage(isPortrait ? 0.112 : 0.11)
+            return .percentage(isPortrait ? 0.118 : 0.11)
         case .primary:
             if context.isKeyboardFloating {
                 return .percentage(0.2565)
@@ -234,143 +234,113 @@ extension InputSet {
             : .crimeanTatarStandardCyrillic
     }
 
-    static var crimeanTatarStandardCyrillic: InputSet {
-        .init(rows: [
-            .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
-            .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
-            .init(lowercased: "ячсмитьбюё,", uppercased: "ЯЧСМИТЬБЮЁ,")
-        ])
-    }
+    static let crimeanTatarStandardCyrillic: InputSet = .init(rows: [
+        .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
+        .init(lowercased: "фывапролджэ", uppercased: "ФЫВАПРОЛДЖЭ"),
+        .init(lowercased: "ячсмитьбюё,", uppercased: "ЯЧСМИТЬБЮЁ,")
+    ])
 
     /// Ukrainian-adapted Cyrillic layout (`ФІВА`) where `і -> i`, `ї -> yi`, `и -> ı`, `е -> e`, `є -> ye`, `г/гʼ -> ğ`, `ґ -> g`, `кʼ -> q`, `нʼ -> ñ`.
     /// Row 0 has 12 keys (`йцукенгшщзхї`) and Row 1 has 12 keys (`фівапролджєʼ`) on iPhone and iPad Floating.
-    static var crimeanTatarUkrainianCyrillic: InputSet {
-        .init(rows: [
-            .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
-            .init(lowercased: "фівапролджє\u{02BC}", uppercased: "ФІВАПРОЛДЖЄ\u{02BC}"),
-            .init(lowercased: "ячсмитьбюґ,", uppercased: "ЯЧСМИТЬБЮҐ,")
-        ])
-    }
+    static let crimeanTatarUkrainianCyrillic: InputSet = .init(rows: [
+        .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
+        .init(lowercased: "фівапролджє\u{02BC}", uppercased: "ФІВАПРОЛДЖЄ\u{02BC}"),
+        .init(lowercased: "ячсмитьбюґ,", uppercased: "ЯЧСМИТЬБЮҐ,")
+    ])
 
     /// Docked iPad Ukrainian-adapted Cyrillic layout (`ФІВА`) with 12 / 11 / 11 geometry so `й – ф – я` align on one diagonal line,
     /// placing `ʼ` on Row 2 col 10 (where `,` remains accessible via key-flick on `б`).
-    static var crimeanTatarPadUkrainianCyrillic: InputSet {
-        .init(rows: [
-            .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
-            .init(lowercased: "фівапролджє", uppercased: "ФІВАПРОЛДЖЄ"),
-            .init(lowercased: "ячсмитьбюґ\u{02BC}", uppercased: "ЯЧСМИТЬБЮҐ\u{02BC}")
-        ])
-    }
+    static let crimeanTatarPadUkrainianCyrillic: InputSet = .init(rows: [
+        .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
+        .init(lowercased: "фівапролджє", uppercased: "ФІВАПРОЛДЖЄ"),
+        .init(lowercased: "ячсмитьбюґ\u{02BC}", uppercased: "ЯЧСМИТЬБЮҐ\u{02BC}")
+    ])
 
     /// Docked 4-row iPad Crimean Tatar Latin layout (`12 / 11 / 12` so `q – a – z` align on one diagonal line,
     /// moving `â` from Row 1 Col 0 down to Row 2 Col 0 right before `z`, widening `абв` and shortening left `Shift`).
-    static var crimeanTatarPadLatin: InputSet {
-        .init(rows: [
-            .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
-            .init(lowercased: "asdfghjklşi", uppercased: "ASDFGHJKLŞİ"),
-            .init(lowercased: "âzxcvbnmöçñ,", uppercased: "ÂZXCVBNMÖÇÑ,")
-        ])
-    }
+    static let crimeanTatarPadLatin: InputSet = .init(rows: [
+        .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
+        .init(lowercased: "asdfghjklşi", uppercased: "ASDFGHJKLŞİ"),
+        .init(lowercased: "âzxcvbnmöçñ,", uppercased: "ÂZXCVBNMÖÇÑ,")
+    ])
 
     /// 5-row iPad Pro (12.9" / 13") Crimean Tatar Latin layout based on Turkish iPad Pro + `ñ` (with `â` on Row 0 Col 0).
-    static var crimeanTatarPadProLatin: InputSet {
-        .init(rows: [
-            .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
-            .init(lowercased: "asdfghjklşi,", uppercased: "ASDFGHJKLŞİ,"),
-            .init(lowercased: "zxcvbnmöçñ.", uppercased: "ZXCVBNMÖÇÑ.")
-        ])
-    }
+    static let crimeanTatarPadProLatin: InputSet = .init(rows: [
+        .init(lowercased: "qwertyuıopğü", uppercased: "QWERTYUIOPĞÜ"),
+        .init(lowercased: "asdfghjklşi,", uppercased: "ASDFGHJKLŞİ,"),
+        .init(lowercased: "zxcvbnmöçñ.", uppercased: "ZXCVBNMÖÇÑ.")
+    ])
 
     /// 5-row iPad Pro (12.9" / 13") Standard Cyrillic (`ФЫВА`) layout matching Russian iPad Pro (12 / 12 / 11).
-    static var crimeanTatarPadProStandardCyrillic: InputSet {
-        .init(rows: [
-            .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
-            .init(lowercased: "фывапролджэ,", uppercased: "ФЫВАПРОЛДЖЭ,"),
-            .init(lowercased: "ёячсмитьбю.", uppercased: "ЁЯЧСМИТЬБЮ.")
-        ])
-    }
+    static let crimeanTatarPadProStandardCyrillic: InputSet = .init(rows: [
+        .init(lowercased: "йцукенгшщзхъ", uppercased: "ЙЦУКЕНГШЩЗХЪ"),
+        .init(lowercased: "фывапролджэ,", uppercased: "ФЫВАПРОЛДЖЭ,"),
+        .init(lowercased: "ёячсмитьбю.", uppercased: "ЁЯЧСМИТЬБЮ.")
+    ])
 
     /// 5-row iPad Pro (12.9" / 13") Ukrainian-adapted Cyrillic (`ФІВА`) layout matching Ukrainian iPad Pro (12 / 12 / 11).
-    static var crimeanTatarPadProUkrainianCyrillic: InputSet {
-        .init(rows: [
-            .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
-            .init(lowercased: "фівапролджє,", uppercased: "ФІВАПРОЛДЖЄ,"),
-            .init(lowercased: "ґячсмитьбю\u{02BC}", uppercased: "ҐЯЧСМИТЬБЮ\u{02BC}")
-        ])
-    }
+    static let crimeanTatarPadProUkrainianCyrillic: InputSet = .init(rows: [
+        .init(lowercased: "йцукенгшщзхї", uppercased: "ЙЦУКЕНГШЩЗХЇ"),
+        .init(lowercased: "фівапролджє,", uppercased: "ФІВАПРОЛДЖЄ,"),
+        .init(lowercased: "ґячсмитьбю\u{02BC}", uppercased: "ҐЯЧСМИТЬБЮ\u{02BC}")
+    ])
 
     /// Standardized phone Latin numeric set (matching English iOS phone layout)
-    static var crimeanTatarPhoneLatinNumeric: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890"),
-            .init(chars: "-/:;()$&@\""),
-            .init(chars: ".,?!'")
-        ])
-    }
+    static let crimeanTatarPhoneLatinNumeric: InputSet = .init(rows: [
+        .init(chars: "1234567890"),
+        .init(chars: "-/:;()$&@\""),
+        .init(chars: ".,?!'")
+    ])
 
     /// Standardized phone Latin symbolic set (matching English iOS phone layout, with Turkish Lira ₺)
-    static var crimeanTatarPhoneLatinSymbolic: InputSet {
-        .init(rows: [
-            .init(chars: "[]{}#%^*+="),
-            .init(chars: "_\\|~<>€£₺•"),
-            .init(chars: ".,?!'")
-        ])
-    }
+    static let crimeanTatarPhoneLatinSymbolic: InputSet = .init(rows: [
+        .init(chars: "[]{}#%^*+="),
+        .init(chars: "_\\|~<>€£₺•"),
+        .init(chars: ".,?!'")
+    ])
 
     /// Standardized phone Cyrillic numeric set (matching Ukrainian iOS phone layout)
-    static var crimeanTatarPhoneNumeric: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890"),
-            .init(chars: "-/:;()₴&@\""),
-            .init(chars: ".,?!'")
-        ])
-    }
-    
+    static let crimeanTatarPhoneNumeric: InputSet = .init(rows: [
+        .init(chars: "1234567890"),
+        .init(chars: "-/:;()₴&@\""),
+        .init(chars: ".,?!'")
+    ])
+
     /// Standardized phone Cyrillic symbolic set (matching Ukrainian iOS phone layout)
-    static var crimeanTatarPhoneSymbolic: InputSet {
-        .init(rows: [
-            .init(chars: "[]{}#%^*+="),
-            .init(chars: "_\\|~<>€$£•"),
-            .init(chars: ".,?!'")
-        ])
-    }
-    
+    static let crimeanTatarPhoneSymbolic: InputSet = .init(rows: [
+        .init(chars: "[]{}#%^*+="),
+        .init(chars: "_\\|~<>€$£•"),
+        .init(chars: ".,?!'")
+    ])
+
     /// Docked iPad Latin numeric set (12 / 11 / 12 matching 4-row Docked iPad Latin alphabetic key counts:
     /// `@` on `a`, `#` on `s`, `$` on `d`, `₴` on `f`, `&` on `g`, `*` on `h`, `_` on `j`, `(` on `k`, `)` on `l`, `'` on `ş`, `"` on `i`, and `№` on `â` before `%` on `z`)
-    static var crimeanTatarPadNumeric: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890—°"),
-            .init(chars: "@#$₴&*_()'\""),
-            .init(chars: "№%-+=/;:,.!?")
-        ])
-    }
-    
+    static let crimeanTatarPadNumeric: InputSet = .init(rows: [
+        .init(chars: "1234567890—°"),
+        .init(chars: "@#$₴&*_()'\""),
+        .init(chars: "№%-+=/;:,.!?")
+    ])
+
     /// Docked iPad Latin symbolic set (12 / 11 / 12 matching 4-row Docked iPad Latin alphabetic key counts, with Turkish Lira ₺)
-    static var crimeanTatarPadSymbolic: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890—°"),
-            .init(chars: "€£₺•`^|[]{}"),
-            .init(chars: "±§~…≠\\<>«»!?")
-        ])
-    }
+    static let crimeanTatarPadSymbolic: InputSet = .init(rows: [
+        .init(chars: "1234567890—°"),
+        .init(chars: "€£₺•`^|[]{}"),
+        .init(chars: "±§~…≠\\<>«»!?")
+    ])
 
     /// Docked iPad Cyrillic numeric set (12 / 11 / 11 matching Cyrillic alphabetic key counts and Ukrainian symbol order with zero empty slots)
-    static var crimeanTatarPadCyrillicNumeric: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890—°"),
-            .init(chars: "@#₴№&*_()'\""),
-            .init(chars: "%-+=/;:,.!?")
-        ])
-    }
+    static let crimeanTatarPadCyrillicNumeric: InputSet = .init(rows: [
+        .init(chars: "1234567890—°"),
+        .init(chars: "@#₴№&*_()'\""),
+        .init(chars: "%-+=/;:,.!?")
+    ])
 
     /// Docked iPad Cyrillic symbolic set (12 / 11 / 11 matching Cyrillic alphabetic key counts and Ukrainian symbol order with zero empty slots)
-    static var crimeanTatarPadCyrillicSymbolic: InputSet {
-        .init(rows: [
-            .init(chars: "1234567890—°"),
-            .init(chars: "€$£•`^|[]{}"),
-            .init(chars: "§~…≠\\<>«»!?")
-        ])
-    }
+    static let crimeanTatarPadCyrillicSymbolic: InputSet = .init(rows: [
+        .init(chars: "1234567890—°"),
+        .init(chars: "€$£•`^|[]{}"),
+        .init(chars: "§~…≠\\<>«»!?")
+    ])
 }
 
 /**

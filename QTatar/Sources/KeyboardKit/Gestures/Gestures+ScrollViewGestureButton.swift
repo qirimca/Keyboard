@@ -110,6 +110,12 @@ public extension Gestures {
             .onChange(of: isPressed) { newValue in
                 isPressedBinding.wrappedValue = newValue
             }
+            .onChange(of: isPressedBinding.wrappedValue) { newValue in
+                if !newValue && isPressed {
+                    isPressed = false
+                    config.tryStopRepeatTimer()
+                }
+            }
             .onChange(of: isPressedByGesture) { newValue in
                 isPressed = newValue
             }
@@ -233,9 +239,9 @@ private extension View {
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             if !isPressedByGesture.wrappedValue {
+                                isPressedByGesture.wrappedValue = true
                                 config.dragStartAction?(value)
                             }
-                            isPressedByGesture.wrappedValue = true
                             config.dragAction?(value)
                             if config.longPressDelay > 0.6 && !config.repeatTimer.isActive {
                                 config.longPressAction()

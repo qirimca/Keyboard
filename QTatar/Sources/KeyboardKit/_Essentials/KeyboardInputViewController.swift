@@ -265,17 +265,23 @@ open class KeyboardInputViewController: UIInputViewController, KeyboardControlle
         return !textDocumentProxy.isReadingFullDocumentContext
     }
 
+    private var autocompleteTask: Task<Void, Never>?
+
     /// Perform an autocomplete operation.
     open func performAutocomplete() {
+        autocompleteTask?.cancel()
         guard isAutocompleteEnabled else { return }
         guard let text = autocompleteText else { return resetAutocomplete() }
-        Task {
+        autocompleteTask = Task { [weak self] in
+            guard let self, !Task.isCancelled else { return }
             do {
-                let suggestions = try await services.autocompleteProvider
+                let suggestions = try await self.services.autocompleteProvider
                     .autocompleteSuggestions(for: text)
-                updateAutocompleteContext(with: suggestions)
+                guard !Task.isCancelled else { return }
+                self.updateAutocompleteContext(with: suggestions)
             } catch {
-                updateAutocompleteContext(with: error)
+                guard !Task.isCancelled else { return }
+                self.updateAutocompleteContext(with: error)
             }
         }
     }

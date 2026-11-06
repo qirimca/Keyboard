@@ -18,7 +18,7 @@ enum InterfaceFont {
 
     static func brandFont(_ name: String = "GeneralSans-Semibold", size: CGFloat) -> Font {
         let weight: UIFont.Weight = name.contains("Semibold") ? .semibold : name.contains("Medium") ? .medium : .regular
-        return Font(UIFont(name: name, size: size) ?? .systemFont(ofSize: size, weight: weight))
+        return Font(UIFont.systemFont(ofSize: size, weight: weight))
     }
 
     static func uiFont(_ name: String, size: CGFloat, text: String = "") -> UIFont {

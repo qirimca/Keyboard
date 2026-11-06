@@ -18,7 +18,6 @@ import SwiftUI
 @main
 struct DemoApp: App {
     
-    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var interfaceLanguage = "crh"
     @State private var navigationPath = NavigationPath()
 
     init() {
@@ -34,17 +33,13 @@ struct DemoApp: App {
                 requestedLang = "crh"
             }
             KeyboardPreferences.defaults.set(requestedLang, forKey: KeyboardPreferences.languageKey)
+            KeyboardPreferences.setInterfaceLanguage(requestedLang)
         } else if args.contains("-qt_reset_text") {
             KeyboardPreferences.defaults.set("crh", forKey: KeyboardPreferences.languageKey)
-        }
-        if args.contains("-qt_modern_pill_callout") {
-            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.useModernPillCallout")
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        } else if args.contains("-qt_classic_callout") {
-            KeyboardPreferences.defaults.set(false, forKey: "crh.key.test.useModernPillCallout")
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        } else {
-            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.useModernPillCallout")
+            KeyboardPreferences.setInterfaceLanguage("crh")
+        } else if args.contains("-qt_dump_all_proofs") {
+            KeyboardPreferences.defaults.set("uk", forKey: KeyboardPreferences.languageKey)
+            KeyboardPreferences.setInterfaceLanguage("uk")
         }
         if args.contains("-qt_force_suggestions_on") {
             KeyboardPreferences.defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.uiTestingTimestamp")
@@ -52,45 +47,45 @@ struct DemoApp: App {
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.KeyboardAutocorrection")
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.sysPref.KeyboardMathExpressionCompletion")
             KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.holdCallout")
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.extendInputCalloutDuration")
         } else {
             KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardPrediction")
             KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardAutocorrection")
             KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.sysPref.KeyboardMathExpressionCompletion")
-            if !args.contains("-qt_hold_callout") {
+            if args.contains("-qt_hold_callout") || args.contains("-qt_extend_input_callout") {
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.holdCallout")
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.extendInputCalloutDuration")
+            } else {
                 KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.holdCallout")
+                KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.extendInputCalloutDuration")
             }
+        }
+        KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.forceFloating")
+        DispatchQueue.global(qos: .utility).async {
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: false)
         }
-        SystemKeyboardSettings.refreshSystemEmojiKeyboardState()
-    }
-    
-    private var simulatedWindowWidth: CGFloat? {
-        let args = ProcessInfo.processInfo.arguments
-        if let idx = args.firstIndex(of: "-qt_sim_width"), idx + 1 < args.count,
-           let val = Double(args[idx + 1]), val >= 300 {
-            return CGFloat(val)
-        }
-        return nil
     }
 
     var body: some Scene {
         WindowGroup {
             NavigationStack(path: $navigationPath) {
-                HomeView(navigationPath: $navigationPath)
-                    .navigationDestination(for: DemoRoute.self) { route in
-                        switch route {
-                        case .about:
-                            AboutView(navigationPath: $navigationPath)
-                        case .onboarding:
-                            OnboardingView()
-                        }
+                HomeView(onNavigate: { route in
+                    navigationPath.append(route)
+                })
+                .navigationDestination(for: DemoRoute.self) { route in
+                    switch route {
+                    case .about:
+                        AboutView(onNavigate: { nextRoute in
+                            navigationPath.append(nextRoute)
+                        })
+                    case .onboarding:
+                        OnboardingView()
                     }
+                }
             }
-            .frame(maxWidth: simulatedWindowWidth ?? .infinity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .environment(\.locale, Locale(identifier: interfaceLanguage))
         }
     }
 }

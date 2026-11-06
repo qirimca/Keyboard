@@ -34,7 +34,8 @@ public extension View {
         edgeInsets: EdgeInsets = .init(),
         isPressed: Binding<Bool> = .constant(false),
         isInScrollView: Bool = false,
-        releaseOutsideTolerance: Double = 1
+        releaseOutsideTolerance: Double = 1,
+        itemFrame: CGRect = .zero
     ) -> some View {
         self
             .background(Keyboard.ButtonKey())
@@ -49,7 +50,8 @@ public extension View {
                 calloutContext: calloutContext,
                 isPressed: isPressed,
                 isInScrollView: isInScrollView,
-                releaseOutsideTolerance: releaseOutsideTolerance
+                releaseOutsideTolerance: releaseOutsideTolerance,
+                itemFrame: itemFrame
             )
             .localeContextMenu(
                 for: action,

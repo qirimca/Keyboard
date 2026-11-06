@@ -112,6 +112,8 @@ struct OnboardingView: View {
         .accessibilityIdentifier(mode == .removeCyrillic ? "onboarding.removeCyrillic.view" : "onboarding.add.view")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
+        .enableInteractivePopAndLeftEdgeSwipe { dismiss() }
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
             NavToolbarItem(placement: .navigationBarLeading, symbol: "chevron.backward") {
                 dismiss()
@@ -170,7 +172,7 @@ private extension OnboardingView {
         case "en":
             return "On iPad, adding the separate Cyrillic keyboard in Settings is only needed for the Floating window. In full-size (Docked) mode, switching already works immediately via the “абв” key."
         default:
-            return "iPad-de ayrı kirill klaviaturasını Sazlamalarda qoşmaq tek yüzüci pencere (floating) içün kerek. Tam ölçülü (docked) rejimde «абв» dögmesinen almaştıruv deral çalışa."
+            return "iPad-de ayrı Kirill klaviaturasını Sazlamalarda qoşmaq tek yüzüci pencere (floating) içün kerek. Tam ölçülü (docked) rejimde «абв» dögmesinen almaştıruv deral çalışa."
         }
     }
     

@@ -54,12 +54,21 @@ public extension CalloutContext {
         /// Width of the named coordinate-space container, including floating keyboards.
         public var containerWidth: CGFloat = 0
 
+        /// Origin of the named coordinate-space container in global coordinates.
+        public var containerGlobalOrigin: CGPoint = .zero
+
         /// Available vertical space above the key grid inside UIInputViewController.view (e.g. suggestion toolbar height).
         public var topAvailableSpace: CGFloat = 0
         
         /// The currently selected action index.
         @Published
         public private(set) var selectedIndex: Int = -1
+
+        /// The last time an action callout became active.
+        public var lastActionDate = Date()
+
+        /// The minimum callout duration after release (0.0 in production; >0 in UI tests).
+        public var minimumVisibleDuration: TimeInterval = 0.0
     }
     
 }
@@ -90,7 +99,7 @@ public extension CalloutContext.ActionContext {
     /// End the drag gesture by commiting and resetting.
     func endDragGesture() {
         handleSelectedAction()
-        reset()
+        resetWithDelay()
     }
 
     /// Explicitly select an action index and trigger it immediately.
@@ -114,6 +123,21 @@ public extension CalloutContext.ActionContext {
         selectedIndex = -1
         buttonFrame = .zero
     }
+
+    /// Reset the context with an optional test hold delay (synchronous when minimumVisibleDuration == 0).
+    func resetWithDelay() {
+        let delay = minimumVisibleDuration
+        guard delay > 0 else {
+            reset()
+            return
+        }
+        let date = Date()
+        lastActionDate = date
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            if self.lastActionDate > date { return }
+            self.reset()
+        }
+    }
     
     /// Trigger haptic feedback for selection change.
     func triggerHapticFeedbackForSelectionChange() {
@@ -121,10 +145,37 @@ public extension CalloutContext.ActionContext {
     }
     
     /// Update the input actions for a certain action.
-    func updateInputs(for action: KeyboardAction?, in geo: GeometryProxy, alignment: HorizontalAlignment? = nil) {
+    func updateInputs(for action: KeyboardAction?, in geo: GeometryProxy, alignment: HorizontalAlignment? = nil, fallbackFrame: CGRect? = nil) {
         guard let action = action else { return reset() }
         guard let actions = actionProvider?.calloutActions(for: action) else { return }
-        self.buttonFrame = geo.frame(in: .named(coordinateSpace))
+        self.lastActionDate = Date()
+        if let fallbackFrame = fallbackFrame, fallbackFrame.width > 1 && fallbackFrame.height > 1 {
+            self.buttonFrame = fallbackFrame
+        } else {
+            let namedFrame = geo.frame(in: .named(coordinateSpace))
+            if namedFrame.width > 1 && namedFrame.height > 1,
+               namedFrame.origin.x >= -1 && namedFrame.origin.y >= -1 {
+                self.buttonFrame = namedFrame
+            } else {
+                let zStackFrame = geo.frame(in: .named("SystemKeyboardZStack"))
+                if zStackFrame.width > 1 && zStackFrame.height > 1,
+                   zStackFrame.origin.x >= -1 && zStackFrame.origin.y >= -1 {
+                    self.buttonFrame = zStackFrame
+                } else {
+                    let globalFrame = geo.frame(in: .global)
+                    if globalFrame.width > 1 && globalFrame.height > 1 {
+                        self.buttonFrame = CGRect(
+                            x: globalFrame.origin.x - containerGlobalOrigin.x,
+                            y: globalFrame.origin.y - containerGlobalOrigin.y,
+                            width: globalFrame.width,
+                            height: globalFrame.height
+                        )
+                    } else {
+                        self.buttonFrame = namedFrame
+                    }
+                }
+            }
+        }
         self.alignment = alignment ?? getAlignment(for: geo)
         if Self.isMenuCalloutActions(actions) {
             self.actions = actions

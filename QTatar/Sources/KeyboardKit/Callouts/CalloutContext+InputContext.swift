@@ -50,6 +50,9 @@ public extension CalloutContext {
         /// Width of the named coordinate-space container.
         public var containerWidth: CGFloat = 0
 
+        /// Origin of the named coordinate-space container in global coordinates.
+        public var containerGlobalOrigin: CGPoint = .zero
+
         /// Available vertical space above the key grid inside UIInputViewController.view (e.g. suggestion toolbar height).
         public var topAvailableSpace: CGFloat = 0
     }
@@ -72,7 +75,7 @@ public extension CalloutContext.InputContext {
 
     /// Whether or not the context has input and is enabled.
     var isActive: Bool {
-        hasInput && isEnabled
+        hasInput && isEnabled && buttonFrame.midX > 0 && buttonFrame.midY > 0
     }
     
     /// Reset the context. This will dismiss the callout.
@@ -83,7 +86,12 @@ public extension CalloutContext.InputContext {
     
     /// Reset the context with a slight delay.
     func resetWithDelay() {
-        let delay = minimumVisibleDuration
+        let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+        let extend = ProcessInfo.processInfo.arguments.contains("-qt_extend_input_callout")
+            || ProcessInfo.processInfo.arguments.contains("-qt_hold_callout")
+            || defaults?.bool(forKey: "crh.key.test.extendInputCalloutDuration") == true
+            || defaults?.bool(forKey: "crh.key.test.holdCallout") == true
+        let delay = extend ? max(1.60, minimumVisibleDuration) : minimumVisibleDuration
         let date = Date()
         lastActionDate = date
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -93,10 +101,41 @@ public extension CalloutContext.InputContext {
     }
     
     /// Update the current input for a certain action.
-    func updateInput(for action: KeyboardAction?, in geo: GeometryProxy) {
-        self.lastActionDate = Date()
-        self.action = action
-        self.buttonFrame = geo.frame(in: .named(coordinateSpace))
+    func updateInput(for action: KeyboardAction?, in geo: GeometryProxy, fallbackFrame: CGRect? = nil) {
+        if let fallbackFrame = fallbackFrame, fallbackFrame.width > 1 && fallbackFrame.height > 1 {
+            self.lastActionDate = Date()
+            self.action = action
+            self.buttonFrame = fallbackFrame
+            return
+        }
+        let namedFrame = geo.frame(in: .named(coordinateSpace))
+        if namedFrame.width > 1 && namedFrame.height > 1,
+           namedFrame.origin.x >= -1 && namedFrame.origin.y >= -1 {
+            self.lastActionDate = Date()
+            self.action = action
+            self.buttonFrame = namedFrame
+            return
+        }
+        let zStackFrame = geo.frame(in: .named("SystemKeyboardZStack"))
+        if zStackFrame.width > 1 && zStackFrame.height > 1,
+           zStackFrame.origin.x >= -1 && zStackFrame.origin.y >= -1 {
+            self.lastActionDate = Date()
+            self.action = action
+            self.buttonFrame = zStackFrame
+            return
+        }
+        let globalFrame = geo.frame(in: .global)
+        if globalFrame.width > 1 && globalFrame.height > 1 {
+            self.lastActionDate = Date()
+            self.action = action
+            self.buttonFrame = CGRect(
+                x: globalFrame.origin.x - containerGlobalOrigin.x,
+                y: globalFrame.origin.y - containerGlobalOrigin.y,
+                width: globalFrame.width,
+                height: globalFrame.height
+            )
+            return
+        }
     }
 }
 

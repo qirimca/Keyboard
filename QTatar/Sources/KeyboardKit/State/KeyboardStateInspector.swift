@@ -115,25 +115,57 @@ extension String {
 }
 
 private final class FullAccessInspector: UIInputViewController {
-    private static var sharedInstance: FullAccessInspector?
     private static var cachedValue: Bool?
     private static var lastCheckUptime: TimeInterval = 0
+    private static var didRegisterLifecycleObservers = false
+    private static let appGroupSuiteName = "group.crh.key.keyboardplus"
+    private static let extensionConfirmedFullAccessKey = "crh.key.extensionConfirmedFullAccess"
+
+    private static func registerLifecycleObserversIfNeeded() {
+        guard !didRegisterLifecycleObservers else { return }
+        didRegisterLifecycleObservers = true
+        let nc = NotificationCenter.default
+        for name in [
+            UIApplication.didBecomeActiveNotification,
+            UIApplication.didEnterBackgroundNotification,
+            UIApplication.willEnterForegroundNotification,
+            .NSExtensionHostDidEnterBackground,
+            .NSExtensionHostWillEnterForeground
+        ] {
+            nc.addObserver(forName: name, object: nil, queue: .main) { _ in
+                cachedValue = nil
+                lastCheckUptime = 0
+            }
+        }
+    }
 
     static func sharedHasFullAccess() -> Bool {
-        let now = ProcessInfo.processInfo.systemUptime
-        if let cached = cachedValue, (now - lastCheckUptime) < 1.5 {
-            return cached
-        }
         guard Thread.isMainThread else {
             return cachedValue ?? false
         }
+        registerLifecycleObserversIfNeeded()
+        let now = ProcessInfo.processInfo.systemUptime
+        if let cached = cachedValue, (now - lastCheckUptime) < 0.75 {
+            return cached
+        }
         lastCheckUptime = now
-        let inspector = sharedInstance ?? {
-            let instance = FullAccessInspector()
-            sharedInstance = instance
-            return instance
-        }()
-        let result = inspector.hasFullAccess
+        let directResult = FullAccessInspector().hasFullAccess
+        let isExtensionProcess = Bundle.main.bundlePath.hasSuffix(".appex")
+        let result: Bool
+        if directResult {
+            result = true
+            if isExtensionProcess {
+                UserDefaults(suiteName: appGroupSuiteName)?.set(true, forKey: extensionConfirmedFullAccessKey)
+            }
+        } else if !isExtensionProcess,
+                  UserDefaults(suiteName: appGroupSuiteName)?.bool(forKey: extensionConfirmedFullAccessKey) == true {
+            result = true
+        } else {
+            result = false
+            if isExtensionProcess {
+                UserDefaults(suiteName: appGroupSuiteName)?.set(false, forKey: extensionConfirmedFullAccessKey)
+            }
+        }
         cachedValue = result
         return result
     }

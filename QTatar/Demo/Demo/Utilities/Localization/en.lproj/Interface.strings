@@ -69,8 +69,9 @@
 "settings.stats" = "Statistics";
 "settings.stats.desc" = "Track typing speed, words & achievements";
 "stats.charsSubtitle" = "Characters: %d";
+"stats.uniqueWordsSubtitle" = "Unique: %d";
 "stats.uniqueWordsUnit" = "unique";
-"stats.speedSubtitle" = "Recent pace: %d %@ · %d %@";
+"stats.speedSubtitle" = "Recent pace: %d %@";
 "stats.speedPeakSubtitle" = "Peak typing pace";
 "stats.manualWordsSubtitle" = "Written letter by letter";
 "stats.suggestedWordsSubtitle" = "Characters saved: %d";
@@ -90,7 +91,7 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Separate keyboard in iOS Settings is only needed for floating mode";
 "settings.appSettings" = "App settings";
-"settings.appSettings.desc" = "Word suggestions, remember new words";
+"settings.appSettings.desc" = "Remember new words, sound & haptics";
 "settings.systemKeyboard" = "System settings";
 "settings.systemKeyboard.desc" = "Auto-capitalization, auto-correction, math results";
 "settings.systemKeyboard.ios26Desc" = "Go to “General” → “Keyboard” (auto-correction, math results, etc.)";
@@ -101,9 +102,10 @@
 "stats.wordsUnit" = "words";
 "stats.learnedWordsUnit" = "learned";
 "stats.learnedWords.emptyTitle" = "Personal dictionary is empty";
-"stats.learnedWords.emptyDesc" = "New words you type are automatically saved here for faster suggestions.";
+"stats.learnedWords.emptyDesc" = "Only manually saved words (by tapping the quoted suggestion) are shown here.";
 "stats.learnedWords.clearAll" = "Clear dictionary";
 "stats.learnedWords.done" = "Done";
 "stats.learnedWords.delete" = "Delete";
 "settings.standardLayout" = "Standard layout";
 "settings.standardLayout.desc" = "q · ğ · ñ · ş · ç · ü · ö · ı";
+"settings.abvBridgeTitle" = "“абв” key switches to:";

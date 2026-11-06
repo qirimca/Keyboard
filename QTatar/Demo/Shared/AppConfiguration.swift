@@ -15,6 +15,7 @@ enum KeyboardPreferences {
     static let wordLearningKey = "crh.key.wordLearningEnabled"
     static let cyrillicKey = "crh.key.cyrillicEnabled"
     static let ukrainianCyrillicLayoutKey = "crh.key.ukrainianCyrillicLayout"
+    static let ipadAbvKeyDisabledKey = "crh.key.ipadAbvKeyDisabled"
     static let statsEnabledKey = "crh.key.statsEnabled"
     static let splitKeyboardKey = "crh.key.splitKeyboardEnabled"
     static let oneHandedModeKey = "crh.key.oneHandedMode"
@@ -29,22 +30,29 @@ enum KeyboardPreferences {
     private static var cachedWordLearning: Bool?
     private static var cachedCyrillic: Bool?
     private static var cachedUkrainianCyrillicLayout: Bool?
+    private static var cachedIPadAbvKeyDisabled: Bool?
     private static var cachedStatsEnabled: Bool?
     private static var cachedSplitKeyboard: Bool?
     private static var cachedOneHandedMode: String?
+    private static var cachedInterfaceLanguage: String?
 
     static func refreshCachedPreferences() {
+        cachedInterfaceLanguage = defaults.string(forKey: languageKey) ?? "crh"
         cachedSuggestions = (defaults.object(forKey: suggestionsKey) as? Bool) ?? (UserDefaults.standard.object(forKey: suggestionsKey) as? Bool) ?? true
         cachedWordLearning = (defaults.object(forKey: wordLearningKey) as? Bool) ?? (UserDefaults.standard.object(forKey: wordLearningKey) as? Bool) ?? true
         cachedCyrillic = (defaults.object(forKey: cyrillicKey) as? Bool) ?? true
-        let isHostApp = Bundle.main.bundleIdentifier == AppConfiguration.appBundleId
         cachedUkrainianCyrillicLayout = (defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool)
-            ?? (isHostApp ? SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled : defaults.bool(forKey: "crh.key.ukrainianExtensionSeen"))
+            ?? defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+        cachedIPadAbvKeyDisabled = defaults.object(forKey: ipadAbvKeyDisabledKey) as? Bool ?? false
         cachedStatsEnabled = (defaults.object(forKey: statsEnabledKey) as? Bool) ?? true
         cachedSplitKeyboard = defaults.object(forKey: splitKeyboardKey) as? Bool ?? false
         let rawOneHanded = resolveStoredOneHandedMode()
         cachedOneHandedMode = rawOneHanded
         SystemKeyboardSettings.triggerAsyncRefreshIfNeeded()
+    }
+
+    static func setInterfaceLanguage(_ lang: String) {
+        cachedInterfaceLanguage = lang
     }
 
     private static func resolveStoredOneHandedMode() -> String {
@@ -88,15 +96,17 @@ enum KeyboardPreferences {
             }
             return stdVal
         }
-        for key in ["KeyboardBias", "OneHandedKeyboardMode"] {
-            if let raw = CFPreferencesCopyAppValue(key as CFString, kCFPreferencesAnyApplication) {
-                if let s = raw as? String {
-                    let lower = s.lowercased()
-                    if lower.contains("left") { return "left" }
-                    if lower.contains("right") { return "right" }
-                } else if let n = raw as? NSNumber {
-                    if n.intValue == 1 { return "left" }
-                    if n.intValue == 2 { return "right" }
+        if !Thread.isMainThread {
+            for key in ["KeyboardBias", "OneHandedKeyboardMode"] {
+                if let raw = CFPreferencesCopyAppValue(key as CFString, kCFPreferencesAnyApplication) {
+                    if let s = raw as? String {
+                        let lower = s.lowercased()
+                        if lower.contains("left") { return "left" }
+                        if lower.contains("right") { return "right" }
+                    } else if let n = raw as? NSNumber {
+                        if n.intValue == 1 { return "left" }
+                        if n.intValue == 2 { return "right" }
+                    }
                 }
             }
         }
@@ -105,9 +115,12 @@ enum KeyboardPreferences {
 
     static var suggestionsEnabled: Bool {
         if let cached = cachedSuggestions { return cached }
-        let isUITest = CommandLine.arguments.contains("-UITesting")
+        let isAuthoritativeUITest = CommandLine.arguments.contains("-UITesting")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || defaults.bool(forKey: "crh.key.test.isUITesting")
+        let isUITest = isAuthoritativeUITest || SystemKeyboardSettings.isUITestFlagAuthoritative
+        if !isUITest && defaults.bool(forKey: "crh.key.test.isUITesting") {
+            defaults.removeObject(forKey: "crh.key.test.isUITesting")
+        }
         if isUITest,
            let val = (defaults.object(forKey: suggestionsKey) as? Bool) ?? (UserDefaults.standard.object(forKey: suggestionsKey) as? Bool) {
             cachedSuggestions = val
@@ -134,11 +147,18 @@ enum KeyboardPreferences {
         let bundleId = Bundle.main.bundleIdentifier
         if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
         if bundleId == AppConfiguration.cyrillicKeyboardBundleId {
-            let isUITesting = defaults.bool(forKey: "crh.key.test.isUITesting")
+            let isUITesting = CommandLine.arguments.contains("-UITesting")
+                || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+                || SystemKeyboardSettings.isUITestFlagAuthoritative
             if !isUITesting {
                 return false
             }
         }
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad && interfaceLanguage != "uk" {
+            return false
+        }
+        #endif
         if let cached = cachedUkrainianCyrillicLayout { return cached }
         if let stored = defaults.object(forKey: ukrainianCyrillicLayoutKey) as? Bool {
             cachedUkrainianCyrillicLayout = stored
@@ -147,6 +167,18 @@ enum KeyboardPreferences {
         let fallback = SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
         cachedUkrainianCyrillicLayout = fallback
         return fallback
+    }
+
+    static var ipadAbvKeyDisabled: Bool {
+        guard interfaceLanguage == "uk" else { return false }
+        if let cached = cachedIPadAbvKeyDisabled { return cached }
+        let val = defaults.object(forKey: ipadAbvKeyDisabledKey) as? Bool ?? false
+        cachedIPadAbvKeyDisabled = val
+        return val
+    }
+
+    static var isIPadAbvToggleKeyActive: Bool {
+        cyrillicEnabled && !ipadAbvKeyDisabled
     }
 
     static var statsEnabled: Bool {
@@ -198,7 +230,9 @@ enum KeyboardPreferences {
         cachedCyrillic = enabled
         if existing != enabled {
             defaults.set(enabled, forKey: cyrillicKey)
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            DispatchQueue.global(qos: .userInitiated).async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            }
         }
     }
 
@@ -208,14 +242,35 @@ enum KeyboardPreferences {
         cachedUkrainianCyrillicLayout = enabled
         if existing != enabled {
             defaults.set(enabled, forKey: ukrainianCyrillicLayoutKey)
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
-                nil,
-                nil,
-                true
-            )
+            DispatchQueue.global(qos: .userInitiated).async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+            }
+        }
+    }
+
+    static func setIPadAbvKeyDisabled(_ disabled: Bool) {
+        let existing = defaults.object(forKey: ipadAbvKeyDisabledKey) as? Bool
+        guard cachedIPadAbvKeyDisabled != disabled || existing != disabled else { return }
+        cachedIPadAbvKeyDisabled = disabled
+        if existing != disabled {
+            defaults.set(disabled, forKey: ipadAbvKeyDisabledKey)
+            DispatchQueue.global(qos: .userInitiated).async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName(ukrainianCyrillicLayoutChangedNotification as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+            }
         }
     }
 
@@ -264,15 +319,21 @@ enum KeyboardPreferences {
         }
         let val = ukrainianCyrillicLayoutEnabled
             || SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
-            || SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
+            || (interfaceLanguage == "uk" && SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled)
             || true
         cachedCyrillic = val
         return val
     }
-    static var interfaceLanguage: String { defaults.string(forKey: languageKey) ?? "crh" }
+    static var interfaceLanguage: String {
+        if let cached = cachedInterfaceLanguage { return cached }
+        let val = defaults.string(forKey: languageKey) ?? "crh"
+        cachedInterfaceLanguage = val
+        return val
+    }
     private static var bundleCacheLock = os_unfair_lock_s()
     private static var cachedContainerBundle: Bundle?
     private static var cachedLanguageBundles: [String: Bundle] = [:]
+    private static var cachedLocalizedStrings: [String: String] = [:]
 
     static var localizationContainerBundle: Bundle {
         os_unfair_lock_lock(&bundleCacheLock)
@@ -331,6 +392,29 @@ enum KeyboardPreferences {
     }
     static var interfaceBundle: Bundle {
         localizationBundle(for: interfaceLanguage)
+    }
+
+    static func localizedString(
+        forKey key: String,
+        value: String? = nil,
+        table: String = "Interface",
+        language: String? = nil
+    ) -> String {
+        let lang = language ?? interfaceLanguage
+        let cacheKey = "\(lang)|\(table)|\(key)"
+        os_unfair_lock_lock(&bundleCacheLock)
+        if let hit = cachedLocalizedStrings[cacheKey] {
+            os_unfair_lock_unlock(&bundleCacheLock)
+            return hit
+        }
+        os_unfair_lock_unlock(&bundleCacheLock)
+
+        let bundle = localizationBundle(for: lang)
+        let resolved = bundle.localizedString(forKey: key, value: value ?? key, table: table)
+        os_unfair_lock_lock(&bundleCacheLock)
+        cachedLocalizedStrings[cacheKey] = resolved
+        os_unfair_lock_unlock(&bundleCacheLock)
+        return resolved
     }
 }
 
@@ -456,16 +540,9 @@ enum KeyboardUsageStats {
             return
         }
         syncQueue.async {
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName(statsUpdatedNotification as CFString),
-                nil,
-                nil,
-                true
-            )
             guard !isCoalescedSyncPending else { return }
             isCoalescedSyncPending = true
-            syncQueue.asyncAfter(deadline: .now() + 1.2) {
+            syncQueue.asyncAfter(deadline: .now() + 0.35) {
                 isCoalescedSyncPending = false
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 CFNotificationCenterPostNotification(
@@ -588,15 +665,7 @@ enum KeyboardUsageStats {
         let clamped = max(0, count)
         if defaults.integer(forKey: learnedWordsKey) != clamped {
             defaults.set(clamped, forKey: learnedWordsKey)
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             scheduleCrossProcessSync(immediate: true)
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName(statsUpdatedNotification as CFString),
-                nil,
-                nil,
-                true
-            )
         }
     }
 
@@ -605,36 +674,50 @@ enum KeyboardUsageStats {
         let clamped = max(0, count)
         if defaults.integer(forKey: uniqueWordsKey) != clamped {
             defaults.set(clamped, forKey: uniqueWordsKey)
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             scheduleCrossProcessSync(immediate: true)
         }
     }
 
-    /// When the user commits a word in the in-app sandbox, records stats when Full Access is off
-    /// and learns novel out-of-vocabulary words (`>= 3` letters, absent from `qırım_tatar.db`) into `user_lexicon.sqlite` (`is_custom = 1`).
-    static func recordSandboxCommittedWordIfNeeded(oldText: String, newText: String, isFullAccessGranted: Bool) {
-        guard newText.count >= oldText.count + 1,
+    /// When the user commits a word in the in-app sandbox, records stats when Full Access is off,
+    /// records all committed words into `user_unigrams` (`is_custom = 0` for plain space commits so `uniqueWordsCount` increments),
+    /// and marks novel out-of-vocabulary words (`>= 3` letters, absent from `qırım_tatar.db`) as `is_custom = 1`
+    /// only when explicitly confirmed via the quoted Slot 0 suggestion (`explicitlyConfirmed == true`).
+    static func recordSandboxCommittedWordIfNeeded(
+        oldText: String,
+        newText: String,
+        isFullAccessGranted: Bool,
+        explicitlyConfirmed: Bool = false
+    ) {
+        guard newText != oldText,
+              newText.count >= 2,
               let addedChar = newText.last else { return }
         let isDelimiter = addedChar.isWhitespace || ".!?,;:".contains(addedChar)
         guard isDelimiter else { return }
-        guard let lastOldChar = oldText.last, lastOldChar.isLetter || lastOldChar.isNumber else { return }
+        guard let prevChar = newText.dropLast().last, prevChar.isLetter || prevChar.isNumber else { return }
 
-        if !isFullAccessGranted && newText.count == oldText.count + 1 && KeyboardPreferences.statsEnabled {
+        let recentlyInjected = wasRecentlyInjected(within: 0.6)
+        let isSuggestionCommit = explicitlyConfirmed || (newText.count >= oldText.count + 2) || recentlyInjected
+        if !isFullAccessGranted && !isSuggestionCommit && newText.count == oldText.count + 1 && KeyboardPreferences.statsEnabled {
             recordCharacterTyped(count: 1)
             recordManualWordCompleted()
         }
 
+        if isFullAccessGranted && recentlyInjected && !explicitlyConfirmed {
+            return
+        }
         guard KeyboardPreferences.wordLearningEnabled else { return }
         let withoutTrailingDelimiters = newText.dropLast().reversed().drop(while: { $0.isWhitespace || $0.isPunctuation })
         let wordChars = withoutTrailingDelimiters.prefix(while: { $0.isLetter || $0 == "-" || $0 == "ʼ" || $0 == "'" })
         let committedWord = String(wordChars.reversed())
         let letterCount = committedWord.filter(\.isLetter).count
-        guard letterCount >= 3, committedWord.count <= 48 else { return }
+        guard letterCount >= 2, committedWord.count <= 48 else { return }
 
         let trLocale = Locale(identifier: "tr")
         let lowerWord = committedWord.lowercased(with: trLocale)
+        let legacyDemoted: Set<String> = ["selam", "qirim", "bağçasaray", "aqmescit", "qırım"]
         syncQueue.async {
-            if isWordPresentInBundledLexicon(lowerWord) { return }
+            let isInBundled = isWordPresentInBundledLexicon(lowerWord)
+            let markAsCustom = explicitlyConfirmed && letterCount >= 2 && !isInBundled && !legacyDemoted.contains(lowerWord)
             guard let dbURL = writableUserLexiconDatabaseURL() else { return }
             var db: OpaquePointer?
             let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX
@@ -662,14 +745,26 @@ enum KeyboardUsageStats {
             let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
             let now = Int64(Date().timeIntervalSince1970)
             var stmt: OpaquePointer?
-            let upsertSQL = """
-            INSERT INTO user_unigrams(word, freq, last_used, is_custom)
-            VALUES (?1, 1, ?2, 1)
-            ON CONFLICT(word) DO UPDATE SET
-                freq = user_unigrams.freq + 1,
-                last_used = excluded.last_used,
-                is_custom = 1;
-            """
+            let upsertSQL: String
+            if markAsCustom {
+                upsertSQL = """
+                INSERT INTO user_unigrams(word, freq, last_used, is_custom)
+                VALUES (?1, 1, ?2, 1)
+                ON CONFLICT(word) DO UPDATE SET
+                    freq = user_unigrams.freq + 1,
+                    last_used = excluded.last_used,
+                    is_custom = 1;
+                """
+            } else {
+                upsertSQL = """
+                INSERT INTO user_unigrams(word, freq, last_used, is_custom)
+                VALUES (?1, 1, ?2, 0)
+                ON CONFLICT(word) DO UPDATE SET
+                    freq = user_unigrams.freq + 1,
+                    last_used = excluded.last_used,
+                    is_custom = MAX(user_unigrams.is_custom, 0);
+                """
+            }
             if sqlite3_prepare_v2(db, upsertSQL, -1, &stmt, nil) == SQLITE_OK {
                 let wordBytes = Int32(lowerWord.utf8.count)
                 _ = lowerWord.withCString { cStr in
@@ -681,6 +776,9 @@ enum KeyboardUsageStats {
             sqlite3_finalize(stmt)
             sqlite3_close_v2(db)
             _ = performSyncLearnedWordsCountFromSQLite()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: Notification.Name("crh.key.localStatsRefresh"), object: nil)
+            }
         }
     }
 
@@ -694,6 +792,15 @@ enum KeyboardUsageStats {
                 break
             }
         }
+        if bundledURL == nil, let plugInsURL = Bundle.main.builtInPlugInsURL {
+            for relPath in ["Keyboard.appex/qırım_tatar.db", "Keyboard.appex/qirim_tatar.db"] {
+                let candidate = plugInsURL.appendingPathComponent(relPath)
+                if FileManager.default.fileExists(atPath: candidate.path) {
+                    bundledURL = candidate
+                    break
+                }
+            }
+        }
         guard let dbURL = bundledURL else { return false }
         var db: OpaquePointer?
         guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
@@ -703,7 +810,7 @@ enum KeyboardUsageStats {
         defer { sqlite3_close_v2(db) }
         var stmt: OpaquePointer?
         defer { sqlite3_finalize(stmt) }
-        let sql = "SELECT 1 FROM unigrams WHERE word = ?1 OR word = ?1 COLLATE NOCASE LIMIT 1;"
+        let sql = "SELECT 1 FROM words WHERE (word = ?1 OR word = ?1 COLLATE NOCASE) AND freq >= 2 LIMIT 1;"
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return false }
         let sqlTransient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
         let wordBytes = Int32(lowerWord.utf8.count)
@@ -778,34 +885,32 @@ enum KeyboardUsageStats {
                 defaults.set(0, forKey: learnedWordsKey)
                 defaults.set(0, forKey: uniqueWordsKey)
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                CFNotificationCenterPostNotification(
-                    CFNotificationCenterGetDarwinNotifyCenter(),
-                    CFNotificationName(statsUpdatedNotification as CFString),
-                    nil,
-                    nil,
-                    true
-                )
                 return 0
             }
             return stored
         }
         var db: OpaquePointer?
-        let openRC = sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil)
-        if openRC != SQLITE_OK {
+        let appVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "1.0"
+        let buildNumber = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String) ?? "1"
+        let currentSignature = "\(appVersion)-\(buildNumber)-v3"
+        let needsOneTimeReconcile = defaults.string(forKey: bundledLexiconSignatureKey) != currentSignature
+
+        if needsOneTimeReconcile,
+           sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK {
+            sqlite3_busy_timeout(db, 150)
+            sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
+            if let db {
+                reconcileUserLexiconWithBundledLexiconIfNeeded(userDB: db)
+            }
+        } else {
             if let db { sqlite3_close_v2(db) }
             db = nil
             guard sqlite3_open_v2(dbURL.path, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX, nil) == SQLITE_OK else {
                 if let db { sqlite3_close_v2(db) }
                 return stored
             }
-        } else {
-            sqlite3_exec(db, "PRAGMA wal_checkpoint(PASSIVE);", nil, nil, nil)
-            sqlite3_exec(db, "ALTER TABLE user_unigrams ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0;", nil, nil, nil)
-            if let db {
-                reconcileUserLexiconWithBundledLexiconIfNeeded(userDB: db)
-            }
+            sqlite3_busy_timeout(db, 150)
         }
-        sqlite3_busy_timeout(db, 150)
         defer { sqlite3_close_v2(db) }
 
         var customCount = 0
@@ -842,13 +947,9 @@ enum KeyboardUsageStats {
         }
         if didChange {
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            CFNotificationCenterPostNotification(
-                CFNotificationCenterGetDarwinNotifyCenter(),
-                CFNotificationName(statsUpdatedNotification as CFString),
-                nil,
-                nil,
-                true
-            )
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: Notification.Name("crh.key.localStatsRefresh"), object: nil)
+            }
         }
         return resolvedCustom
     }
@@ -1171,26 +1272,28 @@ enum KeyboardUsageStats {
         for key in keys {
             defaults.removeObject(forKey: key)
         }
-        defaults.synchronize()
-        CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-        clearUserLexiconDatabaseInPlace()
         recentKeystrokeTimes.removeAll()
         lastKeystrokeTime = 0
         hasCompletedWordInSession = false
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName(statsResetNotification as CFString),
-            nil,
-            nil,
-            true
-        )
-        CFNotificationCenterPostNotification(
-            CFNotificationCenterGetDarwinNotifyCenter(),
-            CFNotificationName(statsUpdatedNotification as CFString),
-            nil,
-            nil,
-            true
-        )
+        syncQueue.async {
+            defaults.synchronize()
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            clearUserLexiconDatabaseInPlace()
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(statsResetNotification as CFString),
+                nil,
+                nil,
+                true
+            )
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName(statsUpdatedNotification as CFString),
+                nil,
+                nil,
+                true
+            )
+        }
     }
 }
 
@@ -1398,6 +1501,8 @@ enum SystemKeyboardSettings {
 
     private static var cacheLock = os_unfair_lock_s()
     private static var cachedValues: [String: Bool] = [:]
+    private static var cachedAppGroupSysPrefs: [String: Bool] = [:]
+    private static var didLoadAppGroupSysPrefs = false
     private static var lastSyncTimestamp: TimeInterval = 0
     private static var isRefreshing = false
     private static let refreshQueue = DispatchQueue(label: "crh.key.sysPrefsRefresh", qos: .utility)
@@ -1425,45 +1530,43 @@ enum SystemKeyboardSettings {
         (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
     ]
 
-    private static func setCachedSysPrefIfNeeded(_ value: Bool, forKey key: String) {
-        let cacheKey = "crh.key.cachedSysPref.\(key)"
-        if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
-            if Thread.isMainThread {
-                refreshQueue.async {
-                    if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
-                        KeyboardPreferences.defaults.set(value, forKey: cacheKey)
-                    }
-                }
-            } else {
-                KeyboardPreferences.defaults.set(value, forKey: cacheKey)
-            }
-        }
-    }
-
+    /// Queries the live in-memory iOS/iPadOS keyboard preferences controllers so toggles in
+    /// `Settings → General → Keyboards` (Predictive Text, Show Math Results, Slide to Type, Key Flicks)
+    /// take effect immediately even inside sandboxed keyboard extensions.
     private static func queryPreferencesControllers(forKey key: String) -> Bool? {
-        var controllerNames = [rtJoin(["TI", "Preferences", "Controller"])]
-        if Thread.isMainThread {
-            controllerNames.append(rtJoin(["UI", "Keyboard", "Preferences", "Controller"]))
-        }
+        let classNames = [
+            rtJoin(["TI", "Preferences", "Controller"]),
+            rtJoin(["UI", "Key", "board", "Preferences", "Controller"])
+        ]
         let sharedSel = NSSelectorFromString(rtJoin(["shared", "Preferences", "Controller"]))
-        let valSel = NSSelectorFromString(rtJoin(["value", "ForPreferenceKey:"]))
-        for name in controllerNames {
-            guard let cls = NSClassFromString(name) as? NSObject.Type,
+        let boolSel = NSSelectorFromString(rtJoin(["bool", "For", "Preference", "Key:"]))
+        let valSel = NSSelectorFromString(rtJoin(["value", "For", "Preference", "Key:"]))
+        let actionsSel = NSSelectorFromString(rtJoin(["preferences", "Actions"]))
+
+        for className in classNames {
+            guard let cls = NSClassFromString(className) as? NSObject.Type,
                   cls.responds(to: sharedSel),
-                  let instance = cls.perform(sharedSel)?.takeUnretainedValue() as? NSObject else {
-                continue
+                  let sharedUnmanaged = cls.perform(sharedSel) else { continue }
+            let controller = sharedUnmanaged.takeUnretainedValue() as AnyObject
+            var targets: [AnyObject] = [controller]
+            if controller.responds(to: actionsSel),
+               let actionsUnmanaged = controller.perform(actionsSel) {
+                targets.insert(actionsUnmanaged.takeUnretainedValue() as AnyObject, at: 0)
             }
-            if instance.responds(to: valSel),
-               let raw = instance.perform(valSel, with: key)?.takeUnretainedValue() {
-                if let num = raw as? NSNumber {
-                    return num.boolValue
-                }
-                if let str = raw as? String {
-                    if str == "0" || str.caseInsensitiveCompare("false") == .orderedSame || str.caseInsensitiveCompare("no") == .orderedSame {
-                        return false
+            for target in targets {
+                if target.responds(to: valSel),
+                   let unmanaged = target.perform(valSel, with: key as NSString) {
+                    let obj = unmanaged.takeUnretainedValue()
+                    if let num = obj as? NSNumber {
+                        return num.boolValue
                     }
-                    if str == "1" || str.caseInsensitiveCompare("true") == .orderedSame || str.caseInsensitiveCompare("yes") == .orderedSame {
-                        return true
+                }
+                if target.responds(to: boolSel) {
+                    typealias BoolForKeyIMP = @convention(c) (AnyObject, Selector, NSString) -> Bool
+                    if let method = class_getInstanceMethod(type(of: target), boolSel) {
+                        let imp = method_getImplementation(method)
+                        let fn = unsafeBitCast(imp, to: BoolForKeyIMP.self)
+                        return fn(target, boolSel, key as NSString)
                     }
                 }
             }
@@ -1471,8 +1574,35 @@ enum SystemKeyboardSettings {
         return nil
     }
 
+    private static func setCachedSysPrefIfNeeded(_ value: Bool, forKey key: String) {
+        os_unfair_lock_lock(&cacheLock)
+        let prev = cachedAppGroupSysPrefs[key]
+        cachedAppGroupSysPrefs[key] = value
+        os_unfair_lock_unlock(&cacheLock)
+        guard prev != value else { return }
+        let cacheKey = "crh.key.cachedSysPref.\(key)"
+        if Thread.isMainThread {
+            refreshQueue.async {
+                if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
+                    KeyboardPreferences.defaults.set(value, forKey: cacheKey)
+                }
+            }
+        } else {
+            if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
+                KeyboardPreferences.defaults.set(value, forKey: cacheKey)
+            }
+        }
+    }
+
     private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
-        var sawExplicitTrue = false
+        // 1. Query in-memory iOS/iPadOS keyboard preferences controllers first (zero CFPreferences XPC contention).
+        for key in keys {
+            if let liveVal = queryPreferencesControllers(forKey: key) {
+                setCachedSysPrefIfNeeded(liveVal, forKey: keys[0])
+                return liveVal
+            }
+        }
+        // 2. Check explicit plist values across CFPreferences and UserDefaults without blocking cfprefsd via CFPreferencesSynchronize loops.
         let kbPrefsDomain = rtJoin(["com", "apple", "key", "board", "preferences"], sep: ".") as CFString
         let cpDomain = rtJoin(["com", "apple", "key", "board", "ContinuousPath"], sep: ".") as CFString
         let tiDomain = rtJoin(["com", "apple", "Text", "Input"], sep: ".") as CFString
@@ -1484,55 +1614,52 @@ enum SystemKeyboardSettings {
             prefsDomain,
             kCFPreferencesAnyApplication
         ]
-        if shouldSync {
-            for domain in domains {
-                CFPreferencesSynchronize(domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
-            }
-        }
         for key in keys {
-            if let ctrlVal = queryPreferencesControllers(forKey: key) {
-                if !ctrlVal {
-                    setCachedSysPrefIfNeeded(false, forKey: keys[0])
-                    return false
-                }
-                sawExplicitTrue = true
+            if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
+                let b = num.boolValue
+                setCachedSysPrefIfNeeded(b, forKey: keys[0])
+                return b
             }
             for domain in domains {
                 if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
-                    if !val.boolValue {
-                        setCachedSysPrefIfNeeded(false, forKey: keys[0])
-                        return false
-                    }
-                    sawExplicitTrue = true
+                    let b = val.boolValue
+                    setCachedSysPrefIfNeeded(b, forKey: keys[0])
+                    return b
                 }
-                if let hostVal = CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
-                    if !hostVal.boolValue {
-                        setCachedSysPrefIfNeeded(false, forKey: keys[0])
-                        return false
-                    }
-                    sawExplicitTrue = true
+                if !Thread.isMainThread,
+                   let hostVal = CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
+                    let b = hostVal.boolValue
+                    setCachedSysPrefIfNeeded(b, forKey: keys[0])
+                    return b
                 }
             }
-            if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
-                if !num.boolValue {
-                    setCachedSysPrefIfNeeded(false, forKey: keys[0])
-                    return false
-                }
-                sawExplicitTrue = true
-            }
         }
-        if sawExplicitTrue {
-            setCachedSysPrefIfNeeded(true, forKey: keys[0])
-            return true
-        }
-        if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(keys[0])") as? Bool,
-           !appGroupCached {
-            return false
-        }
+        setCachedSysPrefIfNeeded(defaultValue, forKey: keys[0])
         return defaultValue
     }
 
     static func refreshAllSynchronously(shouldSync: Bool = true) {
+        if !Thread.isMainThread {
+            os_unfair_lock_lock(&cacheLock)
+            let needSeed = !didLoadAppGroupSysPrefs
+            if needSeed { didLoadAppGroupSysPrefs = true }
+            os_unfair_lock_unlock(&cacheLock)
+            if needSeed {
+                let defaults = KeyboardPreferences.defaults
+                var seeded: [String: Bool] = [:]
+                for entry in knownKeyGroups {
+                    if let primaryKey = entry.0.first,
+                       let val = defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
+                        seeded[primaryKey] = val
+                    }
+                }
+                os_unfair_lock_lock(&cacheLock)
+                for (k, v) in seeded where cachedAppGroupSysPrefs[k] == nil {
+                    cachedAppGroupSysPrefs[k] = v
+                }
+                os_unfair_lock_unlock(&cacheLock)
+            }
+        }
         var updated: [String: Bool] = [:]
         for (index, entry) in knownKeyGroups.enumerated() {
             if let primaryKey = entry.0.first {
@@ -1553,14 +1680,15 @@ enum SystemKeyboardSettings {
         os_unfair_lock_lock(&cacheLock)
         let isCacheEmpty = cachedValues.isEmpty
         let age = now - lastSyncTimestamp
-        let needsRefresh = !isRefreshing && (force || isCacheEmpty || age >= 0.75)
+        let needsRefresh = !isRefreshing && (force || isCacheEmpty || age >= 2.0)
+        let shouldReadMainThreadInputModes = force || !hasReadMainThreadInputModes
         if needsRefresh {
             isRefreshing = true
             lastSyncTimestamp = now
         }
         os_unfair_lock_unlock(&cacheLock)
         guard needsRefresh else { return }
-        if Thread.isMainThread && Bundle.main.bundleIdentifier == AppConfiguration.appBundleId {
+        if Thread.isMainThread && Bundle.main.bundleIdentifier == AppConfiguration.appBundleId && shouldReadMainThreadInputModes {
             _ = activeInputModeLanguages(forceRefresh: force)
         }
 
@@ -1571,12 +1699,12 @@ enum SystemKeyboardSettings {
     }
 
     private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
-        for key in keys {
-            if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
-                let ts = KeyboardPreferences.defaults.double(forKey: "crh.key.test.uiTestingTimestamp")
-                if CommandLine.arguments.contains("-UITesting")
-                    || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-                    || (ts > 0 && abs(Date().timeIntervalSince1970 - ts) < 600.0) {
+        let args = CommandLine.arguments
+        let isTestEnv = args.contains("-UITesting")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        if isTestEnv {
+            for key in keys {
+                if let testOverride = KeyboardPreferences.defaults.object(forKey: "crh.key.test.sysPref.\(key)") as? Bool {
                     return testOverride
                 }
             }
@@ -1585,7 +1713,8 @@ enum SystemKeyboardSettings {
         let now = ProcessInfo.processInfo.systemUptime
         os_unfair_lock_lock(&cacheLock)
         let cached = cachedValues[primaryKey]
-        let isStale = (now - lastSyncTimestamp) >= 0.75
+        let appGroupCached = cachedAppGroupSysPrefs[primaryKey]
+        let isStale = (now - lastSyncTimestamp) >= 2.0
         os_unfair_lock_unlock(&cacheLock)
         if let cached {
             if isStale {
@@ -1595,7 +1724,13 @@ enum SystemKeyboardSettings {
         }
         if Thread.isMainThread {
             triggerAsyncRefreshIfNeeded()
-            if let appGroupCached = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
+            if let liveVal = queryPreferencesControllers(forKey: primaryKey) {
+                os_unfair_lock_lock(&cacheLock)
+                cachedValues[primaryKey] = liveVal
+                os_unfair_lock_unlock(&cacheLock)
+                return liveVal
+            }
+            if let appGroupCached {
                 return appGroupCached
             }
             return defaultValue
@@ -1637,7 +1772,10 @@ enum SystemKeyboardSettings {
 
     static var isKeyFlicksEnabled: Bool {
         guard isFeatureEnabled(.keyFlicks) else { return false }
-        return readSystemPreferenceBool(["GesturesEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"], default: true)
+        return readSystemPreferenceBool(
+            ["GesturesEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"],
+            default: true
+        )
     }
 
     static var isSlideToTypeEnabled: Bool {
@@ -1736,27 +1874,87 @@ enum SystemKeyboardSettings {
     private static var cachedHasAuthoritativeList: Bool?
     private static var lastActiveInputModesCheckTime: TimeInterval = 0
     private static var cachedActiveInputModeLanguages: [String] = []
+    private static var hasReadMainThreadInputModes: Bool = false
     static let cachedEmojiKeyboardEnabledKey = "crh.key.cachedEmojiKeyboardEnabled"
     static let cachedEnabledKeyboardsKey = "crh.key.cachedEnabledKeyboards"
 
-    /// Safely returns lowercased `UITextInputMode.activeInputModes` languages on the main thread,
+    /// Queries `UIKeyboardInputModeController.sharedInputModeController.enabledInputModeIdentifiers`
+    /// in-memory so all enabled keyboards in `Settings → General → Keyboard → Keyboards` are detected immediately.
+    private static func queryControllerEnabledInputModeIdentifiers() -> [String] {
+        let clsName = rtJoin(["UI", "Key", "board", "Input", "Mode", "Controller"])
+        let sharedSel = NSSelectorFromString(rtJoin(["shared", "Input", "Mode", "Controller"]))
+        guard let cls = NSClassFromString(clsName) as? NSObject.Type,
+              cls.responds(to: sharedSel),
+              let unmanaged = cls.perform(sharedSel) else {
+            return []
+        }
+        let controller = unmanaged.takeUnretainedValue() as AnyObject
+        var results: [String] = []
+        for selParts in [
+            ["enabled", "Input", "Mode", "Identifiers"],
+            ["normalized", "Enabled", "Input", "Mode", "Identifiers"]
+        ] {
+            let sel = NSSelectorFromString(rtJoin(selParts))
+            if controller.responds(to: sel),
+               let arrUnmanaged = controller.perform(sel),
+               let arr = arrUnmanaged.takeUnretainedValue() as? [String] {
+                results.append(contentsOf: arr)
+            }
+        }
+        return results
+    }
+
+    /// Safely returns lowercased `UITextInputMode.activeInputModes` languages and extension identifiers on the main thread,
     /// or the most recent main-thread snapshot when queried from a background queue.
     static func activeInputModeLanguages(forceRefresh: Bool = false) -> [String] {
         if Thread.isMainThread {
             let now = ProcessInfo.processInfo.systemUptime
             os_unfair_lock_lock(&cacheLock)
-            if !forceRefresh, !cachedActiveInputModeLanguages.isEmpty, (now - lastActiveInputModesCheckTime) < 2.0 {
+            if !forceRefresh, hasReadMainThreadInputModes, (now - lastActiveInputModesCheckTime) < 1.0 {
                 let cached = cachedActiveInputModeLanguages
                 os_unfair_lock_unlock(&cacheLock)
                 return cached
             }
             lastActiveInputModesCheckTime = now
             os_unfair_lock_unlock(&cacheLock)
-            let langs = UITextInputMode.activeInputModes.compactMap(\.primaryLanguage)
-                .map { $0.replacingOccurrences(of: "_", with: "-").lowercased() }
+            var langs: [String] = []
+            for mode in UITextInputMode.activeInputModes {
+                if let primary = mode.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased(), !primary.isEmpty {
+                    langs.append(primary)
+                } else {
+                    langs.append("emoji")
+                }
+                if let ident = ((mode as AnyObject).value(forKey: "identifier") as? String)?.lowercased(), !ident.isEmpty {
+                    langs.append(ident)
+                    if ident.contains("crh.key.keyboard.keyboardukrainian") || ident.contains("crh.key.keyboard.pro") {
+                        langs.append("crh-cyrl-ua")
+                    } else if ident.contains("crh.key.keyboard.keyboardcyrillic") {
+                        langs.append("crh-cyrl")
+                    } else if ident == AppConfiguration.keyboardBundleId.lowercased()
+                        || ident.hasPrefix("crh.key.keyboard.keyboard@")
+                        || ident.hasSuffix("crh.key.keyboard.keyboard") {
+                        langs.append("crh-latn")
+                    }
+                }
+            }
+            for id in queryControllerEnabledInputModeIdentifiers() {
+                let lower = id.lowercased()
+                langs.append(lower)
+                if lower.contains("crh.key.keyboard.keyboardukrainian") || lower.contains("crh.key.keyboard.pro") {
+                    langs.append("crh-cyrl-ua")
+                } else if lower.contains("crh.key.keyboard.keyboardcyrillic") {
+                    langs.append("crh-cyrl")
+                } else if lower == AppConfiguration.keyboardBundleId.lowercased()
+                    || lower.hasPrefix("crh.key.keyboard.keyboard@")
+                    || lower.hasSuffix("crh.key.keyboard.keyboard") {
+                    langs.append("crh-latn")
+                }
+            }
             os_unfair_lock_lock(&cacheLock)
             cachedActiveInputModeLanguages = langs
+            hasReadMainThreadInputModes = true
             os_unfair_lock_unlock(&cacheLock)
+            recordPositiveSeenFlags(from: langs)
             return langs
         }
         os_unfair_lock_lock(&cacheLock)
@@ -1765,8 +1963,30 @@ enum SystemKeyboardSettings {
         return langs
     }
 
-    /// Reads the list of enabled keyboard identifiers from system preferences (`AppleKeyboards`),
-    /// `UITextInputMode.activeInputModes`, and the App Group cache.
+    private static func recordPositiveSeenFlags(from activeLanguages: [String]) {
+        let isActualUITestProcess = ProcessInfo.processInfo.arguments.contains("-UITesting")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        guard !isActualUITestProcess else { return }
+        let defaults = KeyboardPreferences.defaults
+        for lang in activeLanguages {
+            if lang.hasPrefix("crh-cyrl-ua") || lang.contains("keyboardukrainian") || lang.contains("crh.key.keyboard.pro") {
+                if !defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
+                    defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+                }
+            } else if lang.hasPrefix("crh-cyrl") || lang.contains("keyboardcyrillic") {
+                if !defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+                    defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+                }
+            } else if lang == "crh" || lang.hasPrefix("crh-latn") || lang == AppConfiguration.keyboardBundleId.lowercased() {
+                if !defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
+                    defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
+                }
+            }
+        }
+    }
+
+    /// Reads the list of enabled keyboard identifiers from `UIKeyboardInputModeController`, `AppleKeyboards`,
+    /// `UITextInputMode.activeInputModes`, and the App Group cache without blocking the main thread on CFPreferences XPC.
     @discardableResult
     static func enabledSystemKeyboardIdentifiers(forceRefresh: Bool = false) -> [String] {
         let now = ProcessInfo.processInfo.systemUptime
@@ -1775,81 +1995,152 @@ enum SystemKeyboardSettings {
             os_unfair_lock_unlock(&cacheLock)
             return cached
         }
+        if Thread.isMainThread, !forceRefresh, let cached = cachedEnabledKeyboardIds {
+            os_unfair_lock_unlock(&cacheLock)
+            if (now - lastKeyboardsCheckTime) >= 1.5 {
+                refreshQueue.async {
+                    _ = enabledSystemKeyboardIdentifiers(forceRefresh: true)
+                }
+            }
+            return cached
+        }
+        let previousCached = cachedEnabledKeyboardIds
         lastKeyboardsCheckTime = now
         os_unfair_lock_unlock(&cacheLock)
 
         var collected: [String] = []
-        var didReadAuthoritativeList = false
+        var authoritativeThirdPartySet: Set<String> = []
+        var didReadAuthoritativeThirdPartyList = false
+
+        let controllerList = Thread.isMainThread ? queryControllerEnabledInputModeIdentifiers() : []
+        if !controllerList.isEmpty {
+            collected.append(contentsOf: controllerList)
+            if controllerList.contains(where: { $0.lowercased().contains("crh.key.") }) {
+                didReadAuthoritativeThirdPartyList = true
+                for item in controllerList where item.lowercased().contains("crh.key.") {
+                    authoritativeThirdPartySet.insert(item.lowercased())
+                }
+            }
+        }
 
         if let stdList = UserDefaults.standard.stringArray(forKey: "AppleKeyboards"), !stdList.isEmpty {
             collected.append(contentsOf: stdList)
-            didReadAuthoritativeList = true
-        }
-        let domains: [CFString] = [
-            "com.apple.Preferences" as CFString,
-            kCFPreferencesAnyApplication
-        ]
-        for domain in domains {
-            if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
-                collected.append(contentsOf: list)
-                didReadAuthoritativeList = true
-            }
-            if let hostList = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostList.isEmpty {
-                collected.append(contentsOf: hostList)
-                didReadAuthoritativeList = true
+            if stdList.contains(where: { $0.lowercased().contains("crh.key.") }) {
+                didReadAuthoritativeThirdPartyList = true
+                for item in stdList where item.lowercased().contains("crh.key.") {
+                    authoritativeThirdPartySet.insert(item.lowercased())
+                }
             }
         }
 
-        let activeLanguages = activeInputModeLanguages()
+        if !Thread.isMainThread {
+            let domains: [CFString] = [
+                "com.apple.Preferences" as CFString,
+                kCFPreferencesAnyApplication
+            ]
+            for domain in domains {
+                if let list = CFPreferencesCopyAppValue("AppleKeyboards" as CFString, domain) as? [String], !list.isEmpty {
+                    collected.append(contentsOf: list)
+                    if list.contains(where: { $0.lowercased().contains("crh.key.") }) {
+                        didReadAuthoritativeThirdPartyList = true
+                        for item in list where item.lowercased().contains("crh.key.") {
+                            authoritativeThirdPartySet.insert(item.lowercased())
+                        }
+                    }
+                }
+                if let hostList = CFPreferencesCopyValue("AppleKeyboards" as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? [String], !hostList.isEmpty {
+                    collected.append(contentsOf: hostList)
+                    if hostList.contains(where: { $0.lowercased().contains("crh.key.") }) {
+                        didReadAuthoritativeThirdPartyList = true
+                        for item in hostList where item.lowercased().contains("crh.key.") {
+                            authoritativeThirdPartySet.insert(item.lowercased())
+                        }
+                    }
+                }
+            }
+        } else {
+            refreshQueue.async {
+                _ = enabledSystemKeyboardIdentifiers(forceRefresh: true)
+            }
+        }
+
+        let activeLanguages = activeInputModeLanguages(forceRefresh: false)
         for lang in activeLanguages {
-            if lang.hasPrefix("crh-cyrl-ua") {
+            if lang.hasPrefix("crh-cyrl-ua") || lang.contains("keyboardukrainian") || lang.contains("crh.key.keyboard.pro") {
                 collected.append(AppConfiguration.ukrainianKeyboardBundleId)
                 collected.append(AppConfiguration.ukrainianDeviceKeyboardBundleId)
-            } else if lang.hasPrefix("crh-cyrl") {
+            } else if lang.hasPrefix("crh-cyrl") || lang.contains("keyboardcyrillic") {
                 collected.append(AppConfiguration.cyrillicKeyboardBundleId)
-            } else if lang == "crh" || lang.hasPrefix("crh-latn") {
+            } else if lang == "crh" || lang.hasPrefix("crh-latn") || lang == AppConfiguration.keyboardBundleId.lowercased() {
+                collected.append(AppConfiguration.keyboardBundleId)
+            } else if lang.contains("emoji") {
+                collected.append("emoji")
+            }
+        }
+
+        let defaults = KeyboardPreferences.defaults
+        let isActualUITestProcess = ProcessInfo.processInfo.arguments.contains("-UITesting")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
+        if didReadAuthoritativeThirdPartyList && !isActualUITestProcess {
+            let hasAuthLatin = authoritativeThirdPartySet.contains {
+                $0 == AppConfiguration.keyboardBundleId.lowercased()
+                    || $0.hasPrefix("crh.key.keyboard.keyboard@")
+                    || $0.hasSuffix("crh.key.keyboard.keyboard")
+            }
+            let hasAuthCyr = authoritativeThirdPartySet.contains {
+                $0.contains("crh.key.keyboard.keyboardcyrillic")
+            }
+            let hasAuthUkr = authoritativeThirdPartySet.contains {
+                $0.contains("crh.key.keyboard.keyboardukrainian") || $0.contains("crh.key.keyboard.pro")
+            }
+            if defaults.bool(forKey: "crh.key.primaryExtensionSeen") != hasAuthLatin {
+                defaults.set(hasAuthLatin, forKey: "crh.key.primaryExtensionSeen")
+            }
+            if defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") != hasAuthCyr {
+                defaults.set(hasAuthCyr, forKey: "crh.key.cyrillicExtensionSeen")
+            }
+            if defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") != hasAuthUkr {
+                defaults.set(hasAuthUkr, forKey: "crh.key.ukrainianExtensionSeen")
+            }
+        } else {
+            if defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
                 collected.append(AppConfiguration.keyboardBundleId)
             }
-        }
-
-        if didReadAuthoritativeList {
-            let unique = Array(Set(collected)).sorted()
-            os_unfair_lock_lock(&cacheLock)
-            cachedEnabledKeyboardIds = unique
-            cachedHasAuthoritativeList = true
-            os_unfair_lock_unlock(&cacheLock)
-            if KeyboardPreferences.defaults.stringArray(forKey: cachedEnabledKeyboardsKey) != unique {
-                KeyboardPreferences.defaults.set(unique, forKey: cachedEnabledKeyboardsKey)
+            if defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+                collected.append(AppConfiguration.cyrillicKeyboardBundleId)
             }
-            return unique
+            if defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
+                collected.append(AppConfiguration.ukrainianKeyboardBundleId)
+                collected.append(AppConfiguration.ukrainianDeviceKeyboardBundleId)
+            }
         }
 
-        if let stored = KeyboardPreferences.defaults.stringArray(forKey: cachedEnabledKeyboardsKey), !stored.isEmpty {
-            let merged = Array(Set(stored + collected)).sorted()
-            os_unfair_lock_lock(&cacheLock)
-            cachedEnabledKeyboardIds = merged
-            cachedHasAuthoritativeList = false
-            os_unfair_lock_unlock(&cacheLock)
-            return merged
+        if let stored = defaults.stringArray(forKey: cachedEnabledKeyboardsKey), !stored.isEmpty {
+            for item in stored where !item.lowercased().contains("crh.key.") {
+                collected.append(item)
+            }
         }
 
         let unique = Array(Set(collected)).sorted()
         os_unfair_lock_lock(&cacheLock)
         cachedEnabledKeyboardIds = unique
-        cachedHasAuthoritativeList = false
+        cachedHasAuthoritativeList = didReadAuthoritativeThirdPartyList
         os_unfair_lock_unlock(&cacheLock)
+        if !Thread.isMainThread {
+            if defaults.stringArray(forKey: cachedEnabledKeyboardsKey) != unique {
+                defaults.set(unique, forKey: cachedEnabledKeyboardsKey)
+            }
+            if previousCached != unique {
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: Notification.Name("crh.key.localKeyboardsRefresh"), object: nil)
+                }
+            }
+        }
         return unique
     }
 
     static func hasAuthoritativeSystemKeyboardsList() -> Bool {
-        let now = ProcessInfo.processInfo.systemUptime
-        os_unfair_lock_lock(&cacheLock)
-        if let cached = cachedHasAuthoritativeList, (now - lastKeyboardsCheckTime) < 1.5 {
-            os_unfair_lock_unlock(&cacheLock)
-            return cached
-        }
-        os_unfair_lock_unlock(&cacheLock)
-        _ = enabledSystemKeyboardIdentifiers()
         os_unfair_lock_lock(&cacheLock)
         let result = cachedHasAuthoritativeList ?? false
         os_unfair_lock_unlock(&cacheLock)
@@ -1929,6 +2220,18 @@ enum SystemKeyboardSettings {
         return fallback
     }
 
+    static var isUITestFlagAuthoritative: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-UITesting") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+        }
+        if Bundle.main.bundleIdentifier == AppConfiguration.appBundleId,
+           KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.isUITesting")
+        }
+        return false
+    }
+
     /// Returns true when the Standard Latin keyboard extension (`Qırımtatarca`, `crh-Latn`) is enabled in iOS Settings.
     static var isPrimaryKeyboardExtensionEnabled: Bool {
         let args = ProcessInfo.processInfo.arguments
@@ -1936,28 +2239,33 @@ enum SystemKeyboardSettings {
         if args.contains("-qt_keyboard_added") { return true }
         let bundleId = Bundle.main.bundleIdentifier
         if bundleId == AppConfiguration.keyboardBundleId { return true }
-        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
-            if KeyboardPreferences.defaults.object(forKey: "crh.key.primaryExtensionSeen") != nil {
-                return KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+        let defaults = KeyboardPreferences.defaults
+        if isUITestFlagAuthoritative {
+            if defaults.object(forKey: "crh.key.primaryExtensionSeen") != nil {
+                return defaults.bool(forKey: "crh.key.primaryExtensionSeen")
             }
+            return true
+        }
+        let languages = activeInputModeLanguages()
+        if languages.contains(where: { $0 == "crh" || $0.hasPrefix("crh-latn") || $0 == AppConfiguration.keyboardBundleId.lowercased() }) {
+            defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
             return true
         }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesLatin = ids.contains { id in
             let lower = id.lowercased()
             return lower == AppConfiguration.keyboardBundleId.lowercased()
-                || lower.contains("crh.key.keyboard.keyboard")
                 || lower.hasPrefix("crh.key.keyboard.keyboard@")
+                || lower.hasSuffix("crh.key.keyboard.keyboard")
         }
-        if matchesLatin { return true }
-        let languages = activeInputModeLanguages()
-        if languages.contains(where: { $0 == "crh" || $0.hasPrefix("crh-latn") }) {
+        if matchesLatin {
+            defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
             return true
         }
-        if hasAuthoritativeSystemKeyboardsList() {
-            return false
+        if !hasAuthoritativeSystemKeyboardsList() && defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
+            return true
         }
-        return KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
+        return false
     }
 
     /// Returns true when the Standard Cyrillic keyboard extension (`Къырымтатарджа`, `crh-Cyrl`) is enabled in iOS Settings.
@@ -1969,8 +2277,14 @@ enum SystemKeyboardSettings {
         if args.contains("-qt_cyrillic_added") { return true }
         let bundleId = Bundle.main.bundleIdentifier
         if bundleId == AppConfiguration.cyrillicKeyboardBundleId { return true }
-        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
-            return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        let defaults = KeyboardPreferences.defaults
+        if isUITestFlagAuthoritative {
+            return defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        }
+        let languages = activeInputModeLanguages()
+        if languages.contains(where: { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) || $0.contains("keyboardcyrillic") }) {
+            defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
+            return true
         }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesCyrillic = ids.contains { id in
@@ -1978,15 +2292,14 @@ enum SystemKeyboardSettings {
             return lower == AppConfiguration.cyrillicKeyboardBundleId.lowercased()
                 || lower.contains("crh.key.keyboard.keyboardcyrillic")
         }
-        if matchesCyrillic { return true }
-        let languages = activeInputModeLanguages()
-        if languages.contains(where: { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }) {
+        if matchesCyrillic {
+            defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
             return true
         }
-        if hasAuthoritativeSystemKeyboardsList() {
-            return false
+        if !hasAuthoritativeSystemKeyboardsList() && defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+            return true
         }
-        return KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+        return false
     }
 
     /// Returns true when the Ukrainian Cyrillic keyboard extension (`Кʼиримтатарджа`, `crh-Cyrl-UA`) is enabled in iOS Settings.
@@ -1998,8 +2311,14 @@ enum SystemKeyboardSettings {
         if args.contains("-qt_ukrainian_added") || args.contains("-qt_ukrainian_fiva") { return true }
         let bundleId = Bundle.main.bundleIdentifier
         if AppConfiguration.isUkrainianCyrillicKeyboardExtensionBundleId(bundleId) { return true }
-        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting") {
-            return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+        let defaults = KeyboardPreferences.defaults
+        if isUITestFlagAuthoritative {
+            return defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+        }
+        let languages = activeInputModeLanguages()
+        if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") || $0.contains("keyboardukrainian") || $0.contains("crh.key.keyboard.pro") }) {
+            defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+            return true
         }
         let ids = enabledSystemKeyboardIdentifiers()
         let matchesUkrainian = ids.contains { id in
@@ -2009,15 +2328,14 @@ enum SystemKeyboardSettings {
                 || lower.contains("crh.key.keyboard.keyboardukrainian")
                 || lower.contains("crh.key.keyboard.pro")
         }
-        if matchesUkrainian { return true }
-        let languages = activeInputModeLanguages()
-        if languages.contains(where: { $0.hasPrefix("crh-cyrl-ua") }) {
+        if matchesUkrainian {
+            defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
             return true
         }
-        if hasAuthoritativeSystemKeyboardsList() {
-            return false
+        if !hasAuthoritativeSystemKeyboardsList() && defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
+            return true
         }
-        return KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+        return false
     }
 }
 

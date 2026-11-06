@@ -176,11 +176,6 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
 
     static func itemEdgeInsets(forRowAt rowIndex: Int, totalRows: Int = 4, context: KeyboardContext) -> EdgeInsets {
         let metrics = resolvedMetrics(for: context)
-        if context.isKeyboardFloating && !usesClassicSystemKeyStyle {
-            let vertical: CGFloat = 7.5
-            let horizontal: CGFloat = 2.8
-            return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
-        }
         if totalRows == 5 && context.deviceType == .pad && !context.isKeyboardFloating {
             let isPortrait = context.interfaceOrientation.isPortrait
             let vertical: CGFloat = isPortrait ? 3.5 : 4.5
@@ -198,12 +193,13 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         isFloatingOverride: Bool? = nil,
         hasToolbar: Bool
     ) -> CGFloat {
-        resolvedMetrics(
+        let metrics = resolvedMetrics(
             for: context,
             isLandscapeOverride: isLandscapeOverride,
             isFloatingOverride: isFloatingOverride,
             hasToolbarOverride: hasToolbar
-        ).totalKeyboardHeight
+        )
+        return metrics.totalKeyboardHeight
     }
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
@@ -282,7 +278,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         if keyboardContext.deviceType == .phone {
             switch action {
             case .shift, .capsLock, .backspace:
-                return 0.85
+                return 0.95
             default:
                 return 1.0
             }
@@ -302,9 +298,9 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             case .uppercased:
                 return Image(systemName: "shift.fill")
             case .capsLocked:
-                // When a dedicated Caps Lock key is visible on Docked iPad (Cyrillic disabled),
+                // When a dedicated Caps Lock key is visible on Docked iPad (Cyrillic disabled or абв key disabled),
                 // Caps Lock shows capslock.fill while Shift stays shift outline.
-                if isPad && !keyboardContext.isKeyboardFloating && !KeyboardPreferences.cyrillicEnabled {
+                if isPad && !keyboardContext.isKeyboardFloating && !KeyboardPreferences.isIPadAbvToggleKeyActive && !keyboardContext.locale.identifier.contains("Cyrl") {
                     return Image(systemName: "shift")
                 }
                 return Image(systemName: "capslock.fill")
@@ -411,11 +407,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         return true
     }
 
-    static var usesModernPillCallout: Bool {
-        if let override = KeyboardPreferences.defaults.object(forKey: "crh.key.test.useModernPillCallout") as? Bool {
-            return override
-        }
-        if #available(iOS 26.0, *) {
+    static func usesModernPillCallout(isFloating: Bool = false) -> Bool {
+        if #available(iOS 27.0, *) {
             return true
         }
         return false
@@ -425,9 +418,14 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         var style = super.calloutStyle
         let isDark = Self.effectiveIsDark(for: keyboardContext)
         let useClassic = Self.usesClassicSystemKeyStyle
-        let useModernPill = Self.usesModernPillCallout
         let isPad = keyboardContext.deviceType == .pad
         let isFloating = keyboardContext.isKeyboardFloating
+        let useModernPill = Self.usesModernPillCallout(isFloating: isFloating)
+        let metrics = Self.resolvedMetrics(for: keyboardContext)
+        style.buttonInset = CGSize(
+            width: metrics.horizontalItemInset,
+            height: metrics.letterTopBottomInset
+        )
         style.backgroundColor = isDark
             ? (useClassic
                 ? Color(red: 78.0 / 255.0, green: 78.0 / 255.0, blue: 79.0 / 255.0)
@@ -437,25 +435,32 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         style.borderColor = isDark ? Color.white.opacity(0.18) : Color.black.opacity(0.06)
         style.shadowColor = Color.black.opacity(isDark ? 0.38 : 0.16)
         style.shadowRadius = useModernPill ? 6.0 : 3.5
-        style.buttonCornerRadius = useModernPill
-            ? buttonCornerRadius(for: .character("a"))
-            : (isPad ? (isFloating ? 5.0 : 7.0) : 6.0)
+        style.buttonCornerRadius = useClassic
+            ? (isPad ? (isFloating ? 5.0 : 7.0) : 6.0)
+            : buttonCornerRadius(for: .character("a"))
         style.cornerRadius = useModernPill
             ? (isFloating ? 11.5 : 13.0)
             : (isFloating ? 9.5 : 11.0)
         style.curveSize = useModernPill
             ? .zero
-            : (isFloating ? CGSize(width: 5.0, height: 10.0) : CGSize(width: 6.0, height: 11.0))
+            : (isFloating ? CGSize(width: 6.0, height: 10.0) : CGSize(width: 7.0, height: 11.0))
         return style
     }
 
     override var inputCalloutStyle: Callouts.InputCalloutStyle {
         var style = super.inputCalloutStyle
         let isFloating = keyboardContext.isKeyboardFloating
+        let useModernPill = Self.usesModernPillCallout(isFloating: isFloating)
         style.callout = calloutStyle
-        style.calloutSize = isFloating
-            ? CGSize(width: 37.0, height: 46.0)
-            : CGSize(width: 40.0, height: 50.0)
+        if useModernPill {
+            style.calloutSize = isFloating
+                ? CGSize(width: 31.0, height: 46.0)
+                : CGSize(width: 35.0, height: 50.0)
+        } else {
+            style.calloutSize = isFloating
+                ? CGSize(width: 40.0, height: 47.0)
+                : CGSize(width: 45.0, height: 52.0)
+        }
         style.calloutPadding = isFloating ? 5.0 : 6.0
         style.font = .system(size: isFloating ? 29.0 : 34.0, weight: .regular)
         return style
@@ -502,9 +507,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
+        let isDockedPad = isPad && !context.isKeyboardFloating
         let lightInputKey = useClassicStyle
             ? Color.white.opacity(increaseContrast ? 0.98 : 0.92)
-            : Color.white.opacity(increaseContrast ? 0.94 : 0.84)
+            : (isDockedPad
+                ? Color.white.opacity(increaseContrast ? 0.96 : 0.94)
+                : Color.white.opacity(increaseContrast ? 0.98 : 0.95))
         // Native iPadOS/iOS Light Mode pressed keys depress with a crisp gray-translucent tint
         let lightInputKeyPressed = useClassicStyle
             ? Color(red: 0.54, green: 0.57, blue: 0.63).opacity(0.68)
@@ -640,12 +648,17 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 }
                 return .system(size: isFloating ? 16.5 : 19, weight: .regular)
             }
-            return .system(size: isFloating ? 15.5 : (isDockedPad ? (isPortrait ? 18.0 : 19.0) : 15.0), weight: .regular)
-        case .shift, .capsLock, .backspace:
+            return .system(size: isFloating ? 15.5 : (isDockedPad ? (isPortrait ? 18.0 : 19.0) : 16.0), weight: .regular)
+        case .shift, .capsLock:
             if isDockedPad {
                 return .system(size: isPortrait ? 20 : 22, weight: .regular)
             }
-            return .system(size: 16.5, weight: .regular)
+            return .system(size: isFloating ? 16.5 : 17.5, weight: .medium)
+        case .backspace:
+            if isDockedPad {
+                return .system(size: isPortrait ? 20 : 22, weight: .regular)
+            }
+            return .system(size: isFloating ? 16.5 : 17.0, weight: .regular)
         default:
             if buttonImage(for: action) != nil {
                 if isDockedPad {

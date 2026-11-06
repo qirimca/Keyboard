@@ -61,6 +61,39 @@ public extension Keyboard {
 /// This overlay sets up a `next keyboard` controller action
 /// on a blank `UIKit` button. This can hopefully be removed
 /// later, without public changes.
+private final class NextKeyboardUIButton: UIButton {
+    weak var inputController: UIInputViewController?
+    private var touchDownTimestamp: CFAbsoluteTime = 0
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        addTarget(self, action: #selector(handleTouchDown), for: .touchDown)
+        addTarget(self, action: #selector(handleTouchUpInside), for: .touchUpInside)
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
+
+    @objc private func handleTouchDown() {
+        touchDownTimestamp = CFAbsoluteTimeGetCurrent()
+    }
+
+    @objc private func handleTouchUpInside() {
+        let elapsed = CFAbsoluteTimeGetCurrent() - touchDownTimestamp
+        if elapsed < 0.35 {
+            let ctrl = inputController ?? Keyboard.NextKeyboardController.shared
+            ctrl?.advanceToNextInputMode()
+        }
+    }
+
+    override func accessibilityActivate() -> Bool {
+        let ctrl = inputController ?? Keyboard.NextKeyboardController.shared
+        ctrl?.advanceToNextInputMode()
+        return true
+    }
+}
+
 private struct NextKeyboardButtonOverlay: UIViewRepresentable {
 
     init(
@@ -74,13 +107,17 @@ private struct NextKeyboardButtonOverlay: UIViewRepresentable {
     weak var controller: UIInputViewController?
 
     func makeUIView(context: Context) -> UIButton {
-        let button = UIButton()
-        (controller ?? Keyboard.NextKeyboardController.shared)?.setupNextKeyboardButton(button)
+        let button = NextKeyboardUIButton()
+        let resolved = controller ?? Keyboard.NextKeyboardController.shared
+        button.inputController = resolved
+        resolved?.setupNextKeyboardButton(button)
         return button
     }
 
     func updateUIView(_ uiView: UIButton, context: Context) {
-        (controller ?? Keyboard.NextKeyboardController.shared)?.setupNextKeyboardButton(uiView)
+        let resolved = controller ?? Keyboard.NextKeyboardController.shared
+        (uiView as? NextKeyboardUIButton)?.inputController = resolved
+        resolved?.setupNextKeyboardButton(uiView)
     }
 }
 

@@ -18,21 +18,3 @@ public extension Dictation {
         case authorized = 3
     }
 }
-
-#if os(iOS)
-import Speech
- 
-public extension SFSpeechRecognizerAuthorizationStatus {
-
-    /// Get a dictation-mapped status.
-    var keyboardDictationStatus: Dictation.AuthorizationStatus {
-        switch self {
-        case .notDetermined: return .notDetermined
-        case .denied: return .denied
-        case .restricted: return .restricted
-        case .authorized: return .authorized
-        @unknown default: return .notDetermined
-        }
-    }
-}
-#endif

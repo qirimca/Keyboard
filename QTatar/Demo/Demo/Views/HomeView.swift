@@ -103,30 +103,32 @@ enum KeyboardTestThemeMode: String, CaseIterable, Identifiable {
  and list items that show various keyboard-specific states.
  */
 struct HomeView: View {
-    @Binding var navigationPath: NavigationPath
+    var onNavigate: (DemoRoute) -> Void = { _ in }
+    @State private var didNavigateToChildRoute = false
 
-    @AppStorage("crh.key.text") private var text = ""
-    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
-    @AppStorage(KeyboardPreferences.cyrillicKey, store: KeyboardPreferences.defaults) private var cyrillicEnabled = true
-    @AppStorage(KeyboardPreferences.ukrainianCyrillicLayoutKey, store: KeyboardPreferences.defaults) private var ukrainianCyrillicLayout = false
-    @AppStorage(KeyboardPreferences.suggestionsKey, store: KeyboardPreferences.defaults) private var suggestionsEnabled = true
-    @AppStorage(KeyboardPreferences.wordLearningKey, store: KeyboardPreferences.defaults) private var wordLearningEnabled = true
-    @AppStorage(KeyboardPreferences.statsEnabledKey, store: KeyboardPreferences.defaults) private var statsEnabled = true
-    @AppStorage(KeyboardPreferences.oneHandedModeKey, store: KeyboardPreferences.defaults) private var oneHandedMode = "off"
+    @State private var text: String = UserDefaults.standard.string(forKey: "crh.key.text") ?? ""
+    @State private var language: String = KeyboardPreferences.interfaceLanguage
+    @State private var cyrillicEnabled: Bool = (KeyboardPreferences.defaults.object(forKey: KeyboardPreferences.cyrillicKey) as? Bool) ?? true
+    @State private var ukrainianCyrillicLayout: Bool = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+    @State private var ipadAbvKeyDisabled: Bool = (KeyboardPreferences.defaults.object(forKey: KeyboardPreferences.ipadAbvKeyDisabledKey) as? Bool) ?? false
+    @State private var suggestionsEnabled: Bool = KeyboardPreferences.suggestionsEnabled
+    @State private var wordLearningEnabled: Bool = KeyboardPreferences.wordLearningEnabled
+    @State private var statsEnabled: Bool = KeyboardPreferences.statsEnabled
+    @State private var oneHandedMode: String = KeyboardPreferences.oneHandedMode
 
-    @AppStorage(KeyboardUsageStats.totalWordsKey, store: KeyboardPreferences.defaults) private var totalWords = 0
-    @AppStorage(KeyboardUsageStats.manualWordsKey, store: KeyboardPreferences.defaults) private var manualWords = 0
-    @AppStorage(KeyboardUsageStats.suggestedWordsKey, store: KeyboardPreferences.defaults) private var suggestedWords = 0
-    @AppStorage(KeyboardUsageStats.suggestedCharsKey, store: KeyboardPreferences.defaults) private var suggestedCharacters = 0
-    @AppStorage(KeyboardUsageStats.totalCharsKey, store: KeyboardPreferences.defaults) private var totalCharacters = 0
-    @AppStorage(KeyboardUsageStats.learnedWordsKey, store: KeyboardPreferences.defaults) private var learnedWordsCount = 0
-    @AppStorage(KeyboardUsageStats.uniqueWordsKey, store: KeyboardPreferences.defaults) private var uniqueWordsCount = 0
-    @AppStorage(KeyboardUsageStats.activeSecondsKey, store: KeyboardPreferences.defaults) private var activeSeconds: Double = 0
-    @AppStorage(KeyboardUsageStats.peakWPMKey, store: KeyboardPreferences.defaults) private var peakWPM = 0
-    @AppStorage(KeyboardUsageStats.peakCPMKey, store: KeyboardPreferences.defaults) private var peakCPM = 0
-    @AppStorage(KeyboardUsageStats.lastWPMKey, store: KeyboardPreferences.defaults) private var lastWPM = 0
-    @AppStorage(KeyboardUsageStats.lastCPMKey, store: KeyboardPreferences.defaults) private var lastCPM = 0
-    @AppStorage(KeyboardUsageStats.phrasesInsertedKey, store: KeyboardPreferences.defaults) private var phrasesInserted = 0
+    @State private var totalWords: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.totalWordsKey)
+    @State private var manualWords: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.manualWordsKey)
+    @State private var suggestedWords: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.suggestedWordsKey)
+    @State private var suggestedCharacters: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.suggestedCharsKey)
+    @State private var totalCharacters: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.totalCharsKey)
+    @State private var learnedWordsCount: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.learnedWordsKey)
+    @State private var uniqueWordsCount: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
+    @State private var activeSeconds: Double = KeyboardPreferences.defaults.double(forKey: KeyboardUsageStats.activeSecondsKey)
+    @State private var peakWPM: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.peakWPMKey)
+    @State private var peakCPM: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.peakCPMKey)
+    @State private var lastWPM: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.lastWPMKey)
+    @State private var lastCPM: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.lastCPMKey)
+    @State private var phrasesInserted: Int = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.phrasesInsertedKey)
 
     @State private var liveWPM = 0
     @State private var liveCPM = 0
@@ -176,15 +178,30 @@ struct HomeView: View {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-qt_keyboard_missing") { return false }
         if args.contains("-qt_keyboard_added") || args.contains("-qt_demo_stats") { return true }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen") { return true }
         return SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled
-            || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")
     }()
     @State private var didCheckColdLaunchExtensionDiff = false
     @State private var activeOnboardingSheet: OnboardingSheetRequest?
     @State private var pendingCyrillicRemovalCheck = false
+    @State private var pendingRemovalTarget: PendingRemovalTarget?
     @State private var didEnterBackgroundForCyrillicCheck = false
     @State private var showCyrillicGuideAlert = false
-    @State private var isTestingExpanded: Bool = !ProcessInfo.processInfo.arguments.contains("-qt_expand_stats")
+    @State private var isTestingExpanded: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_expand_stats") || args.contains("-qt_collapse_testing") {
+            return false
+        }
+        if (args.contains("-qt_expand_testing") || args.contains("-qt_focus_sandbox_live") || args.contains("-qt_reset_text") || args.contains("-qt_field"))
+            && !args.contains("-qt_no_autofocus")
+            && !args.contains("-qt_default_expansion") {
+            return true
+        }
+        return Self.defaultUsesTwoColumnsAtLaunch()
+    }()
+    @State private var didUserManuallyToggleSections = false
+    @State private var leftColumnNonSandboxHeight: CGFloat = 0
+    @State private var rightColumnMeasuredHeight: CGFloat = 0
     @State private var shouldAutoFocusSandbox: Bool = {
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-qt_no_autofocus") || args.contains("-qt_expand_stats") || args.contains("-qt_open_learned_words") || args.contains("-qt_open_about") {
@@ -215,16 +232,17 @@ struct HomeView: View {
     @State private var didInitializeThemeFromSystem = false
     @State private var lastKnownSettingsSnapshot: [String: Bool] = [:]
     @State private var settingsSyncRevision: Int = 0
-    @State private var showABDesignPreview: Bool = ProcessInfo.processInfo.arguments.contains("-qt_ab_preview") || ProcessInfo.processInfo.arguments.contains("-qt_ab_design_b")
+    @State private var showABDesignPreview: Bool = !ProcessInfo.processInfo.arguments.contains("-qt_hide_ab_preview")
     @State private var abDesignVariant: String = ProcessInfo.processInfo.arguments.contains("-qt_ab_design_b") ? "B" : "A"
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private enum CyrillicStatus { case enabled, missing, unknown }
+    private enum PendingRemovalTarget { case primary, cyrillic, ukrainian }
 
     private var animationsAllowed: Bool {
-        !reduceMotion && !isLowPowerMode && !Self.isUITestingEnvironment
+        !reduceMotion && !Self.isUITestingEnvironment && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private var shouldShowStartOverlay: Bool {
@@ -232,156 +250,1210 @@ struct HomeView: View {
     }
 
     private var abPreviewTitleText: String {
-        if language == "uk" { return "A/B Превʼю дизайну (без втрати поточного стану)" }
-        if language == "crh" { return "A/B Dizayn nümayışı" }
-        return "A/B Design Preview (Non-destructive)"
+        if language == "uk" { return "Порівняння дизайну (A / B / C / D / E / F)" }
+        if language == "crh" { return "Dizayn mukayesesi (A / B / C / D / E / F)" }
+        return "Design Comparison (A / B / C / D / E / F)"
     }
 
-    private var abSystemKeyboardsSubtitleText: String {
-        if language == "uk" { return "iOS Клавіатури" }
-        if language == "crh" { return "iOS Klaviaturası" }
-        return "iOS Keyboards"
+    private var abChangesSummaryText: String {
+        if language == "uk" {
+            switch abDesignVariant {
+            case "B":
+                return "Варіант B (Bento 2×2): ті самі оригінальні компоненти й 3D-емблеми у Bento-сітці — 2×2 плитки Статистики одразу на екрані, 2 плитки налаштувань поруч («Налаштування програми» + «Системні налаштування») та Bento-картки клавіатур."
+            case "C":
+                return "Варіант C (Студія клавіатур): Пісочниця + одразу під нею Єдиний Хаб усіх 3 розкладок (Q · Къ · Кʼ) для миттєвого керування поруч із полем вводу, нижче — Bento-налаштування та Статистика."
+            case "D":
+                return "Варіант D (Дашборд): зверху панель Мови інтерфейсу + живий 2×2 Bento-дашборд Статистики, посередині Пісочниця, знизу 2-колонкова Bento-сітка розкладок і спліт-док налаштувань."
+            case "E":
+                return "Варіант E (Компакт): мінімальна висота скролу — зверху швидка панель Мови й 2 плитки налаштувань та Bento-картки розкладок (Q · Къ · Кʼ), поруч/нижче — компактна 1-рядкова Статистика і Пісочниця."
+            case "F":
+                return "Варіант F (Фокус на друці): Пісочниця зверху і одразу під нею Bento-плитки розкладок (Q · Къ · Кʼ) прямо над клавіатурою, а Статистика та швидкі налаштування — у другій колонці або нижче."
+            default:
+                return "Варіант A (Поточний v3.1): класичний вертикальний стек карток. Перемикайте A / B / C / D / E / F зверху, щоб наживо порівняти 6 компонувань із тими самими фірмовими компонентами."
+            }
+        }
+        if language == "crh" {
+            switch abDesignVariant {
+            case "B":
+                return "Variant B (Bento 2×2): aynı özgün komponentler ve 3D nişanlar Bento plitkalarında — 2×2 Statistika, 2 sazlama plitkası ve klaviatura Bento kartochkaları."
+            case "C":
+                return "Variant C (Klaviatura studiyası): Yazuv alanı + altında 3 tizilişniñ (Q · Къ · Кʼ) birleşken merkezi, aşağıda Bento sazlamaları ve Statistika."
+            case "D":
+                return "Variant D (Panel): yuqarıda Til paneli + 2×2 Bento Statistika, ortada Yazuv alanı, aşağıda Bento tizilişler ve sazlamalar dokı."
+            case "E":
+                return "Variant E (Kompakt): yuqarıda Til paneli, 2 sazlama plitkası ve Bento tizilişler (Q · Къ · Кʼ), aşağıda kompakt Statistika ve Yazuv alanı."
+            case "F":
+                return "Variant F (Fokus): Yazuv alanı ve altında Bento tiziliş plitkaları (Q · Къ · Кʼ) klaviaturanıñ üstünde, aşağıda Statistika ve sazlamalar."
+            default:
+                return "Variant A (Şimdiki v3.1): klassik kartochkalar. 6 dizayn variantını (A / B / C / D / E / F) canlı mukayese etmek içün yuqarıdaki dögmelerge basıñız."
+            }
+        }
+        switch abDesignVariant {
+        case "B":
+            return "Variant B (Bento 2×2): the same original components & 3D badges in a Bento grid — live 2×2 Stats tiles, side-by-side App & System Settings tiles, and keyboard Bento cards."
+        case "C":
+            return "Variant C (Keyboard Studio): Sandbox + Unified Keyboard Layouts Hub (Q · Къ · Кʼ) right underneath for instant layout control next to typing, followed by Bento settings & Stats."
+        case "D":
+            return "Variant D (Dashboard): top Interface Language bar + live 2×2 Bento Statistics dashboard first, Sandbox in the middle, and 2-column Bento layouts + system settings dock below."
+        case "E":
+            return "Variant E (Compact): minimal vertical scroll — quick Language & Settings tiles + Bento layout cards (Q · Къ · Кʼ) first, paired with compact 1-row Stats and Sandbox."
+        case "F":
+            return "Variant F (Typing Focus): Sandbox at the top with Bento layout tiles (Q · Къ · Кʼ) directly underneath above the keyboard, followed by compact Stats and quick settings."
+        default:
+            return "Variant A (Current v3.1): classic stacked cards. Tap A / B / C / D / E / F above to live-compare 6 layout architectures built from the exact same custom components."
+        }
+    }
+
+    private func abVariantPillButton(code: String, title: String, accessibilityID: String) -> some View {
+        let isSelected = (abDesignVariant == code)
+        return Button {
+            HapticFeedback.playSelection()
+            withAnimation(animationsAllowed ? .spring(response: 0.30, dampingFraction: 0.84) : nil) {
+                abDesignVariant = code
+            }
+        } label: {
+            Text(title)
+                .font(.system(size: 11.5, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5.5)
+                .frame(maxWidth: .infinity)
+                .background(isSelected ? Color.crayola : Color.secondary.opacity(0.14), in: Capsule())
+                .foregroundStyle(isSelected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityID)
+    }
+
+    private var abVariantButtonsStrip: some View {
+        let labelA = (language == "uk") ? "A · Поточ." : (language == "crh" ? "A · Şimdiki" : "A · Current")
+        let labelB = "B · Bento"
+        let labelC = (language == "uk") ? "C · Студія" : (language == "crh" ? "C · Studiya" : "C · Studio")
+        let labelD = (language == "uk") ? "D · Дашборд" : (language == "crh" ? "D · Panel" : "D · Dash")
+        let labelE = (language == "uk") ? "E · Компакт" : (language == "crh" ? "E · Kompakt" : "E · Compact")
+        let labelF = (language == "uk") ? "F · Фокус" : (language == "crh" ? "F · Fokus" : "F · Focus")
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 5) {
+                abVariantPillButton(code: "A", title: labelA, accessibilityID: "ab.variantA")
+                abVariantPillButton(code: "B", title: labelB, accessibilityID: "ab.variantB")
+                abVariantPillButton(code: "C", title: labelC, accessibilityID: "ab.variantC")
+                abVariantPillButton(code: "D", title: labelD, accessibilityID: "ab.variantD")
+                abVariantPillButton(code: "E", title: labelE, accessibilityID: "ab.variantE")
+                abVariantPillButton(code: "F", title: labelF, accessibilityID: "ab.variantF")
+            }
+            VStack(spacing: 5) {
+                HStack(spacing: 5) {
+                    abVariantPillButton(code: "A", title: labelA, accessibilityID: "ab.variantA")
+                    abVariantPillButton(code: "B", title: labelB, accessibilityID: "ab.variantB")
+                    abVariantPillButton(code: "C", title: labelC, accessibilityID: "ab.variantC")
+                }
+                HStack(spacing: 5) {
+                    abVariantPillButton(code: "D", title: labelD, accessibilityID: "ab.variantD")
+                    abVariantPillButton(code: "E", title: labelE, accessibilityID: "ab.variantE")
+                    abVariantPillButton(code: "F", title: labelF, accessibilityID: "ab.variantF")
+                }
+            }
+        }
     }
 
     private var abDesignHeaderBar: some View {
-        let isA = (abDesignVariant == "A")
-        let isB = (abDesignVariant == "B")
-        let bgA: Color = isA ? Color.crayola : Color.secondary.opacity(0.14)
-        let fgA: Color = isA ? Color.white : Color.primary
-        let bgB: Color = isB ? Color.crayola : Color.secondary.opacity(0.14)
-        let fgB: Color = isB ? Color.white : Color.primary
-        let labelA = (language == "uk") ? "A · Поточний" : "A · Current"
-        return HStack(spacing: 8) {
-            Image(systemName: "square.split.2x1.fill")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.crayola)
-            Text(abPreviewTitleText)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-            Spacer(minLength: 4)
-            HStack(spacing: 4) {
-                Button {
-                    abDesignVariant = "A"
-                } label: {
-                    Text(labelA)
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(bgA, in: Capsule())
-                        .foregroundStyle(fgA)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("ab.variantA")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.split.2x2.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.crayola)
+                Text(abPreviewTitleText)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 6)
+                abVariantButtonsStrip
+                    .fixedSize(horizontal: true, vertical: false)
+            }
 
-                Button {
-                    abDesignVariant = "B"
-                } label: {
-                    Text("B · Bento")
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(bgB, in: Capsule())
-                        .foregroundStyle(fgB)
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 6) {
+                    Image(systemName: "square.split.2x2.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.crayola)
+                    Text(abPreviewTitleText)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("ab.variantB")
+                abVariantButtonsStrip
             }
         }
+    }
+
+    private var bentoLanguageCard: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                settingsIconBadge(
+                    interfaceLanguageIconName,
+                    color: brandBlue,
+                    triggerToken: language,
+                    badgeID: "settings.language.globe"
+                )
+                StableLocalizedText(
+                    key: "settings.language",
+                    fontName: "GeneralSans-Medium",
+                    fontSize: 15,
+                    color: primaryInk,
+                    lineLimit: 1,
+                    fixedHorizontal: true
+                )
+                Spacer(minLength: 8)
+                languageSegmentedControl(fullWidth: false)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    settingsIconBadge(
+                        interfaceLanguageIconName,
+                        color: brandBlue,
+                        triggerToken: language,
+                        badgeID: "settings.language.globe"
+                    )
+                    StableLocalizedText(
+                        key: "settings.language",
+                        fontName: "GeneralSans-Medium",
+                        fontSize: 15,
+                        color: primaryInk,
+                        lineLimit: nil
+                    )
+                    Spacer(minLength: 0)
+                }
+                languageSegmentedControl(fullWidth: true)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+    }
+
+    private var bentoAppSettingsTile: some View {
+        Button {
+            HapticFeedback.playSelection()
+            Self.openAppSettings()
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
+                    settingsIconBadge("gearshape", color: brandBlue, badgeID: "settings.appSettings.gear")
+                    Spacer(minLength: 4)
+                    Image(systemName: "arrow.up.forward.app")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                        .frame(width: 18, height: 22, alignment: .center)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    StableLocalizedText(
+                        key: "settings.appSettings",
+                        fontName: "GeneralSans-Medium",
+                        fontSize: 15,
+                        color: primaryInk,
+                        lineLimit: nil
+                    )
+                    StableLocalizedText(
+                        key: "settings.appSettings.desc",
+                        fontName: "GeneralSans-Regular",
+                        fontSize: 12,
+                        color: secondaryInk,
+                        lineLimit: nil
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.appSettings.button")
+    }
+
+    private var bentoSystemKeyboardTile: some View {
+        Button {
+            HapticFeedback.playSelection()
+            Self.openSystemKeyboardSettings()
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
+                    settingsIconBadge("slider.horizontal.3", color: Color(red: 0.16, green: 0.56, blue: 0.94), badgeID: "settings.systemKeyboard.slider")
+                    Spacer(minLength: 4)
+                    Image(systemName: "arrow.up.forward.app")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color(.tertiaryLabel))
+                        .frame(width: 18, height: 22, alignment: .center)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    StableLocalizedText(
+                        key: "settings.systemKeyboard",
+                        fontName: "GeneralSans-Medium",
+                        fontSize: 15,
+                        color: primaryInk,
+                        lineLimit: nil
+                    )
+                    StableLocalizedText(
+                        key: "settings.systemKeyboard.ios26Desc",
+                        fontName: "GeneralSans-Regular",
+                        fontSize: 12,
+                        color: secondaryInk,
+                        lineLimit: nil
+                    )
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.systemKeyboard.button")
     }
 
     private var abBentoQuickActionsBar: some View {
-        HStack(spacing: 10) {
-            Button {
-                Self.openAppSettings()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.crayola)
-                        .frame(width: 28, height: 28)
-                        .background(Color.crayola.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localizedInterfaceString("settings.appSettings"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Text("QT · Къ · Кʼ")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        let itemSpacing: CGFloat = Device.iPad ? 12 : 10
+        return VStack(alignment: .leading, spacing: itemSpacing) {
+            bentoLanguageCard
+            HStack(alignment: .top, spacing: itemSpacing) {
+                bentoAppSettingsTile
+                bentoSystemKeyboardTile
             }
-            .buttonStyle(.plain)
-
-            Button {
-                Self.openSystemKeyboardSettings()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "keyboard.badge.ellipsis")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.teal)
-                        .frame(width: 28, height: 28)
-                        .background(Color.teal.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localizedInterfaceString("settings.systemKeyboard"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                        Text(abSystemKeyboardsSubtitleText)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
+            .fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ab.bentoQuickActions")
     }
 
-    @ViewBuilder
-    private var abDesignPreviewContainerView: some View {
-        if showABDesignPreview {
-            VStack(alignment: .leading, spacing: 10) {
-                abDesignHeaderBar
-                if abDesignVariant == "B" {
-                    abBentoQuickActionsBar
-                }
+    private var bentoStandardLayoutTile: some View {
+        let primaryAdded = isPrimaryKeyboardAdded
+        let primaryKeyboardToggleBinding = Binding<Bool>(
+            get: { primaryAdded },
+            set: { _ in
+                HapticFeedback.playSelection()
+                latinBadgeTrigger &+= 1
+                pendingRemovalTarget = primaryAdded ? .primary : nil
+                pendingCyrillicRemovalCheck = primaryAdded
+                didEnterBackgroundForCyrillicCheck = false
+                activeOnboardingSheet = OnboardingSheetRequest(
+                    mode: primaryAdded ? .removeCyrillic : .add,
+                    initialPage: "Onboard1"
+                )
             }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground).opacity(0.92))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(Color.crayola.opacity(0.28), lineWidth: 1)
-                    )
-            )
-            .padding(.bottom, 6)
-            .accessibilityIdentifier("ab.designSwitcher")
-        } else if Self.isUITestingEnvironment {
+        )
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                latinKeycapIconBadge(
+                    color: brandBlue,
+                    isEnabled: primaryAdded,
+                    badgeID: "settings.standardLayout.keycap"
+                )
+                Spacer(minLength: 4)
+                Toggle("", isOn: animationsAllowed ? primaryKeyboardToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : primaryKeyboardToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("status.primaryKeyboard.toggle")
+            }
             Button {
-                showABDesignPreview = true
+                primaryKeyboardToggleBinding.wrappedValue.toggle()
             } label: {
-                Color.clear.frame(width: 2, height: 2)
+                StableLocalizedText(
+                    key: "settings.standardLayout",
+                    fontName: "GeneralSans-Medium",
+                    fontSize: 15,
+                    color: primaryInk,
+                    lineLimit: nil
+                )
             }
             .buttonStyle(.plain)
-            .accessibilityIdentifier("ab.enablePreview")
+            latinLettersMiniCapsules(isEnabled: primaryAdded)
+                .frame(minHeight: 18, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("status.primaryKeyboard.row")
+    }
+
+    private func bentoCyrillicLayoutTile(
+        isCyrillicEffectiveOn: Bool,
+        hasBothCyrillicOnIPad: Bool,
+        showIPadAbvSelector: Bool,
+        cyrillicToggleBinding: Binding<Bool>,
+        includeAccessibilityID: Bool = true
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 6) {
+                cyrillicKeycapIconBadge(
+                    color: Color(red: 0.35, green: 0.34, blue: 0.84),
+                    isEnabled: isCyrillicEffectiveOn,
+                    isUkrainianStyle: false,
+                    badgeID: includeAccessibilityID ? "settings.cyrillic.keycap" : "settings.cyrillic.keycap.sizing"
+                )
+                Spacer(minLength: 4)
+                if includeAccessibilityID && hasBothCyrillicOnIPad && !showIPadAbvSelector {
+                    Color.clear
+                        .frame(width: 1, height: 1)
+                        .accessibilityIdentifier("settings.cyrillic.abvSelector.hidden")
+                        .accessibilityHidden(true)
+                }
+                Toggle("", isOn: animationsAllowed ? cyrillicToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : cyrillicToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier(includeAccessibilityID ? "settings.cyrillic.toggle" : "settings.cyrillic.toggle.sizing")
+            }
+            Button {
+                cyrillicToggleBinding.wrappedValue.toggle()
+            } label: {
+                StableLocalizedText(
+                    key: "settings.cyrillic",
+                    fontName: "GeneralSans-Medium",
+                    fontSize: 15,
+                    color: primaryInk,
+                    lineLimit: nil
+                )
+            }
+            .buttonStyle(.plain)
+            cyrillicTransliterationMiniCapsules(isEnabled: isCyrillicEffectiveOn)
+                .frame(minHeight: 18, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(includeAccessibilityID ? "settings.cyrillic.statusRow" : "settings.cyrillic.statusRow.sizing")
+    }
+
+    private func bentoUkrainianLayoutTile(
+        isUkrainianEffectiveOn: Bool,
+        showIPadAbvSelector: Bool,
+        ukrainianToggleBinding: Binding<Bool>,
+        includeAccessibilityID: Bool = true
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 6) {
+                cyrillicKeycapIconBadge(
+                    color: brandBlue,
+                    isEnabled: isUkrainianEffectiveOn,
+                    isUkrainianStyle: true,
+                    badgeID: includeAccessibilityID ? "settings.ukrainianCyrillic.keycap" : "settings.ukrainianCyrillic.keycap.sizing"
+                )
+                Spacer(minLength: 4)
+                Toggle("", isOn: animationsAllowed ? ukrainianToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : ukrainianToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier(includeAccessibilityID ? "settings.ukrainianCyrillic.toggle" : "settings.ukrainianCyrillic.toggle.sizing")
+            }
+            Button {
+                ukrainianToggleBinding.wrappedValue.toggle()
+            } label: {
+                StableLocalizedText(
+                    key: "settings.ukrainianCyrillic",
+                    fontName: "GeneralSans-Medium",
+                    fontSize: 15,
+                    color: primaryInk,
+                    lineLimit: nil
+                )
+            }
+            .buttonStyle(.plain)
+            ukrainianTransliterationMiniCapsules(isEnabled: isUkrainianEffectiveOn)
+                .frame(minHeight: 18, alignment: .leading)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(includeAccessibilityID ? "settings.ukrainianCyrillic.statusRow" : "settings.ukrainianCyrillic.statusRow.sizing")
+    }
+
+    private enum IPadAbvSegmentOption: String, Equatable {
+        case cyrillic
+        case disabled
+        case ukrainian
+    }
+
+    /// Minimalist Liquid Glass `абв` sliding bridge selector placed between `Стандартна розкладка` above
+    /// and the `Кирилична клавіатура` (left) + `Українська розкладка` (right) Bento cards below on iPad.
+    private func iPadAbvLiquidGlassBridge(
+        isCyrillicEffectiveOn: Bool,
+        isUkrainianEffectiveOn: Bool
+    ) -> some View {
+        let showCyrillicOption = isCyrillicEffectiveOn
+        let showUkrainianOption = (language == "uk" && isUkrainianEffectiveOn)
+        var segments: [IPadAbvSegmentOption] = []
+        if showCyrillicOption {
+            segments.append(.cyrillic)
+        }
+        segments.append(.disabled)
+        if showUkrainianOption {
+            segments.append(.ukrainian)
+        }
+
+        let selectedOption: IPadAbvSegmentOption = {
+            if ipadAbvKeyDisabled {
+                return .disabled
+            }
+            if showUkrainianOption && (ukrainianCyrillicLayout || !showCyrillicOption) {
+                return .ukrainian
+            }
+            if showCyrillicOption {
+                return .cyrillic
+            }
+            return .disabled
+        }()
+        let selectedIndex = segments.firstIndex(of: selectedOption) ?? 0
+        let cyrillicAccent = Color(red: 0.35, green: 0.34, blue: 0.84)
+        let disabledAccent = colorScheme == .dark
+            ? Color(white: 0.36)
+            : Color(red: 0.44, green: 0.46, blue: 0.52)
+        let activeAccent: Color = {
+            switch selectedOption {
+            case .cyrillic: return cyrillicAccent
+            case .disabled: return disabledAccent
+            case .ukrainian: return brandBlue
+            }
+        }()
+        let trackFill = colorScheme == .dark
+            ? Color.white.opacity(0.07)
+            : Color.black.opacity(0.045)
+        let glassPillFill = colorScheme == .dark
+            ? LinearGradient(
+                colors: [activeAccent.opacity(0.88), activeAccent.opacity(0.68)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            : LinearGradient(
+                colors: [activeAccent.opacity(0.92), activeAccent.opacity(0.76)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        let cyrillicLabel: String = {
+            if language == "uk" { return "Кирилицю" }
+            if language == "crh" { return "Kirill" }
+            return "Cyrillic"
+        }()
+        let disabledLabel = "Caps Lock"
+        let ukrainianLabel: String = {
+            if language == "uk" { return "Українську" }
+            if language == "crh" { return "Ukrayin" }
+            return "Ukrainian"
+        }()
+
+        return VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                AbvAbcAnimatedKeycapBadge(
+                    accentColor: activeAccent,
+                    trigger: selectedIndex
+                )
+                Text(localizedInterfaceString("settings.abvBridgeTitle"))
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 12.5))
+                    .foregroundStyle(secondaryInk)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+            }
+            .padding(.horizontal, 4)
+
+            HStack(spacing: 6) {
+                if showCyrillicOption {
+                    let isSelected = (selectedOption == .cyrillic)
+                    Button {
+                        HapticFeedback.playSelection()
+                        didSelectAbvLayoutOnIPad = true
+                        didEnableBothCyrillicOnIPad = true
+                        withAnimation(animationsAllowed ? .spring(response: 0.34, dampingFraction: 0.78) : nil) {
+                            ipadAbvKeyDisabled = false
+                            ukrainianCyrillicLayout = false
+                        }
+                        KeyboardPreferences.setIPadAbvKeyDisabled(false)
+                        KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+                        cyrillicBadgeTrigger &+= 1
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.down.left")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .foregroundStyle(isSelected ? Color.white.opacity(0.92) : secondaryInk)
+                            Text(cyrillicLabel)
+                                .font(InterfaceFont.font(isSelected ? "GeneralSans-Semibold" : "GeneralSans-Medium", size: 12.5))
+                                .foregroundStyle(isSelected ? Color.white : primaryInk.opacity(0.88))
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("абв \(cyrillicLabel) Къ")
+                    .accessibilityValue(isSelected ? "1" : "0")
+                    .accessibilityIdentifier("settings.cyrillic.abvSelector")
+                }
+
+                let isDisabledSelected = (selectedOption == .disabled)
+                Button {
+                    HapticFeedback.playSelection()
+                    didSelectAbvLayoutOnIPad = true
+                    withAnimation(animationsAllowed ? .spring(response: 0.34, dampingFraction: 0.78) : nil) {
+                        ipadAbvKeyDisabled = true
+                    }
+                    KeyboardPreferences.setIPadAbvKeyDisabled(true)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "capslock")
+                            .font(.system(size: 10.5, weight: .bold))
+                            .foregroundStyle(isDisabledSelected ? Color.white.opacity(0.92) : secondaryInk)
+                        Text(disabledLabel)
+                            .font(InterfaceFont.font(isDisabledSelected ? "GeneralSans-Semibold" : "GeneralSans-Medium", size: 12.5))
+                            .foregroundStyle(isDisabledSelected ? Color.white : primaryInk.opacity(0.88))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 32)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("абв \(disabledLabel)")
+                .accessibilityValue(isDisabledSelected ? "1" : "0")
+                .accessibilityIdentifier("settings.abv.disabledSelector")
+
+                if showUkrainianOption {
+                    let isSelected = (selectedOption == .ukrainian)
+                    Button {
+                        HapticFeedback.playSelection()
+                        didSelectAbvLayoutOnIPad = true
+                        didEnableBothCyrillicOnIPad = true
+                        withAnimation(animationsAllowed ? .spring(response: 0.34, dampingFraction: 0.78) : nil) {
+                            ipadAbvKeyDisabled = false
+                            ukrainianCyrillicLayout = true
+                        }
+                        KeyboardPreferences.setIPadAbvKeyDisabled(false)
+                        KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(true)
+                        ukrainianBadgeTrigger &+= 1
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(ukrainianLabel)
+                                .font(InterfaceFont.font(isSelected ? "GeneralSans-Semibold" : "GeneralSans-Medium", size: 12.5))
+                                .foregroundStyle(isSelected ? Color.white : primaryInk.opacity(0.88))
+                                .lineLimit(1)
+                            Image(systemName: "arrow.down.right")
+                                .font(.system(size: 10.5, weight: .bold))
+                                .foregroundStyle(isSelected ? Color.white.opacity(0.92) : secondaryInk)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 32)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("абв \(ukrainianLabel) Кʼ")
+                    .accessibilityValue(isSelected ? "1" : "0")
+                    .accessibilityIdentifier("settings.ukrainianCyrillic.abvSelector")
+                }
+            }
+            .background {
+                GeometryReader { geo in
+                    let count = max(1, segments.count)
+                    let totalGaps = CGFloat(max(0, count - 1)) * 6.0
+                    let pillWidth = max(0, (geo.size.width - totalGaps) / CGFloat(count))
+                    let xOffset = CGFloat(selectedIndex) * (pillWidth + 6.0)
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(glassPillFill)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [Color.white.opacity(0.45), Color.white.opacity(0.14)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 0.9
+                                )
+                        }
+                        .shadow(color: activeAccent.opacity(0.26), radius: 5, x: 0, y: 2)
+                        .frame(width: pillWidth, height: 32)
+                        .offset(x: xOffset)
+                        .animation(animationsAllowed ? .spring(response: 0.34, dampingFraction: 0.78) : nil, value: selectedOption)
+                }
+            }
+            .padding(3.5)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(trackFill)
+            )
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("settings.abvBridge.container")
+    }
+
+    /// Unified Keyboard Layouts section (`image 6`):
+    /// - Unified top card combining `Стандартна розкладка` (`Q`, `status.primaryKeyboard.row`) and, on iPad in Ukrainian (`language == "uk"`) when `Стандартна розкладка` is ON (`isPrimaryKeyboardAdded`) and at least one Cyrillic layout is active, the Liquid Glass `абв` bridge selector (`iPadAbvLiquidGlassBridge`) inside the same block.
+    /// - Below it, `Кирилична клавіатура` (`Къ`) and (when `language == "uk"`) `Українська розкладка` (`Кʼ`) side-by-side in 2 equal-height Bento columns.
+    private var abBentoLayoutsSection: some View {
+        let itemSpacing: CGFloat = Device.iPad ? 12 : 10
+        let args = ProcessInfo.processInfo.arguments
+        let allowAutomatedIPadInMemoryToggle = Self.isUITestingEnvironment
+            && Device.iPad
+            && !args.contains("-qt_cyrillic_added")
+            && !args.contains("-qt_cyrillic_missing")
+        let allowAutomatedUkrainianToggle = Self.isUITestingEnvironment
+            && !args.contains("-qt_ukrainian_added")
+            && !args.contains("-qt_ukrainian_missing")
+            && !args.contains("-qt_cyrillic_added")
+            && !args.contains("-qt_cyrillic_missing")
+            && !args.contains("-qt_keyboard_missing")
+        let isCyrillicEffectiveOn = allowAutomatedIPadInMemoryToggle
+            ? (cyrillicEnabled && !didManuallyDisableCyrillicOnIPad)
+            : isCyrillicKeyboardAdded
+        let isUkrainianEffectiveOn = allowAutomatedUkrainianToggle
+            ? ukrainianCyrillicLayout
+            : isUkrainianKeyboardAdded
+        let hasBothCyrillicOnIPad = Device.iPad && language == "uk" && isCyrillicEffectiveOn && isUkrainianEffectiveOn
+        let showIPadAbvSelector = Device.iPad
+            && language == "uk"
+            && isPrimaryKeyboardAdded
+            && (isCyrillicEffectiveOn || isUkrainianEffectiveOn)
+
+        let cyrillicToggleBinding = Binding<Bool>(
+            get: { isCyrillicEffectiveOn },
+            set: { wantOn in
+                HapticFeedback.playSelection()
+                cyrillicBadgeTrigger &+= 1
+                if allowAutomatedIPadInMemoryToggle {
+                    didManuallyDisableCyrillicOnIPad = !wantOn
+                    cyrillicEnabled = wantOn
+                    return
+                }
+                pendingRemovalTarget = isCyrillicEffectiveOn ? .cyrillic : nil
+                pendingCyrillicRemovalCheck = isCyrillicEffectiveOn
+                didEnterBackgroundForCyrillicCheck = false
+                activeOnboardingSheet = OnboardingSheetRequest(
+                    mode: isCyrillicEffectiveOn ? .removeCyrillic : .add,
+                    initialPage: "Onboard1"
+                )
+            }
+        )
+        let ukrainianToggleBinding = Binding<Bool>(
+            get: { isUkrainianEffectiveOn },
+            set: { wantOn in
+                HapticFeedback.playSelection()
+                ukrainianBadgeTrigger &+= 1
+                if allowAutomatedUkrainianToggle {
+                    didManuallyDisableUkrainianOnIPad = !wantOn
+                    ukrainianExtensionSeen = wantOn
+                    setDefaultsBoolIfNeeded(wantOn, forKey: "crh.key.ukrainianExtensionSeen")
+                    ukrainianStatus = wantOn ? .enabled : .missing
+                    ukrainianCyrillicLayout = wantOn
+                    KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(wantOn)
+                    if wantOn && !cyrillicEnabled {
+                        cyrillicEnabled = true
+                        KeyboardPreferences.setCyrillicEnabled(true)
+                    }
+                    return
+                }
+                pendingRemovalTarget = isUkrainianEffectiveOn ? .ukrainian : nil
+                pendingCyrillicRemovalCheck = isUkrainianEffectiveOn
+                didEnterBackgroundForCyrillicCheck = false
+                activeOnboardingSheet = OnboardingSheetRequest(
+                    mode: isUkrainianEffectiveOn ? .removeCyrillic : .add,
+                    initialPage: "Onboard1"
+                )
+            }
+        )
+
+        let effectiveWidth = containerSize.width > 0 ? containerSize.width : viewportSize.width
+        let isUltraNarrowWindow = effectiveWidth > 0 && effectiveWidth < 360
+
+        return VStack(alignment: .leading, spacing: itemSpacing) {
+            VStack(alignment: .leading, spacing: 0) {
+                standardLayoutRowContent
+
+                if showIPadAbvSelector {
+                    Divider()
+                        .padding(.horizontal, 14)
+
+                    iPadAbvLiquidGlassBridge(
+                        isCyrillicEffectiveOn: isCyrillicEffectiveOn,
+                        isUkrainianEffectiveOn: isUkrainianEffectiveOn
+                    )
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+
+            if language == "uk" {
+                if isUltraNarrowWindow {
+                    VStack(alignment: .leading, spacing: itemSpacing) {
+                        bentoCyrillicLayoutTile(
+                            isCyrillicEffectiveOn: isCyrillicEffectiveOn,
+                            hasBothCyrillicOnIPad: hasBothCyrillicOnIPad,
+                            showIPadAbvSelector: showIPadAbvSelector,
+                            cyrillicToggleBinding: cyrillicToggleBinding
+                        )
+                        bentoUkrainianLayoutTile(
+                            isUkrainianEffectiveOn: isUkrainianEffectiveOn,
+                            showIPadAbvSelector: showIPadAbvSelector,
+                            ukrainianToggleBinding: ukrainianToggleBinding
+                        )
+                    }
+                } else {
+                    HStack(alignment: .top, spacing: itemSpacing) {
+                        bentoCyrillicLayoutTile(
+                            isCyrillicEffectiveOn: isCyrillicEffectiveOn,
+                            hasBothCyrillicOnIPad: hasBothCyrillicOnIPad,
+                            showIPadAbvSelector: showIPadAbvSelector,
+                            cyrillicToggleBinding: cyrillicToggleBinding
+                        )
+                        bentoUkrainianLayoutTile(
+                            isUkrainianEffectiveOn: isUkrainianEffectiveOn,
+                            showIPadAbvSelector: showIPadAbvSelector,
+                            ukrainianToggleBinding: ukrainianToggleBinding
+                        )
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                singleColumnCyrillicLayoutCard(
+                    isCyrillicEffectiveOn: isCyrillicEffectiveOn,
+                    hasBothCyrillicOnIPad: hasBothCyrillicOnIPad,
+                    showIPadAbvSelector: showIPadAbvSelector,
+                    cyrillicToggleBinding: cyrillicToggleBinding
+                )
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ab.bentoLayouts")
+    }
+
+    private func singleColumnCyrillicLayoutCard(
+        isCyrillicEffectiveOn: Bool,
+        hasBothCyrillicOnIPad: Bool,
+        showIPadAbvSelector: Bool,
+        cyrillicToggleBinding: Binding<Bool>
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    cyrillicKeycapIconBadge(
+                        color: Color(red: 0.35, green: 0.34, blue: 0.84),
+                        isEnabled: isCyrillicEffectiveOn,
+                        isUkrainianStyle: false,
+                        badgeID: "settings.cyrillic.keycap"
+                    )
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Button {
+                                cyrillicToggleBinding.wrappedValue.toggle()
+                            } label: {
+                                StableLocalizedText(
+                                    key: "settings.cyrillic",
+                                    fontName: "GeneralSans-Medium",
+                                    fontSize: 15,
+                                    color: primaryInk,
+                                    lineLimit: nil
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        cyrillicTransliterationMiniCapsules(isEnabled: isCyrillicEffectiveOn)
+                            .frame(minHeight: 18, alignment: .leading)
+                    }
+                    Spacer(minLength: 8)
+                    if hasBothCyrillicOnIPad && !showIPadAbvSelector {
+                        Color.clear
+                            .frame(width: 1, height: 1)
+                            .accessibilityIdentifier("settings.cyrillic.abvSelector.hidden")
+                            .accessibilityHidden(true)
+                    }
+                    Toggle("", isOn: animationsAllowed ? cyrillicToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : cyrillicToggleBinding)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .accessibilityIdentifier("settings.cyrillic.toggle")
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("settings.cyrillic.statusRow")
+        }
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
+    }
+
+    private var bentoSettingsSplitDock: some View {
+        let itemSpacing: CGFloat = Device.iPad ? 12 : 10
+        let effectiveWidth = containerSize.width > 0 ? containerSize.width : viewportSize.width
+        let isUltraNarrowWindow = effectiveWidth > 0 && effectiveWidth < 360
+        return Group {
+            if isUltraNarrowWindow {
+                VStack(alignment: .leading, spacing: itemSpacing) {
+                    bentoAppSettingsTile
+                    bentoSystemKeyboardTile
+                }
+            } else {
+                HStack(alignment: .top, spacing: itemSpacing) {
+                    bentoAppSettingsTile
+                    bentoSystemKeyboardTile
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ab.bentoSettingsDock")
+    }
+
+    private var abStudioLayoutsHubSection: some View {
+        abBentoLayoutsSection
+    }
+
+    private func updateLeftColumnNonSandboxHeight(totalLeftHeight: CGFloat) {
+        guard totalLeftHeight > 0, isTestingExpanded, !isStatsExpanded else { return }
+        let nonSandbox = (totalLeftHeight - effectiveSandboxTextHeight).rounded()
+        if nonSandbox > 0 && abs(nonSandbox - leftColumnNonSandboxHeight) >= 2.0 {
+            leftColumnNonSandboxHeight = nonSandbox
         }
     }
 
+    private func syncDefaultSectionExpansionForColumns(viewport: CGSize, container: CGSize) {
+        guard !didUserManuallyToggleSections else { return }
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_expand_stats") || args.contains("-qt_collapse_testing") {
+            return
+        }
+        let forcesSandboxOpen = (args.contains("-qt_expand_testing") || args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_focus_sandbox_live"))
+            && !args.contains("-qt_no_autofocus")
+            && !args.contains("-qt_default_expansion")
+        if forcesSandboxOpen {
+            return
+        }
+        let twoCols = Self.usesTwoColumns(viewport, containerSize: container)
+        if twoCols {
+            if !isStatsExpanded && !isTestingExpanded {
+                isTestingExpanded = true
+            }
+        } else {
+            if isTestingExpanded {
+                isTestingExpanded = false
+                shouldAutoFocusSandbox = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func variantPrimaryColumnView(itemSpacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            testingAndWritingSection
+            statisticsAndAchievementsSection
+                .id("statsSection")
+        }
+    }
+
+    @ViewBuilder
+    private func variantSecondaryColumnView(itemSpacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: itemSpacing) {
+            bentoSettingsSplitDock
+            abBentoLayoutsSection
+        }
+    }
+
+    /// Compact top-right Interface Language Switcher (`QT` / `УК` / `EN`) with in-place animated vector emblem for the selected language across all devices and widths.
+    @ViewBuilder
+    private var headerLanguageSwitcher: some View {
+        headerCompactLanguageControl
+    }
+
+    private var headerWideLanguageControl: some View {
+        let items: [(id: String, fullTitle: String, accID: String)] = [
+            ("crh", "Qırımtatarca", "settings.lang.crh"),
+            ("uk", "Українська", "settings.lang.uk"),
+            ("en", "English", "settings.lang.en")
+        ]
+        let effectiveDark = hasManualThemeOverride ? selectedThemeMode.isDark : (colorScheme == .dark)
+        let trackBg = effectiveDark
+            ? Color(white: 0.16)
+            : Color(red: 0.91, green: 0.91, blue: 0.93)
+        let selectedPillBg = effectiveDark
+            ? Color(white: 0.28)
+            : Color.white
+        let textInk = effectiveDark ? Color.white : Color.black
+        return HStack(spacing: 8) {
+            settingsIconBadge(
+                interfaceLanguageIconName,
+                color: brandBlue,
+                triggerToken: language,
+                badgeID: "settings.language.globe"
+            )
+            HStack(spacing: 3) {
+                ForEach(items, id: \.id) { item in
+                    let isSelected = (language == item.id)
+                    Button {
+                        guard language != item.id else { return }
+                        HapticFeedback.playSelection()
+                        shouldAutoFocusSandbox = false
+                        KeyboardPreferences.setInterfaceLanguage(item.id)
+                        language = item.id
+                    } label: {
+                        Text(item.fullTitle)
+                            .font(.system(size: 13, weight: isSelected ? .semibold : .medium))
+                            .foregroundStyle(isSelected ? textInk : textInk.opacity(0.75))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 10)
+                            .frame(height: 26)
+                            .background {
+                                if isSelected {
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .fill(selectedPillBg)
+                                        .shadow(color: .black.opacity(effectiveDark ? 0.25 : 0.08), radius: 2, x: 0, y: 1)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(item.fullTitle)
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
+                    .accessibilityIdentifier(item.accID)
+                }
+            }
+            .padding(3)
+            .background(trackBg, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("header.languageSwitcher")
+    }
+
+    private var headerCompactLanguageControl: some View {
+        let items: [(id: String, code: String, fullTitle: String, iconName: String, accID: String)] = [
+            ("crh", "QT", "Qırımtatarca", "lang.crh.tamga", "settings.lang.crh"),
+            ("uk", "УК", "Українська", "lang.uk.tryzub", "settings.lang.uk"),
+            ("en", "EN", "English", "lang.en.unionjack", "settings.lang.en")
+        ]
+        let selectedIndex = items.firstIndex(where: { $0.id == language }) ?? 0
+        let selectedItem = items[selectedIndex]
+        let slotWidth: CGFloat = 34
+        let slotSpacing: CGFloat = 3
+        let xOffset = CGFloat(selectedIndex - 1) * (slotWidth + slotSpacing)
+        let effectiveDark = hasManualThemeOverride ? selectedThemeMode.isDark : (colorScheme == .dark)
+        let trackBg = effectiveDark
+            ? Color(white: 0.16)
+            : Color(.secondarySystemGroupedBackground)
+        let textInk = effectiveDark ? Color.white : Color.black
+
+        return ZStack {
+            // Persistent sliding 28x28 emblem badge that physically glides across slots (-37, 0, +37) with no outer protruding pill
+            InteractiveSettingsIconBadge(
+                badgeID: "header.lang.emblem.sliding",
+                systemName: selectedItem.iconName,
+                color: brandBlue,
+                isEnabled: true,
+                triggerToken: language
+            )
+            .frame(width: slotWidth, height: 28)
+            .offset(x: xOffset)
+            .animation(animationsAllowed ? .spring(response: 0.34, dampingFraction: 0.78) : nil, value: selectedIndex)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+
+            HStack(spacing: slotSpacing) {
+                ForEach(items, id: \.id) { item in
+                    let isSelected = (language == item.id)
+                    Button {
+                        guard language != item.id else { return }
+                        HapticFeedback.playSelection()
+                        shouldAutoFocusSandbox = false
+                        KeyboardPreferences.setInterfaceLanguage(item.id)
+                        language = item.id
+                    } label: {
+                        Text(item.code)
+                            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                            .foregroundStyle(textInk.opacity(0.86))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .opacity(isSelected ? 0.0 : 1.0)
+                            .scaleEffect(isSelected ? 0.75 : 1.0)
+                            .animation(animationsAllowed ? .spring(response: 0.30, dampingFraction: 0.82) : nil, value: isSelected)
+                            .frame(width: slotWidth, height: 28)
+                            .contentShape(Rectangle())
+                            .accessibilityHidden(true)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(item.fullTitle)
+                    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : [.isButton])
+                    .accessibilityIdentifier(item.accID)
+                }
+            }
+        }
+        .padding(3)
+        .background(trackBg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .strokeBorder(textInk.opacity(0.10), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("header.languageSwitcher")
+    }
+
+    static func isIPadNonFullScreenWindow(containerSize: CGSize = .zero) -> Bool {
+        guard Device.iPad else { return false }
+        #if !os(visionOS)
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {
+            let screenBounds = scene.screen.bounds
+            let winBounds = window.bounds
+            if screenBounds.width > 0 && winBounds.width > 0 {
+                if (screenBounds.width - winBounds.width) > 8.0
+                    || (screenBounds.height - winBounds.height) > 8.0 {
+                    return true
+                }
+                if containerSize.width > 0 && (screenBounds.width - containerSize.width) > 8.0 {
+                    return true
+                }
+                return false
+            }
+        }
+        let screenSize = UIScreen.main.bounds.size
+        guard containerSize.width > 0, screenSize.width > 0 else { return false }
+        return (screenSize.width - containerSize.width) > 8.0
+            || (containerSize.height > 0 && (screenSize.height - containerSize.height) > 80.0)
+        #else
+        return false
+        #endif
+    }
+
+    @ViewBuilder
+    private func homeTopHeaderBar(effectiveContainerSize: CGSize) -> some View {
+        let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
+        let isCompactHorizontal = Device.iPhone || (effectiveContainerSize.width > 0 && effectiveContainerSize.width < 600)
+        let isWindowedPad = Self.isIPadNonFullScreenWindow(containerSize: effectiveContainerSize)
+        let effectiveDark = hasManualThemeOverride ? selectedThemeMode.isDark : (colorScheme == .dark)
+        let textInk = effectiveDark ? Color.white : Color.black
+        let helpBg = effectiveDark
+            ? Color(white: 0.16)
+            : Color(.secondarySystemGroupedBackground)
+
+        HStack(alignment: .center, spacing: 10) {
+            Button {
+                HapticFeedback.playSelection()
+                didNavigateToChildRoute = true
+                onNavigate(.about)
+            } label: {
+                Text("QırımKey")
+                    .font(InterfaceFont.brandFont("GeneralSans-Semibold", size: Device.iPad ? 22 : 20))
+                    .foregroundStyle(textInk)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("QırımKey — \(About.about_title_key.localized)")
+            .accessibilityIdentifier("header.about")
+
+            Spacer(minLength: 8)
+
+            HStack(spacing: 8) {
+                headerLanguageSwitcher
+
+                Button {
+                    HapticFeedback.playSelection()
+                    didNavigateToChildRoute = true
+                    onNavigate(.onboarding)
+                } label: {
+                    Image(systemName: "questionmark")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(textInk.opacity(0.88))
+                        .frame(width: 34, height: 34)
+                        .background(helpBg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(textInk.opacity(0.10), lineWidth: 1)
+                        }
+                        .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 1)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("header.onboarding")
+            }
+        }
+        // Align left edge of QırımKey with the straight top edge & icon column (+14 pt) of the cards below
+        // (+64 pt extra leading clearance on iPad non-full-screen Split View / Stage Manager windows so the top-left ••• controls never overlap QırımKey),
+        // and align right edge of the help button with the card right content edge.
+        .padding(.leading, isWindowedPad ? 78 : 14)
+        .padding(.trailing, 4)
+        .padding(.top, Device.iPhone ? 4 : 8)
+        .padding(.bottom, Device.iPhone ? 4 : 6)
+        .frame(
+            maxWidth: Device.iPad
+                ? min(effectiveContainerSize.width > 0 ? effectiveContainerSize.width : (twoColumns ? 1180 : 680), twoColumns ? 1180 : 680)
+                : .infinity
+        )
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, isCompactHorizontal ? 12 : 24)
+    }
+
     var body: some View {
-        let _ = language // Observe interface language changes immediately
+        let _ = KeyboardPreferences.setInterfaceLanguage(language) // Observe and sync interface language changes immediately
         let _ = settingsSyncRevision // Observe external Settings.bundle / App Group preference updates
         ZStack {
             Color(.systemGroupedBackground)
@@ -394,59 +1466,67 @@ struct HomeView: View {
                 let isLandscapeCompactHeight = viewportSize.width > viewportSize.height &&
                     effectiveContainerSize.height > 0 &&
                     effectiveContainerSize.height < 420
-                ScrollView(.vertical, showsIndicators: false) {
-                    let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
-                    let itemSpacing: CGFloat = Device.iPad ? 12 : 10
-                    let layout = twoColumns
-                        ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
-                        : AnyLayout(VStackLayout(spacing: itemSpacing))
-                    AnyView(abDesignPreviewContainerView)
-                    layout {
-                        // Child 0: Status indicators (only shown when Full Access is disabled)
-                        if !areAllIndicatorsEnabled {
-                            AnyView(statusIndicatorsSection)
-                                .id("statusIndicators")
-                        }
+                VStack(spacing: 0) {
+                    homeTopHeaderBar(effectiveContainerSize: effectiveContainerSize)
 
-                        // Child 1: Try Keyboard + Writing Area at the very top
-                        AnyView(testingAndWritingSection)
-
-                        // Child 2: Basic Statistics (expandable) + 3 Settings Blocks (Main Settings, Standard Layout, Cyrillic Layouts)
+                    ScrollView(.vertical, showsIndicators: false) {
+                        let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
+                        let itemSpacing: CGFloat = Device.iPad ? 12 : 10
+                        let layout = twoColumns
+                            ? AnyLayout(HomeTwoColumnLayout(spacing: 16))
+                            : AnyLayout(VStackLayout(spacing: itemSpacing))
                         VStack(alignment: .leading, spacing: itemSpacing) {
-                            AnyView(statisticsAndAchievementsSection)
-                                .id("statsSection")
-                            AnyView(keyboardSettingsSection)
-                            AnyView(standardLayoutSection)
-                            AnyView(cyrillicLayoutsSection)
+                            layout {
+                                // Child 0: Status indicators (only shown when Full Access is disabled)
+                                if !areAllIndicatorsEnabled {
+                                    statusIndicatorsSection
+                                        .id("statusIndicators")
+                                }
+
+                                // Child 1: Primary column/stack (Sandbox)
+                                variantPrimaryColumnView(itemSpacing: itemSpacing)
+
+                                // Child 2: Secondary column/stack (Statistics + 2-column Bento Settings + Keyboard Layouts)
+                                variantSecondaryColumnView(itemSpacing: itemSpacing)
+                            }
                         }
+                        // iPad: single column (portrait / split view / narrow Stage Manager) stays within the window width;
+                        // very wide two-column windows (13" iPad, Stage Manager) are capped and centered.
+                        .frame(
+                            maxWidth: Device.iPad
+                                ? min(effectiveContainerSize.width > 0 ? effectiveContainerSize.width : (twoColumns ? 1180 : 680), twoColumns ? 1180 : 680)
+                                : .infinity
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, (Device.iPhone || (effectiveContainerSize.width > 0 && effectiveContainerSize.width < 600)) ? 12 : 24)
+                        .padding(.top, Device.iPhone ? 6 : 8)
+                        .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
                     }
-                    // iPad: single column (portrait / split view / narrow Stage Manager) stays within the window width;
-                    // very wide two-column windows (13" iPad, Stage Manager) are capped and centered.
-                    .frame(
-                        maxWidth: Device.iPad
-                            ? min(effectiveContainerSize.width > 0 ? effectiveContainerSize.width : (twoColumns ? 1180 : 680), twoColumns ? 1180 : 680)
-                            : .infinity
-                    )
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, (Device.iPhone || (effectiveContainerSize.width > 0 && effectiveContainerSize.width < 600)) ? 12 : 24)
-                    .padding(.top, Device.iPhone ? 8 : 14)
-                    .padding(.bottom, shouldShowStartOverlay ? 76 : (Device.iPhone ? 16 : 24))
-                }
-                .softTopScrollEdgeEffect()
-                .background {
-                    scrollPositionObserversView(scroll: scroll, isLandscapeCompactHeight: isLandscapeCompactHeight, effectiveContainerSize: effectiveContainerSize)
+                    .softTopScrollEdgeEffect()
+                    .background {
+                        scrollPositionObserversView(scroll: scroll, isLandscapeCompactHeight: isLandscapeCompactHeight, effectiveContainerSize: effectiveContainerSize)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {
                 GeometryReader { geometry in
                     Color.clear
-                        .onAppear { containerSize = geometry.size }
-                        .onChange(of: geometry.size) { _, size in containerSize = size }
+                        .onAppear {
+                            containerSize = geometry.size
+                            syncDefaultSectionExpansionForColumns(viewport: viewportSize, container: geometry.size)
+                        }
+                        .onChange(of: geometry.size) { _, size in
+                            let oldTwoCols = Self.usesTwoColumns(viewportSize, containerSize: containerSize)
+                            containerSize = size
+                            let newTwoCols = Self.usesTwoColumns(viewportSize, containerSize: size)
+                            if oldTwoCols != newTwoCols {
+                                syncDefaultSectionExpansionForColumns(viewport: viewportSize, container: size)
+                            }
+                        }
                 }
                 .ignoresSafeArea(.keyboard)
             }
-            .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: language)
             .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: cyrillicEnabled)
             .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: statsEnabled)
         }
@@ -455,8 +1535,18 @@ struct HomeView: View {
             // make a portrait window appear to be landscape.
             GeometryReader { geometry in
                 Color.clear
-                    .onAppear { viewportSize = geometry.size }
-                    .onChange(of: geometry.size) { _, size in viewportSize = size }
+                    .onAppear {
+                        viewportSize = geometry.size
+                        syncDefaultSectionExpansionForColumns(viewport: geometry.size, container: containerSize)
+                    }
+                    .onChange(of: geometry.size) { _, size in
+                        let oldTwoCols = Self.usesTwoColumns(viewportSize, containerSize: containerSize)
+                        viewportSize = size
+                        let newTwoCols = Self.usesTwoColumns(size, containerSize: containerSize)
+                        if oldTwoCols != newTwoCols {
+                            syncDefaultSectionExpansionForColumns(viewport: size, container: containerSize)
+                        }
+                    }
             }
             .ignoresSafeArea(.keyboard)
             homeLifecycleObserversView
@@ -465,7 +1555,8 @@ struct HomeView: View {
         .overlay(alignment: .bottom, content: {
             if shouldShowStartOverlay {
                 PrimaryButton(text: Home.home_start_key.localized, background: Color.crayola) {
-                    navigationPath.append(DemoRoute.onboarding)
+                    didNavigateToChildRoute = true
+                    onNavigate(.onboarding)
                 }
                 .padding((Device.iPhone || (viewportSize.width > 0 && viewportSize.width < 520)) ? 12 : 24)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -473,32 +1564,7 @@ struct HomeView: View {
         })
         .animation(animationsAllowed ? .easeInOut(duration: 0.25) : nil, value: shouldShowStartOverlay)
         .navigationBarTitleDisplayMode(.inline)
-        .adaptiveNavigationToolbarBackground()
-        .toolbar {
-            NavToolbarItem(placement: .navigationBarLeading, symbol: "questionmark") {
-                navigationPath.append(DemoRoute.onboarding)
-            }
-            NavToolbarItem(placement: .navigationBarTrailing, symbol: "info") {
-                navigationPath.append(DemoRoute.about)
-            }
-            ToolbarItem(placement: .principal) {
-                let effectiveDark = hasManualThemeOverride ? selectedThemeMode.isDark : (colorScheme == .dark)
-                HStack(spacing: 8) {
-                    TaraqTamgaLogoBadge(
-                        size: 28,
-                        cornerRadius: 7,
-                        isDarkOverride: hasManualThemeOverride ? selectedThemeMode.isDark : nil
-                    )
-                    .shadow(color: .black.opacity(effectiveDark ? 0.28 : 0.06), radius: 3, x: 0, y: 1)
-                    Text("QırımKey")
-                        .font(InterfaceFont.brandFont("GeneralSans-Semibold", size: Device.iPad ? 22 : 19))
-                        .foregroundStyle(effectiveDark ? Color.white : Color.black)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                }
-                .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: effectiveDark)
-            }
-        }
+        .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(hasManualThemeOverride ? (selectedThemeMode == .dark ? .dark : .light) : nil)
         .sheet(item: $activeOnboardingSheet, onDismiss: {
             refreshCyrillicStatus()
@@ -532,9 +1598,16 @@ struct HomeView: View {
         Color.clear
             .onChange(of: isStatsExpanded) { _, expanded in
                 if expanded {
+                    if isTestingExpanded {
+                        isTestingExpanded = false
+                    }
                     refreshStatsFromAppGroup(syncSQLite: true)
-                    withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
-                        scroll.scrollTo("statsSection", anchor: .top)
+                    if !Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
+                        && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+                        && !ProcessInfo.processInfo.arguments.contains("-qt_expand_stats") {
+                        withAnimation(animationsAllowed ? .easeInOut(duration: 0.25) : nil) {
+                            scroll.scrollTo("statsSection", anchor: .top)
+                        }
                     }
                 }
             }
@@ -545,21 +1618,33 @@ struct HomeView: View {
             }
             .onChange(of: isWritingFieldFocused) { _, focused in
                 syncSandboxFocusToAppGroup(focused)
-                refreshCyrillicStatus()
+                if focused {
+                    refreshCyrillicStatus()
+                }
             }
-            .onChange(of: isKeyboardVisible) { _, _ in
-                refreshCyrillicStatus()
+            .onChange(of: isKeyboardVisible) { _, visible in
+                if visible {
+                    refreshCyrillicStatus()
+                }
             }
-            .onChange(of: isSandboxCrimeanTatarKeyboardActive) { _, _ in
-                refreshCyrillicStatus()
+            .onChange(of: isSandboxCrimeanTatarKeyboardActive) { _, active in
+                if active {
+                    refreshCyrillicStatus()
+                }
             }
-            .onChange(of: text) { _, _ in
+            .onChange(of: text) { _, newText in
+                Self.bgPrefsAndSQLiteQueue.async {
+                    UserDefaults.standard.set(newText, forKey: "crh.key.text")
+                }
                 if statsEnabled {
                     refreshStatsFromAppGroup(syncSQLite: false, synchronizePreferences: false)
                 }
             }
             .onChange(of: isTestingExpanded) { _, expanded in
                 if expanded {
+                    if isStatsExpanded {
+                        isStatsExpanded = false
+                    }
                     shouldAutoFocusSandbox = true
                 } else {
                     shouldAutoFocusSandbox = false
@@ -573,8 +1658,10 @@ struct HomeView: View {
     private var homeLifecycleObserversView: some View {
         Color.clear
             .onAppear {
+                UIApplication.shared.isIdleTimerDisabled = true
                 Self.canAnimateUserChanges = false
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+                AboutView.prewarmImagesIfNeeded()
                 Self.registerStatsSyncObserverIfNeeded()
                 Self.enforceFullScreenWindowIfNeeded()
                 if !didInitializeThemeFromSystem {
@@ -591,15 +1678,36 @@ struct HomeView: View {
                 } else {
                     clearThemeOverride()
                 }
-                refreshCyrillicStatus()
+                refreshCyrillicStatus(force: true)
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 AppStoreReviewManager.recordForegroundSession()
+                didNavigateToChildRoute = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     Self.canAnimateUserChanges = true
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
-                refreshCyrillicStatus()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    refreshCyrillicStatus(force: true)
+                }
+            }
+            .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in
+                guard scenePhase != .background else { return }
+                let langs = SystemKeyboardSettings.activeInputModeLanguages(forceRefresh: true)
+                let hasLatin = langs.contains { $0 == "crh" || $0.hasPrefix("crh-latn") || $0 == AppConfiguration.keyboardBundleId.lowercased() }
+                    || SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled
+                let hasStdCyr = langs.contains { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) || $0.contains("keyboardcyrillic") }
+                    || SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
+                let hasUkrCyr = langs.contains { $0.hasPrefix("crh-cyrl-ua") || $0.contains("keyboardukrainian") || $0.contains("crh.key.keyboard.pro") }
+                    || SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
+                let liveFullAccess = Self.keyboardInspector.isFullAccessEnabled
+                if !Self.isUITestingEnvironment
+                    && (hasLatin != isPrimaryKeyboardAddedState
+                        || hasStdCyr != (cyrillicStatus == .enabled)
+                        || hasUkrCyr != (ukrainianStatus == .enabled)
+                        || liveFullAccess != cachedIsFullAccessEnabled) {
+                    refreshCyrillicStatus(force: true)
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -622,12 +1730,33 @@ struct HomeView: View {
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: Self.localOneHandedRefreshNotification)) { _ in
-                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-                KeyboardPreferences.refreshCachedPreferences()
-                let updated = KeyboardPreferences.oneHandedMode
-                if oneHandedMode != updated {
-                    oneHandedMode = updated
+                Self.bgPrefsAndSQLiteQueue.async {
+                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                    DispatchQueue.main.async {
+                        KeyboardPreferences.refreshCachedPreferences()
+                        let updated = KeyboardPreferences.oneHandedMode
+                        if oneHandedMode != updated {
+                            oneHandedMode = updated
+                        }
+                        let updatedCyr = KeyboardPreferences.cyrillicEnabled
+                        if cyrillicEnabled != updatedCyr {
+                            cyrillicEnabled = updatedCyr
+                        }
+                        let updatedUkr = KeyboardPreferences.ukrainianCyrillicLayoutEnabled
+                        if ukrainianCyrillicLayout != updatedUkr {
+                            ukrainianCyrillicLayout = updatedUkr
+                        }
+                        let updatedAbvDisabled = KeyboardPreferences.ipadAbvKeyDisabled
+                        if ipadAbvKeyDisabled != updatedAbvDisabled {
+                            ipadAbvKeyDisabled = updatedAbvDisabled
+                        }
+                    }
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: Self.localKeyboardsRefreshNotification)) { _ in
+                guard scenePhase != .background else { return }
+                syncPreferencesFromSettingsBundleAndAppGroup()
+                refreshCyrillicStatus(force: true)
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -635,7 +1764,7 @@ struct HomeView: View {
                 guard now - Self.lastLifecycleRefreshTime > 0.35 else { return }
                 Self.lastLifecycleRefreshTime = now
                 syncPreferencesFromSettingsBundleAndAppGroup()
-                refreshCyrillicStatus()
+                refreshCyrillicStatus(force: true)
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 AppStoreReviewManager.recordForegroundSession()
             }
@@ -645,7 +1774,7 @@ struct HomeView: View {
                 guard now - Self.lastLifecycleRefreshTime > 0.35 else { return }
                 Self.lastLifecycleRefreshTime = now
                 syncPreferencesFromSettingsBundleAndAppGroup()
-                refreshCyrillicStatus()
+                refreshCyrillicStatus(force: true)
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.willResignActiveNotification)) { _ in
@@ -674,7 +1803,9 @@ struct HomeView: View {
             }
             .onDisappear {
                 shouldAutoFocusSandbox = false
-                clearThemeOverride()
+                if !didNavigateToChildRoute {
+                    clearThemeOverride()
+                }
             }
     }
 
@@ -700,6 +1831,23 @@ struct HomeView: View {
                 guard UIApplication.shared.applicationState == .active else { return }
                 syncThemeToAppGroup(selectedThemeMode)
             }
+            .onChange(of: language) { _, newLang in
+                KeyboardPreferences.setInterfaceLanguage(newLang)
+                DispatchQueue.main.async {
+                    syncCyrillicToggleWithExtensionState()
+                }
+                Self.bgPrefsAndSQLiteQueue.async {
+                    KeyboardPreferences.defaults.set(newLang, forKey: KeyboardPreferences.languageKey)
+                    UserDefaults.standard.set(newLang, forKey: KeyboardPreferences.languageKey)
+                    CFNotificationCenterPostNotification(
+                        CFNotificationCenterGetDarwinNotifyCenter(),
+                        CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
+                        nil,
+                        nil,
+                        true
+                    )
+                }
+            }
             .onChange(of: cyrillicEnabled) { _, newValue in
                 lastKnownSettingsSnapshot[KeyboardPreferences.cyrillicKey] = newValue
                 KeyboardPreferences.defaults.set(newValue, forKey: KeyboardPreferences.cyrillicKey)
@@ -718,6 +1866,19 @@ struct HomeView: View {
                 KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(newValue)
                 KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.ukrainianCyrillicLayoutKey)")
                 UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
+                KeyboardPreferences.refreshCachedPreferences()
+                notifySandboxTraitsChanged()
+                Self.bgPrefsAndSQLiteQueue.async {
+                    KeyboardPreferences.defaults.synchronize()
+                    UserDefaults.standard.synchronize()
+                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                }
+            }
+            .onChange(of: ipadAbvKeyDisabled) { _, newValue in
+                lastKnownSettingsSnapshot[KeyboardPreferences.ipadAbvKeyDisabledKey] = newValue
+                KeyboardPreferences.setIPadAbvKeyDisabled(newValue)
+                KeyboardPreferences.defaults.set(newValue, forKey: "crh.key.lastSynced.\(KeyboardPreferences.ipadAbvKeyDisabledKey)")
+                UserDefaults.standard.set(newValue, forKey: KeyboardPreferences.ipadAbvKeyDisabledKey)
                 KeyboardPreferences.refreshCachedPreferences()
                 notifySandboxTraitsChanged()
                 Self.bgPrefsAndSQLiteQueue.async {
@@ -805,6 +1966,7 @@ struct HomeView: View {
 
     private static let localStatsRefreshNotification = Notification.Name("crh.key.localStatsRefresh")
     private static let localOneHandedRefreshNotification = Notification.Name("crh.key.localOneHandedRefresh")
+    private static let localKeyboardsRefreshNotification = Notification.Name("crh.key.localKeyboardsRefresh")
     fileprivate static let bgPrefsAndSQLiteQueue = DispatchQueue(label: "crh.key.home.bgSync", qos: .utility)
     private static var didRegisterStatsObserver = false
     private static var lastPreferencesSyncTime: CFAbsoluteTime = 0
@@ -844,13 +2006,44 @@ struct HomeView: View {
             nil,
             { _, _, _, _, _ in
                 DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: HomeView.localOneHandedRefreshNotification, object: nil)
+                    NotificationCenter.default.post(name: HomeView.localStatsRefreshNotification, object: nil)
                 }
             },
-            KeyboardPreferences.oneHandedModeChangedNotification as CFString,
+            KeyboardUsageStats.userLexiconChangedNotification as CFString,
             nil,
             .deliverImmediately
         )
+        for darwinName in [
+            KeyboardPreferences.oneHandedModeChangedNotification,
+            KeyboardPreferences.ukrainianCyrillicLayoutChangedNotification
+        ] {
+            CFNotificationCenterAddObserver(
+                center,
+                nil,
+                { _, _, _, _, _ in
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: HomeView.localOneHandedRefreshNotification, object: nil)
+                    }
+                },
+                darwinName as CFString,
+                nil,
+                .deliverImmediately
+            )
+        }
+        for darwinName in ["AppleKeyboardsPreferencesChangedNotification", "UIKeyboardPreferencesChangedNotification"] {
+            CFNotificationCenterAddObserver(
+                center,
+                nil,
+                { _, _, _, _, _ in
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: HomeView.localKeyboardsRefreshNotification, object: nil)
+                    }
+                },
+                darwinName as CFString,
+                nil,
+                .deliverImmediately
+            )
+        }
     }
 
     private func syncPreferencesFromSettingsBundleAndAppGroup() {
@@ -906,11 +2099,12 @@ struct HomeView: View {
             return resolved
         }
 
-        let newCyrillic = (groupDefaults.object(forKey: KeyboardPreferences.cyrillicKey) as? Bool) ?? true
-        let newUkrainian = (groupDefaults.object(forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey) as? Bool) ?? false
-        let newSuggestions = KeyboardPreferences.suggestionsEnabled
+        let newCyrillic = reconcileBool(key: KeyboardPreferences.cyrillicKey, defaultValue: true)
+        let newUkrainian = reconcileBool(key: KeyboardPreferences.ukrainianCyrillicLayoutKey, defaultValue: false)
+        let newAbvDisabled = reconcileBool(key: KeyboardPreferences.ipadAbvKeyDisabledKey, defaultValue: false)
+        let newSuggestions = reconcileBool(key: KeyboardPreferences.suggestionsKey, defaultValue: true)
         let newWordLearning = reconcileBool(key: KeyboardPreferences.wordLearningKey, defaultValue: true)
-        let newStats = (groupDefaults.object(forKey: KeyboardPreferences.statsEnabledKey) as? Bool) ?? true
+        let newStats = reconcileBool(key: KeyboardPreferences.statsEnabledKey, defaultValue: true)
 
         let oneHandedKey = KeyboardPreferences.oneHandedModeKey
         let lastSyncedOneHandedKey = "crh.key.lastSynced.\(oneHandedKey)"
@@ -949,6 +2143,9 @@ struct HomeView: View {
         if ukrainianCyrillicLayout != newUkrainian {
             ukrainianCyrillicLayout = newUkrainian
         }
+        if ipadAbvKeyDisabled != newAbvDisabled {
+            ipadAbvKeyDisabled = newAbvDisabled
+        }
         if suggestionsEnabled != newSuggestions { suggestionsEnabled = newSuggestions }
         if wordLearningEnabled != newWordLearning { wordLearningEnabled = newWordLearning }
         if statsEnabled != newStats { statsEnabled = newStats }
@@ -969,40 +2166,9 @@ struct HomeView: View {
         }
 
         KeyboardPreferences.refreshCachedPreferences()
-        SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: true)
     }
 
-    private func refreshStatsFromAppGroup(syncSQLite: Bool = false, synchronizePreferences: Bool = false) {
-        if ProcessInfo.processInfo.arguments.contains("-qt_demo_stats") { return }
-        if synchronizePreferences {
-            Self.lastPreferencesSyncTime = CFAbsoluteTimeGetCurrent()
-            Self.bgPrefsAndSQLiteQueue.async {
-                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            }
-        }
-        guard statsEnabled else { return }
-        if syncSQLite {
-            let sheetOpen = showLearnedWordsSheet
-            Self.bgPrefsAndSQLiteQueue.async {
-                let updatedLearned = KeyboardUsageStats.syncLearnedWordsCountFromSQLite()
-                let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
-                let fetchedEntries = sheetOpen ? KeyboardUsageStats.fetchLearnedWords() : nil
-                DispatchQueue.main.async {
-                    if self.learnedWordsCount != updatedLearned {
-                        self.learnedWordsCount = updatedLearned
-                    }
-                    if self.uniqueWordsCount != updatedUnique {
-                        self.uniqueWordsCount = updatedUnique
-                    }
-                    if let fetchedEntries {
-                        self.learnedWordsEntries = fetchedEntries
-                        if self.learnedWordsCount != fetchedEntries.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetchedEntries.isEmpty) {
-                            self.learnedWordsCount = fetchedEntries.count
-                        }
-                    }
-                }
-            }
-        }
+    private func applyDefaultsSnapshotToStatsState() {
         let d = KeyboardPreferences.defaults
         let newTotalWords = d.integer(forKey: KeyboardUsageStats.totalWordsKey)
         let newManualWords = d.integer(forKey: KeyboardUsageStats.manualWordsKey)
@@ -1042,25 +2208,73 @@ struct HomeView: View {
         )
     }
 
+    private static var isDumpingProofsActive = false
+
+    private func refreshStatsFromAppGroup(syncSQLite: Bool = false, synchronizePreferences: Bool = false) {
+        let args = ProcessInfo.processInfo.arguments
+        if Self.isDumpingProofsActive { return }
+        if args.contains("-qt_demo_stats") && !syncSQLite { return }
+        guard statsEnabled else { return }
+        if !args.contains("-qt_demo_stats") {
+            applyDefaultsSnapshotToStatsState()
+        }
+        if synchronizePreferences || syncSQLite {
+            if synchronizePreferences {
+                Self.lastPreferencesSyncTime = CFAbsoluteTimeGetCurrent()
+            }
+            Self.bgPrefsAndSQLiteQueue.async {
+                if synchronizePreferences {
+                    CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                }
+                let updatedLearned = syncSQLite ? KeyboardUsageStats.syncLearnedWordsCountFromSQLite() : nil
+                let updatedUnique = syncSQLite ? KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey) : nil
+                let fetchedEntries = syncSQLite ? KeyboardUsageStats.fetchLearnedWords() : nil
+                DispatchQueue.main.async {
+                    guard !Self.isDumpingProofsActive else { return }
+                    if !args.contains("-qt_demo_stats") {
+                        self.applyDefaultsSnapshotToStatsState()
+                    }
+                    if let updatedLearned, self.learnedWordsCount != updatedLearned && (!args.contains("-qt_demo_stats") || updatedLearned > 0) {
+                        self.learnedWordsCount = updatedLearned
+                    }
+                    if let updatedUnique, self.uniqueWordsCount != updatedUnique && (!args.contains("-qt_demo_stats") || updatedUnique > 0) {
+                        self.uniqueWordsCount = updatedUnique
+                    }
+                    if let fetchedEntries {
+                        let entriesChanged = self.learnedWordsEntries.count != fetchedEntries.count ||
+                            zip(self.learnedWordsEntries, fetchedEntries).contains { $0.word != $1.word || $0.freq != $1.freq }
+                        if entriesChanged {
+                            self.learnedWordsEntries = fetchedEntries
+                        }
+                        if self.learnedWordsCount != fetchedEntries.count && (!args.contains("-qt_demo_stats") || !fetchedEntries.isEmpty) {
+                            self.learnedWordsCount = fetchedEntries.count
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     static func openKeyboardSettings() {
         openAppSettings()
     }
 
     static func openAppSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
-    }
-
-    private static func rtSchemeJoin(_ parts: [String]) -> String {
-        parts.joined()
+        let performOpen = {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url, options: [:], completionHandler: nil)
+        }
+        if Thread.isMainThread {
+            performOpen()
+        } else {
+            DispatchQueue.main.async(execute: performOpen)
+        }
     }
 
     static func openSystemKeyboardSettings() {
         let candidates: [String] = [
-            rtSchemeJoin(["App-Pre", "fs:root=General&path=Keyboard"]),
-            rtSchemeJoin(["pre", "fs:root=General&path=Keyboard"]),
-            rtSchemeJoin(["settings-navigation://com.apple.Settings.General/Keyboard"]),
-            rtSchemeJoin(["App-Pre", "fs:root=General"])
+            "com.apple.preferences://",
+            UIApplication.openSettingsURLString
         ]
         func tryCandidate(at index: Int) {
             guard index < candidates.count else {
@@ -1077,7 +2291,13 @@ struct HomeView: View {
                 }
             }
         }
-        tryCandidate(at: 0)
+        if Thread.isMainThread {
+            tryCandidate(at: 0)
+        } else {
+            DispatchQueue.main.async {
+                tryCandidate(at: 0)
+            }
+        }
     }
 
     private func setDefaultsBoolIfNeeded(_ value: Bool, forKey key: String) {
@@ -1089,7 +2309,8 @@ struct HomeView: View {
     private func computeIsPrimaryKeyboardAdded(
         args: [String],
         hasActiveLatinMode: Bool,
-        hasAnyActiveCRHMode: Bool
+        hasAnyActiveCRHMode: Bool,
+        hasAuthoritativeList: Bool
     ) -> Bool {
         if args.contains("-qt_keyboard_missing") {
             return false
@@ -1100,34 +2321,43 @@ struct HomeView: View {
         if hasActiveLatinMode {
             return true
         }
-        if !hasAnyActiveCRHMode && isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive && !args.contains("-qt_wrong_keyboard") {
-            return false
-        }
         if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
             return true
         }
         if SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled {
             return true
         }
-        if primaryExtensionSeen || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
+        if !hasAuthoritativeList && (primaryExtensionSeen || KeyboardPreferences.defaults.bool(forKey: "crh.key.primaryExtensionSeen")) {
             return true
         }
         return false
     }
 
-    private func refreshCyrillicStatus() {
+    private static var lastCyrillicStatusRefreshTime: CFAbsoluteTime = 0
+    private static var lastFullAccessCheckTime: CFAbsoluteTime = 0
+
+    private func refreshCyrillicStatus(force: Bool = false) {
+        let now = CFAbsoluteTimeGetCurrent()
+        if !force && (now - Self.lastCyrillicStatusRefreshTime) < 0.15 {
+            return
+        }
+        Self.lastCyrillicStatusRefreshTime = now
         Self.bgPrefsAndSQLiteQueue.async {
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         }
-        _ = SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh: false)
-        SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: true)
-        cachedIsFullAccessEnabled = Self.keyboardInspector.isFullAccessEnabled
-        cachedIsRtl = Self.keyboardInspector.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
+        SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: force)
         let args = ProcessInfo.processInfo.arguments
-        let languages = SystemKeyboardSettings.activeInputModeLanguages()
-        let hasActiveLatinMode = languages.contains { $0 == "crh" || $0.hasPrefix("crh-latn") }
-        let hasActiveStandardCyrillicMode = languages.contains { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) }
-        let hasActiveUkrainianMode = languages.contains { $0.hasPrefix("crh-cyrl-ua") }
+        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
+            cachedIsFullAccessEnabled = !args.contains("-qt_full_access_missing")
+        } else if force || !didCheckColdLaunchExtensionDiff || (now - Self.lastFullAccessCheckTime) > 1.0 {
+            Self.lastFullAccessCheckTime = now
+            cachedIsFullAccessEnabled = Self.keyboardInspector.isFullAccessEnabled
+            cachedIsRtl = Self.keyboardInspector.activeKeyboardBundleIds.first?.hasSuffix("rtl") ?? false
+        }
+        let languages = SystemKeyboardSettings.activeInputModeLanguages(forceRefresh: force)
+        let hasActiveLatinMode = languages.contains { $0 == "crh" || $0.hasPrefix("crh-latn") || $0 == AppConfiguration.keyboardBundleId.lowercased() }
+        let hasActiveStandardCyrillicMode = languages.contains { $0 == "crh-cyrl" || ($0.hasPrefix("crh-cyrl") && !$0.hasPrefix("crh-cyrl-ua")) || $0.contains("keyboardcyrillic") }
+        let hasActiveUkrainianMode = languages.contains { $0.hasPrefix("crh-cyrl-ua") || $0.contains("keyboardukrainian") || $0.contains("crh.key.keyboard.pro") }
         let hasAnyActiveCRHMode = hasActiveLatinMode || hasActiveStandardCyrillicMode || hasActiveUkrainianMode
         let isSimulatedUITest = Self.isUITestingEnvironment || args.contains("-qt_demo_stats")
         let hasAuthoritativeList = SystemKeyboardSettings.hasAuthoritativeSystemKeyboardsList()
@@ -1142,22 +2372,34 @@ struct HomeView: View {
         } else if !isSimulatedUITest && !args.contains("-qt_keyboard_missing") && SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled {
             if !primaryExtensionSeen { primaryExtensionSeen = true }
             setDefaultsBoolIfNeeded(true, forKey: "crh.key.primaryExtensionSeen")
+        } else if hasAuthoritativeList && !isSimulatedUITest {
+            if primaryExtensionSeen { primaryExtensionSeen = false }
+            setDefaultsBoolIfNeeded(false, forKey: "crh.key.primaryExtensionSeen")
         }
 
         if pendingCyrillicRemovalCheck && didEnterBackgroundForCyrillicCheck {
             pendingCyrillicRemovalCheck = false
             didEnterBackgroundForCyrillicCheck = false
-            if !hasActiveLatinMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled) {
-                if primaryExtensionSeen { primaryExtensionSeen = false }
-                setDefaultsBoolIfNeeded(false, forKey: "crh.key.primaryExtensionSeen")
-            }
-            if !hasActiveStandardCyrillicMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled) {
-                if cyrillicExtensionSeen { cyrillicExtensionSeen = false }
-                setDefaultsBoolIfNeeded(false, forKey: "crh.key.cyrillicExtensionSeen")
-            }
-            if !hasActiveUkrainianMode && (!hasAuthoritativeList || !SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled) {
-                if ukrainianExtensionSeen { ukrainianExtensionSeen = false }
-                setDefaultsBoolIfNeeded(false, forKey: "crh.key.ukrainianExtensionSeen")
+            let targetToRemove = pendingRemovalTarget
+            pendingRemovalTarget = nil
+            switch targetToRemove {
+            case .primary:
+                if !hasActiveLatinMode {
+                    if primaryExtensionSeen { primaryExtensionSeen = false }
+                    setDefaultsBoolIfNeeded(false, forKey: "crh.key.primaryExtensionSeen")
+                }
+            case .cyrillic:
+                if !hasActiveStandardCyrillicMode {
+                    if cyrillicExtensionSeen { cyrillicExtensionSeen = false }
+                    setDefaultsBoolIfNeeded(false, forKey: "crh.key.cyrillicExtensionSeen")
+                }
+            case .ukrainian:
+                if !hasActiveUkrainianMode {
+                    if ukrainianExtensionSeen { ukrainianExtensionSeen = false }
+                    setDefaultsBoolIfNeeded(false, forKey: "crh.key.ukrainianExtensionSeen")
+                }
+            case nil:
+                break
             }
         }
 
@@ -1175,6 +2417,10 @@ struct HomeView: View {
             if !cyrillicExtensionSeen { cyrillicExtensionSeen = true }
             setDefaultsBoolIfNeeded(true, forKey: "crh.key.cyrillicExtensionSeen")
             targetCyrillicStatus = .enabled
+        } else if hasAuthoritativeList {
+            if cyrillicExtensionSeen { cyrillicExtensionSeen = false }
+            setDefaultsBoolIfNeeded(false, forKey: "crh.key.cyrillicExtensionSeen")
+            targetCyrillicStatus = .missing
         } else {
             let hasSeenCyrillic = cyrillicExtensionSeen
                 || KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
@@ -1197,6 +2443,10 @@ struct HomeView: View {
             if !ukrainianExtensionSeen { ukrainianExtensionSeen = true }
             setDefaultsBoolIfNeeded(true, forKey: "crh.key.ukrainianExtensionSeen")
             targetUkrainianStatus = .enabled
+        } else if hasAuthoritativeList {
+            if ukrainianExtensionSeen { ukrainianExtensionSeen = false }
+            setDefaultsBoolIfNeeded(false, forKey: "crh.key.ukrainianExtensionSeen")
+            targetUkrainianStatus = .missing
         } else {
             let hasSeenUkrainian = ukrainianExtensionSeen
                 || KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
@@ -1209,7 +2459,8 @@ struct HomeView: View {
         let computedPrimaryAdded = computeIsPrimaryKeyboardAdded(
             args: args,
             hasActiveLatinMode: hasActiveLatinMode,
-            hasAnyActiveCRHMode: hasAnyActiveCRHMode
+            hasAnyActiveCRHMode: hasAnyActiveCRHMode,
+            hasAuthoritativeList: hasAuthoritativeList
         )
 
         let applyStatusUpdates = {
@@ -1265,17 +2516,20 @@ struct HomeView: View {
 
     private func syncCyrillicToggleWithExtensionState() {
         let hasStandardExtension = (cyrillicStatus == .enabled)
-        let hasUkrainianExtension = (ukrainianStatus == .enabled)
+        let rawHasUkrainianExtension = (ukrainianStatus == .enabled)
+        let hasUkrainianExtension = (!Device.iPad || language == "uk") && rawHasUkrainianExtension
 
         if !hasStandardExtension && !hasUkrainianExtension && !Self.isUITestingEnvironment {
             if cyrillicEnabled {
                 cyrillicEnabled = false
             }
-            if ukrainianCyrillicLayout {
-                ukrainianCyrillicLayout = false
-            }
             KeyboardPreferences.setCyrillicEnabled(false)
-            KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+            if !rawHasUkrainianExtension {
+                if ukrainianCyrillicLayout {
+                    ukrainianCyrillicLayout = false
+                }
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+            }
             return
         }
 
@@ -1286,10 +2540,12 @@ struct HomeView: View {
                 }
                 KeyboardPreferences.setCyrillicEnabled(true)
             }
-            if ukrainianCyrillicLayout {
-                ukrainianCyrillicLayout = false
+            if !rawHasUkrainianExtension && !Self.isUITestingEnvironment {
+                if ukrainianCyrillicLayout {
+                    ukrainianCyrillicLayout = false
+                }
+                KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
             }
-            KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
             return
         }
 
@@ -1370,7 +2626,6 @@ struct HomeView: View {
     private func applyWindowUserInterfaceStyle(_ theme: KeyboardTestThemeMode) {
         guard hasManualThemeOverride else { return }
         let style: UIUserInterfaceStyle = theme.isDark ? .dark : .light
-        let shouldAnimate = animationsAllowed && Self.canAnimateUserChanges
         for scene in UIApplication.shared.connectedScenes {
             guard let windowScene = scene as? UIWindowScene else { continue }
             for window in windowScene.windows {
@@ -1381,17 +2636,7 @@ struct HomeView: View {
                     window.rootViewController?.overrideUserInterfaceStyle = .unspecified
                 }
                 guard window.overrideUserInterfaceStyle != style else { continue }
-                if shouldAnimate {
-                    UIView.transition(
-                        with: window,
-                        duration: 0.18,
-                        options: [.transitionCrossDissolve, .allowUserInteraction, .allowAnimatedContent]
-                    ) {
-                        window.overrideUserInterfaceStyle = style
-                    }
-                } else {
-                    window.overrideUserInterfaceStyle = style
-                }
+                window.overrideUserInterfaceStyle = style
             }
         }
     }
@@ -1454,28 +2699,31 @@ struct HomeView: View {
             applyWindowUserInterfaceStyle(selectedThemeMode)
             let isXCTestRun = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil || args.contains("-UITesting")
             let isUITestLaunch = args.contains(where: { $0.hasPrefix("-qt_") }) || isXCTestRun
+            let isAuthoritativeUITest = isUITestLaunch
             let allowSpaceBarBreathing = !isUITestLaunch || args.contains("-qt_enable_animations")
-            Self.cachedIsUITesting = isUITestLaunch
-            KeyboardPreferences.defaults.set(isUITestLaunch, forKey: "crh.key.test.isUITesting")
+            Self.cachedIsUITesting = isAuthoritativeUITest
+            KeyboardPreferences.defaults.set(isAuthoritativeUITest, forKey: "crh.key.test.isUITesting")
             KeyboardPreferences.defaults.set(allowSpaceBarBreathing, forKey: "crh.key.test.allowSpaceBarBreathing")
-            if isUITestLaunch {
+            if isAuthoritativeUITest {
                 KeyboardPreferences.defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.test.uiTestingTimestamp")
             } else {
                 KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.uiTestingTimestamp")
                 KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.holdCallout")
                 KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.demoSwipeKeys")
-                KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.useModernPillCallout")
             }
-            KeyboardPreferences.defaults.synchronize()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             if isUITestLaunch {
                 if isXCTestRun && !args.contains("-qt_enable_animations") {
                     UIView.setAnimationsEnabled(false)
                 } else {
                     UIView.setAnimationsEnabled(true)
                 }
-                isTestingExpanded = true
-                shouldAutoFocusSandbox = true
+                if args.contains("-qt_no_autofocus") || args.contains("-qt_default_expansion") {
+                    isTestingExpanded = Self.defaultUsesTwoColumnsAtLaunch()
+                    shouldAutoFocusSandbox = false
+                } else {
+                    isTestingExpanded = true
+                    shouldAutoFocusSandbox = true
+                }
             }
             if args.contains("-qt_reset_text") {
                 text = ""
@@ -1484,35 +2732,41 @@ struct HomeView: View {
                 wordLearningEnabled = true
                 cyrillicEnabled = true
                 ukrainianCyrillicLayout = false
+                ipadAbvKeyDisabled = false
                 statsEnabled = true
                 KeyboardPreferences.defaults.set("crh", forKey: KeyboardPreferences.languageKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
                 KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+                KeyboardPreferences.setIPadAbvKeyDisabled(false)
                 KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
                 cyrillicExtensionSeen = args.contains("-qt_cyrillic_added")
                 ukrainianExtensionSeen = args.contains("-qt_ukrainian_added") || args.contains("-qt_ukrainian_fiva")
                 KeyboardPreferences.defaults.set(args.contains("-qt_cyrillic_added"), forKey: "crh.key.cyrillicExtensionSeen")
                 KeyboardPreferences.defaults.set(args.contains("-qt_ukrainian_added") || args.contains("-qt_ukrainian_fiva"), forKey: "crh.key.ukrainianExtensionSeen")
-                KeyboardPreferences.defaults.synchronize()
                 defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
                 defaults.set(true, forKey: KeyboardPreferences.wordLearningKey)
                 defaults.set(true, forKey: KeyboardPreferences.cyrillicKey)
                 defaults.set(false, forKey: KeyboardPreferences.ukrainianCyrillicLayoutKey)
+                defaults.set(false, forKey: KeyboardPreferences.ipadAbvKeyDisabledKey)
                 defaults.set(true, forKey: KeyboardPreferences.statsEnabledKey)
                 KeyboardPreferences.setOneHandedMode("off")
                 KeyboardPreferences.refreshCachedPreferences()
                 KeyboardUsageStats.resetAll()
                 refreshStatsFromAppGroup(syncSQLite: false)
             }
+            if args.contains("-qt_abv_disabled") {
+                ipadAbvKeyDisabled = true
+                KeyboardPreferences.setIPadAbvKeyDisabled(true)
+                defaults.set(true, forKey: KeyboardPreferences.ipadAbvKeyDisabledKey)
+                KeyboardPreferences.refreshCachedPreferences()
+            }
             if args.contains("-qt_no_suggestions") {
                 suggestionsEnabled = false
                 KeyboardPreferences.setSuggestionsEnabled(false)
                 KeyboardPreferences.defaults.set(false, forKey: KeyboardPreferences.suggestionsKey)
                 defaults.set(false, forKey: KeyboardPreferences.suggestionsKey)
-                KeyboardPreferences.defaults.synchronize()
-                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 KeyboardPreferences.refreshCachedPreferences()
             }
             if args.contains("-qt_one_handed_left") {
@@ -1522,7 +2776,10 @@ struct HomeView: View {
             } else if args.contains("-qt_one_handed_off") {
                 KeyboardPreferences.setOneHandedMode("off")
             }
-            KeyboardPreferences.defaults.set(args.contains("-qt_hold_callout"), forKey: "crh.key.test.holdCallout")
+            let shouldHoldCallout = args.contains("-qt_hold_callout") || args.contains("-qt_extend_input_callout") || args.contains("-qt_force_suggestions_on")
+            KeyboardPreferences.defaults.set(shouldHoldCallout, forKey: "crh.key.test.holdCallout")
+            KeyboardPreferences.defaults.set(shouldHoldCallout, forKey: "crh.key.test.extendInputCalloutDuration")
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.forceFloating")
             if args.contains("-qt_no_autofocus") {
                 shouldAutoFocusSandbox = false
             } else if args.contains("-qt_focus_sandbox_live") {
@@ -1546,7 +2803,6 @@ struct HomeView: View {
                 }
                 language = requestedLang
                 KeyboardPreferences.defaults.set(requestedLang, forKey: KeyboardPreferences.languageKey)
-                KeyboardPreferences.defaults.synchronize()
             }
             if args.contains("-qt_cyrillic_missing") {
                 cyrillicEnabled = false
@@ -1628,8 +2884,8 @@ struct HomeView: View {
                 if args.contains("-qt_prefill_cyrillic_phrase") {
                     switch demoLang {
                     case "uk":
-                        // Verified bannerCRH #68 (Çerkez-Ali): "Qırım — menim Vatanımdır!" (type final 2 letters "ир" via ФІВА)
-                        text = "Qırım — menim Vatanımd"
+                        // Verified bannerCRH #68 (Çerkez-Ali): "Qırım — menim anamdır, maña doğmuş Vatandır!" (type final 2 letters "ир" via ФІВА)
+                        text = "Qırım — menim anamdır, maña doğmuş Vatand"
                     case "en":
                         // Verified bannerCRH #36 (Vasfiye Qıpçaq): "Tiliñni bil, oqu, yaz!" (type final 2 letters "яз" via ФЫВА)
                         text = "Tiliñni bil, oqu, "
@@ -1640,11 +2896,11 @@ struct HomeView: View {
                 } else if args.contains("-qt_prefill_phrase_prefix") {
                     switch demoLang {
                     case "uk":
-                        // Verified bannerCRH #68 (Çerkez-Ali): "Qırım — menim Vatanımdır!" (type final 2 letters "ır")
-                        text = "Qırım — menim Vatanımd"
+                        // Verified bannerCRH #68 (Çerkez-Ali): "Qırım — menim anamdır, maña doğmuş Vatandır!" (type final 2 letters "ır")
+                        text = "Qırım — menim anamdır, maña doğmuş Vatand"
                     case "en":
-                        // Verified bannerCRH #7 (Qırımtatar atalar sözü): "Tilge ürmet — ilge ürmettir." (type final 2 letters "ir")
-                        text = "Tilge ürmet — ilge ürmett"
+                        // Verified bannerCRH #7 (Qırımtatar atalar sözü): "Til — milletniñ ruhudır." (type final 2 letters "ır")
+                        text = "Til — milletniñ ruhud"
                     default:
                         // Verified bannerCRH #26 (Seyran Üseinov): "Til — bizim temelimiz!" (type final letters)
                         text = "Til — bizim "
@@ -1652,8 +2908,8 @@ struct HomeView: View {
                 } else if args.contains("-qt_prefill_greeting_prefix") {
                     switch demoLang {
                     case "uk":
-                        // Verified bannerCRH #85 (Qırımtatar atalar sözü): "Birlikte — quvet!" (type final 2 letters "et")
-                        text = "Birlikte — quv"
+                        // Verified bannerCRH #85 (Qırımtatar atalar sözü): "Birleşken biñni yıqar." (type final 2 letters "ar")
+                        text = "Birleşken biñni yıq"
                     case "en":
                         // Verified bannerCRH #63 (İsmail Gasprinskiy): "Tilde, fikirde, işte — birlik!" (type final 2 letters "ik")
                         text = "Tilde, fikirde, işte — birl"
@@ -1665,12 +2921,12 @@ struct HomeView: View {
                     switch demoLang {
                     case "uk":
                         // Verified bannerCRH #68 + #85:
-                        text = "Qırım — menim Vatanımdır! Birlikte — quvet!"
+                        text = "Qırım — menim anamdır, maña doğmuş Vatandır! Birleşken biñni yıqar."
                     case "en":
                         // Verified bannerCRH #7 + #22:
-                        text = "Tilge ürmet — ilge ürmettir. Tilni bilmek — dostluqnı qaviyleştirmektir."
+                        text = "Til — milletniñ ruhudır. Atlar kişneşip tanışır, insanlar — söyleşip."
                     default:
-                        // Verified bannerCRH #28 (Seyran Üseinov):
+                        // Verified bannerCRH #28 (Nuzet Ümerov):
                         text = "Dünyada eñ tatlı — qırımtatar tilimiz!"
                     }
                     let isDarkLaunch = args.contains("-qt_demo_dark") || (args.contains("-qt_theme") && args.contains("modernDark"))
@@ -1712,15 +2968,24 @@ struct HomeView: View {
                     KeyboardUsageStats.seedDemoLearnedWordsIfNeeded()
                 }
             }
-            if args.contains("-qt_no_autofocus") {
-                isTestingExpanded = false
-                shouldAutoFocusSandbox = false
+            if args.contains("-qt_no_autofocus") || args.contains("-qt_default_expansion") {
+                if args.contains("-qt_collapse_testing") || args.contains("-qt_expand_stats") {
+                    isTestingExpanded = false
+                } else if args.contains("-qt_expand_testing") {
+                    isTestingExpanded = true
+                } else {
+                    isTestingExpanded = Self.defaultUsesTwoColumnsAtLaunch()
+                }
+                if args.contains("-qt_no_autofocus") {
+                    shouldAutoFocusSandbox = false
+                }
             }
             if args.contains("-qt_open_about") {
                 shouldAutoFocusSandbox = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    if navigationPath.isEmpty {
-                        navigationPath.append(DemoRoute.about)
+                    if !didNavigateToChildRoute {
+                        didNavigateToChildRoute = true
+                        onNavigate(.about)
                     }
                 }
             }
@@ -1730,9 +2995,235 @@ struct HomeView: View {
                     openLearnedWordsDictionary()
                 }
             }
+            if let dumpIdx = args.firstIndex(of: "-qt_dump_window_png"), dumpIdx + 1 < args.count {
+                let dumpName = args[dumpIdx + 1]
+                let dumpDelay = (args.contains("-qt_open_learned_words") || args.contains("-qt_open_about")) ? 0.95 : 0.60
+                DispatchQueue.main.asyncAfter(deadline: .now() + dumpDelay) {
+                    Self.dumpCurrentWindowPNG(named: dumpName)
+                }
+            }
+            if let allIdx = args.firstIndex(of: "-qt_dump_all_proofs"), allIdx + 1 < args.count {
+                let tag = args[allIdx + 1]
+                Self.isDumpingProofsActive = true
+                var initTx = Transaction()
+                initTx.disablesAnimations = true
+                withTransaction(initTx) {
+                    shouldAutoFocusSandbox = false
+                    isTestingExpanded = !args.contains("-qt_collapse_testing")
+                    isStatsExpanded = false
+                    statsEnabled = true
+                    wordLearningEnabled = true
+                    suggestionsEnabled = true
+                    cyrillicEnabled = true
+                    ukrainianCyrillicLayout = true
+                    ipadAbvKeyDisabled = false
+                    totalWords = 180
+                    manualWords = 120
+                    suggestedWords = 60
+                    totalCharacters = 1140
+                    suggestedCharacters = 390
+                    peakWPM = 38
+                    lastWPM = 38
+                    liveWPM = 38
+                    peakCPM = 228
+                    lastCPM = 228
+                    liveCPM = 228
+                    activeSeconds = 420
+                    learnedWordsCount = 18
+                    uniqueWordsCount = 64
+                    phrasesInserted = 7
+                    language = "uk"
+                    selectedThemeMode = .ios26White
+                    hasManualThemeOverride = true
+                    settingsSyncRevision &+= 1
+                }
+                Self.forceWindowInterfaceStyle(.light)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_33_Unified_HomeView_Light_\(tag).png")
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_20_StageManager_Lang_UK_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        selectedThemeMode = .dark
+                        settingsSyncRevision &+= 1
+                    }
+                    Self.forceWindowInterfaceStyle(.dark)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
+                    Self.forceWindowInterfaceStyle(.dark)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_33_Unified_HomeView_Dark_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        selectedThemeMode = .ios26White
+                        language = "crh"
+                        settingsSyncRevision &+= 1
+                    }
+                    Self.forceWindowInterfaceStyle(.light)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_20_StageManager_Lang_CRH_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        language = "en"
+                        settingsSyncRevision &+= 1
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.10) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_20_StageManager_Lang_EN_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        language = "uk"
+                        isStatsExpanded = true
+                        uniqueWordsCount = 64
+                        settingsSyncRevision &+= 1
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.35) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_18_Stats_LearnedWordsTile_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        isStatsExpanded = false
+                        isTestingExpanded = true
+                        text = "Selâm"
+                        settingsSyncRevision &+= 1
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.55) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_39_HomeView_Backdrop_Light_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        selectedThemeMode = .dark
+                        settingsSyncRevision &+= 1
+                    }
+                    Self.forceWindowInterfaceStyle(.dark)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.75) {
+                    Self.forceWindowInterfaceStyle(.dark)
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_23_NoScrollJump_ThemeSwitch_\(tag).png")
+                    var tx = Transaction()
+                    tx.disablesAnimations = true
+                    withTransaction(tx) {
+                        selectedThemeMode = .ios26White
+                        isTestingExpanded = false
+                        isStatsExpanded = true
+                        learnedWordsEntries = [("qirimz", 2, Int64(Date().timeIntervalSince1970))]
+                        learnedWordsCount = 1
+                        uniqueWordsCount = 64
+                        settingsSyncRevision &+= 1
+                    }
+                    Self.forceWindowInterfaceStyle(.light)
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.85) {
+                    Self.forceWindowInterfaceStyle(.light)
+                    Self.presentInlineOverlaySheetForSnapshot(AnyView(learnedWordsSheetView.environment(\.colorScheme, .light)))
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.15) {
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_18_Stats_LearnedWordsSheet_\(tag).png")
+                    Self.dismissInlineOverlaySheetForSnapshot()
+                    Self.presentInlineFullWindowForSnapshot(AnyView(NavigationStack { AboutView(onNavigate: { _ in }) }.environment(\.colorScheme, .light)))
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.60) {
+                    Self.dumpCurrentWindowPNG(named: "Proof_20_30_AboutView_NoTruncation_\(tag).png")
+                    Self.dismissInlineOverlaySheetForSnapshot()
+                    Self.isDumpingProofsActive = false
+                    KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.allowSpaceBarBreathing")
+                    refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
+                }
+            }
             if shouldAutoFocusSandbox {
                 syncThemeToAppGroup(selectedThemeMode)
             }
+        }
+    }
+
+    private static var inlineSnapshotHostController: UIViewController?
+
+    private static func forceWindowInterfaceStyle(_ style: UIUserInterfaceStyle) {
+        for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
+            for window in scene.windows {
+                window.overrideUserInterfaceStyle = style
+                window.rootViewController?.overrideUserInterfaceStyle = style
+                window.setNeedsLayout()
+                window.layoutIfNeeded()
+            }
+        }
+    }
+
+    private static func presentInlineOverlaySheetForSnapshot(_ rootView: AnyView) {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first else { return }
+        dismissInlineOverlaySheetForSnapshot()
+        window.overrideUserInterfaceStyle = .light
+        window.rootViewController?.overrideUserInterfaceStyle = .light
+        let backdrop = UIView(frame: window.bounds)
+        backdrop.tag = 998_877
+        backdrop.overrideUserInterfaceStyle = .light
+        backdrop.backgroundColor = UIColor.black.withAlphaComponent(0.32)
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let sheetW: CGFloat = isPad ? min(540, window.bounds.width - 80) : window.bounds.width
+        let sheetH: CGFloat = isPad ? min(540, window.bounds.height - 140) : round(window.bounds.height * 0.72)
+        let sheetX: CGFloat = isPad ? round((window.bounds.width - sheetW) / 2.0) : 0
+        let sheetY: CGFloat = isPad ? round((window.bounds.height - sheetH) / 2.0) : (window.bounds.height - sheetH)
+        let hc = UIHostingController(rootView: rootView)
+        hc.overrideUserInterfaceStyle = .light
+        hc.view.overrideUserInterfaceStyle = .light
+        hc.view.frame = CGRect(x: sheetX, y: sheetY, width: sheetW, height: sheetH)
+        hc.view.layer.cornerRadius = 24
+        hc.view.layer.masksToBounds = true
+        backdrop.addSubview(hc.view)
+        window.addSubview(backdrop)
+        hc.view.setNeedsLayout()
+        hc.view.layoutIfNeeded()
+        inlineSnapshotHostController = hc
+    }
+
+    private static func presentInlineFullWindowForSnapshot(_ rootView: AnyView) {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first else { return }
+        dismissInlineOverlaySheetForSnapshot()
+        window.overrideUserInterfaceStyle = .light
+        window.rootViewController?.overrideUserInterfaceStyle = .light
+        let hc = UIHostingController(rootView: rootView)
+        hc.overrideUserInterfaceStyle = .light
+        hc.view.overrideUserInterfaceStyle = .light
+        hc.view.tag = 998_877
+        hc.view.frame = window.bounds
+        window.addSubview(hc.view)
+        hc.view.setNeedsLayout()
+        hc.view.layoutIfNeeded()
+        inlineSnapshotHostController = hc
+    }
+
+    private static func dismissInlineOverlaySheetForSnapshot() {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first else { return }
+        window.viewWithTag(998_877)?.removeFromSuperview()
+        inlineSnapshotHostController = nil
+    }
+
+    private static func dumpCurrentWindowPNG(named dumpName: String) {
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first,
+              let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let fmt = UIGraphicsImageRendererFormat()
+        fmt.scale = window.screen.scale
+        fmt.opaque = true
+        let renderer = UIGraphicsImageRenderer(bounds: window.bounds, format: fmt)
+        let img = renderer.image { ctx in
+            window.layer.render(in: ctx.cgContext)
+        }
+        if let png = img.pngData() {
+            try? png.write(to: docs.appendingPathComponent(dumpName), options: .atomic)
         }
     }
 
@@ -1770,12 +3261,18 @@ struct HomeView: View {
         }
     }
 
+    static func defaultUsesTwoColumnsAtLaunch() -> Bool {
+        guard Device.iPad else { return false }
+        let screenBounds = UIScreen.main.bounds
+        return screenBounds.width > screenBounds.height && screenBounds.width >= 700
+    }
+
     /// Use the window's actual dimensions independently of device orientation or keyboard height,
     /// so narrow Slide Over / Split View / Stage Manager windows on a landscape iPad render in 1 column without overlapping.
     static func usesTwoColumns(_ size: CGSize, containerSize: CGSize = .zero) -> Bool {
-        guard Device.iPad else { return false }
         let windowSize = (size.width > 0 && size.height > 0) ? size : containerSize
-        return windowSize.width > windowSize.height && windowSize.width >= 900
+        guard Device.iPad || windowSize.width >= 700 else { return false }
+        return windowSize.width > windowSize.height && windowSize.width >= 700
     }
 }
 
@@ -1785,39 +3282,69 @@ private struct HomeTwoColumnLayout: Layout {
     var spacing: CGFloat = 16
     var leftFraction: CGFloat = 0.47
 
+    struct Cache {
+        var width: CGFloat = -1
+        var count: Int = 0
+        var h0: CGFloat = 0
+        var h1: CGFloat = 0
+        var h2: CGFloat = 0
+    }
+
+    func makeCache(subviews: Subviews) -> Cache {
+        Cache()
+    }
+
+    func updateCache(_ cache: inout Cache, subviews: Subviews) {
+        cache.width = -1
+        cache.count = subviews.count
+    }
+
     private func widths(_ total: CGFloat) -> (left: CGFloat, right: CGFloat) {
         let usable = max(total - spacing, 0)
         let left = (usable * leftFraction).rounded()
         return (left, usable - left)
     }
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let totalWidth = proposal.width ?? 800
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
+        guard let proposedWidth = proposal.width, proposedWidth.isFinite, proposedWidth > 0 else {
+            return CGSize(width: 800, height: max(cache.h0, max(cache.h1, cache.h2)))
+        }
+        let totalWidth = proposedWidth
+        if abs(cache.width - totalWidth) < 0.5 && cache.count == subviews.count {
+            if subviews.count == 2 {
+                return CGSize(width: totalWidth, height: max(cache.h0, cache.h1))
+            }
+            let topOffset = cache.h0 > 0 ? (cache.h0 + spacing) : 0
+            return CGSize(width: totalWidth, height: topOffset + max(cache.h1, cache.h2))
+        }
         let w = widths(totalWidth)
         if subviews.count == 2 {
             let h0 = subviews[0].sizeThatFits(.init(width: w.left, height: nil)).height
             let h1 = subviews[1].sizeThatFits(.init(width: w.right, height: nil)).height
+            cache = Cache(width: totalWidth, count: 2, h0: h0, h1: h1, h2: 0)
             return CGSize(width: totalWidth, height: max(h0, h1))
         }
         guard subviews.count >= 3 else { return .zero }
         let h0 = subviews[0].sizeThatFits(.init(width: totalWidth, height: nil)).height
         let h1 = subviews[1].sizeThatFits(.init(width: w.left, height: nil)).height
         let h2 = subviews[2].sizeThatFits(.init(width: w.right, height: nil)).height
+        cache = Cache(width: totalWidth, count: subviews.count, h0: h0, h1: h1, h2: h2)
         let topOffset = h0 > 0 ? (h0 + spacing) : 0
         return CGSize(width: totalWidth, height: topOffset + max(h1, h2))
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
         let totalWidth = bounds.width
         let w = widths(totalWidth)
+        let hasValidCache = abs(cache.width - totalWidth) < 0.5 && cache.count == subviews.count
         if subviews.count == 2 {
-            let h0 = subviews[0].sizeThatFits(.init(width: w.left, height: nil)).height
+            let h0 = hasValidCache ? cache.h0 : subviews[0].sizeThatFits(.init(width: w.left, height: nil)).height
             subviews[0].place(
                 at: CGPoint(x: bounds.minX, y: bounds.minY),
                 anchor: .topLeading,
                 proposal: .init(width: w.left, height: h0)
             )
-            let h1 = subviews[1].sizeThatFits(.init(width: w.right, height: nil)).height
+            let h1 = hasValidCache ? cache.h1 : subviews[1].sizeThatFits(.init(width: w.right, height: nil)).height
             subviews[1].place(
                 at: CGPoint(x: bounds.minX + w.left + spacing, y: bounds.minY),
                 anchor: .topLeading,
@@ -1826,20 +3353,20 @@ private struct HomeTwoColumnLayout: Layout {
             return
         }
         guard subviews.count >= 3 else { return }
-        let h0 = subviews[0].sizeThatFits(.init(width: totalWidth, height: nil)).height
+        let h0 = hasValidCache ? cache.h0 : subviews[0].sizeThatFits(.init(width: totalWidth, height: nil)).height
         subviews[0].place(
             at: CGPoint(x: bounds.minX, y: bounds.minY),
             anchor: .topLeading,
             proposal: .init(width: totalWidth, height: h0)
         )
         let rowY = bounds.minY + (h0 > 0 ? (h0 + spacing) : 0)
-        let h1 = subviews[1].sizeThatFits(.init(width: w.left, height: nil)).height
+        let h1 = hasValidCache ? cache.h1 : subviews[1].sizeThatFits(.init(width: w.left, height: nil)).height
         subviews[1].place(
             at: CGPoint(x: bounds.minX, y: rowY),
             anchor: .topLeading,
             proposal: .init(width: w.left, height: h1)
         )
-        let h2 = subviews[2].sizeThatFits(.init(width: w.right, height: nil)).height
+        let h2 = hasValidCache ? cache.h2 : subviews[2].sizeThatFits(.init(width: w.right, height: nil)).height
         subviews[2].place(
             at: CGPoint(x: bounds.minX + w.left + spacing, y: rowY),
             anchor: .topLeading,
@@ -1862,8 +3389,7 @@ private extension HomeView {
 
     func localizedInterfaceString(_ key: String, table: String? = nil, languageCode: String? = nil) -> String {
         let lang = languageCode ?? language
-        let bundle = KeyboardPreferences.localizationBundle(for: lang)
-        return bundle.localizedString(forKey: key, value: key, table: table ?? "Interface")
+        return KeyboardPreferences.localizedString(forKey: key, value: key, table: table ?? "Interface", language: lang)
     }
 
     private static var appearedBadgeIDs: Set<String> = []
@@ -1871,16 +3397,23 @@ private extension HomeView {
     private static var cachedIsUITesting: Bool?
 
     static func shouldAnimateInitialAppear(for badgeID: String) -> Bool {
-        false
+        guard !isUITestingEnvironment,
+              !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs"),
+              !ProcessInfo.processInfo.arguments.contains("-qt_dump_window_png"),
+              !badgeID.hasSuffix(".sizing") else {
+            return false
+        }
+        return appearedBadgeIDs.insert(badgeID).inserted
     }
 
     static var isUITestingEnvironment: Bool {
         if let cached = cachedIsUITesting {
             return cached
         }
-        let resolved = KeyboardPreferences.defaults.bool(forKey: "crh.key.test.isUITesting")
+        let args = ProcessInfo.processInfo.arguments
+        let resolved = args.contains("-UITesting")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || ProcessInfo.processInfo.arguments.contains("-qt_reset_text")
+            || args.contains(where: { $0.hasPrefix("-qt_") || $0.hasPrefix("-ui_testing") })
         cachedIsUITesting = resolved
         return resolved
     }
@@ -2057,29 +3590,9 @@ private extension HomeView {
     /// Block 1: Main 3 Keyboard Settings (`Мова інтерфейсу`, `Налаштування програми`, `Системні налаштування`).
     var keyboardSettingsSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Language selector row (adapts between single-row full titles when wide enough and 2-row full titles when narrower, never truncating with `...` and never shrinking font size)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) {
-                    settingsIconBadge(
-                        interfaceLanguageIconName,
-                        color: brandBlue,
-                        triggerToken: language,
-                        badgeID: "settings.language.globe"
-                    )
-                    StableLocalizedText(
-                        key: "settings.language",
-                        fontName: "GeneralSans-Medium",
-                        fontSize: 15,
-                        color: primaryInk,
-                        lineLimit: 1,
-                        fixedHorizontal: true
-                    )
-                    Spacer(minLength: 8)
-                    languageSegmentedControl(fullWidth: false)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
+            if abDesignVariant == "A" {
+                // Language selector row (adapts between single-row full titles when wide enough and 2-row full titles when narrower, never truncating with `...` and never shrinking font size)
+                ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) {
                         settingsIconBadge(
                             interfaceLanguageIconName,
@@ -2092,17 +3605,39 @@ private extension HomeView {
                             fontName: "GeneralSans-Medium",
                             fontSize: 15,
                             color: primaryInk,
-                            lineLimit: nil
+                            lineLimit: 1,
+                            fixedHorizontal: true
                         )
-                        Spacer(minLength: 0)
+                        Spacer(minLength: 8)
+                        languageSegmentedControl(fullWidth: false)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
-                    languageSegmentedControl(fullWidth: true)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
 
-            Divider().padding(.leading, 54)
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            settingsIconBadge(
+                                interfaceLanguageIconName,
+                                color: brandBlue,
+                                triggerToken: language,
+                                badgeID: "settings.language.globe"
+                            )
+                            StableLocalizedText(
+                                key: "settings.language",
+                                fontName: "GeneralSans-Medium",
+                                fontSize: 15,
+                                color: primaryInk,
+                                lineLimit: nil
+                            )
+                            Spacer(minLength: 0)
+                        }
+                        languageSegmentedControl(fullWidth: true)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+
+                Divider().padding(.leading, 54)
+            }
 
             // Navigation link row to App Settings in iOS Settings (Settings → Apps → QırımKey)
             Button {
@@ -2186,15 +3721,16 @@ private extension HomeView {
         .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 3)
     }
 
-    /// Block 2: Separate card for Standard (Latin) Layout (`Стандартна розкладка`) with linearly drawn `Q` 3D keycap badge and read-only system-synced toggle.
-    var standardLayoutSection: some View {
+    /// Row content for Standard (Latin) Layout (`Стандартна розкладка`) with linearly drawn `Q` keycap badge and system-synced toggle.
+    var standardLayoutRowContent: some View {
         let primaryAdded = isPrimaryKeyboardAdded
         let primaryKeyboardToggleBinding = Binding<Bool>(
             get: { primaryAdded },
             set: { _ in
                 HapticFeedback.playSelection()
                 latinBadgeTrigger &+= 1
-                pendingCyrillicRemovalCheck = true
+                pendingRemovalTarget = primaryAdded ? .primary : nil
+                pendingCyrillicRemovalCheck = primaryAdded
                 didEnterBackgroundForCyrillicCheck = false
                 activeOnboardingSheet = OnboardingSheetRequest(
                     mode: primaryAdded ? .removeCyrillic : .add,
@@ -2203,52 +3739,57 @@ private extension HomeView {
             }
         )
 
-        return VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 12) {
-                    latinKeycapIconBadge(
-                        color: brandBlue,
-                        isEnabled: primaryAdded,
-                        badgeID: "settings.standardLayout.keycap"
-                    )
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 6) {
-                            Button {
-                                HapticFeedback.playSelection()
-                                latinBadgeTrigger &+= 1
-                                pendingCyrillicRemovalCheck = true
-                                didEnterBackgroundForCyrillicCheck = false
-                                activeOnboardingSheet = OnboardingSheetRequest(
-                                    mode: primaryAdded ? .removeCyrillic : .add,
-                                    initialPage: "Onboard1"
-                                )
-                            } label: {
-                                StableLocalizedText(
-                                    key: "settings.standardLayout",
-                                    fontName: "GeneralSans-Medium",
-                                    fontSize: 15,
-                                    color: primaryInk,
-                                    lineLimit: nil
-                                )
-                            }
-                            .buttonStyle(.plain)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                latinKeycapIconBadge(
+                    color: brandBlue,
+                    isEnabled: primaryAdded,
+                    badgeID: "settings.standardLayout.keycap"
+                )
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Button {
+                            HapticFeedback.playSelection()
+                            latinBadgeTrigger &+= 1
+                            pendingRemovalTarget = primaryAdded ? .primary : nil
+                            pendingCyrillicRemovalCheck = primaryAdded
+                            didEnterBackgroundForCyrillicCheck = false
+                            activeOnboardingSheet = OnboardingSheetRequest(
+                                mode: primaryAdded ? .removeCyrillic : .add,
+                                initialPage: "Onboard1"
+                            )
+                        } label: {
+                            StableLocalizedText(
+                                key: "settings.standardLayout",
+                                fontName: "GeneralSans-Medium",
+                                fontSize: 15,
+                                color: primaryInk,
+                                lineLimit: nil
+                            )
                         }
-
-                        latinLettersMiniCapsules(isEnabled: primaryAdded)
-                            .frame(minHeight: 18, alignment: .leading)
+                        .buttonStyle(.plain)
                     }
-                    Spacer(minLength: 8)
-                    Toggle("", isOn: animationsAllowed ? primaryKeyboardToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : primaryKeyboardToggleBinding)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .accessibilityIdentifier("status.primaryKeyboard.toggle")
-                        .padding(.trailing, 24)
+
+                    latinLettersMiniCapsules(isEnabled: primaryAdded)
+                        .frame(minHeight: 18, alignment: .leading)
                 }
+                Spacer(minLength: 8)
+                Toggle("", isOn: animationsAllowed ? primaryKeyboardToggleBinding.animation(.spring(response: 0.32, dampingFraction: 0.85)) : primaryKeyboardToggleBinding)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityIdentifier("status.primaryKeyboard.toggle")
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("status.primaryKeyboard.row")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("status.primaryKeyboard.row")
+    }
+
+    /// Block 2: Card wrapper for Standard (Latin) Layout (`Стандартна розкладка`).
+    var standardLayoutSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            standardLayoutRowContent
         }
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
@@ -2290,7 +3831,8 @@ private extension HomeView {
                     cyrillicEnabled = wantOn
                     return
                 }
-                pendingCyrillicRemovalCheck = true
+                pendingRemovalTarget = isCyrillicEffectiveOn ? .cyrillic : nil
+                pendingCyrillicRemovalCheck = isCyrillicEffectiveOn
                 didEnterBackgroundForCyrillicCheck = false
                 activeOnboardingSheet = OnboardingSheetRequest(
                     mode: isCyrillicEffectiveOn ? .removeCyrillic : .add,
@@ -2316,7 +3858,8 @@ private extension HomeView {
                     }
                     return
                 }
-                pendingCyrillicRemovalCheck = true
+                pendingRemovalTarget = isUkrainianEffectiveOn ? .ukrainian : nil
+                pendingCyrillicRemovalCheck = isUkrainianEffectiveOn
                 didEnterBackgroundForCyrillicCheck = false
                 activeOnboardingSheet = OnboardingSheetRequest(
                     mode: isUkrainianEffectiveOn ? .removeCyrillic : .add,
@@ -2376,7 +3919,6 @@ private extension HomeView {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .accessibilityIdentifier("settings.cyrillic.toggle")
-                        .padding(.trailing, 24)
                 }
             }
             .padding(.horizontal, 14)
@@ -2435,7 +3977,6 @@ private extension HomeView {
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .accessibilityIdentifier("settings.ukrainianCyrillic.toggle")
-                            .padding(.trailing, 24)
                     }
                 }
                 .padding(.horizontal, 14)
@@ -2552,8 +4093,13 @@ private extension HomeView {
                     .accessibilityIdentifier("testing.header.wrongKeyboardWarning")
 
                     Button {
+                        didUserManuallyToggleSections = true
                         withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
-                            isTestingExpanded.toggle()
+                            let nextExpanded = !isTestingExpanded
+                            isTestingExpanded = nextExpanded
+                            if nextExpanded {
+                                isStatsExpanded = false
+                            }
                         }
                     } label: {
                         Image(systemName: "chevron.right")
@@ -2572,8 +4118,13 @@ private extension HomeView {
                 .id("testingSection")
             } else {
                 Button {
+                    didUserManuallyToggleSections = true
                     withAnimation(animationsAllowed ? .spring(response: 0.36, dampingFraction: 0.84) : nil) {
-                        isTestingExpanded.toggle()
+                        let nextExpanded = !isTestingExpanded
+                        isTestingExpanded = nextExpanded
+                        if nextExpanded {
+                            isStatsExpanded = false
+                        }
                     }
                 } label: {
                     HStack(spacing: 12) {
@@ -2628,7 +4179,8 @@ private extension HomeView {
     }
 
     var testingSandboxSection: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        let isBentoSandbox = abDesignVariant != "A"
+        return VStack(alignment: .leading, spacing: isBentoSandbox ? 8 : 7) {
             // Row 1: Leading mode icon badge + Native iOS 27 Segmented Field Mode strip
             HStack(spacing: 10) {
                 settingsIconBadge(
@@ -2660,6 +4212,12 @@ private extension HomeView {
                 )
                 .frame(height: 30)
             }
+            .padding(.horizontal, isBentoSandbox ? 10 : 0)
+            .padding(.vertical, isBentoSandbox ? 7 : 0)
+            .background(
+                isBentoSandbox ? Color(.tertiarySystemGroupedBackground) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+            )
 
             // Row 2: Leading theme icon badge + Native iOS 27 Segmented Theme switcher (Light / Dark)
             HStack(spacing: 10) {
@@ -2697,14 +4255,31 @@ private extension HomeView {
                 )
                 .frame(height: 30)
             }
+            .padding(.horizontal, isBentoSandbox ? 10 : 0)
+            .padding(.vertical, isBentoSandbox ? 7 : 0)
+            .background(
+                isBentoSandbox ? Color(.tertiarySystemGroupedBackground) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+            )
         }
+    }
+
+    private var effectiveSandboxTextHeight: CGFloat {
+        let defaultHeight: CGFloat = Device.iPad ? 92 : 70
+        let effectiveContainerSize = containerSize.width > 0 ? containerSize : viewportSize
+        let twoColumns = Self.usesTwoColumns(viewportSize, containerSize: effectiveContainerSize)
+        guard twoColumns, isTestingExpanded, !isStatsExpanded,
+              leftColumnNonSandboxHeight > 0, rightColumnMeasuredHeight > 0 else {
+            return defaultHeight
+        }
+        let target = (rightColumnMeasuredHeight - leftColumnNonSandboxHeight).rounded()
+        return min(260, max(56, target))
     }
 
     var writingAreaSection: some View {
         let hasText = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let displayWPM = (statsEnabled && hasText) ? liveWPM : 0
-        let displayCPM = (statsEnabled && hasText) ? liveCPM : 0
-        let showsSpeedBadge = statsEnabled && (displayCPM > 0 || displayWPM > 0)
+        let showsSpeedBadge = statsEnabled && displayWPM > 0
 
         return ZStack(alignment: .topLeading) {
             if text.isEmpty {
@@ -2738,7 +4313,7 @@ private extension HomeView {
                 fontSize: Device.iPad ? 16 : 15,
                 isFullAccessGranted: isFullAccessGranted
             )
-            .frame(height: Device.iPad ? 92 : 70)
+            .frame(height: effectiveSandboxTextHeight)
             .padding(.leading, 8)
             .padding(.trailing, text.isEmpty ? 8 : 34)
             .padding(.top, 4)
@@ -2771,15 +4346,11 @@ private extension HomeView {
                     Image(systemName: "bolt.heart.fill")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(brandBlue)
-                    Text(
-                        displayWPM > 0
-                            ? "\(displayWPM) \(localizedInterfaceString("stats.wpmUnit")) · \(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
-                            : "\(displayCPM) \(localizedInterfaceString("stats.cpmUnit"))"
-                    )
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(brandBlue)
-                    .contentTransition(.numericText())
-                    .lineLimit(1)
+                    Text("\(displayWPM) \(localizedInterfaceString("stats.wpmUnit"))")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(brandBlue)
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 7)
                 .padding(.vertical, 2.5)
@@ -2884,9 +4455,14 @@ private extension HomeView {
         Self.bgPrefsAndSQLiteQueue.async {
             let fetched = KeyboardUsageStats.fetchLearnedWords()
             DispatchQueue.main.async {
-                learnedWordsEntries = fetched
-                if learnedWordsCount != fetched.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetched.isEmpty) {
-                    learnedWordsCount = fetched.count
+                guard !Self.isDumpingProofsActive else { return }
+                let entriesChanged = self.learnedWordsEntries.count != fetched.count ||
+                    zip(self.learnedWordsEntries, fetched).contains { $0.word != $1.word || $0.freq != $1.freq }
+                if entriesChanged {
+                    self.learnedWordsEntries = fetched
+                }
+                if self.learnedWordsCount != fetched.count && (!CommandLine.arguments.contains("-qt_demo_stats") || !fetched.isEmpty) {
+                    self.learnedWordsCount = fetched.count
                     KeyboardUsageStats.setLearnedWordsCount(fetched.count)
                 }
             }
@@ -2895,21 +4471,28 @@ private extension HomeView {
 
     private func deleteLearnedWordFromSheet(_ word: String) {
         HapticFeedback.playSelection()
-        let newCount = KeyboardUsageStats.deleteLearnedWord(word)
-        let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
         withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
             learnedWordsEntries.removeAll { $0.word.caseInsensitiveCompare(word) == .orderedSame }
-            learnedWordsCount = newCount
-            uniqueWordsCount = updatedUnique
+            learnedWordsCount = learnedWordsEntries.count
+        }
+        Self.bgPrefsAndSQLiteQueue.async {
+            let newCount = KeyboardUsageStats.deleteLearnedWord(word)
+            let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
+            DispatchQueue.main.async {
+                if self.learnedWordsCount != newCount {
+                    self.learnedWordsCount = newCount
+                }
+                if self.uniqueWordsCount != updatedUnique {
+                    self.uniqueWordsCount = updatedUnique
+                }
+            }
         }
     }
 
     /// Top Basic Statistics bar with expandable Extended Statistics & Achievements card.
     var statisticsAndAchievementsSection: some View {
         let bestWPM = max(peakWPM, max(lastWPM, liveWPM))
-        let bestCPM = max(peakCPM, max(lastCPM, liveCPM))
         let recentWPM = liveWPM > 0 ? liveWPM : lastWPM
-        let recentCPM = liveCPM > 0 ? liveCPM : lastCPM
         let effectiveManualWords = (manualWords == 0 && suggestedWords == 0 && totalWords > 0)
             ? totalWords
             : manualWords
@@ -2920,58 +4503,19 @@ private extension HomeView {
             let raw = Double(typedChars + savedChars) / Double(typedChars)
             return min(max((raw * 10.0).rounded() / 10.0, 1.1), 9.9)
         }()
-        let speedTier = KeyboardUsageStats.speedTier(for: bestWPM)
-        let volumeTier = KeyboardUsageStats.volumeTier(for: totalWords)
         let wpmUnit = localizedInterfaceString("stats.wpmUnit")
-        let cpmUnit = localizedInterfaceString("stats.cpmUnit")
         let wordsUnit = localizedInterfaceString("stats.wordsUnit")
         let learnedWordsUnit = localizedInterfaceString("stats.learnedWordsUnit")
-        let allLangs = ["crh", "uk", "en"]
-        let wordsAllLangs = allLangs.map { "\(totalWords) \(localizedInterfaceString("stats.wordsUnit", for: $0))" }
-        let wpmAllLangs = allLangs.map { "\(bestWPM) \(localizedInterfaceString("stats.wpmUnit", for: $0))" }
-        let timeAllLangs = allLangs.map { formattedActiveTime(for: $0) }
-        let learnedAllLangs = allLangs.map { "\(learnedWordsCount) \(localizedInterfaceString("stats.learnedWordsUnit", for: $0))" }
 
         let speedSubtitle: String = {
-            if recentWPM > 0 || recentCPM > 0 {
+            if recentWPM > 0 {
                 return String(
                     format: localizedInterfaceString("stats.speedSubtitle"),
                     recentWPM,
-                    wpmUnit,
-                    recentCPM,
-                    cpmUnit
+                    wpmUnit
                 )
             }
             return localizedInterfaceString("stats.speedPeakSubtitle")
-        }()
-
-        let speedTierSubtitle: String = {
-            if let nextTarget = speedTier.nextTargetWPM, speedTier.level < 5 {
-                let nextName = localizedInterfaceString("stats.speedTier\(speedTier.level + 1)")
-                let remaining = max(nextTarget - bestWPM, 1)
-                return String(
-                    format: localizedInterfaceString("stats.speedNextFormat"),
-                    nextName,
-                    nextTarget,
-                    wpmUnit,
-                    remaining
-                )
-            }
-            return localizedInterfaceString("stats.speedMaxReached")
-        }()
-
-        let volumeTierSubtitle: String = {
-            if let nextTarget = volumeTier.nextTargetWords, volumeTier.level < 5 {
-                let nextName = localizedInterfaceString("stats.volumeTier\(volumeTier.level + 1)")
-                let remaining = max(nextTarget - totalWords, 1)
-                return String(
-                    format: localizedInterfaceString("stats.volumeNextFormat"),
-                    nextName,
-                    nextTarget,
-                    remaining
-                )
-            }
-            return localizedInterfaceString("stats.volumeMaxReached")
         }()
 
         let statsHeaderChevron = Image(systemName: "chevron.right")
@@ -2981,7 +4525,7 @@ private extension HomeView {
             .frame(width: 16, height: 22, alignment: .center)
             .opacity(statsEnabled ? 1.0 : 0.35)
 
-        let singleRowHeader = HStack(spacing: 6) {
+        let singleRowHeader = HStack(spacing: 8) {
             settingsIconBadge(
                 "chart.bar.xaxis",
                 color: Color(red: 0.58, green: 0.29, blue: 0.92),
@@ -2995,20 +4539,10 @@ private extension HomeView {
                 fontSize: 15,
                 color: statsEnabled ? primaryInk : secondaryInk,
                 lineLimit: 1,
-                fixedHorizontal: true
+                fixedHorizontal: false
             )
 
             Spacer(minLength: 6)
-
-            if statsEnabled && !isStatsExpanded {
-                HStack(spacing: 4.5) {
-                    compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
-                    compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
-                    compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
-                    walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
 
             HStack(spacing: 8) {
                 Color.clear
@@ -3022,86 +4556,26 @@ private extension HomeView {
                 Button {
                     guard statsEnabled else { return }
                     HapticFeedback.playSelection()
+                    didUserManuallyToggleSections = true
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                        isStatsExpanded.toggle()
-                    }
-                } label: {
-                    ViewThatFits(in: .horizontal) {
-                        singleRowHeader
-
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                settingsIconBadge(
-                                    "chart.bar.xaxis",
-                                    color: Color(red: 0.58, green: 0.29, blue: 0.92),
-                                    isEnabled: statsEnabled,
-                                    triggerToken: "\(statsEnabled)-\(isStatsExpanded)",
-                                    badgeID: "stats.header.chart"
-                                )
-                                StableLocalizedText(
-                                    key: "stats.title",
-                                    fontName: "GeneralSans-Semibold",
-                                    fontSize: 15,
-                                    color: statsEnabled ? primaryInk : secondaryInk,
-                                    lineLimit: nil,
-                                    fixedHorizontal: false
-                                )
-
-                                Spacer(minLength: 6)
-
-                                HStack(spacing: 8) {
-                                    Color.clear
-                                        .frame(width: 58, height: 22)
-                                    statsHeaderChevron
-                                }
-                            }
-
-                            if statsEnabled && !isStatsExpanded {
-                                ViewThatFits(in: .horizontal) {
-                                    HStack(spacing: 0) {
-                                        compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
-                                        Spacer(minLength: 2)
-                                        compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
-                                        Spacer(minLength: 2)
-                                        compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
-                                        Spacer(minLength: 2)
-                                        walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
-                                    }
-                                    .frame(maxWidth: .infinity)
-
-                                    HStack(spacing: 3) {
-                                        compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
-                                        Spacer(minLength: 1)
-                                        compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
-                                        Spacer(minLength: 1)
-                                        compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
-                                        Spacer(minLength: 1)
-                                        walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
-                                    }
-                                    .frame(maxWidth: .infinity)
-
-                                    VStack(alignment: .leading, spacing: 6) {
-                                        HStack(spacing: 6) {
-                                            compactStatPill(icon: "text.word.spacing", color: brandBlue, value: "\(totalWords) \(wordsUnit)", allLangValues: wordsAllLangs)
-                                            compactStatPill(icon: "bolt.heart.fill", color: Color(red: 0.95, green: 0.32, blue: 0.38), value: "\(bestWPM) \(wpmUnit)", allLangValues: wpmAllLangs)
-                                            Spacer(minLength: 0)
-                                        }
-                                        HStack(spacing: 6) {
-                                            compactStatPill(icon: "clock.fill", color: appleGreen, value: formattedActiveTime, allLangValues: timeAllLangs)
-                                            walnutBrainStatPill(color: Color(red: 0.96, green: 0.58, blue: 0.04), value: "\(learnedWordsCount) \(learnedWordsUnit)", allLangValues: learnedAllLangs)
-                                            Spacer(minLength: 0)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                            }
+                        let nextExpanded = !isStatsExpanded
+                        isStatsExpanded = nextExpanded
+                        if nextExpanded {
+                            isTestingExpanded = false
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+                } label: {
+                    singleRowHeader
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!statsEnabled)
+                .accessibilityLabel(
+                    (statsEnabled && !isStatsExpanded)
+                        ? "\(localizedInterfaceString("stats.title")), \(totalWords) \(wordsUnit), \(bestWPM) \(wpmUnit), \(learnedWordsCount) \(learnedWordsUnit)"
+                        : localizedInterfaceString("stats.title")
+                )
                 .accessibilityIdentifier("stats.expandToggle")
 
                 Toggle("", isOn: animationsAllowed ? $statsEnabled.animation(.spring(response: 0.32, dampingFraction: 0.85)) : $statsEnabled)
@@ -3111,22 +4585,23 @@ private extension HomeView {
                     .padding(.trailing, 24)
             }
 
+            if statsEnabled && !isStatsExpanded {
+                bentoCollapsedStatisticsGrid(
+                    bestWPM: bestWPM,
+                    wpmUnit: wpmUnit,
+                    speedSubtitle: speedSubtitle
+                )
+            }
+
             if statsEnabled && isStatsExpanded {
                 AnyView(
                     expandedStatisticsContentView(
                         bestWPM: bestWPM,
-                        bestCPM: bestCPM,
                         wpmUnit: wpmUnit,
-                        cpmUnit: cpmUnit,
-                        typedChars: typedChars,
                         savedChars: savedChars,
                         effectiveManualWords: effectiveManualWords,
                         boostMultiplier: boostMultiplier,
-                        speedTierLevel: speedTier.level,
-                        volumeTierLevel: volumeTier.level,
-                        speedSubtitle: speedSubtitle,
-                        speedTierSubtitle: speedTierSubtitle,
-                        volumeTierSubtitle: volumeTierSubtitle
+                        speedSubtitle: speedSubtitle
                     )
                 )
             }
@@ -3139,9 +4614,6 @@ private extension HomeView {
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 2)
-        .onDisappear {
-            Self.appearedBadgeIDs.remove("stats.header.chart")
-        }
         .sheet(isPresented: $showLearnedWordsSheet) {
             AnyView(learnedWordsSheetView)
         }
@@ -3161,156 +4633,168 @@ private extension HomeView {
         }
     }
 
-    @ViewBuilder
+    private func bentoCollapsedStatisticsGrid(
+        bestWPM: Int,
+        wpmUnit: String,
+        speedSubtitle: String
+    ) -> some View {
+        let wordsTileSubtitle = String(format: localizedInterfaceString("stats.uniqueWordsSubtitle"), uniqueWordsCount)
+        return HStack(spacing: 10) {
+            statTile(
+                icon: "text.word.spacing",
+                color: brandBlue,
+                title: localizedInterfaceString("stats.words"),
+                value: "\(totalWords)",
+                subtitle: wordsTileSubtitle
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("stats.wordsTile")
+
+            statTile(
+                icon: "bolt.heart.fill",
+                color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                title: localizedInterfaceString("stats.speed"),
+                value: "\(bestWPM) \(wpmUnit)",
+                subtitle: speedSubtitle
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("stats.speedTile")
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard statsEnabled else { return }
+            HapticFeedback.playSelection()
+            didUserManuallyToggleSections = true
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                isStatsExpanded = true
+                isTestingExpanded = false
+            }
+        }
+    }
+
     private func expandedStatisticsContentView(
         bestWPM: Int,
-        bestCPM: Int,
         wpmUnit: String,
-        cpmUnit: String,
-        typedChars: Int,
         savedChars: Int,
         effectiveManualWords: Int,
         boostMultiplier: Double,
-        speedTierLevel: Int,
-        volumeTierLevel: Int,
-        speedSubtitle: String,
-        speedTierSubtitle: String,
-        volumeTierSubtitle: String
+        speedSubtitle: String
     ) -> some View {
-        Divider()
+        let wordsTileSubtitle = String(format: localizedInterfaceString("stats.uniqueWordsSubtitle"), uniqueWordsCount)
 
-        let baseCharsSubtitle = String(format: localizedInterfaceString("stats.charsSubtitle"), typedChars)
-        let wordsTileSubtitle = uniqueWordsCount > 0
-            ? "\(baseCharsSubtitle) · \(uniqueWordsCount) \(localizedInterfaceString("stats.uniqueWordsUnit"))"
-            : baseCharsSubtitle
+        return VStack(alignment: .leading, spacing: 10) {
+            Divider()
 
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                statTile(
-                    icon: "text.word.spacing",
-                    color: brandBlue,
-                    title: localizedInterfaceString("stats.words"),
-                    value: "\(totalWords)",
-                    subtitle: wordsTileSubtitle
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.wordsTile")
+            VStack(spacing: 10) {
+                HStack(spacing: 10) {
+                    statTile(
+                        icon: "text.word.spacing",
+                        color: brandBlue,
+                        title: localizedInterfaceString("stats.words"),
+                        value: "\(totalWords)",
+                        subtitle: wordsTileSubtitle
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.wordsTile")
 
-                statTile(
-                    icon: "bolt.heart.fill",
-                    color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                    title: localizedInterfaceString("stats.speed"),
-                    value: "\(bestWPM) \(wpmUnit) · \(bestCPM) \(cpmUnit)",
-                    subtitle: speedSubtitle
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.speedTile")
-            }
-
-            HStack(spacing: 10) {
-                statTile(
-                    icon: "keyboard.fill",
-                    color: brandBlue,
-                    title: localizedInterfaceString("stats.manualWords"),
-                    value: "\(effectiveManualWords)",
-                    subtitle: localizedInterfaceString("stats.manualWordsSubtitle")
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.manualWordsTile")
-
-                statTile(
-                    icon: "sparkles",
-                    color: appleGreen,
-                    title: localizedInterfaceString("stats.suggestedWords"),
-                    value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))",
-                    subtitle: String(format: localizedInterfaceString("stats.suggestedWordsSubtitle"), savedChars)
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.suggestedWordsTile")
-            }
-
-            HStack(spacing: 10) {
-                statTile(
-                    icon: "gauge.with.dots.needle.67percent",
-                    color: Color(red: 0.95, green: 0.32, blue: 0.38),
-                    title: localizedInterfaceString("stats.speedLevel"),
-                    value: localizedInterfaceString("stats.speedTier\(speedTierLevel)"),
-                    subtitle: speedTierSubtitle
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.speedTierTile")
-
-                statTile(
-                    icon: "flame.fill",
-                    color: Color(red: 0.58, green: 0.29, blue: 0.92),
-                    title: localizedInterfaceString("stats.volumeLevel"),
-                    value: localizedInterfaceString("stats.volumeTier\(volumeTierLevel)"),
-                    subtitle: volumeTierSubtitle
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.volumeTierTile")
-            }
-
-            HStack(spacing: 10) {
-                statTile(
-                    icon: "clock.fill",
-                    color: appleGreen,
-                    title: localizedInterfaceString("stats.activeTime"),
-                    value: formattedActiveTime,
-                    subtitle: localizedInterfaceString("stats.activeTimeSubtitle")
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.activeTimeTile")
-
-                walnutBrainStatTile(
-                    color: Color(red: 0.96, green: 0.58, blue: 0.04),
-                    title: localizedInterfaceString("stats.learnedWords"),
-                    value: "\(learnedWordsCount)",
-                    subtitle: localizedInterfaceString("stats.learnedWordsSubtitle")
-                )
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("stats.learnedWordsTile")
-            }
-        }
-
-        Divider()
-
-        HStack(spacing: 6) {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color(red: 0.96, green: 0.58, blue: 0.04))
-            interfaceLabel("stats.achievements")
-                .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
-                .foregroundStyle(secondaryInk)
-            Spacer()
-
-            Button(role: .destructive) {
-                HapticFeedback.playSelection()
-                showResetStatsConfirmation = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 11, weight: .semibold))
-                    interfaceLabel("stats.reset")
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 12))
-                        .lineLimit(1)
+                    statTile(
+                        icon: "bolt.heart.fill",
+                        color: Color(red: 0.95, green: 0.32, blue: 0.38),
+                        title: localizedInterfaceString("stats.speed"),
+                        value: "\(bestWPM) \(wpmUnit)",
+                        subtitle: speedSubtitle
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.speedTile")
                 }
-                .foregroundStyle(Color.red)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(Color.red.opacity(0.10), in: Capsule())
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("stats.resetButton")
-        }
 
-        AnyView(expandedAchievementsGridView(bestWPM: bestWPM))
+                HStack(spacing: 10) {
+                    statTile(
+                        icon: "keyboard.fill",
+                        color: brandBlue,
+                        title: localizedInterfaceString("stats.manualWords"),
+                        value: "\(effectiveManualWords)",
+                        subtitle: localizedInterfaceString("stats.manualWordsSubtitle")
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.manualWordsTile")
+
+                    statTile(
+                        icon: "sparkles",
+                        color: appleGreen,
+                        title: localizedInterfaceString("stats.suggestedWords"),
+                        value: "\(suggestedWords) · \(String(format: "×%.1f", boostMultiplier))",
+                        subtitle: String(format: localizedInterfaceString("stats.suggestedWordsSubtitle"), savedChars)
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.suggestedWordsTile")
+                }
+
+                HStack(spacing: 10) {
+                    statTile(
+                        icon: "clock.fill",
+                        color: appleGreen,
+                        title: localizedInterfaceString("stats.activeTime"),
+                        value: formattedActiveTime,
+                        subtitle: localizedInterfaceString("stats.activeTimeSubtitle")
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.activeTimeTile")
+
+                    walnutBrainStatTile(
+                        color: Color(red: 0.96, green: 0.58, blue: 0.04),
+                        title: localizedInterfaceString("stats.learnedWords"),
+                        value: "\(learnedWordsCount)",
+                        subtitle: localizedInterfaceString("stats.learnedWordsSubtitle")
+                    )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("stats.learnedWordsTile")
+                }
+            }
+
+            Divider()
+
+            HStack(spacing: 6) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(red: 0.96, green: 0.58, blue: 0.04))
+                interfaceLabel("stats.achievements")
+                    .font(InterfaceFont.font("GeneralSans-Medium", size: 13))
+                    .foregroundStyle(secondaryInk)
+                Spacer()
+
+                Button(role: .destructive) {
+                    HapticFeedback.playSelection()
+                    showResetStatsConfirmation = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 11, weight: .semibold))
+                        interfaceLabel("stats.reset")
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 12))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color.red)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(Color.red.opacity(0.10), in: Capsule())
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("stats.resetButton")
+            }
+
+            expandedAchievementsGridView(bestWPM: bestWPM)
+        }
     }
 
     @ViewBuilder
     private func expandedAchievementsGridView(bestWPM: Int) -> some View {
         let effectiveWidth = containerSize.width > 0 ? containerSize.width : viewportSize.width
+        let volTier = KeyboardUsageStats.volumeTier(for: totalWords)
+        let spdTier = KeyboardUsageStats.speedTier(for: bestWPM)
+        let volLabel = "\(localizedInterfaceString("stats.ach.firstStep")), \(localizedInterfaceString("stats.volumeTier\(volTier.level)")), \(volTier.nextTargetWords.map { String(format: localizedInterfaceString("stats.nextTargetWords"), $0) } ?? localizedInterfaceString("stats.maxTierReached"))"
+        let spdLabel = "\(localizedInterfaceString("stats.ach.speed")), \(localizedInterfaceString("stats.speedTier\(spdTier.level)")), \(spdTier.nextTargetWPM.map { String(format: localizedInterfaceString("stats.nextTargetWPM"), $0) } ?? localizedInterfaceString("stats.maxTierReached"))"
         if Device.iPhone || (effectiveWidth > 0 && effectiveWidth < 540) {
             VStack(spacing: 8) {
                 progressiveAchievementBadge(
@@ -3321,6 +4805,10 @@ private extension HomeView {
                     milestones: [10, 50, 250, 1000, 5000],
                     milestoneLabels: ["10", "50", "250", "1k", "5k"]
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(volLabel)
+                .accessibilityIdentifier("stats.volumeTierTile")
+
                 progressiveAchievementBadge(
                     icon: "bolt.heart.fill",
                     title: localizedInterfaceString("stats.ach.speed"),
@@ -3329,6 +4817,10 @@ private extension HomeView {
                     milestones: [15, 25, 40, 55, 75],
                     milestoneLabels: ["15", "25", "40", "55", "75"]
                 )
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(spdLabel)
+                .accessibilityIdentifier("stats.speedTierTile")
+
                 progressiveAchievementBadge(
                     icon: "book.closed.fill",
                     title: localizedInterfaceString("stats.ach.scholar"),
@@ -3357,6 +4849,10 @@ private extension HomeView {
                         milestones: [10, 50, 250, 1000, 5000],
                         milestoneLabels: ["10", "50", "250", "1k", "5k"]
                     )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(volLabel)
+                    .accessibilityIdentifier("stats.volumeTierTile")
+
                     progressiveAchievementBadge(
                         icon: "bolt.heart.fill",
                         title: localizedInterfaceString("stats.ach.speed"),
@@ -3365,6 +4861,9 @@ private extension HomeView {
                         milestones: [15, 25, 40, 55, 75],
                         milestoneLabels: ["15", "25", "40", "55", "75"]
                     )
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(spdLabel)
+                    .accessibilityIdentifier("stats.speedTierTile")
                 }
                 HStack(spacing: 10) {
                     progressiveAchievementBadge(
@@ -3415,7 +4914,7 @@ private extension HomeView {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
@@ -3452,7 +4951,7 @@ private extension HomeView {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
@@ -3463,28 +4962,30 @@ private extension HomeView {
     private var learnedWordsSheetView: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    walnutBrainIconBadge(
-                        color: Color(red: 0.96, green: 0.58, blue: 0.04),
-                        isEnabled: wordLearningEnabled
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 12) {
+                        walnutBrainIconBadge(
+                            color: Color(red: 0.96, green: 0.58, blue: 0.04),
+                            isEnabled: wordLearningEnabled
+                        )
+                        Text(localizedInterfaceString("settings.wordLearning"))
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 15.5))
+                            .foregroundStyle(primaryInk)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 8)
+                        Toggle("", isOn: $wordLearningEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .accessibilityIdentifier("stats.learnedWords.wordLearningToggle")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
+                    .background(
+                        Color(.secondarySystemGroupedBackground),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                     )
-                    Text(localizedInterfaceString("settings.wordLearning"))
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 15.5))
-                        .foregroundStyle(primaryInk)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
-                    Toggle("", isOn: $wordLearningEnabled)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .accessibilityIdentifier("stats.learnedWords.wordLearningToggle")
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 11)
-                .background(
-                    Color(.secondarySystemGroupedBackground),
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                )
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
                 .padding(.bottom, 6)
@@ -3507,44 +5008,52 @@ private extension HomeView {
                     .accessibilityIdentifier("stats.learnedWords.emptyState")
                 } else {
                     List {
-                        ForEach(learnedWordsEntries, id: \.word) { item in
-                            HStack(spacing: 10) {
-                                WalnutBrainIcon(color: Color(red: 0.96, green: 0.58, blue: 0.04), size: 14)
-                                Text(item.word)
-                                    .font(InterfaceFont.font("GeneralSans-Medium", size: 16))
-                                    .foregroundStyle(primaryInk)
-                                    .accessibilityIdentifier("stats.learnedWords.row.\(item.word)")
-                                Spacer(minLength: 8)
-                                if item.freq > 1 {
-                                    Text("×\(item.freq)")
-                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(secondaryInk)
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 2.5)
-                                        .background(Color(.tertiarySystemFill), in: Capsule())
+                        Section {
+                            ForEach(learnedWordsEntries, id: \.word) { item in
+                                HStack(spacing: 10) {
+                                    WalnutBrainIcon(color: Color(red: 0.96, green: 0.58, blue: 0.04), size: 14)
+                                    Text(item.word)
+                                        .font(InterfaceFont.font("GeneralSans-Medium", size: 16))
+                                        .foregroundStyle(primaryInk)
+                                        .accessibilityIdentifier("stats.learnedWords.row.\(item.word)")
+                                    Spacer(minLength: 8)
+                                    if item.freq > 1 {
+                                        Text("×\(item.freq)")
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundStyle(secondaryInk)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 2.5)
+                                            .background(Color(.tertiarySystemFill), in: Capsule())
+                                    }
+                                    Button(role: .destructive) {
+                                        deleteLearnedWordFromSheet(item.word)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundStyle(Color.red)
+                                            .frame(width: 30, height: 30)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel(localizedInterfaceString("stats.learnedWords.delete"))
+                                    .accessibilityIdentifier("stats.learnedWords.delete.\(item.word)")
                                 }
-                                Button(role: .destructive) {
-                                    deleteLearnedWordFromSheet(item.word)
-                                } label: {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundStyle(Color.red)
-                                        .frame(width: 30, height: 30)
-                                        .contentShape(Rectangle())
+                            }
+                            .onDelete { offsets in
+                                let wordsToDelete = offsets.map { learnedWordsEntries[$0].word }
+                                for w in wordsToDelete {
+                                    deleteLearnedWordFromSheet(w)
                                 }
-                                .buttonStyle(.borderless)
-                                .accessibilityLabel(localizedInterfaceString("stats.learnedWords.delete"))
-                                .accessibilityIdentifier("stats.learnedWords.delete.\(item.word)")
                             }
-                        }
-                        .onDelete { offsets in
-                            let wordsToDelete = offsets.map { learnedWordsEntries[$0].word }
-                            for w in wordsToDelete {
-                                deleteLearnedWordFromSheet(w)
-                            }
+                        } footer: {
+                            Text(localizedInterfaceString("stats.learnedWords.emptyDesc"))
+                                .font(InterfaceFont.font("GeneralSans-Regular", size: 12.5))
+                                .foregroundStyle(secondaryInk)
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(Color(.systemGroupedBackground))
                     .accessibilityIdentifier("stats.learnedWords.list")
                 }
             }
@@ -3552,20 +5061,35 @@ private extension HomeView {
             .navigationTitle(localizedInterfaceString("stats.learnedWordsSubtitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text(localizedInterfaceString("stats.learnedWordsSubtitle"))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(primaryInk)
+                }
                 if !learnedWordsEntries.isEmpty {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button(role: .destructive) {
+                        Button {
                             HapticFeedback.playSelection()
-                            KeyboardUsageStats.clearAllLearnedWords()
                             withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
                                 learnedWordsEntries = []
                                 learnedWordsCount = 0
                             }
+                            Self.bgPrefsAndSQLiteQueue.async {
+                                KeyboardUsageStats.clearAllLearnedWords()
+                                let updatedUnique = KeyboardPreferences.defaults.integer(forKey: KeyboardUsageStats.uniqueWordsKey)
+                                DispatchQueue.main.async {
+                                    if self.uniqueWordsCount != updatedUnique {
+                                        self.uniqueWordsCount = updatedUnique
+                                    }
+                                }
+                            }
                         } label: {
                             Image(systemName: "trash")
-                                .font(.system(size: 15, weight: .semibold))
+                                .symbolRenderingMode(.monochrome)
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(Color.red)
                         }
+                        .tint(Color.red)
                         .accessibilityLabel(localizedInterfaceString("stats.learnedWords.clearAll"))
                         .accessibilityIdentifier("stats.learnedWords.clearAllButton")
                     }
@@ -3575,8 +5099,11 @@ private extension HomeView {
                         showLearnedWordsSheet = false
                     } label: {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 15, weight: .semibold))
+                            .symbolRenderingMode(.monochrome)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(primaryInk)
                     }
+                    .tint(primaryInk)
                     .accessibilityLabel(localizedInterfaceString("stats.learnedWords.done"))
                     .accessibilityIdentifier("stats.learnedWords.doneButton")
                 }
@@ -3727,13 +5254,16 @@ private extension HomeView {
         if args.contains("-qt_full_access_granted") {
             return true
         }
-        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
+        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") || args.contains("-qt_dump_all_proofs") {
+            return true
+        }
+        if cachedIsFullAccessEnabled {
             return true
         }
         if !isPrimaryKeyboardAdded && !isCyrillicKeyboardAdded && !isUkrainianKeyboardAdded {
             return false
         }
-        return cachedIsFullAccessEnabled
+        return Self.keyboardInspector.isFullAccessEnabled
     }
 
     var areAllIndicatorsEnabled: Bool {
@@ -3781,25 +5311,29 @@ private struct NativeSegmentedControl: UIViewRepresentable {
         if uiView.apportionsSegmentWidthsByContent != apportionsWidthsByContent {
             uiView.apportionsSegmentWidthsByContent = apportionsWidthsByContent
         }
-        if uiView.numberOfSegments != items.count {
-            uiView.removeAllSegments()
-            for (idx, item) in items.enumerated() {
-                uiView.insertSegment(withTitle: item.title, at: idx, animated: false)
-            }
-        } else {
-            for (idx, item) in items.enumerated() {
-                if uiView.titleForSegment(at: idx) != item.title {
-                    uiView.setTitle(item.title, forSegmentAt: idx)
+        UIView.performWithoutAnimation {
+            if uiView.numberOfSegments != items.count {
+                uiView.removeAllSegments()
+                for (idx, item) in items.enumerated() {
+                    uiView.insertSegment(withTitle: item.title, at: idx, animated: false)
+                }
+                uiView.needsSegmentReconfig = true
+            } else {
+                for (idx, item) in items.enumerated() {
+                    if uiView.titleForSegment(at: idx) != item.title {
+                        uiView.setTitle(item.title, forSegmentAt: idx)
+                        uiView.needsSegmentReconfig = true
+                    }
                 }
             }
-        }
-        let newIDs = items.map(\.accessibilityIdentifier)
-        if uiView.segmentIdentifiers != newIDs {
-            uiView.segmentIdentifiers = newIDs
-        }
-        if let idx = items.firstIndex(where: { $0.id == selection }),
-           uiView.selectedSegmentIndex != idx {
-            uiView.selectedSegmentIndex = idx
+            let newIDs = items.map(\.accessibilityIdentifier)
+            if uiView.segmentIdentifiers != newIDs {
+                uiView.segmentIdentifiers = newIDs
+            }
+            if let idx = items.firstIndex(where: { $0.id == selection }),
+               uiView.selectedSegmentIndex != idx {
+                uiView.selectedSegmentIndex = idx
+            }
         }
     }
 
@@ -3847,13 +5381,19 @@ private final class AccessibleUISegmentedControl: UISegmentedControl {
     var segmentIdentifiers: [String] = [] {
         didSet {
             if segmentIdentifiers != oldValue {
+                needsSegmentReconfig = true
                 applySegmentAccessibilityIdentifiers()
             }
         }
     }
+    var needsSegmentReconfig: Bool = true
+    private var lastConfiguredBoundsSize: CGSize = .zero
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        guard bounds.size != lastConfiguredBoundsSize || needsSegmentReconfig else { return }
+        lastConfiguredBoundsSize = bounds.size
+        needsSegmentReconfig = false
         configureSegmentLabels(in: self)
         applySegmentViewIdentifiers()
     }
@@ -3914,8 +5454,7 @@ struct StableLocalizedText: View {
     var minimumScaleFactor: CGFloat = 1.0
     var fixedHorizontal: Bool = false
     var customStrings: [String: String]? = nil
-
-    @AppStorage(KeyboardPreferences.languageKey, store: KeyboardPreferences.defaults) private var language = "crh"
+    var language: String = KeyboardPreferences.interfaceLanguage
 
     private static let languages = ["crh", "uk", "en"]
 
@@ -3923,8 +5462,7 @@ struct StableLocalizedText: View {
         if let custom = customStrings?[language] {
             return custom
         }
-        let bundle = KeyboardPreferences.localizationBundle(for: language)
-        return bundle.localizedString(forKey: key, value: key, table: table)
+        return KeyboardPreferences.localizedString(forKey: key, value: key, table: table, language: language)
     }
 
     private var activeString: String {
@@ -3932,7 +5470,7 @@ struct StableLocalizedText: View {
         if let customStrings {
             return customStrings[currentLang] ?? customStrings["crh"] ?? key
         }
-        return KeyboardPreferences.localizationBundle(for: currentLang).localizedString(forKey: key, value: key, table: table)
+        return KeyboardPreferences.localizedString(forKey: key, value: key, table: table, language: currentLang)
     }
 
     private func renderText(_ raw: String) -> Text {
@@ -3949,27 +5487,40 @@ struct StableLocalizedText: View {
 
     var body: some View {
         let currentText = activeString
-        ZStack(alignment: .leading) {
-            ForEach(Self.languages, id: \.self) { lang in
-                let sample = resolvedString(for: lang)
-                renderText(sample)
-                    .font(font ?? InterfaceFont.font(fontName, size: fontSize, text: sample))
+        let resolvedFont = font ?? InterfaceFont.font(fontName, size: fontSize, text: currentText)
+        if lineLimit == 1 && !fixedHorizontal {
+            renderText(currentText)
+                .font(resolvedFont)
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(minimumScaleFactor)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            ZStack(alignment: .leading) {
+                ForEach(Self.languages, id: \.self) { lang in
+                    let sample = resolvedString(for: lang)
+                    renderText(sample)
+                        .font(font ?? InterfaceFont.font(fontName, size: fontSize, text: sample))
+                        .lineLimit(lineLimit)
+                        .minimumScaleFactor(minimumScaleFactor)
+                        .fixedSize(horizontal: fixedHorizontal, vertical: true)
+                        .multilineTextAlignment(.leading)
+                        .hidden()
+                        .accessibilityHidden(true)
+                }
+                renderText(currentText)
+                    .font(resolvedFont)
+                    .foregroundStyle(color)
                     .lineLimit(lineLimit)
                     .minimumScaleFactor(minimumScaleFactor)
                     .fixedSize(horizontal: fixedHorizontal, vertical: true)
                     .multilineTextAlignment(.leading)
-                    .hidden()
-                    .accessibilityHidden(true)
             }
-            renderText(currentText)
-                .font(font ?? InterfaceFont.font(fontName, size: fontSize, text: currentText))
-                .foregroundStyle(color)
-                .lineLimit(lineLimit)
-                .minimumScaleFactor(minimumScaleFactor)
-                .fixedSize(horizontal: fixedHorizontal, vertical: true)
-                .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: fixedHorizontal, vertical: true)
+            .frame(maxWidth: fixedHorizontal ? nil : .infinity, alignment: .leading)
         }
-        .frame(maxWidth: fixedHorizontal ? nil : .infinity, alignment: .leading)
     }
 }
 
@@ -4461,9 +6012,8 @@ private struct KeycapGlyphStrokeShape: Shape {
 }
 
 #Preview {
-    @Previewable @State var navigationPath = NavigationPath()
-    NavigationStack(path: $navigationPath) {
-        HomeView(navigationPath: $navigationPath)
+    NavigationStack {
+        HomeView()
     }
 }
 
@@ -4482,7 +6032,7 @@ private struct InteractiveSettingsIconBadge: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0) {
@@ -4570,6 +6120,11 @@ private struct InteractiveSettingsIconBadge: View {
         .onTapGesture {
             triggerLineDraw()
         }
+        .onAppear {
+            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
+                triggerLineDraw(delay: 0.06)
+            }
+        }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
             if newValue {
@@ -4610,7 +6165,7 @@ private struct InteractiveWalnutIconBadge: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0) {
@@ -4652,6 +6207,11 @@ private struct InteractiveWalnutIconBadge: View {
         .onTapGesture {
             triggerLineDraw()
         }
+        .onAppear {
+            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
+                triggerLineDraw(delay: 0.08)
+            }
+        }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
             if newValue {
@@ -4680,13 +6240,14 @@ private struct TransliterationKeycapBadge: View {
     var triggerCount: Int = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @State private var isLowPowerMode: Bool = ProcessInfo.processInfo.isLowPowerModeEnabled
     @State private var drawProgress: CGFloat = 1.0
     @State private var activeGlyphIsTargetQ: Bool = false
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
@@ -4815,37 +6376,21 @@ private struct TransliterationKeycapBadge: View {
                     .fill(Color(.systemGray3).gradient)
             }
 
-            // Physical 3D keycap lower bevel/lip (stationary)
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                .fill(Color.black.opacity(isEnabled ? 0.16 : 0.10))
-                .frame(width: 22, height: 21)
-                .offset(y: 1.0)
-
-            // Physical 3D keycap top surface fill (stationary)
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
-                .fill(Color.white.opacity(isEnabled ? (isUkrainianStyle ? 0.10 : 0.14) : 0.08))
-                .frame(width: 22, height: 20.5)
-                .offset(y: -0.25)
-
-            // Permanent 3D keycap rim border (обідок) — always solid and stationary
-            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+            // Concentric contour matching the badge's own corner radius (cornerRadius: 7, zero 3D bottom lip or shadow)
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .strokeBorder(
-                    Color.white.opacity(isEnabled ? 0.72 : 0.45),
+                    Color.white.opacity(colorScheme == .dark ? 0.38 : 0.52),
                     lineWidth: 1.15
                 )
-                .frame(width: 22, height: 20.5)
-                .offset(y: -0.25)
 
-            // Permanent inner vector line-drawing glyph for Q / Къ / Кʼ (Start State == End State)
+            // Closed-loop vector line-drawing glyph for Q / Къ / Кʼ (Start State == End State)
             KeycapGlyphStrokeShape(isUkrainianStyle: isUkrainianStyle, showsTargetQ: isLatinOnlyStyle || activeGlyphIsTargetQ)
                 .trim(from: 0, to: drawProgress)
                 .stroke(
                     Color.white,
-                    style: StrokeStyle(lineWidth: 1.55, lineCap: .round, lineJoin: .round)
+                    style: StrokeStyle(lineWidth: 1.65, lineCap: .round, lineJoin: .round)
                 )
-                .shadow(color: .black.opacity(isUkrainianStyle && isEnabled ? 0.35 : 0.14), radius: 0.6, x: 0, y: 0.4)
                 .frame(width: 15, height: 13.5)
-                .offset(y: -0.25)
         }
         .frame(width: 28, height: 28)
         .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
@@ -4858,6 +6403,9 @@ private struct TransliterationKeycapBadge: View {
             if isLatinOnlyStyle || ProcessInfo.processInfo.arguments.contains("-qt_hold_q_phase") {
                 activeGlyphIsTargetQ = true
                 drawProgress = 1.0
+            }
+            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
+                triggerLineDraw(delay: 0.08)
             }
         }
         .onChange(of: isEnabled) { _, newValue in
@@ -4873,6 +6421,88 @@ private struct TransliterationKeycapBadge: View {
         .onChange(of: triggerCount) { _, _ in
             guard HomeView.canAnimateUserChanges else { return }
             triggerLineDraw(forceAllowWhenDisabled: true)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct AbvAbcAnimatedKeycapBadge: View {
+    let accentColor: Color
+    let trigger: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var showsLatinAbc = false
+    @State private var animGeneration: Int = 0
+    @State private var isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
+
+    private var animationsAllowed: Bool {
+        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+    }
+
+    private func triggerCycle(delay: Double = 0) {
+        guard animationsAllowed else {
+            showsLatinAbc = false
+            return
+        }
+        animGeneration &+= 1
+        let gen = animGeneration
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard gen == animGeneration else { return }
+            withAnimation(.linear(duration: 0.26)) {
+                showsLatinAbc = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.56) {
+                guard gen == animGeneration else { return }
+                withAnimation(.linear(duration: 0.26)) {
+                    showsLatinAbc = false
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(accentColor.gradient)
+
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.38 : 0.52),
+                    lineWidth: 1.05
+                )
+
+            ZStack {
+                Text("абв")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white)
+                    .opacity(showsLatinAbc ? 0.0 : 1.0)
+                    .offset(x: showsLatinAbc ? -8 : 0)
+
+                Text("abc")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white)
+                    .opacity(showsLatinAbc ? 1.0 : 0.0)
+                    .offset(x: showsLatinAbc ? 0 : 8)
+            }
+            .clipped()
+        }
+        .frame(width: 34, height: 22)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            triggerCycle()
+        }
+        .onAppear {
+            if HomeView.shouldAnimateInitialAppear(for: "settings.abvBridge.keycapBadge") {
+                triggerCycle(delay: 0.12)
+            }
+        }
+        .onChange(of: trigger) { _, _ in
+            guard HomeView.canAnimateUserChanges else { return }
+            triggerCycle()
         }
         .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
             isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
@@ -4897,7 +6527,7 @@ private struct LatinCharactersMiniCapsulesView: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
@@ -4926,18 +6556,20 @@ private struct LatinCharactersMiniCapsulesView: View {
 
     @ViewBuilder
     private func letterPill(_ letter: String, compact: Bool = false) -> some View {
+        let pillShape = RoundedRectangle(cornerRadius: 6, style: .continuous)
         Text(letter)
             .font(.system(size: Device.iPad ? 11 : 10.5, weight: .bold, design: .rounded))
             .foregroundStyle(isEnabled ? brandBlue : secondaryInk)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, compact ? 3.5 : (Device.iPad ? 5.5 : 4.5))
+            .padding(.horizontal, compact ? 4.5 : (Device.iPad ? 6.0 : 5.0))
             .padding(.vertical, 2)
+            .frame(minWidth: compact ? 18 : (Device.iPad ? 22 : 20), minHeight: Device.iPad ? 18 : 17)
             .background(
                 isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
-                in: Capsule()
+                in: pillShape
             )
             .overlay(
-                Capsule()
+                pillShape
                     .trim(from: 0, to: drawProgress)
                     .stroke(
                         isEnabled ? brandBlue.opacity(0.28) : Color.primary.opacity(0.08),
@@ -4955,7 +6587,7 @@ private struct LatinCharactersMiniCapsulesView: View {
             }
             .fixedSize(horizontal: true, vertical: false)
 
-            HStack(spacing: 2) {
+            HStack(spacing: 2.5) {
                 ForEach(letters, id: \.self) { letter in
                     letterPill(letter, compact: true)
                 }
@@ -4981,6 +6613,11 @@ private struct LatinCharactersMiniCapsulesView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
+        }
+        .onAppear {
+            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
+                triggerLineDraw(delay: 0.10)
+            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
@@ -5015,7 +6652,7 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private static let defaultPairs: [(src: String, dst: String)] = [
@@ -5023,6 +6660,15 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
         ("г", "ğ"),
         ("к\u{02BC}", "q"),
         ("н\u{02BC}", "ñ")
+    ]
+
+    /// Wider Cyrillic 4-pill reference (`гъ → ğ · къ → q · нъ → ñ · дж → c`) used to synchronize
+    /// 1-row vs. 2×2-row wrapping across both `Кирилична клавіатура` and `Українська розкладка`.
+    private static let cyrillicReferencePairs: [(src: String, dst: String)] = [
+        ("гъ", "ğ"),
+        ("къ", "q"),
+        ("нъ", "ñ"),
+        ("дж", "c")
     ]
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
@@ -5050,8 +6696,8 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     }
 
     @ViewBuilder
-    private func capsulePill(for pair: (src: String, dst: String), compact: Bool = false) -> some View {
-        HStack(spacing: compact ? 1.5 : (Device.iPad ? 2 : 1.5)) {
+    private func capsulePill(for pair: (src: String, dst: String), compact: Bool = false, sizingOnly: Bool = false) -> some View {
+        let content = HStack(spacing: compact ? 1.5 : (Device.iPad ? 2 : 1.5)) {
             Text(pair.src)
                 .font(.system(size: Device.iPad ? 11 : 10.5, weight: .semibold, design: .rounded))
                 .foregroundStyle(isEnabled ? primaryInk : secondaryInk)
@@ -5067,34 +6713,62 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
         }
         .fixedSize(horizontal: true, vertical: false)
         .lineLimit(1)
-        .padding(.horizontal, compact ? 3.5 : (Device.iPad ? 5 : 4))
+        .padding(.horizontal, compact ? 4.0 : (Device.iPad ? 5.5 : 4.5))
         .padding(.vertical, 2)
-        .background(
-            isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
-            in: Capsule()
-        )
-        .overlay(
-            Capsule()
-                .trim(from: 0, to: drawProgress)
-                .stroke(
-                    isEnabled ? brandBlue.opacity(0.28) : Color.primary.opacity(0.08),
-                    style: StrokeStyle(lineWidth: 0.85, lineCap: .round)
+        .frame(minHeight: Device.iPad ? 18 : 17)
+
+        if sizingOnly {
+            content
+        } else {
+            let pillShape = RoundedRectangle(cornerRadius: 6, style: .continuous)
+            content
+                .background(
+                    isEnabled ? brandBlue.opacity(0.10) : Color(.tertiarySystemFill),
+                    in: pillShape
                 )
-        )
+                .overlay(
+                    pillShape
+                        .trim(from: 0, to: drawProgress)
+                        .stroke(
+                            isEnabled ? brandBlue.opacity(0.28) : Color.primary.opacity(0.08),
+                            style: StrokeStyle(lineWidth: 0.85, lineCap: .round)
+                        )
+                )
+        }
     }
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Device.iPad ? 4 : 3) {
-                ForEach(pairs, id: \.src) { pair in
-                    capsulePill(for: pair, compact: false)
+            ZStack(alignment: .leading) {
+                HStack(spacing: Device.iPad ? 4 : 3) {
+                    ForEach(Self.cyrillicReferencePairs, id: \.src) { pair in
+                        capsulePill(for: pair, compact: false, sizingOnly: true)
+                    }
+                }
+                .hidden()
+                .accessibilityHidden(true)
+
+                HStack(spacing: Device.iPad ? 4 : 3) {
+                    ForEach(pairs, id: \.src) { pair in
+                        capsulePill(for: pair, compact: false)
+                    }
                 }
             }
             .fixedSize(horizontal: true, vertical: false)
 
-            HStack(spacing: 2) {
-                ForEach(pairs, id: \.src) { pair in
-                    capsulePill(for: pair, compact: true)
+            ZStack(alignment: .leading) {
+                HStack(spacing: 2) {
+                    ForEach(Self.cyrillicReferencePairs, id: \.src) { pair in
+                        capsulePill(for: pair, compact: true, sizingOnly: true)
+                    }
+                }
+                .hidden()
+                .accessibilityHidden(true)
+
+                HStack(spacing: 2) {
+                    ForEach(pairs, id: \.src) { pair in
+                        capsulePill(for: pair, compact: true)
+                    }
                 }
             }
             .fixedSize(horizontal: true, vertical: false)
@@ -5118,6 +6792,11 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
+        }
+        .onAppear {
+            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
+                triggerLineDraw(delay: 0.10)
+            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
@@ -5227,7 +6906,7 @@ private struct SandboxTextView: UIViewRepresentable {
             uiView.inputAssistantItem.trailingBarButtonGroups = []
         }
         context.coordinator.refreshActiveInputMode(for: uiView)
-        if currentText != context.coordinator.lastSyncedText || uiView.text != currentText {
+        if currentText != context.coordinator.lastSyncedText {
             let delta = currentText.count - uiView.text.count
             context.coordinator.lastSyncedText = currentText
             if uiView.text != currentText {
@@ -5240,6 +6919,16 @@ private struct SandboxTextView: UIViewRepresentable {
             }
             if uiView.isFirstResponder {
                 uiView.scrollRangeToVisible(uiView.selectedRange)
+            }
+            context.coordinator.refreshUndoRedoState(for: uiView)
+        } else if uiView.text != currentText {
+            let newText = uiView.text ?? ""
+            context.coordinator.lastSyncedText = newText
+            let coordinator = context.coordinator
+            DispatchQueue.main.async {
+                if coordinator.parent.text != newText {
+                    coordinator.parent.text = newText
+                }
             }
             context.coordinator.refreshUndoRedoState(for: uiView)
         }
@@ -5269,7 +6958,8 @@ private struct SandboxTextView: UIViewRepresentable {
             && !uiView.isFirstResponder
 
         if fieldOrThemeChanged || (focusChanged && isFocused) || needsAutoFocus {
-            applyTraits(to: uiView, coordinator: context.coordinator)
+            let skipAppGroupPost = themeChanged && !fieldChanged && !focusChanged && !needsAutoFocus
+            applyTraits(to: uiView, coordinator: context.coordinator, skipAppGroupPost: skipAppGroupPost)
             if fieldChanged && uiView.isFirstResponder && !isFullAccessGranted {
                 let coordinator = context.coordinator
                 DispatchQueue.main.async {
@@ -5290,17 +6980,6 @@ private struct SandboxTextView: UIViewRepresentable {
                     coordinator.parent.onDidAutoFocus()
                 }
             }
-            if fieldOrThemeChanged {
-                DispatchQueue.main.async {
-                    CFNotificationCenterPostNotification(
-                        CFNotificationCenterGetDarwinNotifyCenter(),
-                        CFNotificationName("crh.key.sandboxTraitsChanged" as CFString),
-                        nil,
-                        nil,
-                        true
-                    )
-                }
-            }
         } else {
             if focusChanged {
                 context.coordinator.lastIsFocused = isFocused
@@ -5311,14 +6990,14 @@ private struct SandboxTextView: UIViewRepresentable {
         }
     }
 
-    private func applyTraits(to textView: UITextView, coordinator: Coordinator) {
+    private func applyTraits(to textView: UITextView, coordinator: Coordinator, skipAppGroupPost: Bool = false) {
         coordinator.lastFieldMode = fieldMode
         coordinator.lastThemeMode = themeMode
         coordinator.lastManualThemeOverride = hasManualThemeOverride
         coordinator.lastIsFocused = isFocused
         coordinator.lastPreferencesToken = preferencesToken
 
-        let isActiveSandbox = UIApplication.shared.applicationState == .active &&
+        let isActiveSandbox = !skipAppGroupPost && UIApplication.shared.applicationState == .active &&
             (textView.isFirstResponder || isFocused || autoFocusOnAppear)
         if isActiveSandbox {
             let wantDark = themeMode.isDark
@@ -5380,6 +7059,7 @@ private struct SandboxTextView: UIViewRepresentable {
         private var preKeyboardOuterScrollOffset: CGPoint?
         private var observers: [NSObjectProtocol] = []
         private var keystrokeTimestamps: [CFTimeInterval] = []
+        private var lastBatchWordInsertTime: CFAbsoluteTime = 0
         private lazy var inlineMathPreviewLabel: UILabel = {
             let label = UILabel()
             label.accessibilityIdentifier = "sandbox.inlineMathPreview"
@@ -5789,14 +7469,21 @@ private struct SandboxTextView: UIViewRepresentable {
             parent.text = newText
             if newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 resetSpeedState()
-            } else if delta > 0 && !KeyboardUsageStats.wasRecentlyInjected() {
-                if delta <= 2 {
+            } else if delta > 0 {
+                let now = CFAbsoluteTimeGetCurrent()
+                if delta >= 2 {
+                    lastBatchWordInsertTime = now
+                }
+                if delta <= 2 && !KeyboardUsageStats.wasRecentlyInjected() {
                     recordTypedCharacters(delta)
                 }
+                let wasExplicitSlot0 = (Date().timeIntervalSince1970 - KeyboardPreferences.defaults.double(forKey: "crh.key.lastExplicitSlot0ConfirmTimestamp")) < 1.2
+                    || (now - lastBatchWordInsertTime) < 0.35
                 KeyboardUsageStats.recordSandboxCommittedWordIfNeeded(
                     oldText: oldText,
                     newText: newText,
-                    isFullAccessGranted: parent.isFullAccessGranted
+                    isFullAccessGranted: parent.isFullAccessGranted,
+                    explicitlyConfirmed: wasExplicitSlot0
                 )
             }
             textView.scrollRangeToVisible(textView.selectedRange)

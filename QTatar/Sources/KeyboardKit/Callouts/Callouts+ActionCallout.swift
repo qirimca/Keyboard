@@ -92,7 +92,16 @@ private extension Callouts.ActionCallout {
     var backgroundColor: Color { calloutStyle.backgroundColor }
     var buttonFrame: CGRect { isEmojiCallout ? buttonFrameForEmojis : buttonFrameForCharacters }
     var buttonFrameSize: CGSize { buttonFrame.size }
-    var buttonFrameForCharacters: CGRect { calloutContext.buttonFrame.insetBy(dx: buttonInset.width, dy: buttonInset.height) }
+    var buttonFrameForCharacters: CGRect {
+        let raw = calloutContext.buttonFrame
+        guard raw.width > buttonInset.width * 2,
+              raw.height > buttonInset.height * 2,
+              raw.origin.x.isFinite,
+              raw.origin.y.isFinite else {
+            return .zero
+        }
+        return raw.insetBy(dx: buttonInset.width, dy: buttonInset.height)
+    }
     var buttonFrameForEmojis: CGRect { calloutContext.buttonFrame }
     var buttonInset: CGSize { calloutStyle.buttonInset }
     var calloutActions: [KeyboardAction] { calloutContext.actions }
@@ -121,30 +130,34 @@ private extension Callouts.ActionCallout {
             let limitedWidth = min(frameSize.width, style.maxButtonSize.width)
             return CGSize(width: max(limitedWidth * 1.12, 46), height: max(frameSize.height, 44))
         }
+        if usesModernPillStyle {
+            let itemW = max(frameSize.width + (calloutActions.count == 1 ? 18.0 : 12.0), keyboardContext.isKeyboardFloating ? 38.0 : 42.0)
+            let itemH: CGFloat = keyboardContext.isKeyboardFloating ? 44.0 : 48.0
+            return CGSize(width: itemW, height: itemH).limited(to: style.maxButtonSize)
+        }
         let widthScale = (calloutActions.count == 1) ? 1.2 : 1
         let buttonSize = CGSize(width: frameSize.width * widthScale, height: frameSize.height)
         return buttonSize.limited(to: style.maxButtonSize)
     }
+    var usesModernPillStyle: Bool {
+        style.callout.curveSize.width <= 0.01 && style.callout.curveSize.height <= 0.01
+    }
     var calloutStyle: Callouts.CalloutStyle {
-        var s = style.callout
-        if s.curveSize.width <= 0.01 || s.curveSize.height <= 0.01 {
-            s.curveSize = keyboardContext.isKeyboardFloating
-                ? CGSize(width: 5.0, height: 10.0)
-                : CGSize(width: 6.0, height: 11.0)
-        }
-        return s
+        style.callout
     }
     var cornerRadius: CGFloat { calloutStyle.cornerRadius }
     var curveSize: CGSize { calloutStyle.curveSize }
     var isLeading: Bool { calloutContext.isLeading }
     var isTrailing: Bool { calloutContext.isTrailing }
     
+    @ViewBuilder
     var buttonArea: some View {
-        Callouts.ButtonArea(
-            frame: CGRect(origin: buttonFrame.origin, size: CGSize(width: buttonFrameSize.width, height: effectiveButtonAreaHeight))
-        )
-        .opacity(isPad ? 0 : 1)
-        .calloutStyle(calloutStyle)
+        if !usesModernPillStyle && !isPad {
+            Callouts.ButtonArea(
+                frame: CGRect(origin: buttonFrame.origin, size: CGSize(width: buttonFrameSize.width, height: effectiveButtonAreaHeight))
+            )
+            .calloutStyle(calloutStyle)
+        }
     }
     
     @ViewBuilder
@@ -199,8 +212,8 @@ private extension Callouts.ActionCallout {
         CustomRoundedRectangle(
             topLeft: cornerRadius,
             topRight: cornerRadius,
-            bottomLeft: !isPad && isLeading ? 2 : cornerRadius,
-            bottomRight: !isPad && isTrailing ? 2 : cornerRadius
+            bottomLeft: (!usesModernPillStyle && !isPad && isLeading) ? 2 : cornerRadius,
+            bottomRight: (!usesModernPillStyle && !isPad && isTrailing) ? 2 : cornerRadius
         )
         .foregroundColor(backgroundColor)
     }
@@ -281,7 +294,7 @@ private extension Callouts.ActionCallout {
     var mergeKeyboardTitle: String {
         let preferred = resolvedInterfaceLanguage
         if preferred.hasPrefix("uk") {
-            return "Об’єднати"
+            return "Обʼєднати"
         } else if preferred.hasPrefix("en") {
             return "Dock & Merge"
         }
@@ -316,6 +329,7 @@ private extension Callouts.ActionCallout {
     }
 
     var effectiveButtonAreaHeight: CGFloat {
+        if usesModernPillStyle { return 0 }
         guard !isFloatingMenuCallout, !isPad, buttonFrameSize.height > 0 else { return buttonFrameSize.height }
         let unclampedTop = buttonFrame.minY - bubbleHeight + style.verticalOffset
         guard unclampedTop < minVisibleY else { return buttonFrameSize.height }
@@ -324,6 +338,10 @@ private extension Callouts.ActionCallout {
     }
 
     var positionY: CGFloat {
+        if usesModernPillStyle {
+            let desiredBottomY = buttonFrame.minY - 5.0
+            return desiredBottomY - bubbleHeight / 2.0
+        }
         let baseCenterY = buttonFrame.maxY - totalCalloutHeight / 2
         guard !isFloatingMenuCallout, !isPad, buttonFrameSize.height > 0 else { return baseCenterY }
         let clampedTopCenterY = minVisibleY - style.verticalOffset + totalCalloutHeight / 2

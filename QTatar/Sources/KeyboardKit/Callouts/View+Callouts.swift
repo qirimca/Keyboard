@@ -65,10 +65,23 @@ public extension View {
         )
          .background {
             GeometryReader { geometry in
+                let globalOrigin = geometry.frame(in: .global).origin
+                let _ = {
+                    if geometry.size.width > 0 {
+                        calloutContext.containerWidth = geometry.size.width
+                    }
+                    if globalOrigin != .zero {
+                        calloutContext.containerGlobalOrigin = globalOrigin
+                    }
+                }()
                 Color.clear
-                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onAppear {
+                        calloutContext.containerWidth = geometry.size.width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
+                    }
                     .onChange(of: geometry.size.width) { width in
                         calloutContext.containerWidth = width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
                     }
             }
         }
@@ -90,10 +103,23 @@ public extension View {
         )
          .background {
             GeometryReader { geometry in
+                let globalOrigin = geometry.frame(in: .global).origin
+                let _ = {
+                    if geometry.size.width > 0 {
+                        calloutContext.containerWidth = geometry.size.width
+                    }
+                    if globalOrigin != .zero {
+                        calloutContext.containerGlobalOrigin = globalOrigin
+                    }
+                }()
                 Color.clear
-                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onAppear {
+                        calloutContext.containerWidth = geometry.size.width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
+                    }
                     .onChange(of: geometry.size.width) { width in
                         calloutContext.containerWidth = width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
                     }
             }
         }
@@ -128,10 +154,23 @@ public extension View {
         )
         .background {
             GeometryReader { geometry in
+                let globalOrigin = geometry.frame(in: .global).origin
+                let _ = {
+                    if geometry.size.width > 0 {
+                        calloutContext.containerWidth = geometry.size.width
+                    }
+                    if globalOrigin != .zero {
+                        calloutContext.containerGlobalOrigin = globalOrigin
+                    }
+                }()
                 Color.clear
-                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onAppear {
+                        calloutContext.containerWidth = geometry.size.width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
+                    }
                     .onChange(of: geometry.size.width) { width in
                         calloutContext.containerWidth = width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
                     }
             }
         }
@@ -153,10 +192,23 @@ public extension View {
         )
         .background {
             GeometryReader { geometry in
+                let globalOrigin = geometry.frame(in: .global).origin
+                let _ = {
+                    if geometry.size.width > 0 {
+                        calloutContext.containerWidth = geometry.size.width
+                    }
+                    if globalOrigin != .zero {
+                        calloutContext.containerGlobalOrigin = globalOrigin
+                    }
+                }()
                 Color.clear
-                    .onAppear { calloutContext.containerWidth = geometry.size.width }
+                    .onAppear {
+                        calloutContext.containerWidth = geometry.size.width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
+                    }
                     .onChange(of: geometry.size.width) { width in
                         calloutContext.containerWidth = width
+                        calloutContext.containerGlobalOrigin = geometry.frame(in: .global).origin
                     }
             }
         }

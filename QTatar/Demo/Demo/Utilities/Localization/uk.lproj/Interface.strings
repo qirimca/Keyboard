@@ -43,7 +43,7 @@
 "stats.ach.wisdom" = "Мудрість предків";
 "stats.ach.wisdom.desc" = "Відомі вислови: %d / %d";
 "stats.ach.levelBadge" = "Рів. %d/%d";
-"stats.manualWords" = "Вручну по буквах";
+"stats.manualWords" = "Вручну по літерах";
 "stats.suggestedWords" = "З підказками";
 "stats.suggestionBoost" = "Прискорення з підказками: ×%@";
 "stats.reset" = "Скинути статистику";
@@ -69,8 +69,9 @@
 "settings.stats" = "Статистика";
 "settings.stats.desc" = "Відстеження швидкості набору, слів і досягнень";
 "stats.charsSubtitle" = "Символів: %d";
+"stats.uniqueWordsSubtitle" = "Унікальних: %d";
 "stats.uniqueWordsUnit" = "унік.";
-"stats.speedSubtitle" = "Поточний темп: %d %@ · %d %@";
+"stats.speedSubtitle" = "Поточний темп: %d %@";
 "stats.speedPeakSubtitle" = "Рекордний темп друку";
 "stats.manualWordsSubtitle" = "Надруковано по літерах";
 "stats.suggestedWordsSubtitle" = "Зекономлено символів: %d";
@@ -90,7 +91,7 @@
 "settings.ukrainianCyrillic.desc" = "ґ → g · г → ğ · кʼ → q · нʼ → ñ";
 "settings.cyrillic.ipadFloatingNote" = "Окрема клавіатура в Параметрах iOS потрібна лише для плаваючого режиму";
 "settings.appSettings" = "Налаштування програми";
-"settings.appSettings.desc" = "Підказки слів, запамʼятовування нових слів";
+"settings.appSettings.desc" = "Запамʼятовування нових слів, звук і вібрація";
 "settings.systemKeyboard" = "Системні налаштування";
 "settings.systemKeyboard.desc" = "Автовеликі літери, автовиправлення, математика";
 "settings.systemKeyboard.ios26Desc" = "Перейдіть у «Загальні» → «Клавіатура» (автовиправлення, математика тощо)";
@@ -101,9 +102,10 @@
 "stats.wordsUnit" = "сл.";
 "stats.learnedWordsUnit" = "вивч.";
 "stats.learnedWords.emptyTitle" = "Особистий словник порожній";
-"stats.learnedWords.emptyDesc" = "Нові слова, які ви друкуєте, автоматично зберігаються тут для швидких підказок.";
-"stats.learnedWords.clearAll" = "Очистити";
+"stats.learnedWords.emptyDesc" = "Тут показуються лише слова, збережені вручну (натисканням підказки в лапках).";
+"stats.learnedWords.clearAll" = "Очистити словник";
 "stats.learnedWords.done" = "Готово";
 "stats.learnedWords.delete" = "Видалити";
 "settings.standardLayout" = "Стандартна розкладка";
 "settings.standardLayout.desc" = "q · ğ · ñ · ş · ç · ü · ö · ı";
+"settings.abvBridgeTitle" = "Клавіша «абв» перемикає на:";

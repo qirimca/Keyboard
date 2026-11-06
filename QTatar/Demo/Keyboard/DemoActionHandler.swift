@@ -197,15 +197,18 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                     activeFlickTrackingAction = action
                 }
             }
-            if activeFlickTrackingAction == action && abs(dx) < 42.0 {
-                let rawProgress = min(max((dy - 2.0) / 34.0, 0), 1.0)
+            if activeFlickTrackingAction == action && abs(dx) < 48.0 {
+                let rawProgress = min(max((dy - 2.0) / 26.0, 0), 1.0)
                 KeyFlickState.shared.update(action: action, progress: rawProgress)
-                if rawProgress >= 0.48 {
+                if rawProgress >= 0.38 {
                     activeFlickSymbol = (action, symbol)
-                } else if rawProgress < 0.40 {
+                } else if rawProgress < 0.28 {
                     activeFlickSymbol = nil
                 }
                 if rawProgress > 0.05 {
+                    let calloutCtx = (keyboardController as? KeyboardInputViewController)?.state.calloutContext
+                    calloutCtx?.inputContext.reset()
+                    calloutCtx?.actionContext.reset()
                     return
                 }
             } else {
@@ -753,6 +756,12 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             handle(.release, on: .character(""))
             return
         }
+        if suggestion.isUnknown {
+            KeyboardPreferences.defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.lastExplicitSlot0ConfirmTimestamp")
+            DispatchQueue.global(qos: .userInitiated).async {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+            }
+        }
         if let replaceCount = suggestion.additionalInfo["replaceCharCount"] as? Int, replaceCount > 0 {
             let beforeText = proxy.documentContextBeforeInput ?? ""
             let deleteCount = min(replaceCount, beforeText.count)
@@ -761,8 +770,15 @@ class DemoActionHandler: StandardKeyboardActionHandler {
                 proxy.deleteBackward()
             }
             let replacement = suggestion.text
+            let prevWord = Self.previousCompletedWord(in: proxy, excludingCurrentWord: false) ?? lastCompletedTypedWord
             KeyboardUsageStats.markInjectedText(replacement)
             KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: max(replacement.count, 2))
+            SuggestionsDataBaseManager.shared.learnWordIfPermitted(
+                replacement,
+                previousWord: prevWord,
+                proxy: proxy,
+                explicitlyConfirmed: suggestion.isUnknown
+            )
             proxy.insertText(replacement)
             proxy.tryInsertSpaceAfterAutocomplete()
             TextHistoryManager.shared.recordReplace(oldText: oldText, newText: replacement)
@@ -788,7 +804,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             replacement,
             previousWord: prevWord,
             proxy: proxy,
-            explicitlyConfirmed: true
+            explicitlyConfirmed: suggestion.isUnknown
         )
         super.handle(suggestion)
     }

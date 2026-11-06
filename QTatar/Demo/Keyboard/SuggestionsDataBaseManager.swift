@@ -258,6 +258,14 @@ final class SuggestionsDataBaseManager {
         os_unfair_lock_lock(&readinessLock)
         if _isReady {
             os_unfair_lock_unlock(&readinessLock)
+            databaseQueue.async { [weak self] in
+                guard let self else { return }
+                if self.isSuspended {
+                    self.isSuspended = false
+                    self.ensureDB()
+                    self.ensureUserDB()
+                }
+            }
             if let onReady {
                 DispatchQueue.main.async(execute: onReady)
             }
@@ -281,12 +289,8 @@ final class SuggestionsDataBaseManager {
                 if KeyboardPreferences.statsEnabled {
                     let learnedCount = self.countCustomUserUnigrams()
                     let uniqueCount = self.countTotalUserUnigrams()
-                    if learnedCount > 0 {
-                        KeyboardUsageStats.updateLearnedWordsCount(learnedCount)
-                    }
-                    if uniqueCount > 0 {
-                        KeyboardUsageStats.setUniqueWordsCount(uniqueCount)
-                    }
+                    KeyboardUsageStats.setLearnedWordsCount(learnedCount)
+                    KeyboardUsageStats.setUniqueWordsCount(uniqueCount)
                 }
             }
             os_unfair_lock_lock(&self.readinessLock)
@@ -446,14 +450,18 @@ final class SuggestionsDataBaseManager {
         debugPrint("Successfully opened SQLite database (readonly, immutable, optimized) at \(dbURL.path)")
     }
 
+    private var isUserDBInSharedGroup = false
+
     private func openUserDB() {
         let fm = FileManager.default
         let fallbackDir = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fm.temporaryDirectory
+        var openedInSharedGroup = false
         let containerDir: URL = {
             if let groupDir = fm.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID) {
                 try? fm.createDirectory(at: groupDir, withIntermediateDirectories: true)
                 if fm.isWritableFile(atPath: groupDir.path) {
+                    openedInSharedGroup = true
                     return groupDir
                 }
             }
@@ -468,6 +476,7 @@ final class SuggestionsDataBaseManager {
                 sqlite3_close_v2(failedDB)
                 userDB = nil
             }
+            openedInSharedGroup = false
             if containerDir != fallbackDir {
                 try? fm.createDirectory(at: fallbackDir, withIntermediateDirectories: true)
                 let fallbackDBURL = fallbackDir.appendingPathComponent("user_lexicon.sqlite")
@@ -482,6 +491,7 @@ final class SuggestionsDataBaseManager {
                 return
             }
         }
+        isUserDBInSharedGroup = openedInSharedGroup
         sqlite3_busy_timeout(userDB, 150)
         let schema = """
         PRAGMA wal_checkpoint(TRUNCATE);
@@ -538,34 +548,45 @@ final class SuggestionsDataBaseManager {
         if db != nil { return }
         openDB()
         if db != nil {
-            os_unfair_lock_lock(&readinessLock)
-            if !_isPrepareInFlight {
-                _isReady = true
-            }
-            os_unfair_lock_unlock(&readinessLock)
+            return
         }
     }
 
     private func ensureUserDB() {
         guard !isSuspended, KeyboardPreferences.wordLearningEnabled else { return }
-        if userDB != nil { return }
+        if userDB != nil {
+            if !isUserDBInSharedGroup,
+               let groupDir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConfiguration.appGroupID),
+               FileManager.default.isWritableFile(atPath: groupDir.path) {
+                finalizeUserCachedStatements()
+                if let currentUserDB = userDB {
+                    sqlite3_close_v2(currentUserDB)
+                    userDB = nil
+                }
+            } else {
+                return
+            }
+        }
         openUserDB()
     }
 
     // MARK: - Personalized Word & Bigram Learning
 
     private static let excludedURLTokens: Set<String> = ["http", "https", "www"]
+    private static let quoteTrimSet = CharacterSet(charactersIn: "\"“”«»")
     private var sessionUnconfirmedOOVCounts: [String: Int] = [:]
 
     static func isValidLearnableWord(_ rawWord: String) -> Bool {
-        let trimmed = rawWord.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = rawWord
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: quoteTrimSet)
         guard trimmed.count >= 2, trimmed.count <= 32 else { return false }
         if excludedURLTokens.contains(trimmed.lowercased()) { return false }
         var letterCount = 0
         for ch in trimmed {
             if ch.isLetter {
                 letterCount += 1
-            } else if ch == "'" || ch == "’" || ch == "-" {
+            } else if ch == "'" || ch == "’" || ch == "\u{02BC}" || ch == "-" {
                 continue
             } else {
                 return false
@@ -880,7 +901,9 @@ final class SuggestionsDataBaseManager {
         explicitlyConfirmed: Bool = false
     ) {
         guard Self.shouldLearn(word: word, proxy: proxy) else { return }
-        let trimmedWord = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedWord = word
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: Self.quoteTrimSet)
         let normalizedWord = trimmedWord.lowercased(with: Self.casingLocale)
         if let prev = previousWord, Self.isBlockedContextualCandidate(normalizedWord, contextWords: [prev], typedQuery: normalizedWord) {
             return
@@ -898,6 +921,7 @@ final class SuggestionsDataBaseManager {
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.async { [weak self] in
             guard let self else { return }
+            self.isSuspended = false
             self.ensureDB()
             self.ensureUserDB()
             let baseFreq = self.bundledFrequency(of: trimmedWord)
@@ -939,24 +963,40 @@ final class SuggestionsDataBaseManager {
                 }
                 return nil
             }()
+            let shouldMarkCustom = explicitlyConfirmed && !Self.legacyDemotedSeedWordsLower.contains(normalizedWord)
             self.recordLearnedEntry(
                 word: trimmedWord,
                 normalizedWord: normalizedWord,
                 previousWord: effectivePrev,
                 timestamp: now,
-                isCustom: (baseFreq == 0) || explicitlyConfirmed,
+                isCustom: shouldMarkCustom,
                 updateCasing: explicitlyConfirmed
             )
             let totalCustom = self.countCustomUserUnigrams()
             let totalUnique = self.countTotalUserUnigrams()
-            KeyboardUsageStats.setLearnedWordsCount(totalCustom)
-            KeyboardUsageStats.setUniqueWordsCount(totalUnique)
+            KeyboardPreferences.defaults.set(max(0, totalCustom), forKey: KeyboardUsageStats.learnedWordsKey)
+            KeyboardPreferences.defaults.set(max(0, totalUnique), forKey: KeyboardUsageStats.uniqueWordsKey)
+            if explicitlyConfirmed {
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                CFNotificationCenterPostNotification(
+                    CFNotificationCenterGetDarwinNotifyCenter(),
+                    CFNotificationName(KeyboardUsageStats.userLexiconChangedNotification as CFString),
+                    nil,
+                    nil,
+                    true
+                )
+                KeyboardUsageStats.scheduleCrossProcessSync(immediate: true)
+            } else {
+                KeyboardUsageStats.scheduleCrossProcessSync(immediate: false)
+            }
         }
     }
 
-    func learnWordSynchronously(_ word: String, previousWord: String? = nil) {
+    func learnWordSynchronously(_ word: String, previousWord: String? = nil, explicitlyConfirmed: Bool = false) {
         guard Self.isValidLearnableWord(word), !Self.isUnconditionallyBlockedWord(word) else { return }
-        let trimmedWord = word.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedWord = word
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: Self.quoteTrimSet)
         let normalizedWord = trimmedWord.lowercased(with: Self.casingLocale)
         if let prev = previousWord, Self.isBlockedContextualCandidate(normalizedWord, contextWords: [prev], typedQuery: normalizedWord) {
             return
@@ -973,25 +1013,31 @@ final class SuggestionsDataBaseManager {
         }()
         let now = Int64(Date().timeIntervalSince1970)
         databaseQueue.sync {
+            isSuspended = false
             ensureDB()
             ensureUserDB()
             let baseFreq = bundledFrequency(of: trimmedWord)
+            let shouldMarkCustom = explicitlyConfirmed && (baseFreq == 0 || !Self.legacyDemotedSeedWordsLower.contains(normalizedWord))
             recordLearnedEntry(
                 word: trimmedWord,
                 normalizedWord: normalizedWord,
                 previousWord: normalizedPrev,
                 timestamp: now,
-                isCustom: baseFreq == 0,
+                isCustom: shouldMarkCustom && (baseFreq == 0),
                 updateCasing: true
             )
             let totalCustom = countCustomUserUnigrams()
             let totalUnique = countTotalUserUnigrams()
-            KeyboardUsageStats.setLearnedWordsCount(totalCustom)
-            KeyboardUsageStats.setUniqueWordsCount(totalUnique)
+            KeyboardPreferences.defaults.set(max(0, totalCustom), forKey: KeyboardUsageStats.learnedWordsKey)
+            KeyboardPreferences.defaults.set(max(0, totalUnique), forKey: KeyboardUsageStats.uniqueWordsKey)
+            KeyboardUsageStats.scheduleCrossProcessSync(immediate: true)
         }
     }
 
     private var didDemoteBundledCustomWords = false
+    private static let legacyDemotedSeedWordsLower: Set<String> = [
+        "selam", "selâm", "qirim", "qırım", "bağçasaray", "aqmescit"
+    ]
 
     private func demoteBundledCustomWordsIfNeeded() {
         guard !didDemoteBundledCustomWords else { return }
@@ -1130,13 +1176,30 @@ final class SuggestionsDataBaseManager {
         databaseQueue.async { [weak self] in
             guard let self else { return }
             self.sessionUnconfirmedOOVCounts.removeAll()
-            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
             if let userDB = self.userDB {
                 self.finalizeUserCachedStatements()
                 sqlite3_close_v2(userDB)
                 self.userDB = nil
             }
         }
+    }
+
+    private func isCustomWordInUserUnigrams(_ word: String) -> Bool {
+        guard KeyboardPreferences.wordLearningEnabled else { return false }
+        ensureUserDB()
+        guard let userDB else { return false }
+        let norm = word.lowercased(with: Self.casingLocale)
+        let cap = norm.capitalized(with: Self.casingLocale)
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        let sql = "SELECT 1 FROM user_unigrams WHERE (word = ?1 OR word = ?2 OR word = ?3) AND is_custom = 1 LIMIT 1;"
+        guard sqlite3_prepare_v2(userDB, sql, -1, &stmt, nil) == SQLITE_OK,
+              bindText(stmt, index: 1, value: word),
+              bindText(stmt, index: 2, value: norm),
+              bindText(stmt, index: 3, value: cap) else {
+            return false
+        }
+        return sqlite3_step(stmt) == SQLITE_ROW
     }
 
     func clearUserLexicon() {
@@ -1247,7 +1310,7 @@ final class SuggestionsDataBaseManager {
         guard let userDB else { return 0 }
         let norm = word.lowercased(with: Self.casingLocale)
         let cap = norm.capitalized(with: Self.casingLocale)
-        let sql = "SELECT MAX(freq) FROM user_unigrams WHERE word = ?1 OR word = ?2 OR word = ?3;"
+        let sql = "SELECT MAX(freq) FROM user_unigrams WHERE (word = ?1 OR word = ?2 OR word = ?3) AND (is_custom = 1 OR freq >= 3);"
         if stmtUserFrequency == nil {
             guard sqlite3_prepare_v2(userDB, sql, -1, &stmtUserFrequency, nil) == SQLITE_OK else { return 0 }
         }
@@ -1274,9 +1337,10 @@ final class SuggestionsDataBaseManager {
         var results: [(String, Int)] = []
         let query = """
         SELECT word, freq FROM user_unigrams
-        WHERE (word >= ?1 AND word < ?2)
-           OR (word >= ?3 AND word < ?4)
-        ORDER BY (word = ?1 OR word = ?3) DESC, freq DESC, last_used DESC
+        WHERE ((word >= ?1 AND word < ?2)
+           OR (word >= ?3 AND word < ?4))
+          AND (is_custom = 1 OR freq >= 3)
+        ORDER BY (word = ?1 OR word = ?3) DESC, is_custom DESC, freq DESC, last_used DESC
         LIMIT ?5;
         """
         if stmtUserWordsStartingWith == nil {
@@ -1617,7 +1681,10 @@ final class SuggestionsDataBaseManager {
             }
             matches = Array(matches.prefix(8))
 
-            let isKnownWord = matches.first.map { $0.lowercased(with: Self.casingLocale) == queryLower } ?? false
+            let matchesFirstIsQuery = matches.first.map { $0.lowercased(with: Self.casingLocale) == queryLower } ?? false
+            let isInMainDictionary = bundledFrequency(of: queryLower) >= 2 || supplementaryProperNouns[queryLower] != nil
+            let isInUserDictionary = isCustomWordInUserUnigrams(queryLower)
+            let isKnownWord = matchesFirstIsQuery && (isInMainDictionary || isInUserDictionary)
             let rawExplicitFix = toponymyTypoCorrection(for: queryLower)
                 ?? typoCorrectionFromDB(for: queryLower)
                 ?? pronounVerbAgreementCorrection(for: queryLower, previousWord: prevLower)
@@ -2364,7 +2431,6 @@ final class SuggestionsDataBaseManager {
         keyFrames: [String: CGRect] = [:],
         limit: Int = 3
     ) -> [Autocomplete.Suggestion] {
-        if shouldBypassMainThreadOnColdStart() { return [] }
         return databaseQueue.sync {
             let spState = Self.signposter.beginInterval("MatchSwipePath")
             defer { Self.signposter.endInterval("MatchSwipePath", spState) }
@@ -2593,16 +2659,19 @@ final class SuggestionsDataBaseManager {
 
             var prefixes = Set<String>()
             if !isCyrillic, let firstRaw = lowerKeys.first {
-                prefixes.insert(String(firstRaw))
-                let b = Self.normalizeBaseChar(firstRaw)
-                if firstRaw != "q" && firstRaw != "ş" {
-                    prefixes.insert(String(b))
-                }
-                for variant in Self.diacriticForms[b] ?? [] {
-                    // On 12-column Latin (`crh-Latn`), `k <-> q` and `s <-> ş` are distinct physical keys 8 columns apart
-                    if (firstRaw == "k" && variant == "q") || (firstRaw == "s" && variant == "ş") { continue }
-                    if firstRaw == "q" || firstRaw == "ş" { continue }
-                    prefixes.insert(String(variant))
+                for sc in startCandidates {
+                    if (firstRaw == "k" && sc == "q") || (firstRaw == "q" && sc == "k") { continue }
+                    if (firstRaw == "s" && sc == "ş") || (firstRaw == "ş" && sc == "s") { continue }
+                    prefixes.insert(String(sc))
+                    let b = Self.normalizeBaseChar(sc)
+                    if sc != "q" && sc != "ş" {
+                        prefixes.insert(String(b))
+                    }
+                    for variant in Self.diacriticForms[b] ?? [] {
+                        if (sc == "k" && variant == "q") || (sc == "s" && variant == "ş") { continue }
+                        if sc == "q" || sc == "ş" { continue }
+                        prefixes.insert(String(variant))
+                    }
                 }
             } else {
                 for sc in startCandidates {
@@ -2684,9 +2753,17 @@ final class SuggestionsDataBaseManager {
             var scoredCandidates: [(word: String, score: Double)] = []
             for (word, freq) in candidatePool {
                 let lower = word.utf8.allSatisfy({ $0 < 0x41 || $0 > 0x5A }) ? word : word.lowercased(with: Self.casingLocale)
-                guard !lower.contains(" "), !lower.isEmpty else { continue }
+                guard !lower.contains(" "), !lower.isEmpty,
+                      let rawLast = lower.last(where: { $0 != "-" }) else { continue }
+                let wordLast = Self.normalizeBaseChar(rawLast)
+                let exactLast = endCandidates.contains(wordLast)
+                let neighborLast = !exactLast && lastNeighbors.contains(wordLast)
+                guard exactLast || neighborLast else { continue }
+
                 var wordBase: [Character] = []
+                wordBase.reserveCapacity(lower.count)
                 var wordOrigChars: [Character] = []
+                wordOrigChars.reserveCapacity(lower.count)
                 for ch in lower {
                     if ch == "-" { continue }
                     let b = Self.normalizeBaseChar(ch)
@@ -2696,12 +2773,7 @@ final class SuggestionsDataBaseManager {
                     }
                 }
                 guard wordBase.count >= 2,
-                      wordBase.contains(where: { Self.baseVowels.contains($0) }),
-                      let wordLast = wordBase.last else { continue }
-
-                let exactLast = endCandidates.contains(wordLast)
-                let neighborLast = !exactLast && lastNeighbors.contains(wordLast)
-                guard exactLast || neighborLast else { continue }
+                      wordBase.contains(where: { Self.baseVowels.contains($0) }) else { continue }
 
                 let wordCharCenters: [CGPoint?] = wordOrigChars.map { ch in
                     if let cached = targetCenterCache[ch] { return cached }
@@ -2884,7 +2956,7 @@ final class SuggestionsDataBaseManager {
                             } else if let cPt = wordCharCenters[i] {
                                 matchedWordCenters.append(cPt)
                             }
-                            let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
+                            let maxAllowedMisses = wordBase.count <= 2 ? 0 : (wordBase.count == 3 ? 1 : max(1, (wordBase.count - 1) / 2))
                             if misses > maxAllowedMisses {
                                 break
                             }
@@ -2892,7 +2964,7 @@ final class SuggestionsDataBaseManager {
                     }
                 }
 
-                let maxAllowedMisses = wordBase.count <= 3 ? 0 : max(1, (wordBase.count - 1) / 2)
+                let maxAllowedMisses = wordBase.count <= 2 ? 0 : (wordBase.count == 3 ? 1 : max(1, (wordBase.count - 1) / 2))
                 guard misses <= maxAllowedMisses,
                       !Self.isBlockedContextualCandidate(lower, contextWords: contextWords, typedQuery: lower) else { continue }
 
@@ -3466,11 +3538,15 @@ final class SuggestionsDataBaseManager {
     /// A completion is auto-applied only if it adds at most two letters to a word of 3+ letters,
     /// or completes a hyphenated word stem (e.g. `gece-` -> `gece-kündüz`).
     private func shortCompletion(for queryLower: String, in matches: [String]) -> String? {
-        guard queryLower.count >= 3, let best = matches.first else { return nil }
+        guard queryLower.count >= 3,
+              let best = matches.first(where: { $0.lowercased(with: Self.casingLocale).count > queryLower.count }) else {
+            return nil
+        }
         let bestLower = best.lowercased(with: Self.casingLocale)
         guard bestLower.hasPrefix(queryLower) else { return nil }
         let maxExtra = queryLower.contains("-") ? 12 : 2
-        guard bestLower.count - queryLower.count <= maxExtra else { return nil }
+        let extra = bestLower.count - queryLower.count
+        guard extra >= 1, extra <= maxExtra else { return nil }
         return best
     }
 
@@ -4572,13 +4648,17 @@ struct KeyboardAdaptiveGeometry: Equatable {
 
     func rowHeight(forRowAt rowIndex: Int, totalRows: Int = 4) -> CGFloat {
         if totalRows == 5 {
-            let total = totalRowsHeight
-            let topRow = round(total * 0.185)
-            let otherRow = round((total - topRow) / 4.0)
-            if rowIndex == 0 {
-                return total - (otherRow * 4.0)
-            }
-            return otherRow
+            // Keep Row 0 (number row) and Row 4 (bottom spacebar row) identical to their baseline heights
+            // whether the suggestion toolbar is visible or hidden; distribute any extra vertical space across the 3 letter rows (rows 1..3).
+            let baselineTotal: CGFloat = toolbarHeight == 0 ? (totalRowsHeight - 33.0) : totalRowsHeight
+            let topRow = round(baselineTotal * 0.185)
+            let baselineOtherRow = round((baselineTotal - topRow) / 4.0)
+            let fixedTopRow = baselineTotal - (baselineOtherRow * 4.0)
+            let fixedBottomRow = baselineOtherRow
+            if rowIndex == 0 { return fixedTopRow }
+            if rowIndex == 4 { return fixedBottomRow }
+            let remainingForLetters = totalRowsHeight - fixedTopRow - fixedBottomRow
+            return round(remainingForLetters / 3.0)
         }
         return rowIndex == 3 ? bottomRowHeight : letterRowHeight
     }
@@ -4619,7 +4699,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 edgeTopBottomInset: 5.0,
                 edgeHorizontalInset: 3.5,
                 toolbarHeight: hasToolbar ? 45.0 : 0.0,
-                cornerRadius: 5.0
+                cornerRadius: 8.5
             )
         }
 
@@ -4635,100 +4715,112 @@ struct KeyboardAdaptiveGeometry: Equatable {
 
         if isPad {
             if isPortrait {
+                let toolbarH: CGFloat = 33.0
+                let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
                 if portraitWidth >= 960.0 {
                     // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt) -> 296.0 pt invariant total height
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 65.5 : 74.0,
-                        bottomRowHeight: hasToolbar ? 63.5 : 72.0,
+                        letterRowHeight: 65.5 + extraPerLetterRow,
+                        bottomRowHeight: 64.5,
                         letterTopBottomInset: 4.0,
                         bottomTopBottomInset: 4.0,
                         horizontalItemInset: 6.0,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 6.0,
-                        toolbarHeight: hasToolbar ? 34.0 : 0.0,
-                        cornerRadius: 9.5
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 } else if portraitWidth <= 768.0 {
                     // iPad mini (744 pt) & 9.7" iPad (768 pt) -> 258.0 pt invariant total height
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 56.0 : 64.0,
-                        bottomRowHeight: hasToolbar ? 56.0 : 64.0,
+                        letterRowHeight: 56.0 + extraPerLetterRow,
+                        bottomRowHeight: 55.0,
                         letterTopBottomInset: 3.5,
                         bottomTopBottomInset: 3.5,
                         horizontalItemInset: 5.5,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 6.0,
-                        toolbarHeight: hasToolbar ? 32.0 : 0.0,
-                        cornerRadius: 9.0
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 } else {
-                    // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt) -> 258.0 pt invariant total height (+ 55 pt system bar = 313 pt = 626 px)
+                    // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt) -> 258.0 pt invariant total height (+ 55 pt system bar = 313 pt)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 56.0 : 64.0,
-                        bottomRowHeight: hasToolbar ? 56.0 : 64.0,
-                        letterTopBottomInset: hasToolbar ? 4.0 : 4.5,
-                        bottomTopBottomInset: hasToolbar ? 3.5 : 4.5,
+                        letterRowHeight: 56.0 + extraPerLetterRow,
+                        bottomRowHeight: 55.0,
+                        letterTopBottomInset: 4.0,
+                        bottomTopBottomInset: 4.0,
                         horizontalItemInset: 6.0,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 6.0,
-                        toolbarHeight: hasToolbar ? 32.0 : 0.0,
-                        cornerRadius: 9.5
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 }
             } else {
-                // iPad Docked Landscape (invariant total height whether suggestions toolbar is shown or hidden)
+                // iPad Docked Landscape (invariant total height, bottomRowHeight, and insets; only letterRowHeight adapts when suggestions toolbar is shown or hidden)
                 if portraitWidth >= 960.0 {
                     // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt invariant total height
+                    let toolbarH: CGFloat = 36.0
+                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 85.0 : 94.0,
-                        bottomRowHeight: hasToolbar ? 85.0 : 94.0,
+                        letterRowHeight: 85.0 + extraPerLetterRow,
+                        bottomRowHeight: 85.0,
                         letterTopBottomInset: 5.5,
                         bottomTopBottomInset: 5.5,
                         horizontalItemInset: 7.0,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? 36.0 : 0.0,
-                        cornerRadius: 11.0
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 } else if portraitWidth <= 768.0 {
                     // iPad mini / 9.7" Landscape -> 338.0 pt invariant total height
+                    let toolbarH: CGFloat = 33.0
+                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 75.5 : 84.0,
-                        bottomRowHeight: hasToolbar ? 75.5 : 84.0,
+                        letterRowHeight: 75.5 + extraPerLetterRow,
+                        bottomRowHeight: 76.5,
                         letterTopBottomInset: 5.0,
                         bottomTopBottomInset: 5.0,
                         horizontalItemInset: 6.5,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? 34.0 : 0.0,
-                        cornerRadius: 10.0
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 } else {
-                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt) -> 343.0 pt invariant total height
+                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt) -> 347.0 pt invariant total height (+ 55 pt system bar = 402 pt)
+                    let toolbarH: CGFloat = 36.0
+                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: hasToolbar ? 76.0 : 84.5,
-                        bottomRowHeight: hasToolbar ? 76.0 : 85.5,
-                        letterTopBottomInset: hasToolbar ? 5.5 : 6.5,
-                        bottomTopBottomInset: hasToolbar ? 5.0 : 6.5,
+                        letterRowHeight: 75.0 + extraPerLetterRow,
+                        bottomRowHeight: 78.0,
+                        letterTopBottomInset: 6.0,
+                        bottomTopBottomInset: 6.0,
                         horizontalItemInset: 7.0,
-                        edgeTopBottomInset: 2.0,
+                        edgeTopBottomInset: 4.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? 35.0 : 0.0,
-                        cornerRadius: 10.5
+                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        cornerRadius: 8.0
                     )
                 }
             }
         }
 
         // iPhone (all form factors)
-        let toolbarH: CGFloat = hasToolbar ? 40.0 : 0.0
+        // Keep totalKeyboardHeight and bottomRowHeight 100% invariant when the 3-suggestion toolbar is hidden
+        // by redistributing toolbarBaseH across the 3 letter rows (rows 0..2).
+        let toolbarBaseH: CGFloat = 40.0
+        let toolbarH: CGFloat = hasToolbar ? toolbarBaseH : 0.0
+        let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarBaseH / 3.0)
         if !isPortrait {
-            // iPhone Landscape: 38.0 pt on Compact (<= 375 pt), 40.0 pt on Standard / Pro / Pro Max
+            // iPhone Landscape: 38.0 pt on Compact (<= 375 pt), 41.0 pt row step with 4.5 pt vertical inset (32.0 pt visible key, 204.0 pt + safe area = 233.7 pt) on Standard / Pro / Pro Max
             let isCompactPhone = portraitWidth <= 375.0
-            let landscapeRowH: CGFloat = isCompactPhone ? 38.0 : 40.0
-            let landscapeVertInset: CGFloat = isCompactPhone ? 3.0 : 3.5
+            let landscapeRowH: CGFloat = isCompactPhone ? 38.0 : 41.0
+            let landscapeVertInset: CGFloat = isCompactPhone ? 3.0 : 4.5
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: landscapeRowH,
+                letterRowHeight: landscapeRowH + extraPerLetterRow,
                 bottomRowHeight: landscapeRowH,
                 letterTopBottomInset: landscapeVertInset,
                 bottomTopBottomInset: landscapeVertInset,
@@ -4736,14 +4828,14 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
                 toolbarHeight: toolbarH,
-                cornerRadius: 6.5
+                cornerRadius: 8.5
             )
         }
 
         if portraitWidth <= 375.0 {
             // iPhone SE / mini / Compact (width <= 375 pt): row step 51.0 / 50.0 pt, visible key 39.0 pt
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 51.0,
+                letterRowHeight: 51.0 + extraPerLetterRow,
                 bottomRowHeight: 50.0,
                 letterTopBottomInset: 6.0,
                 bottomTopBottomInset: 5.5,
@@ -4751,34 +4843,34 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
                 toolbarHeight: toolbarH,
-                cornerRadius: 6.5
+                cornerRadius: 8.5
             )
         } else if portraitWidth >= 420.0 {
-            // iPhone Plus / Pro Max (width >= 420 pt, 428-440 pt): row step 56.0 / 55.0 pt, visible key 43.0 / 45.0 pt
+            // iPhone Plus / Pro Max (width >= 420 pt, 428-440 pt): row step 56.0 / 55.0 pt, visible key 44.0 / 44.0 pt
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 56.0,
+                letterRowHeight: 56.0 + extraPerLetterRow,
                 bottomRowHeight: 55.0,
-                letterTopBottomInset: 6.5,
-                bottomTopBottomInset: 5.0,
+                letterTopBottomInset: 6.0,
+                bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.5,
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
                 toolbarHeight: toolbarH,
-                cornerRadius: 6.5
+                cornerRadius: 8.5
             )
         } else {
             // iPhone Standard / Pro (width 380...415 pt, e.g. iPhone 15 Pro 393 pt, iPhone 16 Pro 402 pt):
-            // rows 0-2 step 54.0 pt (6.5/6.5 -> 41.0 pt key), row 3 step 53.0 pt (5.0/5.0 -> 43.0 pt key), total 255.0 pt
+            // rows 0-2 step 54.0 pt (6.0/6.0 -> 42.0 pt key), row 3 step 53.0 pt (5.5/5.5 -> 42.0 pt key), total 255.0 pt
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 54.0,
+                letterRowHeight: 54.0 + extraPerLetterRow,
                 bottomRowHeight: 53.0,
-                letterTopBottomInset: 6.5,
-                bottomTopBottomInset: 5.0,
+                letterTopBottomInset: 6.0,
+                bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.5,
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
                 toolbarHeight: toolbarH,
-                cornerRadius: 6.5
+                cornerRadius: 8.5
             )
         }
     }

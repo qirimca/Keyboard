@@ -39,7 +39,7 @@ public extension Callouts {
         public var body: some View {
             HStack(alignment: .top, spacing: 0) {
                 if resolvedLeftCurveWidth > 0 {
-                    leftCalloutCurve.rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                    leftCalloutCurve.scaleEffect(x: -1, y: 1)
                 }
                 buttonBody
                 if resolvedRightCurveWidth > 0 {

@@ -383,6 +383,7 @@ extension KeyboardContext {
         
         if interfaceOrientation != controller.orientation {
             interfaceOrientation = controller.orientation
+            renderVersion &+= 1
         }
         
         if needsInputModeSwitchKey != controller.needsInputModeSwitchKey {
@@ -456,6 +457,10 @@ extension KeyboardContext {
     ) {
         let width = targetWidth ?? controller.view.bounds.width
         guard width.isFinite, width > 0 else { return }
+        // Before the input view is hosted in a window, UIKit initializes controller.view.bounds.width to 320pt.
+        // Only infer compact/floating iPad width when an explicit transition targetWidth is supplied or the view is in a window.
+        let hasHostedWindow = (targetWidth != nil) || (controller.viewIfLoaded?.window != nil)
+        guard hasHostedWindow else { return }
         let isPad = controller.traitCollection.userInterfaceIdiom == .pad || deviceType == .pad
         let usesCompactLayout = isPad && width < 420
         // Avoid publishing unchanged state during layout, which would schedule

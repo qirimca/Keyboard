@@ -1,7 +1,14 @@
-"Söz teklifleri" = "Предиктивный ввод";
-"Yañı sözlerni aqılda tutuv" = "Запоминание новых слов";
-"Bir el rejimi" = "Клавиатура для одной руки";
-"Yoq" = "Выкл.";
-"Sol" = "Слева";
-"Sağ" = "Справа";
-"Tüşme belgi jesti" = "Жесты прокрутки клавиш";
+/* iOS Settings labels. */
+"Group" = "Zümre";
+"Name" = "Ad";
+"Enabled" = "Qoşulğan";
+"none given" = "Belgilenmegen";
+"Söz teklifleri" = "Söz teklifleri";
+"Yañı sözlerni aqılda tutuv" = "Yañı sözlerni aqılda tutuv";
+"Sözlerni aqılda tutuv" = "Yañı sözlerni aqılda tutuv";
+"Sözlerni ögrenüv" = "Yañı sözlerni aqılda tutuv";
+"Bir el rejimi" = "Bir el rejimi";
+"Yoq" = "Yoq";
+"Sol" = "Sol";
+"Sağ" = "Sağ";
+"Tüşme belgi jesti" = "Tüşme belgi jesti";

@@ -139,6 +139,7 @@ final class BreathingTamgaUIView: UIView {
     private var isDark: Bool = false
     private var minOpacity: Float = 0.25
     private var maxOpacity: Float = 0.52
+    private var lastPathBoundsSize: CGSize = .zero
 
     private var isAllowSpaceBarBreathing: Bool {
         if CommandLine.arguments.contains("-qt_enable_animations") {
@@ -205,11 +206,14 @@ final class BreathingTamgaUIView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        shapeLayer.frame = bounds
-        shapeLayer.path = TaraqTamgaShape().path(in: bounds).cgPath
-        CATransaction.commit()
+        if bounds.size != lastPathBoundsSize {
+            lastPathBoundsSize = bounds.size
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            shapeLayer.frame = bounds
+            shapeLayer.path = TaraqTamgaShape().path(in: bounds).cgPath
+            CATransaction.commit()
+        }
         startContinuousBreathIfNeeded()
     }
 

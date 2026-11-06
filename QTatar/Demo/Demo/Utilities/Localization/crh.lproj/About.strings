@@ -14,7 +14,7 @@
 "about_join_key" = "İçtimaiy ağlarımızğa qoşulıñız!";
 
 /* (No Comment) */
-"about_language_description_key" = "Qırımtatar tili ve diger 30-dan ziyade til içün küçlü yazuv yardımını sınap baqıñız. Bu aqıllı yazuv yardımcısınen hatalarnı tüzetiñiz, üslübiñizni yahşılaştırıñız ve açıq-aydın qatnaşuv quruñız.";
+"about_language_description_key" = "Qırımtatar tili ve 30-dan ziyade til içün hatalarnı tüzetken ve üslüpni yahşılaştırğan yardımcımız.";
 
 /* (No Comment) */
 "about_language_title_key" = "iOS içün LanguageTool";
@@ -38,7 +38,7 @@
 "about_share_key" = "Paylaşıñız";
 
 /* (No Comment) */
-"about_spell_description_key" = "Qırımtatarca yazuvıñıznı yañı seviyege köteriñiz! Bu alet Qırımtatar tili içün imlâ ve grammatika hatalarını tapıp tüzetmege yardım ete, ana tiliñizde eminliknen yazmaqnı qolaylaştıra.";
+"about_spell_description_key" = "Qırımtatar tilinde imlâ ve grammatika hatalarını tapıp tüzetmege yardım etken qolay ve emin alet.";
 
 /* (No Comment) */
 "about_spell_title_key" = "Qırımtatar imlâ teşkericisi";

@@ -149,10 +149,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 7,
-            text: "Tilge ürmet — ilge ürmettir.",
+            text: "Til — milletniñ ruhudır.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Повага до мови — це повага до народу.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Respect for the language is respect for the people.\" (Crimean Tatar proverb)"
+            translationUA: "«Мова — це дух народу.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Language is the spirit of the nation.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 8,
@@ -191,10 +191,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 13,
-            text: "Ana tiliñ — baldan tatlı.",
+            text: "Söz — insan ömrüniñ zinetidir.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Рідна мова — солодша за мед.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Your mother tongue is sweeter than honey.\" (Crimean Tatar proverb)"
+            translationUA: "«Слово — окраса людського життя.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Speech is the adornment of human life.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 14,
@@ -226,17 +226,17 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 18,
-            text: "Muabbetlik — baht anahtarı.",
+            text: "Muabbet ayat — uzun ömür.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Любов і щирість — ключ до щастя.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Love and affection are the key to happiness.\" (Crimean Tatar proverb)"
+            translationUA: "«Життя у злагоді й любові — довгий вік.» (Кримськотатарське прислів'я)",
+            translationEN: "\"A life in harmony and love is a long life.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 19,
-            text: "Tilini coyğan, Vatanını coyar.",
+            text: "Tilini unutqan, ilini unutır.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Хто втратив свою мову — втратить і Батьківщину.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Whoever loses their language will lose their Homeland.\" (Crimean Tatar proverb)"
+            translationUA: "«Хто забув свою мову — забуде і свій край.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Whoever forgets their language will forget their homeland.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 20,
@@ -254,14 +254,14 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 22,
-            text: "Tilni bilmek — dostluqnı qaviyleştirmektir.",
+            text: "Atlar kişneşip tanışır, insanlar — söyleşip.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Знати мову — це зміцнювати дружбу.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Knowing a language strengthens friendship.\" (Crimean Tatar proverb)"
+            translationUA: "«Коні знайомляться іржанням, а люди — розмовою.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Horses get acquainted by neighing; people, by speaking.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 23,
-            text: "Bir filcan qaveniñ qırq yıl hatri bardır.",
+            text: "Bir filcan qaveniñ qırq yıl hatrı bardır.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Одна філіжанка кави має сорок років пошани.» (Кримськотатарське прислів'я)",
             translationEN: "\"A single cup of coffee is remembered for forty years.\" (Crimean Tatar proverb)"
@@ -297,16 +297,16 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         .init(
             id: 28,
             text: "Dünyada eñ tatlı — qırımtatar tilimiz!",
-            attribution: "Seyran Üseinov",
-            translationUA: "«Найсолодша у світі — наша кримськотатарська мова!» (Сейран Усеїнов)",
-            translationEN: "\"The sweetest in the world is our Crimean Tatar language!\" (Seyran Üseinov)"
+            attribution: "Nuzet Ümerov",
+            translationUA: "«Найсолодша у світі — наша кримськотатарська мова!» (Нузет Умеров)",
+            translationEN: "\"The sweetest in the world is our Crimean Tatar language!\" (Nuzet Ümerov)"
         ),
         .init(
             id: 29,
-            text: "Sev tiliñni, sevgen kibi anañnı!",
+            text: "Bu zengin til — halqımıznıñ qalp sevinçi!",
             attribution: "Eşref Şemi-zade",
-            translationUA: "«Люби свою мову, як любиш свою матір!» (Ешреф Шем'ї-заде)",
-            translationEN: "\"Love your language as you love your mother!\" (Eşref Şemi-zade)"
+            translationUA: "«Ця багата мова — сердечна радість нашого народу!» (Ешреф Шем'ї-заде)",
+            translationEN: "\"This rich language is the heartfelt joy of our people!\" (Eşref Şemi-zade)"
         ),
         .init(
             id: 30,
@@ -317,10 +317,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 31,
-            text: "Sevdigim ana til — ruhumnıñ ğıdası.",
+            text: "Anayımnıñ tili, ey, Ana tilim!",
             attribution: "Mambet Ablâlimov",
-            translationUA: "«Люба рідна мова — пожива мого духу.» (Мамбет Аблялімов)",
-            translationEN: "\"My beloved mother tongue is the nourishment of my spirit.\" (Mambet Ablâlimov)"
+            translationUA: "«Мово моєї матері, о рідна мово моя!» (Мамбет Аблялімов)",
+            translationEN: "\"Language of my mother, O my Mother Tongue!\" (Mambet Ablâlimov)"
         ),
         .init(
             id: 32,
@@ -347,7 +347,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             id: 35,
             text: "Sen bar ekeç, men de barım!",
             attribution: "Şeryan Ali",
-            translationUA: "«Доки живеш ти, рідна мово, — живу і я!» (Шерьян Алі)",
+            translationUA: "«Доки живеш ти, рідна мово, — живу і я!» (Шерʼян Алі)",
             translationEN: "\"As long as you live, O native tongue, I live too!\" (Şeryan Ali)"
         ),
         .init(
@@ -373,10 +373,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 39,
-            text: "Oqup-yazam men bugün!",
+            text: "Oqup-yazam bugün men, ana tilim bu menim!",
             attribution: "Seitümer Emin",
-            translationUA: "«Сьогодні я читаю і пишу рідною мовою!» (Сейтумер Емін)",
-            translationEN: "\"Today I read and write in my native tongue!\" (Seitümer Emin)"
+            translationUA: "«Сьогодні я читаю і пишу — це моя рідна мова!» (Сейтумер Емін)",
+            translationEN: "\"Today I read and write—this is my mother tongue!\" (Seitümer Emin)"
         ),
         .init(
             id: 40,
@@ -415,10 +415,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 45,
-            text: "Bergen el dert körmez.",
+            text: "Qolu açıqnıñ yolu açıq.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Рука, що дає, ніколи не знатиме біди.» (Кримськотатарське прислів'я)",
-            translationEN: "\"The hand that gives will know no pain.\" (Crimean Tatar proverb)"
+            translationUA: "«У щедрої людини й дорога відкрита.» (Кримськотатарське прислів'я)",
+            translationEN: "\"For the open-handed, the road is open.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 46,
@@ -443,7 +443,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 49,
-            text: "Hoş sefa keldiñiz!",
+            text: "Hoş sefağa keldiñiz!",
             attribution: nil,
             translationUA: "Ласкаво просимо, раді вашому приходу!",
             translationEN: "Welcome, we are glad you have come!"
@@ -457,7 +457,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 51,
-            text: "Hayırlı sabalar olsun!",
+            text: "Hayırlı sabalar!",
             attribution: nil,
             translationUA: "Доброго ранку!",
             translationEN: "Good morning!"
@@ -513,10 +513,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 59,
-            text: "Amet-Han — tillerde destansıñ!",
+            text: "Amet-Han, şuretiñ sönmeycek!",
             attribution: "Riza Fazıl",
-            translationUA: "«Амет-Хане, на устах ти — легенда!» (Різа Фазил)",
-            translationEN: "\"Amet-Khan, on every tongue you are a legend!\" (Riza Fazıl)"
+            translationUA: "«Амет-Хане, слава твоя не згасне!» (Різа Фазил)",
+            translationEN: "\"Amet-Khan, your glory will never fade!\" (Riza Fazıl)"
         ),
         .init(
             id: 60,
@@ -527,17 +527,17 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 61,
-            text: "Ant etkenmen yaranı sarmağa!",
+            text: "Ant etkenmen, milletimniñ yarasını sarmağa!",
             attribution: "Noman Çelebicihan",
             translationUA: "«Я присягнувся перев'язати рани свого народу!» (Номан Челебіджихан)",
             translationEN: "\"I have sworn to bind the wounds of my people!\" (Noman Çelebicihan)"
         ),
         .init(
             id: 62,
-            text: "Navrez keldi — yaz keldi!",
+            text: "Keldi baar, turuñız, bu Navrezge baqıñız!",
             attribution: "Qırımtatar halq yırı",
-            translationUA: "«Наврез прийшов — весна прийшла!» (Кримськотатарська народна пісня)",
-            translationEN: "\"Navrez has come—spring has arrived!\" (Crimean Tatar folk song)"
+            translationUA: "«Прийшла весна, вставайте, на цей Наврез погляньте!» (Кримськотатарська народна пісня)",
+            translationEN: "\"Spring has come, arise and behold this Navrez!\" (Crimean Tatar folk song)"
         ),
         .init(
             id: 63,
@@ -562,7 +562,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 66,
-            text: "Birlik olğan yerde tirlik bar.",
+            text: "Birlik olğan yerde tirilik bar.",
             attribution: "Qırımtatar atalar sözü",
             translationUA: "«Де є єдність — там є життя.» (Кримськотатарське прислів'я)",
             translationEN: "\"Where there is unity, there is life.\" (Crimean Tatar proverb)"
@@ -576,10 +576,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 68,
-            text: "Qırım — menim Vatanımdır!",
+            text: "Qırım — menim anamdır, maña doğmuş Vatandır!",
             attribution: "Çerkez-Ali",
-            translationUA: "«Крим — моя рідна Батьківщина!» (Черкез-Алі)",
-            translationEN: "\"Crimea is my native Homeland!\" (Çerkez-Ali)"
+            translationUA: "«Крим — моя мати, моя рідна Батьківщина!» (Черкез-Алі)",
+            translationEN: "\"Crimea is my mother, my native Homeland!\" (Çerkez-Ali)"
         ),
         .init(
             id: 69,
@@ -625,10 +625,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 75,
-            text: "İlim barda — qaruv bar.",
+            text: "Bilegi küçlü birni yıqar, bilgisi küçlü biñni.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«Де є знання — там є сила й снага.» (Кримськотатарське прислів'я)",
-            translationEN: "\"Where there is knowledge, there is strength.\" (Crimean Tatar proverb)"
+            translationUA: "«Сильний рукою здолає одного, а сильний знаннями — тисячу.» (Кримськотатарське прислів'я)",
+            translationEN: "\"Strong of arm overcomes one; strong of knowledge overcomes a thousand.\" (Crimean Tatar proverb)"
         ),
         .init(
             id: 76,
@@ -695,10 +695,10 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         ),
         .init(
             id: 85,
-            text: "Birlikte — quvet!",
+            text: "Birleşken biñni yıqar.",
             attribution: "Qırımtatar atalar sözü",
-            translationUA: "«У єдності — сила!» (Кримськотатарське прислів'я)",
-            translationEN: "\"In unity there is strength!\" (Crimean Tatar proverb)"
+            translationUA: "«Об'єднавшись, і тисячу здолають.» (Кримськотатарське прислів'я)",
+            translationEN: "\"United, they overcome a thousand.\" (Crimean Tatar proverb)"
         )
     ]
 
@@ -763,19 +763,19 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
         // Priority 1B: Exact Gregorian dates (dd.MM) (#59–#65, #68–#82)
         switch (day, month) {
         case (1, 2):
-            appendIfPresent(59)            // 01.02: Amet-Han Sultan memorial day (Amet-Han — tillerde destansıñ!)
+            appendIfPresent(59)            // 01.02: Amet-Han Sultan memorial day (Amet-Han, şuretiñ sönmeycek!)
             appendIfPresent(81)            // 01.02 (alt.): Amet-Han Sultan memorial day (Amet-Han, köklerde Sultansıñ!)
         case (21, 2):  appendIfPresent(60) // 21.02: International Mother Language Day (Bu til maña — tolğun Ay!)
-        case (23, 2):  appendIfPresent(61) // 23.02: Noman Çelebicihan memorial day (Ant etkenmen yaranı sarmağa!)
-        case (20, 3):  appendIfPresent(75) // 20.03: İsmail Gasprinskiy birthday (İlim barda — qaruv bar.)
-        case (21, 3):  appendIfPresent(62) // 21.03: Navrez & World Poetry Day (Navrez keldi — yaz keldi!)
+        case (23, 2):  appendIfPresent(61) // 23.02: Noman Çelebicihan memorial day (Ant etkenmen, milletimniñ yarasını sarmağa!)
+        case (20, 3):  appendIfPresent(75) // 20.03: İsmail Gasprinskiy birthday (Bilegi küçlü birni yıqar, bilgisi küçlü biñni.)
+        case (21, 3):  appendIfPresent(62) // 21.03: Navrez & World Poetry Day (Keldi baar, turuñız, bu Navrezge baqıñız!)
         case (10, 4):  appendIfPresent(63) // 10.04: Terciman newspaper day (Tilde, fikirde, işte — birlik!)
         case (23, 4):
             appendIfPresent(64)            // 23.04: World Book Day (Kitap — bilgi anahtarı.)
             appendIfPresent(65)            // 23.04: World Book Day riddle (Közü yoq — körsete, sözü yoq — ögrete: Kitap.)
         case (15, 5):  appendIfPresent(76) // 15.05: Bekir Çoban-zade birthday (Öz tuvğan tilimde ayt mağa!)
         case (18, 5):
-            appendIfPresent(68)            // 18.05: 1944 Genocide Remembrance Day (Qırım — menim Vatanımdır!)
+            appendIfPresent(68)            // 18.05: 1944 Genocide Remembrance Day (Qırım — menim anamdır, maña doğmuş Vatandır!)
             appendIfPresent(69)            // 18.05: Prayer of remembrance (Allah keçmişlerimizni rahmet eylesin!)
         case (1, 6):   appendIfPresent(70) // 01.06: International Children's Day (Canımız-cigerimiz — balalar!)
         case (21, 6):  appendIfPresent(77) // 21.06: Eşref Şemi-zade birthday (Türkiy tiller gülzarınıñ fidanı!)
@@ -819,7 +819,7 @@ struct KeyboardGreetingPhrase: Identifiable, Equatable {
             appendIfPresent(73) // 01.03: Beginning of spring (Baardeki areket — küzdeki bereket.)
         }
         if day == 1, month == 12 {
-            appendIfPresent(85) // 01.12: First day of winter (Birlikte — quvet!)
+            appendIfPresent(85) // 01.12: First day of winter (Birleşken biñni yıqar.)
         }
 
         if weekday == 6, (5..<16).contains(hour) {
@@ -927,6 +927,13 @@ final class GreetingBannerState: ObservableObject {
                 shuffled.insert(first, at: firstTierCount - 1)
             }
         }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.test.extendInputCalloutDuration"),
+           shuffled.count >= 3,
+           let longIdx = shuffled.firstIndex(where: { $0.id == 21 || $0.bannerCRH.count >= 43 }) {
+            let longPhrase = shuffled.remove(at: longIdx)
+            let targetIdx = min(2, shuffled.count)
+            shuffled.insert(longPhrase, at: targetIdx)
+        }
         shuffledPool = shuffled
         candidateIndex = 0
         lastPickedID = shuffled.first?.id
@@ -956,6 +963,18 @@ final class GreetingBannerState: ObservableObject {
         if shuffledPool.isEmpty {
             reshufflePool()
         } else {
+            let isHoldCalloutTest = CommandLine.arguments.contains("-qt_extend_input_callout")
+                || CommandLine.arguments.contains("-qt_hold_callout")
+                || KeyboardPreferences.defaults.bool(forKey: "crh.key.test.extendInputCalloutDuration")
+                || KeyboardPreferences.defaults.bool(forKey: "crh.key.test.holdCallout")
+            if isHoldCalloutTest,
+               candidateIndex == 1,
+               shuffledPool.count >= 2 {
+                if let phrase78 = KeyboardGreetingPhrase.all.first(where: { $0.id == 78 }) {
+                    shuffledPool.removeAll(where: { $0.id == 78 })
+                    shuffledPool.insert(phrase78, at: min(2, shuffledPool.count))
+                }
+            }
             candidateIndex = (candidateIndex + 1) % max(shuffledPool.count, 1)
             lastPickedID = shuffledPool[candidateIndex].id
         }
@@ -1028,7 +1047,7 @@ struct NativeAutocompleteToolbar: View {
         totalWidth: CGFloat,
         slotCount: Int = 3
     ) -> [CGFloat] {
-        let usableWidth = max(totalWidth - 1.0, CGFloat(slotCount))
+        let usableWidth = max(totalWidth - 2.0, CGFloat(slotCount))
         let equalWidth = usableWidth / CGFloat(slotCount)
         let lengths = (0..<slotCount).map { idx -> Int in
             guard idx < suggestions.count else { return 0 }
@@ -1076,10 +1095,12 @@ struct NativeAutocompleteToolbar: View {
                         : suggestion.title
                     let isPad = keyboardContext.deviceType == .pad && !isFloating
                     let allowTwoLines = displayTitle.count >= 18 || (displayTitle.contains("-") && displayTitle.count >= 13)
+                    let autocorrectTextColor = isDark ? Color.white.opacity(0.96) : Color.black.opacity(0.92)
+                    let candidateTextColor = isDark ? Color.white.opacity(0.90) : Color.black.opacity(0.88)
                     if suggestion.isAutocorrect {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
-                            .foregroundStyle(isDark ? Color.white.opacity(0.96) : Color.black.opacity(0.92))
+                            .foregroundStyle(autocorrectTextColor)
                             .lineLimit(allowTwoLines ? 2 : 1)
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
@@ -1097,7 +1118,7 @@ struct NativeAutocompleteToolbar: View {
                     } else {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
-                            .foregroundStyle(isDark ? Color.white.opacity(0.70) : Color.black.opacity(0.70))
+                            .foregroundStyle(candidateTextColor)
                             .lineLimit(allowTwoLines ? 2 : 1)
                             .minimumScaleFactor(isFloating ? 0.78 : 0.58)
                             .allowsTightening(true)
@@ -1152,10 +1173,11 @@ struct NativeAutocompleteToolbar: View {
                     }
                 } else {
                     if isSplitPad {
-                        let leftSlotWidth = max((splitClusterWidth - 0.5) / 2.0, 1)
+                        let leftSlotWidth = max((splitClusterWidth - 1.0) / 2.0, 1)
                         let s0 = suggestions.indices.contains(0) ? suggestions[0] : nil
                         let s1 = suggestions.indices.contains(1) ? suggestions[1] : nil
                         let hideLeftDivider = (s0?.isAutocorrect == true) || (s1?.isAutocorrect == true)
+                        let dividerColor = isDark ? Color.white.opacity(0.22) : Color.black.opacity(0.15)
                         HStack(spacing: 0) {
                             HStack(spacing: 0) {
                                 suggestionSlotButton(
@@ -1163,8 +1185,9 @@ struct NativeAutocompleteToolbar: View {
                                     suggestion: s0,
                                     width: leftSlotWidth
                                 )
-                                primaryColor.opacity(hideLeftDivider ? 0.0 : 0.22)
-                                    .frame(width: 0.5, height: 18)
+                                Rectangle()
+                                    .fill(dividerColor.opacity(hideLeftDivider ? 0.0 : 1.0))
+                                    .frame(width: 1.0, height: 18)
                                 suggestionSlotButton(
                                     index: 1,
                                     suggestion: s1,
@@ -1183,6 +1206,7 @@ struct NativeAutocompleteToolbar: View {
                         }
                         .frame(width: totalWidth, height: height)
                     } else {
+                        let dividerColor = isDark ? Color.white.opacity(0.22) : Color.black.opacity(0.15)
                         HStack(spacing: 0) {
                             ForEach(0..<slotCount, id: \.self) { index in
                                 let suggestion: Autocomplete.Suggestion? = index < suggestions.count ? suggestions[index] : nil
@@ -1196,8 +1220,9 @@ struct NativeAutocompleteToolbar: View {
                                 )
 
                                 if index < slotCount - 1 {
-                                    primaryColor.opacity(hideDivider ? 0.0 : 0.22)
-                                        .frame(width: 0.5, height: isFloating ? 16 : (isDockedPad ? 18 : 24))
+                                    Rectangle()
+                                        .fill(dividerColor.opacity(hideDivider ? 0.0 : 1.0))
+                                        .frame(width: 1.0, height: isFloating ? 16 : (isDockedPad ? 18 : 24))
                                 }
                             }
                         }
@@ -1344,7 +1369,7 @@ struct NativeAutocompleteToolbar: View {
                 switch KeyboardPreferences.interfaceLanguage {
                 case "uk": return "Наступна фраза"
                 case "en": return "Next phrase"
-                default: return "Növbetteki ibare"
+                default: return "Nevbetteki ibare"
                 }
             }())
             .accessibilityIdentifier("autocomplete.greetingNext")
@@ -1357,10 +1382,13 @@ struct NativeAutocompleteToolbar: View {
     private func greetingBannerView(centerWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
         let pillHeight = greetingPillHeight
+        let isTwoLinePhrase = isFloating ? (phrase.bannerCRH.count > 32) : (!isDockedPad && phrase.bannerCRH.count >= 46)
+        let bannerPillHeight: CGFloat = isTwoLinePhrase ? 38.0 : pillHeight
+        let bannerVerticalOffset: CGFloat = isTwoLinePhrase ? (isFloating ? -1.5 : (!isDockedPad ? -2.0 : 0.0)) : 0.0
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
         let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
 
-        HStack(spacing: 6) {
+        HStack(alignment: .center, spacing: 6) {
             Button {
                 insertCurrentPhrase(phrase)
             } label: {
@@ -1369,10 +1397,11 @@ struct NativeAutocompleteToolbar: View {
                         .frame(width: 13.5, height: 7.5)
 
                     Text(phrase.bannerCRH)
-                        .font(.system(size: isFloating ? 13.5 : (isDockedPad ? 15.5 : 14.5), weight: .regular))
+                        .font(.system(size: isFloating ? (isTwoLinePhrase ? 12.5 : 13.5) : (isDockedPad ? 15.5 : (isTwoLinePhrase ? 14.0 : 14.5)), weight: .regular))
                         .foregroundStyle(primaryColor)
+                        .lineSpacing(1.0)
                         .lineLimit(2)
-                        .minimumScaleFactor(0.62)
+                        .minimumScaleFactor(isTwoLinePhrase ? 0.95 : 0.62)
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -1382,12 +1411,13 @@ struct NativeAutocompleteToolbar: View {
                         .foregroundStyle(primaryColor.opacity(0.72))
                 }
                 .padding(.horizontal, 10)
-                .padding(.vertical, isDockedPad ? 2.5 : 3.5)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: pillHeight, maxHeight: isFloating ? pillHeight : pillHeight + 4)
+                .padding(.vertical, isFloating ? (isTwoLinePhrase ? 2.0 : 2.5) : (isDockedPad ? 2.5 : (isTwoLinePhrase ? 2.0 : 3.5)))
+                .frame(height: bannerPillHeight)
                 .background(greetingPlatterBackground)
+                .offset(y: bannerVerticalOffset)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(phrase.bannerCRH)
             .accessibilityIdentifier("autocomplete.greetingBanner")
 
             Button {
@@ -1404,12 +1434,12 @@ struct NativeAutocompleteToolbar: View {
                 switch KeyboardPreferences.interfaceLanguage {
                 case "uk": return "Наступна фраза"
                 case "en": return "Next phrase"
-                default: return "Növbetteki ibare"
+                default: return "Nevbetteki ibare"
                 }
             }())
             .accessibilityIdentifier("autocomplete.greetingNext")
         }
-        .frame(maxWidth: maxPillWidth)
+        .frame(maxWidth: maxPillWidth, minHeight: pillHeight, maxHeight: pillHeight)
     }
 }
 

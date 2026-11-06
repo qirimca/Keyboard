@@ -30,6 +30,7 @@ public struct SystemKeyboardItem<Content: View>: View {
         calloutContext: CalloutContext?,
         keyboardWidth: CGFloat,
         inputWidth: CGFloat,
+        itemFrame: CGRect = .zero,
         content: Content
     ) {
         self.item = item
@@ -39,6 +40,7 @@ public struct SystemKeyboardItem<Content: View>: View {
         self.calloutContext = calloutContext
         self.keyboardWidth = keyboardWidth
         self.inputWidth = inputWidth
+        self.itemFrame = itemFrame
         self.content = content
     }
     
@@ -48,6 +50,7 @@ public struct SystemKeyboardItem<Content: View>: View {
     private let calloutContext: CalloutContext?
     private let keyboardWidth: CGFloat
     private let inputWidth: CGFloat
+    private let itemFrame: CGRect
     private let content: Content
     
     @ObservedObject
@@ -74,7 +77,8 @@ public struct SystemKeyboardItem<Content: View>: View {
             keyboardContext: keyboardContext,
             calloutContext: calloutContext,
             edgeInsets: item.edgeInsets,
-            isPressed: $isPressed
+            isPressed: $isPressed,
+            itemFrame: itemFrame
         )
         .keyboardItemHoverEffect(isEnabled: !item.action.isSpacer)
     }

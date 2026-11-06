@@ -32,7 +32,8 @@ public extension View {
         calloutContext: CalloutContext?,
         isPressed: Binding<Bool> = .constant(false),
         isInScrollView: Bool = false,
-        releaseOutsideTolerance: Double = 1
+        releaseOutsideTolerance: Double = 1,
+        itemFrame: CGRect = .zero
     ) -> some View {
         self.keyboardButtonGestures(
             action: action,
@@ -40,6 +41,7 @@ public extension View {
             isPressed: isPressed,
             isInScrollView: isInScrollView,
             releaseOutsideTolerance: releaseOutsideTolerance,
+            itemFrame: itemFrame,
             doubleTapAction: { actionHandler.handle(.doubleTap, on: action) },
             longPressAction: { actionHandler.handle(.longPress, on: action) },
             pressAction: { actionHandler.handle(.press, on: action) },
@@ -61,6 +63,7 @@ public extension View {
     ///   - isPressed: An optional binding that can be used to observe the button pressed state, if any.
     ///   - isInScrollView: Whether or not the gestures are used in a scroll view, by default `false`.
     ///   - releaseOutsideTolerance: A custom percentage of the button size outside its bounds to count as a release, if any.
+    ///   - itemFrame: Deterministic button frame in the callout container coordinate space, if known.
     ///   - doubleTapAction: The action to trigger when the button is double tapped, if any.
     ///   - longPressAction: The action to trigger when the button is long pressed, if any.
     ///   - pressAction: The action to trigger when the button is pressed, if any.
@@ -74,6 +77,7 @@ public extension View {
         isPressed: Binding<Bool> = .constant(false),
         isInScrollView: Bool = false,
         releaseOutsideTolerance: Double? = nil,
+        itemFrame: CGRect = .zero,
         doubleTapAction: KeyboardGestureAction? = nil,
         longPressAction: KeyboardGestureAction? = nil,
         pressAction: KeyboardGestureAction? = nil,
@@ -89,6 +93,7 @@ public extension View {
             isPressed: isPressed,
             isInScrollView: isInScrollView,
             releaseOutsideTolerance: releaseOutsideTolerance,
+            itemFrame: itemFrame,
             doubleTapAction: doubleTapAction,
             longPressAction: longPressAction,
             pressAction: pressAction,
