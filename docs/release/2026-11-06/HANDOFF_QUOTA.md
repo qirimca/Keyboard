@@ -117,3 +117,16 @@
 ### C. TestFlight: старе фото в описі для тестувальників
 - Скриншоти в TestFlight беруться з App Store (не з API Test Information); «Beta App Description» — лише текст (`betaAppLocalizations`). Якщо фото — це іконка/скриншот у публічному посиланні, перевірити в App Store Connect -> TestFlight -> Test Information вручну; через API змінюється лише текст (`PATCH /v1/betaAppLocalizations/{id}`, поле `description`).
 
+
+### [РОЗПОЧАТО 23:06] Раунд 15: висота iPad Docked +8 pt, зависання iPad на старті, build 15 — може бути обірвано
+Після відновлення перевірити:
+- Файли: `QTatar/Demo/Keyboard/SuggestionsDataBaseManager.swift` (гілка iPad portrait 810-959 pt), можливо `QTatar/Demo/Demo/DemoApp.swift`.
+- Відкат: `git checkout 9d584f3 -- <файл>`.
+- Замір еталону користувача (768x1024 px, 1 px = 1,086 pt): верх підкладки системна 730 px, наша 737,5 px; рядок undo/redo системна 753 px, наша 760 px -> наша нижча на ~7,5 px = ~8 pt.
+- iPhone: залишок 2-3 pt не прибрати константою — нижній ряд уже впритул до системної смуги (кінець view = 777 pt), системні клавіші закінчуються на ~780 pt за межами нашого view.
+
+### [ЧАСТКОВО 23:15] Раунд 15 — зупинено на квоті 3 %
+- iPad Docked портрет (810-959 pt): загальна висота 258 -> 266 pt (рядки 58/57 pt), однакова з підказками і без. Floating, ландшафт не змінено. Коміт цього кроку — нижче; результати тестів: `/tmp/qk_test_ipad_15.log`, `/tmp/qk_test_iphone_15.log`, доказ `proofs/Proof_Height_iPad_Docked_266pt_*_build15candidate.png` (якщо прогін встиг).
+- Зависання iPad: у systemCrashLogs за 6.11 немає жодного hang/tailspin/.ips від QTatar (Hang Logs лежать лише в Settings -> Developer -> Hang Detection на iPad, витягти вручну через AirDrop). `DemoApp.init` уже асинхронний (CFPreferences у фоні) — очевидної синхронної роботи немає; кандидат — перший рендер `HomeView` (див. задачу A).
+- Build 15 НЕ зібрано і НЕ завантажено (квоти < 4 %). Наступний крок: `CURRENT_PROJECT_VERSION = 15`, `source .env.local; ARCHIVE_DIR=/tmp/qk_build15 bash QTatar/Scripts/archive_and_upload.sh all`, оновити `(Build 14)` -> `(Build 15)` у `distribute_testflight.py`, встановити на обидва пристрої.
+- Не перевірено: Floating iPad, swipe iPhone, статистика.

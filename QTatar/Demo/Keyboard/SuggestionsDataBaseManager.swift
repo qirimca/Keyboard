@@ -4744,10 +4744,11 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 8.0
                     )
                 } else {
-                    // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt) -> 258.0 pt invariant total height (+ 55 pt system bar = 313 pt)
+                    // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt) -> 266.0 pt invariant total height
+                    // (+8 pt on 2026-11-06 to match the system keyboard top edge measured on iPad Air 3)
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 56.0 + extraPerLetterRow,
-                        bottomRowHeight: 55.0,
+                        letterRowHeight: 58.0 + extraPerLetterRow,
+                        bottomRowHeight: 57.0,
                         letterTopBottomInset: 4.0,
                         bottomTopBottomInset: 4.0,
                         horizontalItemInset: 6.0,
