@@ -92,3 +92,28 @@
 5. Прибрати діагностику `crh.key.debug.layout` або залишити (запис лише при зміні розміру).
 6. Після тижня тестів: прив'язати фінальний білд до версії 3.1 (`attach_build.py`), `asc_submission_readiness.py`, подати на рецензію (вручну, з дозволу користувача). Медіа ASC повні: усі 9 локалей, 4 класи пристроїв, COMPLETE.
 
+### [ГОТОВО 23:00] Висота iPhone з підказками = системна + Build 3.1 (14)
+- Зміни (коміт `90d5a1e`): iPhone портрет — панель підказок 40 -> 29 pt; нижній ряд (Standard/Pro, 376-419 pt) крок 53 -> 47,5 pt, без нижнього відступу (впритул до системної смуги з глобусом, як у системній) — [SuggestionsDataBaseManager.swift](../../../QTatar/Demo/Keyboard/SuggestionsDataBaseManager.swift), [DemoStyleProvider.swift](../../../QTatar/Demo/Keyboard/DemoStyleProvider.swift) `itemEdgeInsets`. Пігулки підказок і фрази дня: висота = панель - 3 pt (26 pt), двохрядкова фраза до 28 pt з `minimumScaleFactor` 0.62 — [Autocomplete+NativeToolbarStyle.swift](../../../QTatar/Demo/Keyboard/Autocomplete+NativeToolbarStyle.swift). Ландшафт, iPad Docked/Floating не змінено. `crh.key.debug.layout` лише в `#if DEBUG`.
+- Замір (iPhone 15 Pro): розширення 238,5 pt з підказками / 209,5 pt без; верх першого ряду 567,5 pt (системна 576 за вимірюванням до виправлення, тепер різниця ~2-3 pt), верх підкладки збігається з системною (~522 vs 524 pt), низ ряду «123» на ~4 pt вище системного (було 9). Фраза дня «Aqşam şerfiñiz hayır olsun!» повністю, без обрізання.
+- Тести (паралельно iPhone + iPad): `testKeyboardHeightParity_2026_11_06` PASS обидва, `testToggleSyncWithSettingsAndGlobe_2026_11_06` PASS обидва (Settings OFF -> перемикач OFF, ON -> ON; Глобус не змінює).
+- Доказ: `proofs/Proof_Height_iPhone_System_vs_Build14candidate_Std1_Email1_Std0.png` (системна | наша з підказками | Email | без підказок).
+- Build 14 (`4338034d-5af3-4db9-b4c0-529f8c622876`): VALID, What to Test uk/en оновлено, зовнішня група b43a7213, подано на Beta App Review (HTTP 201). Встановлено на iPhone та iPad (код 0). Квота після: 9,7 %.
+- Не перевірено на build 14: iPad Floating, swipe на iPhone, статистика (квота).
+
+## Наступні задачі (точні кроки, не виконано через квоту)
+
+### A. Зависання на iPad при холодному запуску (HUD 295-487 ms)
+1. На iPad: Settings -> Developer -> Hang Detection (увімкнено) -> Hang Logs: знайти записи QTatar за 6.11 (`.ips`, tailspin). Поділитися (AirDrop) або витягти: `xcrun devicectl device copy from --device 00008020-00025DC63AA3002E --domain-type systemCrashLogs --source / --destination /tmp/qk_hang` і шукати `QTatar*` / `*.tailspin` / `*hang*`. (Сьогоднішній прогін systemCrashLogs .ips від QTatar не містив — Hang Logs можуть лежати лише в розділі Developer.)
+2. Xcode -> Window -> Organizer -> Hangs (для TestFlight build 13/14) — агреговані стеки.
+3. Символікація: `tailspin`-файл відкрити в Instruments або `spindump -i <file>`; dSYM з `/tmp/qk_build14/QTatar.xcarchive/dSYMs`.
+4. Аналізувати головний потік під час `DemoApp` init і першого рендеру `HomeView` (7,5 тис. рядків): синхронні `CFPreferencesAppSynchronize`, `UserDefaults` App Group, SQLite (`SuggestionsDataBaseManager`), локалізаційний кеш, `UITextInputMode.activeInputModes` (тепер читається на головному потоці при `refreshCyrillicStatus`). Інструмент: Instruments -> Time Profiler + Hangs на iPad Air 3 з `-qt_field standard`.
+
+### B. Еталон системної клавіатури iPad Air 3
+1. Користувач уже має скриншоти системної клавіатури iPad у Фото на iPad — перенести (AirDrop) у `docs/release/2026-11-06/reference/`.
+2. Або: у полі тестування утримати Глобус -> вибрати системну (English/Українська), не Grammarly; Docked портрет, з передбаченнями і без (Settings -> General -> Keyboard -> Predictive).
+3. Старі фото: `docs/release/2026-11-01/physical/Proof_20_16_SystemKeyboardSettings_ipad*.png` (налаштування, не клавіатура); `testCrossAppStatisticsAndStandardKeyboardComparison` системну клавіатуру не знімає.
+4. Виміряти (iPad 2 px/pt): верх підкладки, верх 1-го ряду, низ нижнього ряду; порівняти з нашими 258 pt (`KeyboardAdaptiveGeometry.resolve`, гілка 810-959 pt), змінювати лише iPad Docked portrait.
+
+### C. TestFlight: старе фото в описі для тестувальників
+- Скриншоти в TestFlight беруться з App Store (не з API Test Information); «Beta App Description» — лише текст (`betaAppLocalizations`). Якщо фото — це іконка/скриншот у публічному посиланні, перевірити в App Store Connect -> TestFlight -> Test Information вручну; через API змінюється лише текст (`PATCH /v1/betaAppLocalizations/{id}`, поле `description`).
+
