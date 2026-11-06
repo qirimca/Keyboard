@@ -56,3 +56,39 @@
 
 - Розширення: 255 pt з підказками (40 панель + 215 рядів), 215 pt без; нижня системна смуга для сторонніх клавіатур 75 pt (у системної 58 pt), тому наші клавіші на 8-9 pt вище системних.
 
+### [ГОТОВО 22:35] P1.4/P2.2 Висота (iPhone портрет)
+- Виправлено: без підказок iPhone-портрет більше не розтягує 3 ряди літер (раніше +13,3 pt кожен); висота = лише ряди (215 pt), клавіші 42 pt як у системній. Ландшафт, iPad Docked/Floating не змінено.
+- З підказками: наш блок на екрані на ~19 pt вищий за системний (347 vs 328). Причина: системна смуга знизу для сторонніх клавіатур на 17 pt вища, плюс наша панель 40 pt. Точний збіг вимагає панелі ~21-29 pt, а пігулки підказок/фрази дня мають 34-38 pt, тому НЕ змінював (рішення за користувачем).
+- iPad: еталон системної клавіатури не знято (Globe на iPad веде до Grammarly, не до системної). Сумарна висота iPad Docked інваріантна (258 pt) з/без підказок, як вимагалось.
+- Доказ: [proofs](proofs/) `Proof_Height_iPhone_Build12WithSugg_vs_System_vs_FixNoSugg.png`, `Proof_Height_iPhone_fix_Std_Email_sugg1_sugg0.png`, `Proof_Height_iPad_Docked_Std_Email_sugg1_sugg0.png`.
+- Діагностика: розширення пише `crh.key.debug.layout` в App Group (з build 13).
+
+### [ГОТОВО 22:35] P1.3/P2.1 Синхронізація перемикачів
+- Причина: на головному потоці `is*KeyboardExtensionEnabled` повертали застарілий кеш `enabledSystemKeyboardIdentifiers` та «seen»-прапорці, а `hasAuthoritativeSystemKeyboardsList` вважав список авторитетним лише коли в ньому є `crh.key.` — вилучена клавіатура лишалась ON.
+- Виправлення: [AppConfiguration.swift](../../../QTatar/Demo/Shared/AppConfiguration.swift) `hasLiveContainingAppInputModeSnapshot()`: у застосунку на головному потоці живий список `UITextInputMode.activeInputModes` (+ ідентифікатори контролера) авторитетний для наявності й відсутності. Нових приватних класів немає, `check_private_apis.py` OK.
+- Перевірено: iPad (запуск з іконки, без XCTest) Settings -> QırımKey -> Keyboards: Кирилична OFF -> перемикач OFF, ON -> ON. iPhone: вилучення -> OFF, повторне додавання -> ON. Globe (4 перемикання, у т.ч. Grammarly) не змінює перемикачі на обох пристроях. На iPhone Кириличну клавіатуру відновлено (ON).
+- Примітка: HUD «QırımKey 295 ms» видно на iPad після повторного запуску (Hang Detection, холодний старт) — у доказах не приховано.
+- Доказ: `proofs/Proof_Toggles_iPad_Globe_SettingsRemoveAdd_fix.png`, `proofs/Proof_Toggles_iPhone_Globe_SettingsRemove_Restore_fix.png`.
+- Квота після P1/P2.1-2.2: 21-22 %.
+
+### [РОЗПОЧАТО 22:36] P2.4 Build 3.1 (13) — може бути обірвано
+Після відновлення перевірити:
+- `CURRENT_PROJECT_VERSION = 13` (10 входжень), коміт гілки `release/3.1-build12-checkpoint`.
+- Команда: `source .env.local; ARCHIVE_DIR=/tmp/qk_build13 bash QTatar/Scripts/archive_and_upload.sh all` (лог `/tmp/qk_build13_all.log`, `/tmp/qk_build13/archive.log`). What to Test (uk/en) у `QTatar/Scripts/asc/distribute_testflight.py`.
+- Стан ASC: `python3 ~/.gemini/antigravity/brain/094ccf37-6562-4f7d-ab2d-81becad46bfe/scratch/asc_audit.py --builds-only`.
+
+### [ГОТОВО 22:42] P2.4 Build 3.1 (13)
+- Архів Release (`-jobs 4`) + експорт + завантаження: успішно. ASC: build 13 (`1ee6f8c5-2f1a-45fc-8c07-72e7b72d6b1c`) VALID, What to Test uk/en-US оновлено, додано до зовнішньої групи b43a7213, подано на Beta App Review (HTTP 201), стан до схвалення READY_FOR_BETA_SUBMISSION -> WAITING_FOR_REVIEW. Посилання: https://testflight.apple.com/join/suKzDBAS
+- Release build 13 встановлено паралельно на iPhone 15 Pro та iPad Air 3 (`devicectl install`, код 0).
+- Прибрано `/tmp/qk_dd_audit`, `/tmp/qk_build13/DerivedData`, result bundles; вільно 19 GiB. Архів лишається в `/tmp/qk_build13/QTatar.xcarchive`.
+- `QTatar/Scripts` у `.gitignore`: правки `distribute_testflight.py` (What to Test) та `archive_and_upload.sh` (`-jobs 4`) локальні, не в коміті.
+- Пропущено через квоту: повний P2.3 (Floating iPad, swipe, фраза дня, статистика на build 13) — лише точкові тести вище.
+
+## Що лишилося до публікації в App Store (~через тиждень)
+1. Вирішити висоту iPhone з підказками: наш блок на ~19 pt вищий за системний з панеллю передбачень (рішення: зменшити панель до ~30 pt і пігулки до ~28 pt, або залишити).
+2. Зняти еталон системної клавіатури iPad Air 3 (Docked портрет, з передбаченнями) — вручну, бо Globe веде до Grammarly — і звірити з нашими 258 pt.
+3. Регресія на build 13: iPad Floating, swipe на iPhone, фраза дня, статистика, Hang Detection HUD після перемикання мови (на iPad HUD 295-487 ms на холодному старті).
+4. Дочекатися схвалення Beta App Review для build 13, зібрати відгуки тестувальників.
+5. Прибрати діагностику `crh.key.debug.layout` або залишити (запис лише при зміні розміру).
+6. Після тижня тестів: прив'язати фінальний білд до версії 3.1 (`attach_build.py`), `asc_submission_readiness.py`, подати на рецензію (вручну, з дозволу користувача). Медіа ASC повні: усі 9 локалей, 4 класи пристроїв, COMPLETE.
+
