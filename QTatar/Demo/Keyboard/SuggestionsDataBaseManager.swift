@@ -4812,7 +4812,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
         // Portrait (2026-11-06): match the system keyboard, which is taller WITH its predictive bar and shorter
         // without it, so the total height follows the toolbar (no redistribution of toolbarBaseH into letter rows).
         // Landscape keeps the invariant total by redistributing toolbarBaseH across the 3 letter rows (rows 0..2).
-        let toolbarBaseH: CGFloat = 40.0
+        let toolbarBaseH: CGFloat = isPortrait ? 29.0 : 40.0
         let toolbarH: CGFloat = hasToolbar ? toolbarBaseH : 0.0
         let extraPerLetterRow: CGFloat = (hasToolbar || isPortrait) ? 0.0 : (toolbarBaseH / 3.0)
         if !isPortrait {
@@ -4861,10 +4861,11 @@ struct KeyboardAdaptiveGeometry: Equatable {
             )
         } else {
             // iPhone Standard / Pro (width 380...415 pt, e.g. iPhone 15 Pro 393 pt, iPhone 16 Pro 402 pt):
-            // rows 0-2 step 54.0 pt (6.0/6.0 -> 42.0 pt key), row 3 step 53.0 pt (5.5/5.5 -> 42.0 pt key), total 255.0 pt
+            // rows 0-2 step 54.0 pt (6.0/6.0 -> 42.0 pt key); row 3 step 47.5 pt (5.5 top / 0 bottom -> 42.0 pt key,
+            // flush with the system globe bar like the system keyboard, 2026-11-06), total rows 209.5 pt
             return KeyboardAdaptiveGeometry(
                 letterRowHeight: 54.0 + extraPerLetterRow,
-                bottomRowHeight: 53.0,
+                bottomRowHeight: 47.5,
                 letterTopBottomInset: 6.0,
                 bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.5,

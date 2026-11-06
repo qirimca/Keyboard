@@ -217,6 +217,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     /// Records the real hosted height vs the requested constraint in the App Group (`crh.key.debug.layout`)
     /// only when it changes, so keyboard-height parity can be audited from the device container.
     private func recordLayoutDiagnosticsIfChanged() {
+        #if DEBUG
         let diag = String(
             format: "view=%.1f constraint=%.1f host=%.1f window=%.1f width=%.1f",
             view.bounds.height,
@@ -228,6 +229,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         guard diag != lastLayoutDiagnostics else { return }
         lastLayoutDiagnostics = diag
         KeyboardPreferences.defaults.set(diag, forKey: "crh.key.debug.layout")
+        #endif
     }
 
     private func updateKeyboardHeightConstraint(targetSize: CGSize? = nil) {

@@ -1111,7 +1111,7 @@ struct NativeAutocompleteToolbar: View {
                                 minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
                                 maxWidth: isPad ? max(168, width - 20) : .infinity,
                                 minHeight: isPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : 32),
-                                maxHeight: isPad ? min(32, max(26, height - 2)) : (isFloating ? 28 : 34)
+                                maxHeight: isPad ? min(32, max(26, height - 2)) : (isFloating ? 28 : min(34, max(24, height - 3)))
                             )
                             .background(greetingPlatterBackground)
                             .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 10 : 6))
@@ -1282,7 +1282,7 @@ struct NativeAutocompleteToolbar: View {
     }
 
     private var greetingPillHeight: CGFloat {
-        isDockedPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : 32)
+        isDockedPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : min(32, max(24, height - 3)))
     }
 
     @ViewBuilder
@@ -1383,7 +1383,8 @@ struct NativeAutocompleteToolbar: View {
         let phrase = greetingState.currentPhrase()
         let pillHeight = greetingPillHeight
         let isTwoLinePhrase = isFloating ? (phrase.bannerCRH.count > 32) : (!isDockedPad && phrase.bannerCRH.count >= 46)
-        let bannerPillHeight: CGFloat = isTwoLinePhrase ? 38.0 : pillHeight
+        let bannerPillHeight: CGFloat = isTwoLinePhrase ? min(38.0, max(pillHeight, height - 1)) : pillHeight
+        let twoLineMinScale: CGFloat = bannerPillHeight < 36 ? 0.62 : 0.95
         let bannerVerticalOffset: CGFloat = isTwoLinePhrase ? (isFloating ? -1.5 : (!isDockedPad ? -2.0 : 0.0)) : 0.0
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
         let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
@@ -1401,7 +1402,7 @@ struct NativeAutocompleteToolbar: View {
                         .foregroundStyle(primaryColor)
                         .lineSpacing(1.0)
                         .lineLimit(2)
-                        .minimumScaleFactor(isTwoLinePhrase ? 0.95 : 0.62)
+                        .minimumScaleFactor(isTwoLinePhrase ? twoLineMinScale : 0.62)
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
