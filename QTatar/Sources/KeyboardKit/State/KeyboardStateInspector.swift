@@ -149,17 +149,19 @@ private final class FullAccessInspector: UIInputViewController {
             return cached
         }
         lastCheckUptime = now
-        let directResult = FullAccessInspector().hasFullAccess
         let isExtensionProcess = Bundle.main.bundlePath.hasSuffix(".appex")
+        if !isExtensionProcess,
+           UserDefaults(suiteName: appGroupSuiteName)?.bool(forKey: extensionConfirmedFullAccessKey) == true {
+            cachedValue = true
+            return true
+        }
+        let directResult = FullAccessInspector().hasFullAccess
         let result: Bool
         if directResult {
             result = true
             if isExtensionProcess {
                 UserDefaults(suiteName: appGroupSuiteName)?.set(true, forKey: extensionConfirmedFullAccessKey)
             }
-        } else if !isExtensionProcess,
-                  UserDefaults(suiteName: appGroupSuiteName)?.bool(forKey: extensionConfirmedFullAccessKey) == true {
-            result = true
         } else {
             result = false
             if isExtensionProcess {

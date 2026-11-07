@@ -1490,7 +1490,10 @@ enum SystemKeyboardSettings {
     }
 
     static func isFeatureEnabled(_ feature: Feature) -> Bool {
-        (KeyboardPreferences.defaults.object(forKey: feature.preferenceKey) as? Bool)
+        guard isUITestFlagAuthoritative else {
+            return true
+        }
+        return (KeyboardPreferences.defaults.object(forKey: feature.preferenceKey) as? Bool)
             ?? (UserDefaults.standard.object(forKey: feature.preferenceKey) as? Bool)
             ?? true
     }
@@ -1503,6 +1506,7 @@ enum SystemKeyboardSettings {
     private static var cachedValues: [String: Bool] = [:]
     private static var cachedAppGroupSysPrefs: [String: Bool] = [:]
     private static var didLoadAppGroupSysPrefs = false
+    private static var didPurgePoisonedBuild15Cache = false
     private static var lastSyncTimestamp: TimeInterval = 0
     private static var isRefreshing = false
     private static let refreshQueue = DispatchQueue(label: "crh.key.sysPrefsRefresh", qos: .utility)
@@ -1519,7 +1523,7 @@ enum SystemKeyboardSettings {
         (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "UIKeyboardPredictions", "KeyboardShowPredictionBar"], true),
         (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
         (["KeyboardShortcuts", "UIKeyboardShortcuts", "KeyboardAllowShortcuts"], true),
-        (["GesturesEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"], true),
+        (["GesturesEnabled", "KeyFlicksEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"], true),
         (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
         (["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
         (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
@@ -1530,16 +1534,33 @@ enum SystemKeyboardSettings {
         (["KeyboardPlaysAudio", "UIKeyboardPlaysAudio"], true)
     ]
 
+    private static func purgePoisonedCachedSysPrefsIfNeeded() {
+        os_unfair_lock_lock(&cacheLock)
+        let alreadyPurged = didPurgePoisonedBuild15Cache
+        if !alreadyPurged { didPurgePoisonedBuild15Cache = true }
+        os_unfair_lock_unlock(&cacheLock)
+        guard !alreadyPurged else { return }
+        let defaults = KeyboardPreferences.defaults
+        let purgeFlagKey = "crh.key.cachedSysPref.purgedBuild15"
+        guard !defaults.bool(forKey: purgeFlagKey) else { return }
+        for entry in knownKeyGroups {
+            for key in entry.0 {
+                defaults.removeObject(forKey: "crh.key.cachedSysPref.\(key)")
+            }
+        }
+        defaults.set(true, forKey: purgeFlagKey)
+    }
+
     /// Queries the live in-memory iOS/iPadOS keyboard preferences controllers so toggles in
     /// `Settings → General → Keyboards` (Predictive Text, Show Math Results, Slide to Type, Key Flicks)
     /// take effect immediately even inside sandboxed keyboard extensions.
+    /// Never call `boolForPreferenceKey:` here because it coerces `nil` (default-enabled unset keys) into `false`.
     private static func queryPreferencesControllers(forKey key: String) -> Bool? {
         let classNames = [
             rtJoin(["TI", "Preferences", "Controller"]),
             rtJoin(["UI", "Key", "board", "Preferences", "Controller"])
         ]
         let sharedSel = NSSelectorFromString(rtJoin(["shared", "Preferences", "Controller"]))
-        let boolSel = NSSelectorFromString(rtJoin(["bool", "For", "Preference", "Key:"]))
         let valSel = NSSelectorFromString(rtJoin(["value", "For", "Preference", "Key:"]))
         let actionsSel = NSSelectorFromString(rtJoin(["preferences", "Actions"]))
 
@@ -1561,47 +1582,61 @@ enum SystemKeyboardSettings {
                         return num.boolValue
                     }
                 }
-                if target.responds(to: boolSel) {
-                    typealias BoolForKeyIMP = @convention(c) (AnyObject, Selector, NSString) -> Bool
-                    if let method = class_getInstanceMethod(type(of: target), boolSel) {
-                        let imp = method_getImplementation(method)
-                        let fn = unsafeBitCast(imp, to: BoolForKeyIMP.self)
-                        return fn(target, boolSel, key as NSString)
-                    }
-                }
             }
         }
         return nil
     }
 
-    private static func setCachedSysPrefIfNeeded(_ value: Bool, forKey key: String) {
+    private static func setCachedSysPrefIfNeeded(_ value: Bool?, forKey key: String) {
         os_unfair_lock_lock(&cacheLock)
         let prev = cachedAppGroupSysPrefs[key]
-        cachedAppGroupSysPrefs[key] = value
+        if let value {
+            cachedAppGroupSysPrefs[key] = value
+        } else {
+            cachedAppGroupSysPrefs.removeValue(forKey: key)
+        }
         os_unfair_lock_unlock(&cacheLock)
         guard prev != value else { return }
         let cacheKey = "crh.key.cachedSysPref.\(key)"
-        if Thread.isMainThread {
-            refreshQueue.async {
+        let applyUpdate = {
+            if let value {
                 if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
                     KeyboardPreferences.defaults.set(value, forKey: cacheKey)
                 }
+            } else if KeyboardPreferences.defaults.object(forKey: cacheKey) != nil {
+                KeyboardPreferences.defaults.removeObject(forKey: cacheKey)
             }
+        }
+        if Thread.isMainThread {
+            refreshQueue.async(execute: applyUpdate)
         } else {
-            if (KeyboardPreferences.defaults.object(forKey: cacheKey) as? Bool) != value {
-                KeyboardPreferences.defaults.set(value, forKey: cacheKey)
-            }
+            applyUpdate()
         }
     }
 
     private static func pollSystemPreferenceFromOS(_ keys: [String], shouldSync: Bool, default defaultValue: Bool) -> Bool {
-        // 1. Query in-memory iOS/iPadOS keyboard preferences controllers first (zero CFPreferences XPC contention).
+        var sawExplicitTrue = false
+        var sawExplicitFalse = false
+
+        // 1. Query in-memory iOS/iPadOS keyboard preferences controllers across all alias keys.
         for key in keys {
             if let liveVal = queryPreferencesControllers(forKey: key) {
-                setCachedSysPrefIfNeeded(liveVal, forKey: keys[0])
-                return liveVal
+                if liveVal {
+                    sawExplicitTrue = true
+                } else {
+                    sawExplicitFalse = true
+                }
             }
         }
+        if sawExplicitTrue {
+            setCachedSysPrefIfNeeded(true, forKey: keys[0])
+            return true
+        }
+        if sawExplicitFalse {
+            setCachedSysPrefIfNeeded(false, forKey: keys[0])
+            return false
+        }
+
         // 2. Check explicit plist values across CFPreferences and UserDefaults without blocking cfprefsd via CFPreferencesSynchronize loops.
         let kbPrefsDomain = rtJoin(["com", "apple", "key", "board", "preferences"], sep: ".") as CFString
         let cpDomain = rtJoin(["com", "apple", "key", "board", "ContinuousPath"], sep: ".") as CFString
@@ -1616,29 +1651,32 @@ enum SystemKeyboardSettings {
         ]
         for key in keys {
             if let num = UserDefaults.standard.object(forKey: key) as? NSNumber {
-                let b = num.boolValue
-                setCachedSysPrefIfNeeded(b, forKey: keys[0])
-                return b
+                if num.boolValue { sawExplicitTrue = true } else { sawExplicitFalse = true }
             }
             for domain in domains {
                 if let val = CFPreferencesCopyAppValue(key as CFString, domain) as? NSNumber {
-                    let b = val.boolValue
-                    setCachedSysPrefIfNeeded(b, forKey: keys[0])
-                    return b
+                    if val.boolValue { sawExplicitTrue = true } else { sawExplicitFalse = true }
                 }
                 if !Thread.isMainThread,
                    let hostVal = CFPreferencesCopyValue(key as CFString, domain, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
-                    let b = hostVal.boolValue
-                    setCachedSysPrefIfNeeded(b, forKey: keys[0])
-                    return b
+                    if hostVal.boolValue { sawExplicitTrue = true } else { sawExplicitFalse = true }
                 }
             }
         }
-        setCachedSysPrefIfNeeded(defaultValue, forKey: keys[0])
+        if sawExplicitTrue {
+            setCachedSysPrefIfNeeded(true, forKey: keys[0])
+            return true
+        }
+        if sawExplicitFalse {
+            setCachedSysPrefIfNeeded(false, forKey: keys[0])
+            return false
+        }
+        setCachedSysPrefIfNeeded(nil, forKey: keys[0])
         return defaultValue
     }
 
     static func refreshAllSynchronously(shouldSync: Bool = true) {
+        purgePoisonedCachedSysPrefsIfNeeded()
         if !Thread.isMainThread {
             os_unfair_lock_lock(&cacheLock)
             let needSeed = !didLoadAppGroupSysPrefs
@@ -1699,6 +1737,7 @@ enum SystemKeyboardSettings {
     }
 
     private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
+        purgePoisonedCachedSysPrefsIfNeeded()
         let args = CommandLine.arguments
         let isTestEnv = args.contains("-UITesting")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -1724,11 +1763,19 @@ enum SystemKeyboardSettings {
         }
         if Thread.isMainThread {
             triggerAsyncRefreshIfNeeded()
-            if let liveVal = queryPreferencesControllers(forKey: primaryKey) {
+            var sawExplicitTrue = false
+            var sawExplicitFalse = false
+            for key in keys {
+                if let liveVal = queryPreferencesControllers(forKey: key) {
+                    if liveVal { sawExplicitTrue = true } else { sawExplicitFalse = true }
+                }
+            }
+            if sawExplicitTrue || sawExplicitFalse {
+                let resolved = sawExplicitTrue
                 os_unfair_lock_lock(&cacheLock)
-                cachedValues[primaryKey] = liveVal
+                cachedValues[primaryKey] = resolved
                 os_unfair_lock_unlock(&cacheLock)
-                return liveVal
+                return resolved
             }
             if let appGroupCached {
                 return appGroupCached
@@ -1773,7 +1820,7 @@ enum SystemKeyboardSettings {
     static var isKeyFlicksEnabled: Bool {
         guard isFeatureEnabled(.keyFlicks) else { return false }
         return readSystemPreferenceBool(
-            ["GesturesEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled"],
+            ["GesturesEnabled", "KeyFlicksEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"],
             default: true
         )
     }
@@ -1910,7 +1957,8 @@ enum SystemKeyboardSettings {
         if Thread.isMainThread {
             let now = ProcessInfo.processInfo.systemUptime
             os_unfair_lock_lock(&cacheLock)
-            if !forceRefresh, hasReadMainThreadInputModes, (now - lastActiveInputModesCheckTime) < 1.0 {
+            let cacheWindow: TimeInterval = forceRefresh ? 0.25 : 1.0
+            if hasReadMainThreadInputModes, (now - lastActiveInputModesCheckTime) < cacheWindow {
                 let cached = cachedActiveInputModeLanguages
                 os_unfair_lock_unlock(&cacheLock)
                 return cached

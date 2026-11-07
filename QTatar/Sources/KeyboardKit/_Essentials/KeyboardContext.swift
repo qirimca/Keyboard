@@ -482,7 +482,16 @@ private extension UIInputViewController {
 
     var orientation: InterfaceOrientation {
         #if os(iOS) || os(tvOS)
-        view.window?.screen.interfaceOrientation ?? .portrait
+        if let sceneOrientation = view.window?.windowScene?.interfaceOrientation, sceneOrientation != .unknown {
+            switch sceneOrientation {
+            case .portrait: return .portrait
+            case .portraitUpsideDown: return .portraitUpsideDown
+            case .landscapeLeft: return .landscapeLeft
+            case .landscapeRight: return .landscapeRight
+            default: break
+            }
+        }
+        return view.window?.screen.interfaceOrientation ?? .portrait
         #else
         .portrait
         #endif

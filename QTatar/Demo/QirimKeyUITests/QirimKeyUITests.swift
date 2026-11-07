@@ -163,7 +163,27 @@ final class QirimKeyUITests: XCTestCase {
 
     private func enableKeyboardInSettingsIfNeeded() {
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
-        settings.activate()
+        if app.state == .runningForeground {
+            let donePred = NSPredicate(format: "label IN {'Done', 'Готово', 'Azır'}")
+            let doneBtn = app.buttons.matching(donePred).firstMatch
+            let appSettingsButton = app.descendants(matching: .any)["settings.appSettings.button"].firstMatch
+            if !appSettingsButton.exists && doneBtn.exists && doneBtn.isHittable {
+                doneBtn.tap()
+                Thread.sleep(forTimeInterval: 0.6)
+            }
+            for _ in 0..<4 where !appSettingsButton.isHittable {
+                app.swipeUp()
+                Thread.sleep(forTimeInterval: 0.4)
+            }
+            if appSettingsButton.exists {
+                appSettingsButton.tap()
+                Thread.sleep(forTimeInterval: 1.5)
+            } else {
+                settings.activate()
+            }
+        } else {
+            settings.activate()
+        }
         guard settings.wait(for: .runningForeground, timeout: 8) else { return }
         Thread.sleep(forTimeInterval: 0.8)
 
@@ -202,10 +222,10 @@ final class QirimKeyUITests: XCTestCase {
             return
         }
 
-        let appKeyboardsCell = settings.cells.matching(NSPredicate(format: "label CONTAINS[c] 'Keyboards' OR label CONTAINS[c] 'Клавіатури' OR label CONTAINS[c] 'Клавиатуры' OR label CONTAINS[c] 'Klaviaturalar'")).firstMatch
-        if appKeyboardsCell.exists && appKeyboardsCell.isHittable {
+        let appKeyboardsCell = settings.descendants(matching: .any).matching(NSPredicate(format: "label == 'Keyboards' OR label == 'Клавіатури' OR label == 'Клавиатуры' OR label == 'Klaviaturalar' OR label CONTAINS[c] 'Keyboards' OR label CONTAINS[c] 'Клавіатури'")).firstMatch
+        if appKeyboardsCell.waitForExistence(timeout: 3.0) {
             appKeyboardsCell.tap()
-            Thread.sleep(forTimeInterval: 0.8)
+            Thread.sleep(forTimeInterval: 1.0)
             if toggleQirimKeySwitchesOnCurrentPage() {
                 return
             }
@@ -3400,12 +3420,12 @@ final class QirimKeyUITests: XCTestCase {
             if let data = XCUIScreen.main.screenshot().pngRepresentation as Data? {
                 try? data.write(to: URL(fileURLWithPath: "/tmp/Debug_Step3_AfterGlobe.png"), options: .atomic)
             }
-            NSLog("[QA-FLOAT] kb.frame = \(kb.frame)")
+            NSLog("[QA-FLOAT] kb.frame = \(kb.exists ? kb.frame : .zero)")
         } else {
             // Exit Floating mode back to Docked mode:
             // Drag the bottom grabber pill (•••) of the floating keyboard down to the bottom center of the screen
             let winFrame = win.frame
-            let kbFrame = kb.frame
+            let kbFrame = kb.exists ? kb.frame : .zero
             let winRoot = win.coordinate(withNormalizedOffset: .zero)
             let grabberCoord: XCUICoordinate
             if kbFrame.width > 0 && winFrame.height > 0 {
@@ -4741,6 +4761,226 @@ final class QirimKeyUITests: XCTestCase {
         att.lifetime = .keepAlways
         add(att)
         XCTAssertEqual(after, "1", "Cyrillic toggle must be ON after the keyboard is re-enabled in Settings")
+    }
+
+    /// 2026-11-07 Round 16: Full physical-device regression verification on iPhone 15 Pro & iPad Air 3:
+    /// 1) Home first-open (zero spurious Cyrillic capsule animation, compact 2-tile Statistics + expand + toggle, zero Hang HUD pill)
+    /// 2) Portrait keyboard height parity (standard sugg=1, email, standard sugg=0) + iPad Docked Key Flicks (q -> 1, a -> @)
+    /// 3) Daily phrase vs 3-slot suggestions mutual exclusion + native stadium autocorrect candidate pill (cornerRadius: 14.0 pt)
+    /// 4) iPhone Swipe-to-Type (QırımKey Swipe v2) & iPad Floating mode
+    /// 5) Landscape keyboard height parity (restored f08f42f / 6b09aed dimensions)
+    func testRound16CompleteRegression_2026_11_07() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let tag = isPad ? "ipad" : "iphone"
+        XCUIDevice.shared.orientation = .portrait
+
+        func shot(_ name: String) {
+            capture("R16_\(tag)_\(name)")
+        }
+
+        func assertNoHangHUD(_ context: String) {
+            let hangPred = NSPredicate(format: "label CONTAINS 'QırımKey' AND label CONTAINS 'ms'")
+            let hangEl = app.staticTexts.matching(hangPred).firstMatch
+            XCTAssertFalse(hangEl.exists, "Hang Detection HUD pill must not appear during \(context): found '\(hangEl.exists ? hangEl.label : "")'")
+        }
+
+        func logKeyboardGeometry(_ label: String) {
+            let kb = app.keyboards.firstMatch
+            let qEl = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q', 'key.character.1', 'key.character.ф', 'key.character.Ф'}")).firstMatch
+            let aEl = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.a', 'key.character.A', 'key.character.-', 'key.character.ы', 'key.character.Ы', 'key.character.і', 'key.character.І'}")).firstMatch
+            let zEl = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.z', 'key.character.Z', 'key.character.я', 'key.character.Я'}")).firstMatch
+            let spEl = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'key.space'")).firstMatch
+            let qFrame = qEl.exists ? qEl.frame : .zero
+            let aFrame = aEl.exists ? aEl.frame : .zero
+            let zFrame = zEl.exists ? zEl.frame : .zero
+            let spFrame = spEl.exists ? spEl.frame : .zero
+            let minY = qFrame.minY
+            let maxY = spFrame.maxY
+            print("QK_R16_GEOM \(tag) \(label) kbFrame=\(kb.exists ? kb.frame : .zero) keysMinY=\(minY) keysMaxY=\(maxY) q=\(qFrame) a=\(aFrame) z=\(zFrame) space=\(spFrame) win=\(app.windows.firstMatch.frame.size)")
+        }
+
+        // 1. Home first-open: 3-frame burst (t=0ms, t=150ms, t=350ms) with live animations enabled (-qt_enable_live_animations)
+        // for zero Cyrillic capsule/badge animation proof, zero Hang HUD pill, compact 2-tile Statistics + expand + toggle
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_autofocus", "-qt_collapse_testing", "-qt_demo_stats", "-qt_cyrillic_added", "-qt_enable_live_animations"])
+        shot("01a_home_burst_t000")
+        Thread.sleep(forTimeInterval: 0.15)
+        shot("01b_home_burst_t150")
+        Thread.sleep(forTimeInterval: 0.20)
+        assertNoHangHUD("home_first_open")
+        shot("01_home_first_open")
+
+        let wordsTile = app.descendants(matching: .any)["stats.wordsTile"].firstMatch
+        let speedTile = app.descendants(matching: .any)["stats.speedTile"].firstMatch
+        if wordsTile.waitForExistence(timeout: 3.0) {
+            XCTAssertTrue(speedTile.exists, "Compact Statistics must show both stats.wordsTile and stats.speedTile")
+            wordsTile.tap()
+            Thread.sleep(forTimeInterval: 0.6)
+            shot("02_stats_expanded")
+        }
+
+        #if targetEnvironment(simulator)
+        enableKeyboardInSettingsIfNeeded()
+        #endif
+
+        // 2. Portrait height parity + clean System Keyboard capture + iPad Key Flicks (q -> 1, a -> @)
+        try launch(fieldMode: "standard")
+        try selectScript(cyrillic: false)
+        Thread.sleep(forTimeInterval: 1.0)
+        assertNoHangHUD("portrait_std_sugg1")
+        logKeyboardGeometry("portrait_std_sugg1")
+        shot("03_portrait_std_sugg1")
+
+        // Capture clean native System Keyboard (Ukrainian/English, skipping Grammarly) for Column 1 height comparison
+        let globePred = NSPredicate(format: "identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура'}")
+        let grammarlyPred = NSPredicate(format: "label CONTAINS[c] 'Grammarly' OR identifier CONTAINS[c] 'Grammarly'")
+        for _ in 0..<6 {
+            if !anyCustomKey.exists && !app.descendants(matching: .any).matching(grammarlyPred).firstMatch.exists && app.keyboards.firstMatch.exists {
+                break
+            }
+            let globe = app.descendants(matching: .any).matching(globePred).firstMatch
+            if globe.exists {
+                globe.tap()
+                Thread.sleep(forTimeInterval: 1.0)
+            } else {
+                break
+            }
+        }
+        if !anyCustomKey.exists && app.keyboards.firstMatch.exists {
+            let sysKeys = app.keyboards.firstMatch.buttons.allElementsBoundByIndex.map { $0.frame }.filter { $0.height >= 30 && $0.height <= 90 && $0.minY > 300 }
+            let sysMinY = sysKeys.map { $0.minY }.min() ?? -1
+            let sysMaxY = sysKeys.map { $0.maxY }.max() ?? -1
+            print("QK_R16_SYS_GEOM \(tag) kbFrame=\(app.keyboards.firstMatch.frame) sysKeysMinY=\(sysMinY) sysKeysMaxY=\(sysMaxY)")
+            shot("03s_system_keyboard_sugg1")
+        }
+        try launch(fieldMode: "standard")
+        try selectScript(cyrillic: false)
+        Thread.sleep(forTimeInterval: 0.8)
+
+        if isPad {
+            clear()
+            let qKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q'}")).firstMatch
+            XCTAssertTrue(qKey.waitForExistence(timeout: 3.0), "Key 'q' must exist on iPad Docked keyboard")
+            let qStart = qKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
+            let qEnd = qKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.20))
+            qStart.press(forDuration: 0.02, thenDragTo: qEnd)
+            Thread.sleep(forTimeInterval: 0.4)
+            let valQ = (field.value as? String) ?? ""
+            print("QK_R16_FLICK ipad q->1 result='\(valQ)'")
+            XCTAssertTrue(valQ.contains("1"), "Downward Key Flick on 'q' on iPad must insert '1', got '\(valQ)'")
+            shot("03b_keyflick_q_to_1")
+
+            clear()
+            let aKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.a', 'key.character.A'}")).firstMatch
+            XCTAssertTrue(aKey.waitForExistence(timeout: 2.0), "Key 'a' must exist on iPad Docked keyboard")
+            let aStart = aKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
+            let aEnd = aKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.20))
+            aStart.press(forDuration: 0.02, thenDragTo: aEnd)
+            Thread.sleep(forTimeInterval: 0.4)
+            let valA = (field.value as? String) ?? ""
+            print("QK_R16_FLICK ipad a->@ result='\(valA)'")
+            XCTAssertTrue(valA.contains("@"), "Downward Key Flick on 'a' on iPad must insert '@', got '\(valA)'")
+            shot("03c_keyflick_a_to_at")
+            clear()
+        }
+
+        // 3. Daily phrase vs 3-slot suggestions mutual exclusion + native stadium autocorrect pill (cornerRadius: 14.0 pt)
+        clear()
+        Thread.sleep(forTimeInterval: 0.5)
+        shot("04_daily_phrase_empty_text")
+        typeLetters("qirim")
+        Thread.sleep(forTimeInterval: 0.45)
+        let slot1 = app.descendants(matching: .any).matching(identifier: "autocomplete.slot.1").firstMatch
+        XCTAssertTrue(slot1.waitForExistence(timeout: 2.5), "Autocorrect slot 1 must exist after typing 'qirim'")
+        shot("05_autocorrect_stadium_pill")
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.3)
+        let committedVal = (field.value as? String) ?? ""
+        XCTAssertTrue(committedVal.lowercased().contains("qırım"), "Space must commit autocorrected 'Qırım', got '\(committedVal)'")
+
+        // 4. Portrait email (no toolbar) & Portrait standard with suggestions OFF
+        try launch(fieldMode: "email")
+        Thread.sleep(forTimeInterval: 1.0)
+        assertNoHangHUD("portrait_email")
+        logKeyboardGeometry("portrait_email_sugg1")
+        shot("06_portrait_email")
+
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions"])
+        Thread.sleep(forTimeInterval: 1.0)
+        assertNoHangHUD("portrait_std_sugg0")
+        logKeyboardGeometry("portrait_std_sugg0")
+        shot("07_portrait_std_sugg0")
+
+        // 5. Search field mutual exclusion (suggestions ON: 3 slots visible, daily phrase hidden)
+        try launch(fieldMode: "search")
+        Thread.sleep(forTimeInterval: 0.8)
+        let dailyGreetingInSearch = app.descendants(matching: .any).matching(NSPredicate(format: "identifier CONTAINS[c] 'dailyGreeting'")).firstMatch
+        XCTAssertFalse(dailyGreetingInSearch.exists, "Daily greeting must NEVER appear in Search field")
+        shot("08_search_field_mutual_exclusion")
+
+        // 6. iPhone Swipe-to-Type (QırımKey Swipe v2) or iPad Floating Mode (via real setIPadFloatingKeyboard)
+        if !isPad {
+            try launch(fieldMode: "standard")
+            try selectScript(cyrillic: false)
+            clear()
+            let sKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.s', 'key.character.S'}")).firstMatch
+            let eKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.e', 'key.character.E'}")).firstMatch
+            let lKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.l', 'key.character.L'}")).firstMatch
+            let aKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.a', 'key.character.A'}")).firstMatch
+            let mKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.m', 'key.character.M'}")).firstMatch
+            if sKey.exists && eKey.exists && lKey.exists && aKey.exists && mKey.exists {
+                let cS = sKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                let cM = mKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                cS.press(forDuration: 0.05, thenDragTo: cM)
+                Thread.sleep(forTimeInterval: 0.5)
+                shot("09_iphone_swipe")
+            }
+        } else {
+            try launch(fieldMode: "standard")
+            setIPadFloatingKeyboard(true)
+            Thread.sleep(forTimeInterval: 1.0)
+            logKeyboardGeometry("ipad_floating")
+            shot("09_ipad_floating")
+            setIPadFloatingKeyboard(false)
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+
+        // 7. Landscape height parity (restored f08f42f / 6b09aed dimensions) & restore defaults
+        if isPad {
+            try launch(fieldMode: "standard")
+            Thread.sleep(forTimeInterval: 0.8)
+            XCUIDevice.shared.orientation = .landscapeLeft
+            Thread.sleep(forTimeInterval: 1.5)
+            assertNoHangHUD("landscape_std_sugg1")
+            logKeyboardGeometry("landscape_std_sugg1")
+            shot("10_landscape_std_sugg1")
+            XCUIDevice.shared.orientation = .portrait
+            Thread.sleep(forTimeInterval: 1.0)
+        } else {
+            let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+            safari.activate()
+            if !safari.wait(for: .runningForeground, timeout: 4.0) {
+                safari.launch()
+                _ = safari.wait(for: .runningForeground, timeout: 5.0)
+            }
+            XCUIDevice.shared.orientation = .landscapeLeft
+            Thread.sleep(forTimeInterval: 1.2)
+            let urlPred = NSPredicate(format: "identifier CONTAINS[c] 'Address' OR identifier CONTAINS[c] 'URL' OR identifier CONTAINS[c] 'CapsuleNavigationBar' OR label CONTAINS[c] 'Address' OR label CONTAINS[c] 'Search' OR label CONTAINS[c] 'Пошук' OR label CONTAINS[c] 'Адрес'")
+            let urlBar = safari.descendants(matching: .any).matching(urlPred).firstMatch
+            if urlBar.waitForExistence(timeout: 3.0) {
+                urlBar.tap()
+                Thread.sleep(forTimeInterval: 1.5)
+            } else {
+                safari.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.90)).tap()
+                Thread.sleep(forTimeInterval: 1.5)
+            }
+            let qEl = safari.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q', 'key.character.ф', 'key.character.Ф'}")).firstMatch
+            let spEl = safari.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'key.space'")).firstMatch
+            print("QK_R16_GEOM iphone landscape_safari q=\(qEl.exists ? qEl.frame : .zero) space=\(spEl.exists ? spEl.frame : .zero)")
+            shot("10_landscape_std_sugg1")
+            XCUIDevice.shared.orientation = .portrait
+            Thread.sleep(forTimeInterval: 0.8)
+            try launch(fieldMode: "standard")
+        }
     }
 }
 

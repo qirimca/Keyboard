@@ -1302,11 +1302,13 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         SwipeTypingState.shared.clearKeyFrames()
+        state.keyboardContext.sync(with: self)
         state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
         updateKeyboardHeightConstraint(targetSize: size)
         updateTwoFingerTrackpadEligibility()
         coordinator.animate(alongsideTransition: { [weak self] _ in
             guard let self else { return }
+            self.state.keyboardContext.sync(with: self)
             self.state.keyboardContext.syncIsFloating(with: self, targetWidth: size.width)
             self.updateKeyboardHeightConstraint(targetSize: size)
             self.updateTwoFingerTrackpadEligibility()
@@ -1315,6 +1317,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         }, completion: { [weak self] _ in
             guard let self else { return }
             SwipeTypingState.shared.clearKeyFrames()
+            self.state.keyboardContext.sync(with: self)
             self.state.keyboardContext.syncIsFloating(with: self)
             self.updateKeyboardHeightConstraint()
             self.updateTwoFingerTrackpadEligibility()

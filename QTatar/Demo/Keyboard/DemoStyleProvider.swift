@@ -184,13 +184,13 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         let vertical = metrics.verticalItemInset(forRowAt: rowIndex, totalRows: totalRows)
         let horizontal = metrics.horizontalItemInset
-        // iPhone Standard / Pro portrait: the bottom row sits flush on the system globe bar (no bottom gap),
-        // matching the system keyboard's key positions (2026-11-06).
-        if context.deviceType == .phone, !context.isKeyboardFloating, totalRows == 4, rowIndex == 3,
-           !context.interfaceOrientation.isLandscape {
+        // iPhone Standard / Pro portrait: top inset 5.5 pt (11.0 pt inter-row gap with Row 2) and bottom 0.0 pt
+        // so Row 3 top edge aligns with System (y_crop = 764 px) and bottom sits flush at y_crop = 880.5 px without clipping.
+        if context.deviceType == .phone, !context.isKeyboardFloating, !Self.usesClassicSystemKeyStyle,
+           totalRows == 4, rowIndex == 3, !context.interfaceOrientation.isLandscape {
             let w = min(effectiveScreenSize(for: context).width, effectiveScreenSize(for: context).height)
             if w > 375.0 && w < 420.0 {
-                return EdgeInsets(top: vertical, leading: horizontal, bottom: 0, trailing: horizontal)
+                return EdgeInsets(top: metrics.bottomTopBottomInset, leading: horizontal, bottom: 0.0, trailing: horizontal)
             }
         }
         return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)

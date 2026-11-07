@@ -217,13 +217,46 @@ struct HomeView: View {
         return args.contains("-qt_reset_text") || args.contains("-qt_field") || args.contains("-qt_theme") || args.contains("-qt_focus_sandbox_live") || args.contains("-qt_demo_dark")
     }()
     @State private var isKeyboardVisible = false
-    @State private var cyrillicStatus = CyrillicStatus.unknown
-    @State private var ukrainianStatus = CyrillicStatus.unknown
+    @State private var cyrillicStatus: CyrillicStatus = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_cyrillic_missing") || (args.contains("-qt_keyboard_missing") && !args.contains("-qt_cyrillic_added")) {
+            return .missing
+        }
+        if args.contains("-qt_cyrillic_added") {
+            return .enabled
+        }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.cyrillicExtensionSeen")
+            || KeyboardPreferences.defaults.bool(forKey: "crh.key.lastRenderedCyrillicAdded")
+            || (Self.isUITestingEnvironment && !args.contains("-qt_cyrillic_missing")) {
+            return .enabled
+        }
+        return SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled ? .enabled : .missing
+    }()
+    @State private var ukrainianStatus: CyrillicStatus = {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_ukrainian_missing") || args.contains("-qt_cyrillic_missing") || (args.contains("-qt_keyboard_missing") && !args.contains("-qt_ukrainian_added") && !args.contains("-qt_ukrainian_fiva")) {
+            return .missing
+        }
+        if args.contains("-qt_ukrainian_added") || args.contains("-qt_ukrainian_fiva") {
+            return .enabled
+        }
+        if KeyboardPreferences.defaults.bool(forKey: "crh.key.ukrainianExtensionSeen")
+            || KeyboardPreferences.defaults.bool(forKey: "crh.key.lastRenderedUkrainianAdded") {
+            return .enabled
+        }
+        return SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled ? .enabled : .missing
+    }()
     @State private var didManuallyDisableCyrillicOnIPad = false
     @State private var didManuallyDisableUkrainianOnIPad = false
     @State private var didEnableBothCyrillicOnIPad = false
     @State private var didSelectAbvLayoutOnIPad = false
-    @State private var cachedIsFullAccessEnabled = false
+    @State private var cachedIsFullAccessEnabled: Bool = {
+        let args = ProcessInfo.processInfo.arguments
+        if Self.isUITestingEnvironment || args.contains("-qt_demo_stats") {
+            return !args.contains("-qt_full_access_missing")
+        }
+        return Self.keyboardInspector.isFullAccessEnabled
+    }()
     @State private var cachedIsRtl = false
     @State private var viewportSize = CGSize.zero
     @State private var containerSize = CGSize.zero
@@ -241,8 +274,13 @@ struct HomeView: View {
     private enum CyrillicStatus { case enabled, missing, unknown }
     private enum PendingRemovalTarget { case primary, cyrillic, ukrainian }
 
+    static var liveAnimationsEnabledForTesting: Bool {
+        ProcessInfo.processInfo.arguments.contains("-qt_enable_live_animations")
+    }
+
     private var animationsAllowed: Bool {
-        !reduceMotion && !Self.isUITestingEnvironment && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if Self.liveAnimationsEnabledForTesting { return true }
+        return !reduceMotion && !Self.isUITestingEnvironment && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private var shouldShowStartOverlay: Bool {
@@ -1527,8 +1565,8 @@ struct HomeView: View {
                 }
                 .ignoresSafeArea(.keyboard)
             }
-            .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: cyrillicEnabled)
-            .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: statsEnabled)
+            .animation(animationsAllowed && Self.canAnimateUserChanges ? .easeInOut(duration: 0.22) : nil, value: cyrillicEnabled)
+            .animation(animationsAllowed && Self.canAnimateUserChanges ? .easeInOut(duration: 0.22) : nil, value: statsEnabled)
         }
         .background {
             // Measure the window before keyboard avoidance; a docked keyboard must not
@@ -1562,7 +1600,7 @@ struct HomeView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         })
-        .animation(animationsAllowed ? .easeInOut(duration: 0.25) : nil, value: shouldShowStartOverlay)
+        .animation(animationsAllowed && Self.canAnimateUserChanges ? .easeInOut(duration: 0.25) : nil, value: shouldShowStartOverlay)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .preferredColorScheme(hasManualThemeOverride ? (selectedThemeMode == .dark ? .dark : .light) : nil)
@@ -1661,7 +1699,6 @@ struct HomeView: View {
                 UIApplication.shared.isIdleTimerDisabled = true
                 Self.canAnimateUserChanges = false
                 isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
-                AboutView.prewarmImagesIfNeeded()
                 Self.registerStatsSyncObserverIfNeeded()
                 Self.enforceFullScreenWindowIfNeeded()
                 if !didInitializeThemeFromSystem {
@@ -1678,12 +1715,18 @@ struct HomeView: View {
                 } else {
                     clearThemeOverride()
                 }
-                refreshCyrillicStatus(force: true)
+                refreshCyrillicStatus(force: false)
                 refreshStatsFromAppGroup(syncSQLite: true, synchronizePreferences: true)
                 AppStoreReviewManager.recordForegroundSession()
                 didNavigateToChildRoute = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                    refreshCyrillicStatus(force: true)
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     Self.canAnimateUserChanges = true
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    AboutView.prewarmImagesIfNeeded()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: UITextInputMode.currentInputModeDidChangeNotification)) { _ in
@@ -3397,13 +3440,7 @@ private extension HomeView {
     private static var cachedIsUITesting: Bool?
 
     static func shouldAnimateInitialAppear(for badgeID: String) -> Bool {
-        guard !isUITestingEnvironment,
-              !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs"),
-              !ProcessInfo.processInfo.arguments.contains("-qt_dump_window_png"),
-              !badgeID.hasSuffix(".sizing") else {
-            return false
-        }
-        return appearedBadgeIDs.insert(badgeID).inserted
+        false
     }
 
     static var isUITestingEnvironment: Bool {
@@ -6032,7 +6069,8 @@ private struct InteractiveSettingsIconBadge: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0) {
@@ -6115,15 +6153,10 @@ private struct InteractiveSettingsIconBadge: View {
                 .frame(width: iconFrame, height: iconFrame)
         }
         .frame(width: 28, height: 28)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw()
-        }
-        .onAppear {
-            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
-                triggerLineDraw(delay: 0.06)
-            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
@@ -6165,7 +6198,8 @@ private struct InteractiveWalnutIconBadge: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0) {
@@ -6202,15 +6236,10 @@ private struct InteractiveWalnutIconBadge: View {
             WalnutBrainIcon(color: .white, size: 16.5, drawProgress: drawProgress)
         }
         .frame(width: 28, height: 28)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw()
-        }
-        .onAppear {
-            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
-                triggerLineDraw(delay: 0.08)
-            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
@@ -6247,7 +6276,8 @@ private struct TransliterationKeycapBadge: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
@@ -6393,8 +6423,8 @@ private struct TransliterationKeycapBadge: View {
                 .frame(width: 15, height: 13.5)
         }
         .frame(width: 28, height: 28)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.22) : nil, value: isUkrainianStyle)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.22) : nil, value: isUkrainianStyle)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
@@ -6403,9 +6433,6 @@ private struct TransliterationKeycapBadge: View {
             if isLatinOnlyStyle || ProcessInfo.processInfo.arguments.contains("-qt_hold_q_phase") {
                 activeGlyphIsTargetQ = true
                 drawProgress = 1.0
-            }
-            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
-                triggerLineDraw(delay: 0.08)
             }
         }
         .onChange(of: isEnabled) { _, newValue in
@@ -6440,7 +6467,8 @@ private struct AbvAbcAnimatedKeycapBadge: View {
     @State private var isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !isLowPowerMode
     }
 
     private func triggerCycle(delay: Double = 0) {
@@ -6495,11 +6523,6 @@ private struct AbvAbcAnimatedKeycapBadge: View {
         .onTapGesture {
             triggerCycle()
         }
-        .onAppear {
-            if HomeView.shouldAnimateInitialAppear(for: "settings.abvBridge.keycapBadge") {
-                triggerCycle(delay: 0.12)
-            }
-        }
         .onChange(of: trigger) { _, _ in
             guard HomeView.canAnimateUserChanges else { return }
             triggerCycle()
@@ -6527,7 +6550,8 @@ private struct LatinCharactersMiniCapsulesView: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private func triggerLineDraw(delay: Double = 0.0, forceAllowWhenDisabled: Bool = false) {
@@ -6609,15 +6633,10 @@ private struct LatinCharactersMiniCapsulesView: View {
             .fixedSize(horizontal: true, vertical: false)
         }
         .lineLimit(1)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
-        }
-        .onAppear {
-            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
-                triggerLineDraw(delay: 0.10)
-            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }
@@ -6652,7 +6671,8 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
     @State private var drawGeneration: Int = 0
 
     private var animationsAllowed: Bool {
-        !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
+        if HomeView.liveAnimationsEnabledForTesting { return true }
+        return !HomeView.isUITestingEnvironment && !reduceMotion && !ProcessInfo.processInfo.arguments.contains("-qt_dump_all_proofs")
     }
 
     private static let defaultPairs: [(src: String, dst: String)] = [
@@ -6788,15 +6808,10 @@ private struct UkrainianTransliterationMiniCapsulesView: View {
             .fixedSize(horizontal: true, vertical: false)
         }
         .lineLimit(1)
-        .animation(animationsAllowed ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
+        .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
         .contentShape(Rectangle())
         .onTapGesture {
             triggerLineDraw(forceAllowWhenDisabled: true)
-        }
-        .onAppear {
-            if isEnabled && HomeView.shouldAnimateInitialAppear(for: badgeID) {
-                triggerLineDraw(delay: 0.10)
-            }
         }
         .onChange(of: isEnabled) { _, newValue in
             guard HomeView.canAnimateUserChanges else { return }

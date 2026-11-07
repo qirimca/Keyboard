@@ -1110,8 +1110,8 @@ struct NativeAutocompleteToolbar: View {
                             .frame(
                                 minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
                                 maxWidth: isPad ? max(168, width - 20) : .infinity,
-                                minHeight: isPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : 32),
-                                maxHeight: isPad ? min(32, max(26, height - 2)) : (isFloating ? 28 : min(34, max(24, height - 3)))
+                                minHeight: selectionHeight,
+                                maxHeight: isPad ? min(32, max(26, height - 2)) : selectionHeight
                             )
                             .background(greetingPlatterBackground)
                             .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 10 : 6))
@@ -1140,6 +1140,32 @@ struct NativeAutocompleteToolbar: View {
         .accessibilityHidden(suggestion == nil)
     }
 
+    private var selectionHeight: CGFloat {
+        let total = height
+        guard total > 0 else { return 0 }
+        if DemoStyleProvider.usesClassicSystemKeyStyle {
+            return max(26, total - (isDockedPad ? 11 : 10))
+        }
+        if isDockedPad {
+            return min(30, max(24, total - 4))
+        }
+        if isFloating {
+            return 28.0
+        }
+        return 26.0
+    }
+
+    private var verticalCenterOffset: CGFloat {
+        guard !DemoStyleProvider.usesClassicSystemKeyStyle else { return 0 }
+        if isFloating {
+            return 6.0
+        }
+        if isDockedPad {
+            return -1.5
+        }
+        return -max(0, (height - selectionHeight) / 2.0 - 0.25)
+    }
+
     var body: some View {
         let suggestions = Array(autocompleteContext.suggestions.prefix(3))
         let slotCount = 3
@@ -1154,7 +1180,6 @@ struct NativeAutocompleteToolbar: View {
             let slotWidths = adaptiveSlotWidths(suggestions: suggestions, availableWidth: centerWidth, slotCount: slotCount)
             let minGapFraction: CGFloat = isPortrait ? 0.22 : 0.38
             let splitClusterWidth = min(max((totalWidth * (1.0 - minGapFraction)) / 2.0, 1), isPortrait ? 276 : 320)
-            let verticalCenterOffset: CGFloat = isFloating ? 6.0 : (isDockedPad ? 1.5 : 2.5)
 
             ZStack(alignment: .center) {
                 if shouldShowGreetingBanner {
@@ -1248,7 +1273,7 @@ struct NativeAutocompleteToolbar: View {
                     ZStack {
                         Color.primary.opacity(0.001)
                         if configuration.isPressed {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: 14.0, style: .continuous)
                                 .fill(isDark ? Color.white.opacity(0.32) : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.42))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 3)
@@ -1276,13 +1301,13 @@ struct NativeAutocompleteToolbar: View {
         let fillColor: Color = useClassic
             ? (isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
             : (isDark ? Color(white: 0.71).opacity(0.24) : Color.white.opacity(0.84))
-        RoundedRectangle(cornerRadius: (isFloating && !useClassic) ? 8.5 : 8.0, style: .continuous)
+        RoundedRectangle(cornerRadius: 14.0, style: .continuous)
             .fill(fillColor)
             .shadow(color: Color.black.opacity(useClassic ? (isDark ? 0.18 : 0.06) : 0.0), radius: 1.5, x: 0, y: 0.5)
     }
 
     private var greetingPillHeight: CGFloat {
-        isDockedPad ? min(30, max(24, height - 4)) : (isFloating ? 28 : min(32, max(24, height - 3)))
+        selectionHeight
     }
 
     @ViewBuilder
@@ -1406,6 +1431,7 @@ struct NativeAutocompleteToolbar: View {
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
+                        .offset(y: -0.5)
 
                     Image(systemName: "arrow.up.left.circle.fill")
                         .font(.system(size: 12.5, weight: .medium))

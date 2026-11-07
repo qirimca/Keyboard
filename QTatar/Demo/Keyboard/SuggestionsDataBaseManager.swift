@@ -4699,7 +4699,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 edgeTopBottomInset: 5.0,
                 edgeHorizontalInset: 3.5,
                 toolbarHeight: hasToolbar ? 45.0 : 0.0,
-                cornerRadius: 8.5
+                cornerRadius: 5.0
             )
         }
 
@@ -4759,50 +4759,44 @@ struct KeyboardAdaptiveGeometry: Equatable {
                     )
                 }
             } else {
-                // iPad Docked Landscape (invariant total height, bottomRowHeight, and insets; only letterRowHeight adapts when suggestions toolbar is shown or hidden)
+                // iPad Docked Landscape: restore verified pre-regression Landscape geometry (f08f42f / 6b09aed)
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt invariant total height
-                    let toolbarH: CGFloat = 36.0
-                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
+                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt total height
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 85.0 + extraPerLetterRow,
-                        bottomRowHeight: 85.0,
-                        letterTopBottomInset: 5.5,
-                        bottomTopBottomInset: 5.5,
+                        letterRowHeight: hasToolbar ? 84.5 : 94.0,
+                        bottomRowHeight: hasToolbar ? 84.5 : 94.0,
+                        letterTopBottomInset: hasToolbar ? 5.5 : 6.0,
+                        bottomTopBottomInset: hasToolbar ? 5.5 : 6.0,
                         horizontalItemInset: 7.0,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        toolbarHeight: hasToolbar ? 38.0 : 0.0,
                         cornerRadius: 8.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini / 9.7" Landscape -> 338.0 pt invariant total height
-                    let toolbarH: CGFloat = 33.0
-                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
+                    // iPad mini / 9.7" Landscape -> 338.0 pt total height
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 75.5 + extraPerLetterRow,
-                        bottomRowHeight: 76.5,
-                        letterTopBottomInset: 5.0,
-                        bottomTopBottomInset: 5.0,
+                        letterRowHeight: hasToolbar ? 75.5 : 83.5,
+                        bottomRowHeight: hasToolbar ? 76.5 : 85.5,
+                        letterTopBottomInset: hasToolbar ? 5.0 : 6.0,
+                        bottomTopBottomInset: hasToolbar ? 5.0 : 6.0,
                         horizontalItemInset: 6.5,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        toolbarHeight: hasToolbar ? 33.0 : 0.0,
                         cornerRadius: 8.0
                     )
                 } else {
-                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt) -> 347.0 pt invariant total height (+ 55 pt system bar = 402 pt)
-                    let toolbarH: CGFloat = 36.0
-                    let extraPerLetterRow: CGFloat = hasToolbar ? 0.0 : (toolbarH / 3.0)
+                    // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt) -> 343.0 pt total height
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 75.0 + extraPerLetterRow,
-                        bottomRowHeight: 78.0,
-                        letterTopBottomInset: 6.0,
-                        bottomTopBottomInset: 6.0,
+                        letterRowHeight: hasToolbar ? 76.0 : 84.5,
+                        bottomRowHeight: hasToolbar ? 76.0 : 85.5,
+                        letterTopBottomInset: hasToolbar ? 5.5 : 6.5,
+                        bottomTopBottomInset: hasToolbar ? 5.0 : 6.5,
                         horizontalItemInset: 7.0,
-                        edgeTopBottomInset: 4.0,
+                        edgeTopBottomInset: 2.0,
                         edgeHorizontalInset: 8.0,
-                        toolbarHeight: hasToolbar ? toolbarH : 0.0,
+                        toolbarHeight: hasToolbar ? 35.0 : 0.0,
                         cornerRadius: 8.0
                     )
                 }
@@ -4810,36 +4804,35 @@ struct KeyboardAdaptiveGeometry: Equatable {
         }
 
         // iPhone (all form factors)
-        // Portrait (2026-11-06): match the system keyboard, which is taller WITH its predictive bar and shorter
-        // without it, so the total height follows the toolbar (no redistribution of toolbarBaseH into letter rows).
-        // Landscape keeps the invariant total by redistributing toolbarBaseH across the 3 letter rows (rows 0..2).
-        let toolbarBaseH: CGFloat = isPortrait ? 29.0 : 40.0
-        let toolbarH: CGFloat = hasToolbar ? toolbarBaseH : 0.0
-        let extraPerLetterRow: CGFloat = (hasToolbar || isPortrait) ? 0.0 : (toolbarBaseH / 3.0)
+        // Portrait: match the system keyboard, which is taller WITH its predictive bar and shorter without it.
+        // Landscape: restore verified pre-regression Landscape geometry (f08f42f / 6b09aed) without extraPerLetterRow inflation.
         if !isPortrait {
-            // iPhone Landscape: 38.0 pt on Compact (<= 375 pt), 41.0 pt row step with 4.5 pt vertical inset (32.0 pt visible key, 204.0 pt + safe area = 233.7 pt) on Standard / Pro / Pro Max
             let isCompactPhone = portraitWidth <= 375.0
-            let landscapeRowH: CGFloat = isCompactPhone ? 38.0 : 41.0
-            let landscapeVertInset: CGFloat = isCompactPhone ? 3.0 : 4.5
+            let landscapeRowH: CGFloat = isCompactPhone ? 38.0 : 40.0
+            let landscapeVertInset: CGFloat = isCompactPhone ? 3.0 : 3.5
+            let landscapeToolbarH: CGFloat = hasToolbar ? (isCompactPhone ? 36.0 : 38.0) : 0.0
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: landscapeRowH + extraPerLetterRow,
+                letterRowHeight: landscapeRowH,
                 bottomRowHeight: landscapeRowH,
                 letterTopBottomInset: landscapeVertInset,
                 bottomTopBottomInset: landscapeVertInset,
                 horizontalItemInset: 3.0,
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
-                toolbarHeight: toolbarH,
+                toolbarHeight: landscapeToolbarH,
                 cornerRadius: 8.5
             )
         }
 
+        let toolbarBaseH: CGFloat = 32.0
+        let toolbarH: CGFloat = hasToolbar ? toolbarBaseH : 0.0
+
         if portraitWidth <= 375.0 {
-            // iPhone SE / mini / Compact (width <= 375 pt): row step 51.0 / 50.0 pt, visible key 39.0 pt
+            // iPhone SE / mini / Compact (width <= 375 pt): row step 50.0 / 50.0 pt, visible key 39.0 pt
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 51.0 + extraPerLetterRow,
+                letterRowHeight: 50.0,
                 bottomRowHeight: 50.0,
-                letterTopBottomInset: 6.0,
+                letterTopBottomInset: 5.5,
                 bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.2,
                 edgeTopBottomInset: 0.0,
@@ -4848,11 +4841,11 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 cornerRadius: 8.5
             )
         } else if portraitWidth >= 420.0 {
-            // iPhone Plus / Pro Max (width >= 420 pt, 428-440 pt): row step 56.0 / 55.0 pt, visible key 44.0 / 44.0 pt
+            // iPhone Plus / Pro Max (width >= 420 pt, 428-440 pt): row step 55.0 / 54.0 pt, visible key 44.0 / 43.0 pt
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 56.0 + extraPerLetterRow,
-                bottomRowHeight: 55.0,
-                letterTopBottomInset: 6.0,
+                letterRowHeight: 55.0,
+                bottomRowHeight: 54.0,
+                letterTopBottomInset: 5.5,
                 bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.5,
                 edgeTopBottomInset: 0.0,
@@ -4862,17 +4855,19 @@ struct KeyboardAdaptiveGeometry: Equatable {
             )
         } else {
             // iPhone Standard / Pro (width 380...415 pt, e.g. iPhone 15 Pro 393 pt, iPhone 16 Pro 402 pt):
-            // rows 0-2 step 54.0 pt (6.0/6.0 -> 42.0 pt key); row 3 step 47.5 pt (5.5 top / 0 bottom -> 42.0 pt key,
-            // flush with the system globe bar like the system keyboard, 2026-11-06), total rows 209.5 pt
+            // toolbar 36.5 pt; rows 0-2 step 54.0 pt (5.5/5.5 -> 43.0 pt key, 11.0 pt inter-row gap);
+            // row 3 step 44.5 pt (5.5 top / 0 bottom -> 39.0 pt unclipped key with top at y_crop=764 px matching System 764 px),
+            // total height 243.0 pt with toolbar / 206.5 pt without.
+            let standardToolbarH: CGFloat = hasToolbar ? 36.5 : 0.0
             return KeyboardAdaptiveGeometry(
-                letterRowHeight: 54.0 + extraPerLetterRow,
-                bottomRowHeight: 47.5,
-                letterTopBottomInset: 6.0,
+                letterRowHeight: 54.0,
+                bottomRowHeight: 44.5,
+                letterTopBottomInset: 5.5,
                 bottomTopBottomInset: 5.5,
                 horizontalItemInset: 2.5,
                 edgeTopBottomInset: 0.0,
                 edgeHorizontalInset: 3.0,
-                toolbarHeight: toolbarH,
+                toolbarHeight: standardToolbarH,
                 cornerRadius: 8.5
             )
         }

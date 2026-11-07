@@ -40,12 +40,8 @@ extension Keyboard {
                 keyboardContext.traitCollection.userInterfaceStyle,
                 keyboardContext.interfaceOrientation
             )
-            if keyboardContext.isKeyboardFloating {
-                view()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            } else {
-                view()
-            }
+            view()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 }
