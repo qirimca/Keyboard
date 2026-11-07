@@ -598,6 +598,14 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(for: SystemKeyboardSettings.settingsDidChangeNotification)
+            .sink { [weak self] _ in
+                guard let self, self.isViewLoaded else { return }
+                self.applyPreferences(syncDisk: false)
+                self.refreshProxyState(forceRender: true)
+            }
+            .store(in: &cancellables)
+
         let observer = UnsafeRawPointer(Unmanaged.passUnretained(self).toOpaque())
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(),

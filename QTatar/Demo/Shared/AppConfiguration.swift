@@ -1515,6 +1515,8 @@ enum SystemKeyboardSettings {
         parts.joined(separator: sep)
     }
 
+    static let settingsDidChangeNotification = Notification.Name("crh.key.systemKeyboardSettingsDidChange")
+
     private static let knownKeyGroups: [([String], Bool)] = [
         (["KeyboardCapsLock", "UIKeyboardCapsLock"], true),
         (["KeyboardPeriodShortcut", "UIKeyboardPeriodShortcut"], true),
@@ -1523,7 +1525,7 @@ enum SystemKeyboardSettings {
         (["KeyboardPrediction", "UIKeyboardPrediction", "KeyboardPredictions", "UIKeyboardPredictions", "KeyboardShowPredictionBar"], true),
         (["KeyboardCheckSpelling", "UIKeyboardCheckSpelling"], true),
         (["KeyboardShortcuts", "UIKeyboardShortcuts", "KeyboardAllowShortcuts"], true),
-        (["GesturesEnabled", "KeyFlicksEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"], true),
+        (["GesturesEnabled", "KeyFlicksEnabled", "EnableKeyFlicks", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"], true),
         (["KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
         (["KeyboardFloatingContinuousPathEnabled", "UIKeyboardFloatingContinuousPathEnabled", "KeyboardContinuousPathEnabled", "UIKeyboardContinuousPathEnabled"], true),
         (["KeyboardContinuousPathDeleteWholeWord", "UIKeyboardContinuousPathDeleteWholeWord"], true),
@@ -1548,7 +1550,37 @@ enum SystemKeyboardSettings {
                 defaults.removeObject(forKey: "crh.key.cachedSysPref.\(key)")
             }
         }
+        if !isUITestFlagAuthoritative {
+            for feature in [
+                Feature.capsLock, .periodShortcut, .keyFlicks, .slideToType, .deleteSlideToTypeByWord,
+                .smartPunctuation, .shortcuts, .checkSpelling, .predictiveText, .autoCorrection, .autoCapitalization,
+                .mathResults, .emojiPicker
+            ] {
+                defaults.removeObject(forKey: feature.preferenceKey)
+            }
+        }
         defaults.set(true, forKey: purgeFlagKey)
+    }
+
+    private static func ensureAppGroupSysPrefsSeeded() {
+        os_unfair_lock_lock(&cacheLock)
+        let needSeed = !didLoadAppGroupSysPrefs
+        if needSeed { didLoadAppGroupSysPrefs = true }
+        os_unfair_lock_unlock(&cacheLock)
+        guard needSeed else { return }
+        let defaults = KeyboardPreferences.defaults
+        var seeded: [String: Bool] = [:]
+        for entry in knownKeyGroups {
+            if let primaryKey = entry.0.first,
+               let val = defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
+                seeded[primaryKey] = val
+            }
+        }
+        os_unfair_lock_lock(&cacheLock)
+        for (k, v) in seeded where cachedAppGroupSysPrefs[k] == nil {
+            cachedAppGroupSysPrefs[k] = v
+        }
+        os_unfair_lock_unlock(&cacheLock)
     }
 
     /// Queries the live in-memory iOS/iPadOS keyboard preferences controllers so toggles in
@@ -1671,46 +1703,52 @@ enum SystemKeyboardSettings {
             setCachedSysPrefIfNeeded(false, forKey: keys[0])
             return false
         }
+        // Inside a sandboxed .appex extension, CFPreferences may return nil for host preferences;
+        // preserve any value previously synced into App Group UserDefaults by QTatar.app.
+        if Bundle.main.bundlePath.hasSuffix(".appex") {
+            os_unfair_lock_lock(&cacheLock)
+            let existingAppGroupVal = cachedAppGroupSysPrefs[keys[0]]
+            os_unfair_lock_unlock(&cacheLock)
+            if let existingAppGroupVal {
+                return existingAppGroupVal
+            }
+            if let diskAppGroupVal = KeyboardPreferences.defaults.object(forKey: "crh.key.cachedSysPref.\(keys[0])") as? Bool {
+                os_unfair_lock_lock(&cacheLock)
+                cachedAppGroupSysPrefs[keys[0]] = diskAppGroupVal
+                os_unfair_lock_unlock(&cacheLock)
+                return diskAppGroupVal
+            }
+            return defaultValue
+        }
         setCachedSysPrefIfNeeded(nil, forKey: keys[0])
         return defaultValue
     }
 
     static func refreshAllSynchronously(shouldSync: Bool = true) {
         purgePoisonedCachedSysPrefsIfNeeded()
-        if !Thread.isMainThread {
-            os_unfair_lock_lock(&cacheLock)
-            let needSeed = !didLoadAppGroupSysPrefs
-            if needSeed { didLoadAppGroupSysPrefs = true }
-            os_unfair_lock_unlock(&cacheLock)
-            if needSeed {
-                let defaults = KeyboardPreferences.defaults
-                var seeded: [String: Bool] = [:]
-                for entry in knownKeyGroups {
-                    if let primaryKey = entry.0.first,
-                       let val = defaults.object(forKey: "crh.key.cachedSysPref.\(primaryKey)") as? Bool {
-                        seeded[primaryKey] = val
-                    }
-                }
-                os_unfair_lock_lock(&cacheLock)
-                for (k, v) in seeded where cachedAppGroupSysPrefs[k] == nil {
-                    cachedAppGroupSysPrefs[k] = v
-                }
-                os_unfair_lock_unlock(&cacheLock)
-            }
-        }
+        ensureAppGroupSysPrefsSeeded()
         var updated: [String: Bool] = [:]
         for (index, entry) in knownKeyGroups.enumerated() {
             if let primaryKey = entry.0.first {
                 updated[primaryKey] = pollSystemPreferenceFromOS(entry.0, shouldSync: shouldSync && index == 0, default: entry.1)
             }
         }
+        var didChangeAny = false
         os_unfair_lock_lock(&cacheLock)
         for (k, v) in updated {
+            if let prev = cachedValues[k], prev != v {
+                didChangeAny = true
+            }
             cachedValues[k] = v
         }
         lastSyncTimestamp = ProcessInfo.processInfo.systemUptime
         isRefreshing = false
         os_unfair_lock_unlock(&cacheLock)
+        if didChangeAny {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: settingsDidChangeNotification, object: nil)
+            }
+        }
     }
 
     static func triggerAsyncRefreshIfNeeded(force: Bool = false) {
@@ -1738,6 +1776,7 @@ enum SystemKeyboardSettings {
 
     private static func readSystemPreferenceBool(_ keys: [String], default defaultValue: Bool = true) -> Bool {
         purgePoisonedCachedSysPrefsIfNeeded()
+        ensureAppGroupSysPrefsSeeded()
         let args = CommandLine.arguments
         let isTestEnv = args.contains("-UITesting")
             || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -1820,7 +1859,7 @@ enum SystemKeyboardSettings {
     static var isKeyFlicksEnabled: Bool {
         guard isFeatureEnabled(.keyFlicks) else { return false }
         return readSystemPreferenceBool(
-            ["GesturesEnabled", "KeyFlicksEnabled", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"],
+            ["GesturesEnabled", "KeyFlicksEnabled", "EnableKeyFlicks", "KeyboardPullDown", "UIKeyboardGesturePullDown", "KeyboardKeyFlicksEnabled", "UIKeyboardKeyFlicksEnabled", "UIKeyboardGesturesEnabled"],
             default: true
         )
     }
