@@ -252,7 +252,7 @@ struct HomeView: View {
     @State private var viewportSize = CGSize.zero
     @State private var containerSize = CGSize.zero
     @State private var isWritingFieldFocused = false
-    @State private var isSandboxCrimeanTatarKeyboardActive: Bool = !ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard")
+    @State private var isSandboxCrimeanTatarKeyboardActive: Bool = !(ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard") || ProcessInfo.processInfo.arguments.contains("-qt_force_system_keyboard"))
     @State private var didInitializeThemeFromSystem = false
     @State private var lastKnownSettingsSnapshot: [String: Bool] = [:]
     @State private var settingsSyncRevision: Int = 0
@@ -2352,21 +2352,19 @@ struct HomeView: View {
                 }
             }
             .onReceive(Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()) { _ in
-                guard scenePhase != .background,
+                guard activeOnboardingSheet != nil,
+                      scenePhase != .background,
                       !Self.isUITestingEnvironment,
                       !ProcessInfo.processInfo.arguments.contains("-qt_in_memory_keyboard_toggles") else { return }
-                _ = SystemKeyboardSettings.activeInputModeLanguages(forceRefresh: true)
                 SystemKeyboardSettings.refreshQueue.async {
                     _ = SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh: true)
                     DispatchQueue.main.async {
                         let hasLatin = SystemKeyboardSettings.isPrimaryKeyboardExtensionEnabled
                         let hasStdCyr = SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
                         let hasUkrCyr = SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
-                        let liveFullAccess = Self.keyboardInspector.isFullAccessEnabled
                         if hasLatin != isPrimaryKeyboardAddedState
                             || hasStdCyr != (cyrillicStatus == .enabled)
-                            || hasUkrCyr != (ukrainianStatus == .enabled)
-                            || liveFullAccess != cachedIsFullAccessEnabled {
+                            || hasUkrCyr != (ukrainianStatus == .enabled) {
                             syncPreferencesFromSettingsBundleAndAppGroup()
                             refreshCyrillicStatus(force: true)
                         }
@@ -2984,11 +2982,9 @@ struct HomeView: View {
         Self.bgPrefsAndSQLiteQueue.async {
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
         }
-        let languages = SystemKeyboardSettings.activeInputModeLanguages(forceRefresh: force)
+        let languages = SystemKeyboardSettings.activeInputModeLanguages(forceRefresh: false)
         SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: force)
-        if force {
-            _ = SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh: true)
-        }
+        _ = SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh: false)
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-qt_full_access_missing") {
             cachedIsFullAccessEnabled = false
@@ -3416,6 +3412,17 @@ struct HomeView: View {
                 KeyboardPreferences.refreshCachedPreferences()
                 KeyboardUsageStats.resetAll()
                 refreshStatsFromAppGroup(syncSQLite: false)
+            } else if !args.contains("-qt_no_suggestions") && !args.contains("-qt_force_suggestions_off") {
+                if !defaults.bool(forKey: "crh.key.didRestoreSuggestionsAfterTest_b18")
+                    || KeyboardPreferences.defaults.bool(forKey: "crh.key.test.didForceNoSuggestions") {
+                    defaults.set(true, forKey: "crh.key.didRestoreSuggestionsAfterTest_b18")
+                    KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.didForceNoSuggestions")
+                    suggestionsEnabled = true
+                    KeyboardPreferences.setSuggestionsEnabled(true)
+                    KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
+                    defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
+                    KeyboardPreferences.refreshCachedPreferences()
+                }
             }
             if args.contains("-qt_abv_disabled") {
                 ipadAbvKeyDisabled = true
@@ -3425,6 +3432,7 @@ struct HomeView: View {
             }
             if args.contains("-qt_no_suggestions") {
                 suggestionsEnabled = false
+                KeyboardPreferences.defaults.set(true, forKey: "crh.key.test.didForceNoSuggestions")
                 KeyboardPreferences.setSuggestionsEnabled(false)
                 KeyboardPreferences.defaults.set(false, forKey: KeyboardPreferences.suggestionsKey)
                 defaults.set(false, forKey: KeyboardPreferences.suggestionsKey)
@@ -4835,7 +4843,8 @@ private extension HomeView {
     var testingAndWritingSection: some View {
         let keyboardAdded = isPrimaryKeyboardAdded || isCyrillicKeyboardAdded || isUkrainianKeyboardAdded
         let showWrongKeyboardWarning = (!ProcessInfo.processInfo.arguments.contains("-qt_suppress_wrong_keyboard_warning")
-            && isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive)
+            && ((isWritingFieldFocused && isKeyboardVisible && !isSandboxCrimeanTatarKeyboardActive)
+                || ProcessInfo.processInfo.arguments.contains("-qt_force_system_keyboard")))
             || ProcessInfo.processInfo.arguments.contains("-qt_wrong_keyboard")
         let warningAmber = Color(red: 0.96, green: 0.58, blue: 0.04)
 
@@ -4861,15 +4870,17 @@ private extension HomeView {
                                     fontName: "GeneralSans-Semibold",
                                     fontSize: 15,
                                     color: primaryInk,
-                                    lineLimit: nil,
+                                    lineLimit: 1,
+                                    minimumScaleFactor: 0.75,
                                     language: language
                                 )
                             } else {
                                 Text(Home.home_keyboard_off_key.localized + " — " + localizedInterfaceString("settings.cyrillic.addHint"))
                                     .font(InterfaceFont.font("GeneralSans-Semibold", size: 15))
                                     .foregroundStyle(primaryInk)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    .allowsTightening(true)
                                     .multilineTextAlignment(.leading)
                             }
                             Spacer(minLength: 4)
@@ -6049,10 +6060,7 @@ private extension HomeView {
         if !isPrimaryKeyboardAdded && !isCyrillicKeyboardAdded && !isUkrainianKeyboardAdded {
             return false
         }
-        if cachedIsFullAccessEnabled {
-            return true
-        }
-        return Self.keyboardInspector.isFullAccessEnabled
+        return cachedIsFullAccessEnabled
     }
 
     var areAllIndicatorsEnabled: Bool {
@@ -6336,7 +6344,7 @@ struct StableLocalizedText: View {
                 .foregroundStyle(color)
                 .lineLimit(1)
                 .minimumScaleFactor(minimumScaleFactor)
-                .fixedSize(horizontal: false, vertical: true)
+                .allowsTightening(true)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
@@ -7362,12 +7370,24 @@ private struct TransliterationKeycapBadge: View {
                     .fill(Color(.systemGray3).gradient)
             }
 
-            // Concentric contour matching the badge's own corner radius (cornerRadius: 7, zero 3D bottom lip or shadow)
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
+            // Stationary 3D keycap frame (22x20.5 pt, cornerRadius: 4.5) with lower bevel, top surface fill, and solid rim border
+            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+                .fill(Color.black.opacity(isEnabled ? 0.16 : 0.10))
+                .frame(width: 22, height: 21)
+                .offset(y: 1.0)
+
+            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
+                .fill(Color.white.opacity(isEnabled ? (isUkrainianStyle ? 0.10 : 0.14) : 0.08))
+                .frame(width: 22, height: 20.5)
+                .offset(y: -0.25)
+
+            RoundedRectangle(cornerRadius: 4.5, style: .continuous)
                 .strokeBorder(
-                    Color.white.opacity(colorScheme == .dark ? 0.38 : 0.52),
+                    Color.white.opacity(isEnabled ? 0.72 : 0.45),
                     lineWidth: 1.15
                 )
+                .frame(width: 22, height: 20.5)
+                .offset(y: -0.25)
 
             // Closed-loop vector line-drawing glyph for Q / Къ / Кʼ (Start State == End State)
             KeycapGlyphStrokeShape(isUkrainianStyle: isUkrainianStyle, showsTargetQ: isLatinOnlyStyle || activeGlyphIsTargetQ)
@@ -7378,6 +7398,7 @@ private struct TransliterationKeycapBadge: View {
                 )
                 .opacity(hideLineArt ? 0.0 : 1.0)
                 .frame(width: 15, height: 13.5)
+                .offset(y: -0.25)
         }
         .frame(width: 28, height: 28)
         .animation(animationsAllowed && HomeView.canAnimateUserChanges ? .easeInOut(duration: 0.2) : nil, value: isEnabled)
@@ -7848,8 +7869,12 @@ private struct SandboxTextView: UIViewRepresentable {
         Coordinator(self)
     }
 
+    private final class SandboxUITextView: UITextView {
+        override var undoManager: UndoManager? { nil }
+    }
+
     func makeUIView(context: Context) -> UITextView {
-        let textView = UITextView()
+        let textView = SandboxUITextView()
         textView.delegate = context.coordinator
         context.coordinator.textView = textView
         textView.accessibilityIdentifier = "sandbox.input"
@@ -8006,7 +8031,16 @@ private struct SandboxTextView: UIViewRepresentable {
         coordinator.lastIsFocused = isFocused
         coordinator.lastPreferencesToken = preferencesToken
 
-        let hasNoSuggestionsArg = ProcessInfo.processInfo.arguments.contains("-qt_no_suggestions")
+        let args = ProcessInfo.processInfo.arguments
+        let hasNoSuggestionsArg = args.contains("-qt_no_suggestions")
+        if !hasNoSuggestionsArg && (args.contains("-qt_reset_text") || KeyboardPreferences.defaults.bool(forKey: "crh.key.test.didForceNoSuggestions")) {
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.didForceNoSuggestions")
+            if !KeyboardPreferences.suggestionsEnabled {
+                KeyboardPreferences.setSuggestionsEnabled(true)
+                KeyboardPreferences.defaults.set(true, forKey: KeyboardPreferences.suggestionsKey)
+                KeyboardPreferences.refreshCachedPreferences()
+            }
+        }
         let forceNoSuggestions = hasNoSuggestionsArg
             || !KeyboardPreferences.suggestionsEnabled
         let isActiveSandbox = !skipAppGroupPost &&
@@ -8227,6 +8261,7 @@ private struct SandboxTextView: UIViewRepresentable {
                     }
                     self.customRedoStack.removeAll()
                     KeyboardUsageStats.markInjectedText(clip)
+                    tv.undoManager?.removeAllActions()
                     tv.insertText(clip)
                     tv.undoManager?.removeAllActions()
                     self.lastSyncedText = tv.text
@@ -8365,9 +8400,9 @@ private struct SandboxTextView: UIViewRepresentable {
             evictNonCrimeanTatarThirdPartyKeyboardIfNeeded(for: textView)
             let isCRH: Bool
             let args = ProcessInfo.processInfo.arguments
-            if args.contains("-qt_wrong_keyboard") {
+            if args.contains("-qt_wrong_keyboard") || args.contains("-qt_force_system_keyboard") {
                 isCRH = false
-            } else if args.contains("-qt_suppress_wrong_keyboard_warning") || args.contains("-qt_force_system_keyboard") {
+            } else if args.contains("-qt_suppress_wrong_keyboard_warning") {
                 isCRH = true
             } else if let lang = textView.textInputMode?.primaryLanguage?.replacingOccurrences(of: "_", with: "-").lowercased() {
                 isCRH = lang.hasPrefix("crh")
@@ -8451,8 +8486,8 @@ private struct SandboxTextView: UIViewRepresentable {
         func textViewDidBeginEditing(_ textView: UITextView) {
             if ProcessInfo.processInfo.arguments.contains("-qt_force_landscape") {
                 let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-                if let scene = textView.window?.windowScene ?? scenes.first {
-                    scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeLeft))
+                if let scene = textView.window?.windowScene ?? scenes.first, !scene.interfaceOrientation.isLandscape {
+                    scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight))
                 }
             }
             SandboxTextView.forceSoftwareKeyboardShownIfUITesting()
@@ -8545,6 +8580,7 @@ private struct SandboxTextView: UIViewRepresentable {
                 }
                 customRedoStack.removeAll()
             }
+            textView.undoManager?.removeAllActions()
             lastSyncedText = newText
             parent.text = newText
             if newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

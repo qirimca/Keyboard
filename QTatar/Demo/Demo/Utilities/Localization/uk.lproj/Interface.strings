@@ -98,7 +98,7 @@
 "settings.cyrillic.addHint" = "Додайте в «Загальні» → «Клавіатура» → «Клавіатури»";
 "settings.fullAccess.addHint" = "Потрібен для синхронізації налаштувань, словника й вібрації (100% офлайн). Увімкніть у «Параметри» → «Програми» → QırımKey → «Клавіатури» → «Дозволити повний доступ»";
 "settings.fullAccess.onHint" = "Синхронізація налаштувань, словника й вібрації (100% офлайн на пристрої)";
-"sandbox.wrongKeyboardWarning" = "Вибрано іншу клавіатуру — перемкніть через {{globe}}";
+"sandbox.wrongKeyboardWarning" = "Інша клавіатура — натисніть {{globe}}";
 "stats.wordsUnit" = "сл.";
 "stats.learnedWordsUnit" = "вивч.";
 "stats.learnedWords.emptyTitle" = "Особистий словник порожній";

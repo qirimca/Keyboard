@@ -1382,15 +1382,11 @@ struct NativeAutocompleteToolbar: View {
             Button {
                 greetingState.cycleNext()
             } label: {
-                ZStack {
-                    Circle()
-                        .fill(primaryColor.opacity(isDark ? 0.14 : 0.09))
-                        .frame(width: 19, height: 19)
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 11.5, weight: .semibold))
-                        .foregroundStyle(primaryColor.opacity(0.88))
-                }
-                .frame(width: pillHeight, height: pillHeight)
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundStyle(primaryColor.opacity(0.88))
+                    .frame(width: pillHeight, height: pillHeight)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             .accessibilityLabel({
@@ -1437,7 +1433,7 @@ struct NativeAutocompleteToolbar: View {
         let bannerVerticalOffset: CGFloat = isTwoLinePhrase ? (isFloating ? -1.5 : (!isDockedPad ? -2.0 : 0.0)) : 0.0
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
         let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
-        let nativeFontSize: CGFloat = isFloating ? 16.0 : (isDockedPad ? 17.0 : 16.0)
+        let nativeFontSize: CGFloat = isFloating ? 14.5 : (isDockedPad ? 17.0 : 16.0)
 
         HStack(alignment: .center, spacing: 2) {
             Color.clear
@@ -1478,15 +1474,11 @@ struct NativeAutocompleteToolbar: View {
             Button {
                 greetingState.cycleNext()
             } label: {
-                ZStack {
-                    Circle()
-                        .fill(primaryColor.opacity(isDark ? 0.14 : 0.09))
-                        .frame(width: isFloating ? 17 : 19, height: isFloating ? 17 : 19)
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: isFloating ? 10.5 : 11.5, weight: .semibold))
-                        .foregroundStyle(primaryColor.opacity(0.88))
-                }
-                .frame(width: isFloating ? 22 : 24, height: pillHeight)
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: isFloating ? 10.5 : 11.5, weight: .semibold))
+                    .foregroundStyle(primaryColor.opacity(0.88))
+                    .frame(width: isFloating ? 22 : 24, height: pillHeight)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             .accessibilityLabel({

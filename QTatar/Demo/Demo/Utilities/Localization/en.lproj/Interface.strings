@@ -98,7 +98,7 @@
 "settings.cyrillic.addHint" = "Add in “General” → “Keyboard” → “Keyboards”";
 "settings.fullAccess.addHint" = "Needed to sync settings, dictionary & haptics (100% offline). Enable in “Settings” → “Apps” → QırımKey → “Keyboards” → “Allow Full Access”";
 "settings.fullAccess.onHint" = "Syncs settings, dictionary & haptics (100% offline on device)";
-"sandbox.wrongKeyboardWarning" = "Another keyboard active — switch via {{globe}}";
+"sandbox.wrongKeyboardWarning" = "Other keyboard — switch via {{globe}}";
 "stats.wordsUnit" = "words";
 "stats.learnedWordsUnit" = "learned";
 "stats.learnedWords.emptyTitle" = "Personal dictionary is empty";

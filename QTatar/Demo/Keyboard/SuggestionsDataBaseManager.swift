@@ -4714,45 +4714,53 @@ struct KeyboardAdaptiveGeometry: Equatable {
         }()
 
         if isPad {
-            let toolbarH: CGFloat = isPortrait ? 38.0 : 41.0
+            let isiOS27OrNewer: Bool = {
+                if #available(iOS 27.0, *) { return true }
+                return false
+            }()
+            let useOS26CompactRowsWithToolbar = hasToolbar && !isiOS27OrNewer
+            let toolbarH: CGFloat = isPortrait
+                ? (useOS26CompactRowsWithToolbar ? 33.0 : 38.0)
+                : (useOS26CompactRowsWithToolbar ? 36.0 : 41.0)
             if isPortrait {
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt) -> 296.0 pt without toolbar / 334.0 pt with 38.0 pt toolbar
+                    // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt) -> 296.0 pt invariant on iPadOS 26 / 334.0 pt with 38.0 pt toolbar on iPadOS 27
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 73.0,
-                        bottomRowHeight: 72.0,
-                        letterTopBottomInset: 4.0,
-                        bottomTopBottomInset: 4.0,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 65.5 : 73.0,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 64.5 : 72.0,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 3.5 : 4.0,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 3.5 : 4.0,
                         horizontalItemInset: 6.0,
-                        edgeTopBottomInset: 2.5,
+                        edgeTopBottomInset: useOS26CompactRowsWithToolbar ? 1.0 : 2.5,
                         edgeHorizontalInset: 6.0,
                         toolbarHeight: hasToolbar ? toolbarH : 0.0,
                         cornerRadius: 8.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini (744 pt) & 9.7" iPad (768 pt) -> 258.0 pt without toolbar / 296.0 pt with 38.0 pt toolbar
+                    // iPad mini (744 pt) & 9.7" iPad (768 pt) -> 258.0 pt invariant on iPadOS 26 / 296.0 pt with 38.0 pt toolbar on iPadOS 27
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 64.0,
-                        bottomRowHeight: 63.0,
-                        letterTopBottomInset: 3.5,
-                        bottomTopBottomInset: 3.5,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 56.0 : 64.0,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 55.0 : 63.0,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 3.0 : 3.5,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 3.0 : 3.5,
                         horizontalItemInset: 5.5,
-                        edgeTopBottomInset: 1.5,
+                        edgeTopBottomInset: useOS26CompactRowsWithToolbar ? 1.0 : 1.5,
                         edgeHorizontalInset: 6.0,
                         toolbarHeight: hasToolbar ? toolbarH : 0.0,
                         cornerRadius: 8.0
                     )
                 } else {
                     // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt):
-                    // Key rows at 64.0 pt step (55.0 pt = 110 px visible key, 9.0 pt = 18 px gap),
-                    // edgeTopBottomInset = 3.0 pt, edgeHorizontalInset = 4.5 pt (x_span = [20..1619], 0 px diff vs System).
+                    // On iPadOS 26 (!isiOS27OrNewer): when hasToolbar == true, reduce letterRowHeight (57.0 vs 64.0),
+                    // bottomRowHeight (56.0 vs 64.0), and edgeTopBottomInset (1.0 vs 3.0) with toolbarH = 33.0
+                    // so total Docked height stays invariant at 262.0 pt (3*57 + 56 + 33 + 2 = 262.0 pt, dy = 0 px).
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 64.0,
-                        bottomRowHeight: 64.0,
-                        letterTopBottomInset: 4.5,
-                        bottomTopBottomInset: 4.5,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 57.0 : 64.0,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 56.0 : 64.0,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 3.0 : 4.5,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 3.0 : 4.5,
                         horizontalItemInset: 5.5,
-                        edgeTopBottomInset: 3.0,
+                        edgeTopBottomInset: useOS26CompactRowsWithToolbar ? 1.0 : 3.0,
                         edgeHorizontalInset: 4.5,
                         toolbarHeight: hasToolbar ? toolbarH : 0.0,
                         cornerRadius: 8.5
@@ -4760,12 +4768,12 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 }
             } else {
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt without toolbar / 419.0 pt with 41.0 pt toolbar
+                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt invariant on iPadOS 26 / 419.0 pt with 41.0 pt toolbar on iPadOS 27
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 94.0,
-                        bottomRowHeight: 94.0,
-                        letterTopBottomInset: 5.5,
-                        bottomTopBottomInset: 5.5,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 85.0 : 94.0,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 85.0 : 94.0,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 4.5 : 5.5,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 4.5 : 5.5,
                         horizontalItemInset: 7.0,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
@@ -4773,12 +4781,12 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 10.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini / 9.7" Landscape -> 338.0 pt without toolbar / 379.0 pt with 41.0 pt toolbar
+                    // iPad mini / 9.7" Landscape -> 338.0 pt invariant on iPadOS 26 / 379.0 pt with 41.0 pt toolbar on iPadOS 27
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 83.5,
-                        bottomRowHeight: 85.5,
-                        letterTopBottomInset: 5.0,
-                        bottomTopBottomInset: 5.0,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 75.5 : 83.5,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 76.5 : 85.5,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 4.0 : 5.0,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 4.0 : 5.0,
                         horizontalItemInset: 6.5,
                         edgeTopBottomInset: 1.0,
                         edgeHorizontalInset: 8.0,
@@ -4787,16 +4795,16 @@ struct KeyboardAdaptiveGeometry: Equatable {
                     )
                 } else {
                     // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt):
-                    // sugg0 = 347.0 pt (top_y=877 px on iPad A16, 0 px diff vs System 10s_sugg0);
-                    // sugg1 = 388.0 pt with 41.0 pt toolbar (top_y=795 px on iPad A16, 0 px diff vs System 10s_sugg1);
-                    // edgeHorizontalInset = 9.0 pt (x_span = [33..2326], 0 px diff vs System).
+                    // On iPadOS 26 (!isiOS27OrNewer): when hasToolbar == true, reduce letterRowHeight (77.0 vs 84.5),
+                    // bottomRowHeight (76.0 vs 84.5), and edgeTopBottomInset (2.0 vs 4.5) with toolbarH = 36.0
+                    // so total Docked height stays invariant at 347.0 pt (3*77 + 76 + 36 + 4 = 347.0 pt, dy = 0 px).
                     return KeyboardAdaptiveGeometry(
-                        letterRowHeight: 84.5,
-                        bottomRowHeight: 84.5,
-                        letterTopBottomInset: 5.75,
-                        bottomTopBottomInset: 5.75,
+                        letterRowHeight: useOS26CompactRowsWithToolbar ? 77.0 : 84.5,
+                        bottomRowHeight: useOS26CompactRowsWithToolbar ? 76.0 : 84.5,
+                        letterTopBottomInset: useOS26CompactRowsWithToolbar ? 3.5 : 5.75,
+                        bottomTopBottomInset: useOS26CompactRowsWithToolbar ? 3.5 : 5.75,
                         horizontalItemInset: 7.5,
-                        edgeTopBottomInset: 4.5,
+                        edgeTopBottomInset: useOS26CompactRowsWithToolbar ? 2.0 : 4.5,
                         edgeHorizontalInset: 9.0,
                         toolbarHeight: hasToolbar ? toolbarH : 0.0,
                         cornerRadius: 9.5

@@ -153,11 +153,11 @@ private final class FullAccessInspector: UIInputViewController {
         }
         registerLifecycleObserversIfNeeded()
         let now = ProcessInfo.processInfo.systemUptime
-        if let cached = cachedValue, (now - lastCheckUptime) < 0.45 {
+        if let cached = cachedValue, (now - lastCheckUptime) < 5.0 {
             return cached
         }
         lastCheckUptime = now
-        let inspector = FullAccessInspector()
+        let inspector = sharedInstance ?? FullAccessInspector()
         sharedInstance = inspector
         let directResult = inspector.hasFullAccess
         let result: Bool

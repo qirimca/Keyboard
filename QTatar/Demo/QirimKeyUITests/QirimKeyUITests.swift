@@ -37,7 +37,9 @@ final class QirimKeyUITests: XCTestCase {
 
     private func launch(fieldMode: String = "standard", theme: String = "modernLight", extraArgs: [String] = []) throws {
         var finalExtraArgs = extraArgs
-        if !finalExtraArgs.contains("-qt_wrong_keyboard") && !finalExtraArgs.contains("-qt_suppress_wrong_keyboard_warning") {
+        if !finalExtraArgs.contains("-qt_wrong_keyboard")
+            && !finalExtraArgs.contains("-qt_force_system_keyboard")
+            && !finalExtraArgs.contains("-qt_suppress_wrong_keyboard_warning") {
             finalExtraArgs.append("-qt_suppress_wrong_keyboard_warning")
         }
         app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"] + finalExtraArgs
@@ -4871,7 +4873,7 @@ final class QirimKeyUITests: XCTestCase {
                 ?? [
                     "en_US@sw=QWERTY;hw=Automatic",
                     "uk_UA@sw=Ukrainian;hw=Automatic",
-                    "crh.key.keyboard.Keyboard",
+                    "crh.key.keyboard.keyboard",
                     "crh.key.keyboard.KeyboardCyrillic",
                     "crh.key.keyboard.KeyboardUkrainian"
                 ]
@@ -5123,17 +5125,23 @@ final class QirimKeyUITests: XCTestCase {
             let cUk = langUk.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             cCrh.press(forDuration: 0.14, thenDragTo: cUk)
             Thread.sleep(forTimeInterval: 0.35)
-            shot("02b_switcher_uk_post_drag")
             if isPad {
                 let abvCyr = app.descendants(matching: .any)["settings.cyrillic.abvSelector"].firstMatch
                 let abvUkr = app.descendants(matching: .any)["settings.ukrainianCyrillic.abvSelector"].firstMatch
                 if abvCyr.exists && abvUkr.exists {
                     let cAbvC = abvCyr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
                     let cAbvU = abvUkr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                    cAbvU.press(forDuration: 0.14, thenDragTo: cAbvC)
+                    Thread.sleep(forTimeInterval: 0.35)
+                    shot("02b_switcher_uk_post_drag")
                     cAbvC.press(forDuration: 0.14, thenDragTo: cAbvU)
                     Thread.sleep(forTimeInterval: 0.35)
                     shot("02c_abv_bridge_post_drag")
+                } else {
+                    shot("02b_switcher_uk_post_drag")
                 }
+            } else {
+                shot("02b_switcher_uk_post_drag")
             }
             cUk.press(forDuration: 0.14, thenDragTo: cCrh)
             Thread.sleep(forTimeInterval: 0.35)
@@ -5396,6 +5404,10 @@ final class QirimKeyUITests: XCTestCase {
             setIPadFloatingKeyboard(false)
             Thread.sleep(forTimeInterval: 1.0)
         }
+
+        // Restore clean default QırımKey Latin state with suggestions and swipe enabled so device/simulator never remains on system keyboard fallback
+        try launch(fieldMode: "standard")
+        try? selectScript(cyrillic: false)
     }
 
     func testLiquidGlassSwitcherHoldDragVideo_20_90() throws {

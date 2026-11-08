@@ -2118,7 +2118,7 @@ enum SystemKeyboardSettings {
             return simOverride
         }
         #endif
-        if forceUpdate {
+        if forceUpdate && !Thread.isMainThread {
             CFPreferencesAppSynchronize(kCFPreferencesAnyApplication)
             CFPreferencesAppSynchronize("com.apple.Preferences" as CFString)
             _ = CFPreferencesSynchronize(kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
@@ -2144,7 +2144,7 @@ enum SystemKeyboardSettings {
                 targets.insert(actionsUnmanaged.takeUnretainedValue() as AnyObject, at: 0)
             }
             for target in targets {
-                if forceUpdate {
+                if forceUpdate && !Thread.isMainThread {
                     if target.responds(to: syncSel) {
                         _ = target.perform(syncSel)
                     }
@@ -2163,9 +2163,6 @@ enum SystemKeyboardSettings {
     /// Queries `UIKeyboardInputModeController.sharedInputModeController.enabledInputModeIdentifiers`
     /// in-memory so all enabled keyboards in `Settings → General → Keyboard → Keyboards` are detected immediately.
     private static func queryControllerEnabledInputModeIdentifiers(forceUpdate: Bool = false) -> [String] {
-        if forceUpdate {
-            _ = queryTIPreferencesEnabledKeyboards(forceUpdate: true)
-        }
         let clsName = rtJoin(["UI", "Key", "board", "Input", "Mode", "Controller"])
         let sharedSel = NSSelectorFromString(rtJoin(["shared", "Input", "Mode", "Controller"]))
         guard let cls = NSClassFromString(clsName) as? NSObject.Type,

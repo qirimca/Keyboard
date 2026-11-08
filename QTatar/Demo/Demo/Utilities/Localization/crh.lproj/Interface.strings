@@ -98,7 +98,7 @@
 "settings.cyrillic.addHint" = "«General» → «Keyboard» → «Keyboards» bölüginde qoşuñız";
 "settings.fullAccess.addHint" = "Sazlamalar, luğat ve titrevni sinhronizatsiya etmek içün kerek (100% oflayn). «Settings» → «Apps» → QırımKey → «Keyboards» → «Allow Full Access» bölüginde açıñız";
 "settings.fullAccess.onHint" = "Sazlamalar, luğat ve titrev sinhronizatsiyası (100% cihazda oflayn)";
-"sandbox.wrongKeyboardWarning" = "Başqa klaviatura saylanğan — {{globe}} ile almaştırıñız";
+"sandbox.wrongKeyboardWarning" = "Başqa klaviatura — {{globe}} basıñız";
 "stats.wordsUnit" = "söz";
 "stats.learnedWordsUnit" = "luğat";
 "stats.learnedWords.emptyTitle" = "Şahsiy luğat şimdilik boş";

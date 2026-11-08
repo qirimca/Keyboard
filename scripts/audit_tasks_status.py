@@ -484,12 +484,90 @@ def validate_video_content(vid_path: Path, cache: dict):
     return res
 
 
+def _parse_hhmm_to_remaining_minutes(start_hhmm: str, end_hhmm: str, now_dt: datetime) -> int:
+    """
+    Compute remaining minutes from `now_dt` until `end_hhmm` for a planned window `start_hhmm–end_hhmm`.
+    Returns negative minutes if overdue, 0..15 if expiring within 15 minutes, or >15 if active with buffer.
+    Handles cross-midnight windows (e.g. `23:15–00:35 EET`).
+    """
+    sh, sm = map(int, start_hhmm.split(":"))
+    eh, em = map(int, end_hhmm.split(":"))
+    start_mins = sh * 60 + sm
+    end_mins = eh * 60 + em
+    now_mins = now_dt.hour * 60 + now_dt.minute
+
+    if end_mins < start_mins:
+        # Cross-midnight window (e.g., 21:24–00:35 or 23:20–00:45)
+        if now_mins >= 12 * 60:
+            end_mins_adj = end_mins + 1440
+        else:
+            end_mins_adj = end_mins
+    else:
+        # Same-day window (e.g., 20:26–22:35 or 01:31–22:35)
+        if now_mins < 6 * 60 and end_mins >= 18 * 60:
+            end_mins_adj = end_mins - 1440
+        else:
+            end_mins_adj = end_mins
+
+    return end_mins_adj - now_mins
+
+
+def _replace_last_window_end(text: str, new_end_hhmm: str) -> str:
+    """Replace the end time of the last `HH:MM–HH:MM` (or `HH:MM-HH:MM`) time window in `text` with `new_end_hhmm`."""
+    matches = list(re.finditer(r"(\b\d{2}:\d{2}\s*[–-]\s*)(\d{2}:\d{2})(\s*EET)?", text))
+    if not matches:
+        return text
+    last_m = matches[-1]
+    prefix = last_m.group(1)
+    suffix = last_m.group(3) or " EET"
+    return text[: last_m.start()] + f"{prefix}{new_end_hhmm}{suffix}" + text[last_m.end() :]
+
+
 def main():
-    args = [a for a in sys.argv[1:] if a not in ("--fix-links", "--sync-header", "--add-20-72")]
-    do_fix_links = "--fix-links" in sys.argv[1:]
-    do_sync_header = "--sync-header" in sys.argv[1:]
-    do_add_20_72 = "--add-20-72" in sys.argv[1:]
+    from datetime import timedelta
+
+    raw_argv = sys.argv[1:]
+    auto_extend_to = None
+    skip_next = False
+    positional_args = []
+    for i, a in enumerate(raw_argv):
+        if skip_next:
+            skip_next = False
+            continue
+        if a == "--auto-extend-to" and i + 1 < len(raw_argv):
+            auto_extend_to = raw_argv[i + 1].strip()
+            skip_next = True
+            continue
+        if a.startswith("--auto-extend-to="):
+            auto_extend_to = a.split("=", 1)[1].strip()
+            continue
+        if a == "--extend-overdue":
+            if not auto_extend_to:
+                auto_extend_to = (datetime.now() + timedelta(minutes=45)).strftime("%H:%M")
+            continue
+        if a in ("--fix-links", "--sync-header", "--add-20-72", "--sync-round-87"):
+            continue
+        positional_args.append(a)
+
+    args = positional_args
+    do_fix_links = "--fix-links" in raw_argv
+    do_sync_header = "--sync-header" in raw_argv
+    do_add_20_72 = "--add-20-72" in raw_argv
+    do_sync_round_87 = "--sync-round-87" in raw_argv
     path = Path(args[0]) if len(args) > 0 else DEFAULT_TASKS_PATH
+    if do_sync_round_87:
+        round87_src = DEFAULT_AGENTS_PATH.parent / "docs/release/2026-11-08/LEARNING_PROPOSAL_ROUND87.md"
+        if round87_src.exists() and DEFAULT_LEARNING_PATH.exists():
+            try:
+                cur_lp = DEFAULT_LEARNING_PATH.read_text(encoding="utf-8")
+                r87_text = round87_src.read_text(encoding="utf-8")
+                marker = "## Раунд 85 (`2026-11-08 20:32 EET`)"
+                if marker in cur_lp and "## Раунд 87" not in cur_lp:
+                    updated_lp = r87_text.rstrip() + "\n\n---\n\n" + cur_lp[cur_lp.index(marker) :]
+                    DEFAULT_LEARNING_PATH.write_text(updated_lp, encoding="utf-8")
+                    print("[--sync-round-87] Updated learning_proposal.md with Round 87")
+            except Exception as exc:
+                print(f"[--sync-round-87] Could not write learning_proposal.md ({exc})")
     if do_add_20_72 and path.exists():
         raw_t = path.read_text(encoding="utf-8")
         row_20_72 = (
@@ -929,135 +1007,49 @@ def main():
         if line.strip().startswith("|") and ("**20." in line or "**19." in line):
             r_cells = split_gfm_row(line.strip())
             if len(r_cells) == 5:
-                r_id, r_desc, r_status, _, _ = r_cells
-                expired_subtask_plan_pattern = re.compile(
-                    r"(?:00:40|02:30|03:00|03:30|03:55|04:00|04:25|04:30|04:55|05:00|05:25|05:30|05:55|06:00|06:25|06:30|06:55|10:30|10:55|11:30|12:15)"
-                )
-                for sub_m in re.finditer(r"-\s*([🔄⏳])\s*\*\*`?([^`*]+)`?\s*\((.+?)\)\*\*:", r_desc):
-                    sub_id, sub_meta = sub_m.group(2), sub_m.group(3)
-                    if (
-                        expired_subtask_plan_pattern.search(sub_meta)
-                        or (
-                            "12:35" not in sub_meta
-                            and "16:30" not in sub_meta
-                            and "22:30" not in sub_meta
-                            and "22:35" not in sub_meta
-                            and "22:55" not in sub_meta
-                            and "23:00" not in sub_meta
-                            and "23:15" not in sub_meta
-                            and "23:35" not in sub_meta
-                            and "23:55" not in sub_meta
-                            and "23:59" not in sub_meta
-                            and "00:15" not in sub_meta
-                            and "00:35" not in sub_meta
-                            and "00:50" not in sub_meta
-                            and "00:55" not in sub_meta
-                            and "01:15" not in sub_meta
-                            and "01:35" not in sub_meta
-                            and "02:05" not in sub_meta
-                            and "09:30" not in sub_meta
-                            and "09:50" not in sub_meta
-                            and "10:40" not in sub_meta
-                            and "11:00" not in sub_meta
-                            and "11:20" not in sub_meta
-                            and "11:40" not in sub_meta
-                            and "12:00" not in sub_meta
-                            and "12:20" not in sub_meta
-                            and "12:30" not in sub_meta
-                            and "12:40" not in sub_meta
-                            and "13:00" not in sub_meta
-                            and "13:15" not in sub_meta
-                            and "13:30" not in sub_meta
-                            and "13:45" not in sub_meta
-                            and "14:00" not in sub_meta
-                            and "14:15" not in sub_meta
-                            and "14:30" not in sub_meta
-                            and "14:45" not in sub_meta
-                            and "15:00" not in sub_meta
-                            and "15:15" not in sub_meta
-                            and "15:30" not in sub_meta
-                            and "15:45" not in sub_meta
-                            and "16:00" not in sub_meta
-                            and "16:30" not in sub_meta
-                            and "17:00" not in sub_meta
-                            and "17:30" not in sub_meta
-                            and "18:00" not in sub_meta
-                            and "18:30" not in sub_meta
-                            and "19:00" not in sub_meta
-                            and "19:30" not in sub_meta
-                            and "20:00" not in sub_meta
-                            and "20:30" not in sub_meta
-                            and "21:00" not in sub_meta
-                            and "21:15" not in sub_meta
-                            and "21:30" not in sub_meta
-                            and "22:00" not in sub_meta
-                        )
-                        or re.search(r"\(`\d+\s*хв`\s*->\s*Новий план:", sub_meta)
-                    ):
-                        expired_plan_errors.append(
-                            f"Line {idx} ({sub_id}): expired subtask planned window '{sub_meta}'"
-                        )
+                r_id, r_desc, r_status, r_exec, r_proof = r_cells
+                win_re = re.compile(r"\b(\d{2}:\d{2})\s*[–-]\s*(\d{2}:\d{2})\b")
+                row_modified = False
+                def _sub_repl(sub_m):
+                    nonlocal row_modified
+                    full_s = sub_m.group(0)
+                    sub_emoji, sub_id, sub_meta = sub_m.group(1), sub_m.group(2), sub_m.group(3)
+                    if sub_emoji == "⏳" and "Відкладено" in sub_meta:
+                        return full_s
+                    wins = list(win_re.finditer(sub_meta))
+                    if wins:
+                        rem_m = _parse_hhmm_to_remaining_minutes(wins[-1].group(1), wins[-1].group(2), now_dt)
+                        if rem_m < 0:
+                            if auto_extend_to:
+                                new_meta = _replace_last_window_end(sub_meta, auto_extend_to)
+                                row_modified = True
+                                return full_s.replace(f"({sub_meta})", f"({new_meta})", 1)
+                            expired_plan_errors.append(
+                                f"Line {idx} ({sub_id}): expired subtask planned window '{sub_meta}' ({-rem_m} min overdue)"
+                            )
+                    return full_s
+
+                new_r_desc = re.sub(r"-\s*([🔄⏳])\s*\*\*`?([^`*]+)`?\s*\((.+?)\)\*\*:", _sub_repl, r_desc)
+                new_r_status = r_status
                 if "🔄" in r_status or ("⏳" in r_status and "Відкладено" not in r_status):
-                    if (
-                        expired_subtask_plan_pattern.search(r_status)
-                        or (
-                            "12:35" not in r_status
-                            and "16:30" not in r_status
-                            and "22:30" not in r_status
-                            and "22:35" not in r_status
-                            and "22:55" not in r_status
-                            and "23:00" not in r_status
-                            and "23:15" not in r_status
-                            and "23:35" not in r_status
-                            and "23:55" not in r_status
-                            and "23:59" not in r_status
-                            and "00:15" not in r_status
-                            and "00:35" not in r_status
-                            and "00:50" not in r_status
-                            and "00:55" not in r_status
-                            and "01:15" not in r_status
-                            and "01:35" not in r_status
-                            and "02:05" not in r_status
-                            and "09:30" not in r_status
-                            and "09:50" not in r_status
-                            and "10:40" not in r_status
-                            and "11:00" not in r_status
-                            and "11:20" not in r_status
-                            and "11:40" not in r_status
-                            and "12:00" not in r_status
-                            and "12:20" not in r_status
-                            and "12:30" not in r_status
-                            and "12:40" not in r_status
-                            and "13:00" not in r_status
-                            and "13:15" not in r_status
-                            and "13:30" not in r_status
-                            and "13:45" not in r_status
-                            and "14:00" not in r_status
-                            and "14:15" not in r_status
-                            and "14:30" not in r_status
-                            and "14:45" not in r_status
-                            and "15:00" not in r_status
-                            and "15:15" not in r_status
-                            and "15:30" not in r_status
-                            and "15:45" not in r_status
-                            and "16:00" not in r_status
-                            and "17:00" not in r_status
-                            and "17:30" not in r_status
-                            and "18:00" not in r_status
-                            and "18:30" not in r_status
-                            and "19:00" not in r_status
-                            and "19:30" not in r_status
-                            and "20:00" not in r_status
-                            and "20:30" not in r_status
-                            and "21:00" not in r_status
-                            and "21:15" not in r_status
-                            and "21:30" not in r_status
-                            and "22:00" not in r_status
-                        )
-                    ):
-                        expired_plan_errors.append(
-                            f"Line {idx} ({r_id} Col 3): expired row planned window in '{r_status}'"
-                        )
+                    wins = list(win_re.finditer(r_status))
+                    if wins:
+                        rem_m = _parse_hhmm_to_remaining_minutes(wins[-1].group(1), wins[-1].group(2), now_dt)
+                        if rem_m < 0:
+                            if auto_extend_to:
+                                new_r_status = _replace_last_window_end(r_status, auto_extend_to)
+                                row_modified = True
+                            else:
+                                expired_plan_errors.append(
+                                    f"Line {idx} ({r_id} Col 3): expired row planned window in '{r_status}' ({-rem_m} min overdue)"
+                                )
+                if row_modified:
+                    lines[idx - 1] = f"| {r_id} | {new_r_desc} | {new_r_status} | {r_exec} | {r_proof} |"
+                    ts_updated_on_disk = True
+
+    if auto_extend_to and ts_updated_on_disk:
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"[--auto-extend-to] Extended all overdue active planned windows to {auto_extend_to} EET")
 
 
     print("=== tasks.md Automated Status, Pixel & Visual-Review (view_file) Audit ===")
