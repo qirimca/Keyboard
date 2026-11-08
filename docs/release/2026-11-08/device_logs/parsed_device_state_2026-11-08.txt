@@ -1,0 +1,740 @@
+# QırımKey Device & Simulator Diagnostic State Summary (2026-11-08)
+# Generated: 2026-11-08 20:27:50 EET
+# Generator: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/parse_device_logs.py
+
+================================================================================
+1. PHYSICAL DEVICE: iPad Air 3 (00008020-00025DC63AA3002E)
+================================================================================
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_appGroupDataContainer/Library/Preferences/group.crh.key.keyboardplus.plist (iPad Air 3 Fresh App Group Container — pulled 17:08 EET, mtime=2026-11-08 13:17:24 EET)
+  crh.key.cachedEmojiKeyboardEnabled: True
+  crh.key.cachedEnabledKeyboards: ['com.grammarly.keyboard.extension', 'crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.KeyboardUkrainian', 'crh.key.keyboard.keyboard', 'crh.key.keyboard.pro', 'emoji', 'emoji@sw=Emoji;hw=Automatic', 'en_US@sw=QWERTY;hw=Automatic', 'tr_TR@sw=Turkish-Q;hw=Automatic;ml=1', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: True
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: False
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=347.0 constraint=347.0 host=347.0 window=347.0 width=1112.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastExplicitSlot0ConfirmTimestamp: 1794078295.627777
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: True
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794128907.122175
+  crh.key.review.sessionCount: 13
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.isUITesting: True
+  crh.key.test.sandboxFocused: False
+  crh.key.test.uiTestingTimestamp: 1794134988.578151
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: True
+  crh.key.wordLearningEnabled: True
+=== DIAGNOSTICS: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_appGroupDataContainer/Diagnostics (iPad Air 3 Fresh App Group Container)
+  keyboard_lifecycle.jsonl: [NOT PRESENT — 0 extension lifecycle events recorded in this container]
+  metrickit_diagnostics.jsonl: 0 MXHangDiagnostic / MXCrashDiagnostic entries (0 hangs)
+  metrickit_diag_*.json payloads: 0 files
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_appDataContainer/Library/Preferences/crh.key.keyboard.plist (iPad Air 3 App Data Container, mtime=2026-11-08 12:49:54 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: 'Кʼиримтатарджа — тувгъан тилимиз'
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_app/Library/Preferences/crh.key.keyboard.plist (iPad Air 3 Snapshot ipad_app, mtime=2026-11-08 12:49:54 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: 'Кʼиримтатарджа — тувгъан тилимиз'
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_group/Library/Preferences/group.crh.key.keyboardplus.plist (iPad Air 3 Snapshot ipad_group, mtime=2026-11-08 12:51:14 EET)
+  crh.key.cachedEmojiKeyboardEnabled: True
+  crh.key.cachedEnabledKeyboards: ['com.grammarly.keyboard.extension', 'crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.keyboard', 'emoji', 'emoji@sw=Emoji;hw=Automatic', 'en_US@sw=QWERTY;hw=Automatic', 'tr_TR@sw=Turkish-Q;hw=Automatic;ml=1', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: True
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: False
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=347.0 constraint=347.0 host=347.0 window=347.0 width=1112.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastExplicitSlot0ConfirmTimestamp: 1794078295.627777
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: False
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794128907.122175
+  crh.key.review.sessionCount: 13
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.isUITesting: True
+  crh.key.test.sandboxFocused: False
+  crh.key.test.uiTestingTimestamp: 1794134988.578151
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: False
+  crh.key.wordLearningEnabled: True
+=== DIAGNOSTICS: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_group/Diagnostics (iPad Air 3 Snapshot ipad_group)
+  keyboard_lifecycle.jsonl: [NOT PRESENT — 0 extension lifecycle events recorded in this container]
+  metrickit_diagnostics.jsonl: 0 MXHangDiagnostic / MXCrashDiagnostic entries (0 hangs)
+  metrickit_diag_*.json payloads: 0 files
+=== DOCUMENTS (iPad Air 3 ipad_air3_appDataContainer/Documents): /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_appDataContainer/Documents (48 PNG files, latest mtime=2026-11-08 12:49:54 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18.png (716128 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18_iPad.png (716128 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_ipad_air3_b18.png (336380 B, mtime=2026-11-08 12:02:13 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18.png (950982 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18_iPad.png (950982 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png (476149 B, mtime=2026-11-08 12:01:40 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18.png (657741 B, mtime=2026-11-08 12:49:08 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18_iPad.png (657741 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png (298133 B, mtime=2026-11-08 12:01:19 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18.png (649660 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18_iPad.png (649660 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png (296075 B, mtime=2026-11-08 12:01:26 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18.png (877494 B, mtime=2026-11-08 12:49:07 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18_iPad.png (877494 B, mtime=2026-11-08 12:49:49 EET)
+  Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png (380317 B, mtime=2026-11-08 12:01:03 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18.png (698399 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPad.png (698399 B, mtime=2026-11-08 12:49:51 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_ipad_air3_b18.png (307804 B, mtime=2026-11-08 12:01:59 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18.png (407613 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18_iPad.png (407613 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_20_30_AboutView_NoTruncation_ipad_air3_b18.png (347607 B, mtime=2026-11-08 12:02:30 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18.png (653616 B, mtime=2026-11-08 12:49:08 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18_iPad.png (653616 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png (302546 B, mtime=2026-11-08 12:01:12 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18.png (877494 B, mtime=2026-11-08 12:49:07 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18_iPad.png (877494 B, mtime=2026-11-08 12:49:49 EET)
+  Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png (380317 B, mtime=2026-11-08 12:00:53 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18.png (895357 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18_iPad.png (895357 B, mtime=2026-11-08 12:49:51 EET)
+  Proof_20_39_HomeView_Backdrop_Light_ipad_air3_b18.png (381923 B, mtime=2026-11-08 12:01:49 EET)
+  Proof_Build18_iPad_ipad_01_home.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_02a_switcher_uk_mid_drag.png (877494 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_Build18_iPad_ipad_02b_switcher_uk_post_drag.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_02c_abv_bridge_mid_drag.png (877494 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_Build18_iPad_ipad_02d_abv_bridge_post_drag.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_05_smart_quotes_ok.png (893274 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_05b_backspace_undo_qirim.png (894397 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_iPad_ipad_05c_orthography_yaptinmi_gece_kunduz.png (902022 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_iPad_ipad_06_ukrainian_fiva_translit.png (905277 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_ipad_01_home.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02a_switcher_uk_mid_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02b_switcher_uk_post_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02c_abv_bridge_mid_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02d_abv_bridge_post_drag.png (877494 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05_smart_quotes_ok.png (893274 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05b_backspace_undo_qirim.png (894397 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05c_orthography_yaptinmi_gece_kunduz.png (902022 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_06_ukrainian_fiva_translit.png (905277 B, mtime=2026-11-08 12:49:13 EET)
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_app/Library_Preferences/crh.key.keyboard.plist (iPad Air 3 Snapshot ipad_air3_app, mtime=2026-11-08 12:49:54 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: 'Кʼиримтатарджа — тувгъан тилимиз'
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== DOCUMENTS (iPad Air 3 ipad_air3_app/Documents): /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_app/Documents (48 PNG files, latest mtime=2026-11-08 17:40:20 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18.png (716128 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18_iPad.png (716128 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_ipad_air3_b18.png (336380 B, mtime=2026-11-08 12:02:13 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18.png (950982 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18_iPad.png (950982 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png (476149 B, mtime=2026-11-08 12:01:40 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18.png (657741 B, mtime=2026-11-08 12:49:08 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18_iPad.png (657741 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png (298133 B, mtime=2026-11-08 12:01:19 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18.png (649660 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18_iPad.png (649660 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png (296075 B, mtime=2026-11-08 12:01:26 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18.png (877494 B, mtime=2026-11-08 12:49:07 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18_iPad.png (877494 B, mtime=2026-11-08 12:49:49 EET)
+  Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png (380317 B, mtime=2026-11-08 12:01:03 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18.png (698399 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPad.png (698399 B, mtime=2026-11-08 12:49:51 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_ipad_air3_b18.png (307804 B, mtime=2026-11-08 12:01:59 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18.png (407613 B, mtime=2026-11-08 12:49:10 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18_iPad.png (407613 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_20_30_AboutView_NoTruncation_ipad_air3_b18.png (347607 B, mtime=2026-11-08 12:02:30 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18.png (653616 B, mtime=2026-11-08 12:49:08 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18_iPad.png (653616 B, mtime=2026-11-08 12:49:50 EET)
+  Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png (302546 B, mtime=2026-11-08 12:01:12 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18.png (877494 B, mtime=2026-11-08 12:49:07 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18_iPad.png (877494 B, mtime=2026-11-08 12:49:49 EET)
+  Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png (380317 B, mtime=2026-11-08 12:00:53 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18.png (895357 B, mtime=2026-11-08 12:49:09 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18_iPad.png (895357 B, mtime=2026-11-08 12:49:51 EET)
+  Proof_20_39_HomeView_Backdrop_Light_ipad_air3_b18.png (381923 B, mtime=2026-11-08 12:01:49 EET)
+  Proof_Build18_iPad_ipad_01_home.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_02a_switcher_uk_mid_drag.png (877494 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_Build18_iPad_ipad_02b_switcher_uk_post_drag.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_02c_abv_bridge_mid_drag.png (877494 B, mtime=2026-11-08 12:49:52 EET)
+  Proof_Build18_iPad_ipad_02d_abv_bridge_post_drag.png (877494 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_05_smart_quotes_ok.png (893274 B, mtime=2026-11-08 12:49:53 EET)
+  Proof_Build18_iPad_ipad_05b_backspace_undo_qirim.png (894397 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_iPad_ipad_05c_orthography_yaptinmi_gece_kunduz.png (902022 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_iPad_ipad_06_ukrainian_fiva_translit.png (905277 B, mtime=2026-11-08 12:49:54 EET)
+  Proof_Build18_ipad_01_home.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02a_switcher_uk_mid_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02b_switcher_uk_post_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02c_abv_bridge_mid_drag.png (877494 B, mtime=2026-11-08 12:49:11 EET)
+  Proof_Build18_ipad_02d_abv_bridge_post_drag.png (877494 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05_smart_quotes_ok.png (893274 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05b_backspace_undo_qirim.png (894397 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_05c_orthography_yaptinmi_gece_kunduz.png (902022 B, mtime=2026-11-08 12:49:12 EET)
+  Proof_Build18_ipad_06_ukrainian_fiva_translit.png (905277 B, mtime=2026-11-08 12:49:13 EET)
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/ipad_air3_group/Library_Preferences/group.crh.key.keyboardplus.plist (iPad Air 3 Snapshot ipad_air3_group — pulled 17:39 EET, mtime=2026-11-08 20:02:36 EET)
+  crh.key.cachedEmojiKeyboardEnabled: True
+  crh.key.cachedEnabledKeyboards: ['com.grammarly.keyboard.extension', 'crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.keyboard', 'crh.key.keyboard.pro', 'emoji', 'emoji@sw=Emoji;hw=Automatic', 'en_US@sw=QWERTY;hw=Automatic', 'tr_TR@sw=Turkish-Q;hw=Automatic;ml=1', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: True
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: True
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=385.0 constraint=385.0 host=385.0 window=385.0 width=1112.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: True
+  crh.key.lastExplicitSlot0ConfirmTimestamp: 1794078295.627777
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: True
+  crh.key.lastSeenStd.crh.key.cyrillicEnabled: True
+  crh.key.lastSeenStd.crh.key.ipadAbvKeyDisabled: True
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSeenStd.crh.key.statsEnabled: True
+  crh.key.lastSeenStd.crh.key.suggestionsEnabled: True
+  crh.key.lastSeenStd.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSeenStd.crh.key.wordLearningEnabled: True
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: True
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794160899.338881
+  crh.key.review.sessionCount: 15
+  crh.key.stats.activeSeconds: 7.177308988571167
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.stats.lastCPM: 20
+  crh.key.stats.peakCPM: 20
+  crh.key.stats.totalCharacters: 2
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.sandboxFocused: False
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: True
+  crh.key.wordLearningEnabled: True
+
+================================================================================
+2. PHYSICAL DEVICE: iPhone 15 Pro (00008130-000954812231001C)
+================================================================================
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone_app/Library/Preferences/crh.key.keyboard.plist (iPhone 15 Pro Snapshot iphone_app, mtime=2026-11-08 12:50:03 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: 'Кʼиримтатарджа — тувгъан тилимиз'
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone_group/Library/Preferences/group.crh.key.keyboardplus.plist (iPhone 15 Pro Snapshot iphone_group, mtime=2026-11-08 12:51:03 EET)
+  crh.key.cachedEmojiKeyboardEnabled: False
+  crh.key.cachedEnabledKeyboards: ['com.grammarly.keyboard.extension', 'crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.keyboard', 'en_US@sw=QWERTY;hw=Automatic', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: False
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: False
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=852.0 constraint=235.5 host=nan window=852.0 width=393.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: False
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794123794.7694921
+  crh.key.review.sessionCount: 9
+  crh.key.stats.activeSeconds: 10.067670893669128
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.stats.lastCPM: 72
+  crh.key.stats.peakCPM: 150
+  crh.key.stats.totalCharacters: 13
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.isUITesting: True
+  crh.key.test.sandboxFocused: False
+  crh.key.test.uiTestingTimestamp: 1794134995.501365
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: False
+  crh.key.wordLearningEnabled: True
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone15pro_app/Library_Preferences/crh.key.keyboard.plist (iPhone 15 Pro Snapshot iphone15pro_app, mtime=2026-11-08 13:45:23 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: 'Dünyada eñ tatlı — qırımtatar tilimiz!'
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== DOCUMENTS (iPhone 15 Pro iphone15pro_app/Documents): /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone15pro_app/Documents (19 PNG files, latest mtime=2026-11-08 20:12:17 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18_iPhone.png (536569 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18_iPhone.png (1465376 B, mtime=2026-11-08 12:49:57 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18_iPhone.png (1119669 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18_iPhone.png (1116627 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18_iPhone.png (1324114 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPhone.png (1289328 B, mtime=2026-11-08 20:12:04 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18_iPhone.png (1288649 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18_iPhone.png (1114302 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18_iPhone.png (1323204 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18_iPhone.png (1504013 B, mtime=2026-11-08 12:49:57 EET)
+  Proof_Build18_iPhone_ipad_01_home.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02a_switcher_uk_mid_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02b_switcher_uk_post_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02c_abv_bridge_mid_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02d_abv_bridge_post_drag.png (1326148 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05_smart_quotes_ok.png (1499947 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05b_backspace_undo_qirim.png (1500531 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05c_orthography_yaptinmi_gece_kunduz.png (1513334 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_06_ukrainian_fiva_translit.png (1516731 B, mtime=2026-11-08 12:49:59 EET)
+=== PLIST: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone15pro_group/Library_Preferences/group.crh.key.keyboardplus.plist (iPhone 15 Pro Snapshot iphone15pro_group — pulled 17:39 EET, mtime=2026-11-08 20:02:32 EET)
+  crh.key.cachedEmojiKeyboardEnabled: False
+  crh.key.cachedEnabledKeyboards: ['com.grammarly.keyboard.extension', 'crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.keyboard', 'crh.key.keyboard.pro', 'en_US@sw=QWERTY;hw=Automatic', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: False
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: True
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=235.7 constraint=235.5 host=235.7 window=235.7 width=393.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: True
+  crh.key.lastSeenStd.crh.key.cyrillicEnabled: True
+  crh.key.lastSeenStd.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSeenStd.crh.key.statsEnabled: True
+  crh.key.lastSeenStd.crh.key.suggestionsEnabled: True
+  crh.key.lastSeenStd.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSeenStd.crh.key.wordLearningEnabled: True
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794160894.78857
+  crh.key.review.sessionCount: 12
+  crh.key.stats.activeSeconds: 421.2
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.stats.lastCPM: 750
+  crh.key.stats.lastWPM: 101
+  crh.key.stats.learnedWords: 0
+  crh.key.stats.manualWords: 121
+  crh.key.stats.peakCPM: 750
+  crh.key.stats.peakWPM: 101
+  crh.key.stats.phrasesInserted: 7
+  crh.key.stats.suggestedCharacters: 390
+  crh.key.stats.suggestedWords: 60
+  crh.key.stats.totalCharacters: 1154
+  crh.key.stats.totalWords: 181
+  crh.key.stats.uniqueWords: 0
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.sandboxFocused: False
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: True
+  crh.key.wordLearningEnabled: True
+=== DIAGNOSTICS: /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone_group/Diagnostics (iPhone 15 Pro Snapshot iphone_group)
+  keyboard_lifecycle.jsonl: [NOT PRESENT — 0 extension lifecycle events recorded in this container]
+  metrickit_diagnostics.jsonl: 0 MXHangDiagnostic / MXCrashDiagnostic entries (0 hangs)
+  metrickit_diag_*.json payloads: 0 files
+=== DOCUMENTS (iPhone 15 Pro iphone_app/Documents): /Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/device_logs/iphone_app/Documents (19 PNG files, latest mtime=2026-11-08 12:56:24 EET)
+  Proof_20_18_Stats_LearnedWordsSheet_Build18_iPhone.png (536569 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_20_18_Stats_LearnedWordsTile_Build18_iPhone.png (1465376 B, mtime=2026-11-08 12:49:57 EET)
+  Proof_20_20_StageManager_Lang_CRH_Build18_iPhone.png (1119669 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_20_StageManager_Lang_EN_Build18_iPhone.png (1116627 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_20_StageManager_Lang_UK_Build18_iPhone.png (1324114 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPhone.png (1289328 B, mtime=2026-11-08 12:49:57 EET)
+  Proof_20_30_AboutView_NoTruncation_Build18_iPhone.png (1288649 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_20_33_Unified_HomeView_Dark_Build18_iPhone.png (1114302 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_33_Unified_HomeView_Light_Build18_iPhone.png (1323204 B, mtime=2026-11-08 12:49:56 EET)
+  Proof_20_39_HomeView_Backdrop_Light_Build18_iPhone.png (1504013 B, mtime=2026-11-08 12:49:57 EET)
+  Proof_Build18_iPhone_ipad_01_home.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02a_switcher_uk_mid_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02b_switcher_uk_post_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02c_abv_bridge_mid_drag.png (1326148 B, mtime=2026-11-08 12:49:58 EET)
+  Proof_Build18_iPhone_ipad_02d_abv_bridge_post_drag.png (1326148 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05_smart_quotes_ok.png (1499947 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05b_backspace_undo_qirim.png (1500531 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_05c_orthography_yaptinmi_gece_kunduz.png (1513334 B, mtime=2026-11-08 12:49:59 EET)
+  Proof_Build18_iPhone_ipad_06_ukrainian_fiva_translit.png (1516731 B, mtime=2026-11-08 12:49:59 EET)
+
+================================================================================
+3. ACTIVE SIMULATOR: iPad (A16) Simulator (63ECA47D-F20B-4916-96C2-995009C737C4)
+================================================================================
+=== PLIST: /Users/love/Library/Developer/CoreSimulator/Devices/63ECA47D-F20B-4916-96C2-995009C737C4/data/Containers/Data/Application/97DABD32-12E5-48A8-B1F5-AC4CF3717A7A/Library/Preferences/crh.key.keyboard.plist (iPad (A16) Simulator App Container, mtime=2026-11-08 20:21:59 EET)
+  crh.key.cyrillicEnabled: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.oneHandedMode: 'off'
+  crh.key.statsEnabled: True
+  crh.key.suggestionsEnabled: True
+  crh.key.text: ''
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.wordLearningEnabled: True
+=== PLIST: /Users/love/Library/Developer/CoreSimulator/Devices/63ECA47D-F20B-4916-96C2-995009C737C4/data/Containers/Shared/AppGroup/364E36CC-2BB7-4666-8561-00087F037E2F/Library/Preferences/group.crh.key.keyboardplus.plist (iPad (A16) Simulator App Group Container, mtime=2026-11-08 20:22:09 EET)
+  crh.key.cachedEmojiKeyboardEnabled: True
+  crh.key.cachedEnabledKeyboards: ['crh.key.keyboard.KeyboardCyrillic', 'crh.key.keyboard.KeyboardUkrainian', 'crh.key.keyboard.keyboard', 'emoji', 'emoji@sw=Emoji', 'en_GB@sw=QWERTY;hw=Automatic', 'en_US@sw=QWERTY;hw=Automatic', 'uk_UA@sw=Ukrainian;hw=Automatic']
+  crh.key.cachedSysPref.GesturesEnabled: True
+  crh.key.cachedSysPref.KeyboardAllowPaddle: True
+  crh.key.cachedSysPref.KeyboardAutocapitalization: True
+  crh.key.cachedSysPref.KeyboardAutocorrection: True
+  crh.key.cachedSysPref.KeyboardCapsLock: True
+  crh.key.cachedSysPref.KeyboardCheckSpelling: True
+  crh.key.cachedSysPref.KeyboardContinuousPathDeleteWholeWord: True
+  crh.key.cachedSysPref.KeyboardContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardFloatingContinuousPathEnabled: True
+  crh.key.cachedSysPref.KeyboardMathExpressionCompletion: True
+  crh.key.cachedSysPref.KeyboardPeriodShortcut: True
+  crh.key.cachedSysPref.KeyboardPrediction: True
+  crh.key.cachedSysPref.KeyboardSmartPunctuation: True
+  crh.key.cachedSysPref.SmartDashesEnabled: True
+  crh.key.cachedSysPref.purgedBuild15: True
+  crh.key.cyrillicEnabled: True
+  crh.key.cyrillicExtensionSeen: True
+  crh.key.debug.layout: 'view=820.0 constraint=385.0 host=nan window=820.0 width=1180.0'
+  crh.key.extensionConfirmedFullAccess: True
+  crh.key.interfaceLanguage: 'uk'
+  crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastRenderedCyrillicAdded: True
+  crh.key.lastRenderedPrimaryAdded: True
+  crh.key.lastRenderedUkrainianAdded: True
+  crh.key.lastSeenStd.crh.key.cyrillicEnabled: True
+  crh.key.lastSeenStd.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSeenStd.crh.key.oneHandedMode: 'off'
+  crh.key.lastSeenStd.crh.key.statsEnabled: True
+  crh.key.lastSeenStd.crh.key.suggestionsEnabled: True
+  crh.key.lastSeenStd.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSeenStd.crh.key.wordLearningEnabled: True
+  crh.key.lastSynced.crh.key.cyrillicEnabled: True
+  crh.key.lastSynced.crh.key.ipadAbvKeyDisabled: False
+  crh.key.lastSynced.crh.key.oneHandedMode: 'off'
+  crh.key.lastSynced.crh.key.statsEnabled: True
+  crh.key.lastSynced.crh.key.suggestionsEnabled: True
+  crh.key.lastSynced.crh.key.ukrainianCyrillicLayout: True
+  crh.key.lastSynced.crh.key.wordLearningEnabled: True
+  crh.key.migration.strictQuotedLearnedWordsV1: True
+  crh.key.oneHandedMode: 'off'
+  crh.key.primaryExtensionSeen: True
+  crh.key.review.lastSessionTimestamp: 1794160821.7886891
+  crh.key.review.sessionCount: 3
+  crh.key.stats.bundledLexiconSignature.v3: '3.1-18-v3'
+  crh.key.statsEnabled: True
+  crh.key.suggestions: True
+  crh.key.suggestionsEnabled: True
+  crh.key.test.allowSpaceBarBreathing: True
+  crh.key.test.extendInputCalloutDuration: False
+  crh.key.test.holdCallout: False
+  crh.key.test.sandboxFocused: False
+  crh.key.ukrainianCyrillicLayout: True
+  crh.key.ukrainianExtensionSeen: True
+  crh.key.wordLearningEnabled: True
+=== DIAGNOSTICS: /Users/love/Library/Developer/CoreSimulator/Devices/63ECA47D-F20B-4916-96C2-995009C737C4/data/Containers/Shared/AppGroup/364E36CC-2BB7-4666-8561-00087F037E2F/Diagnostics (iPad (A16) Simulator App Group Diagnostics)
+  keyboard_lifecycle.jsonl: 98 events (mtime=2026-11-08 20:20:59 EET, size=17121 B)
+    [1] ts=1794137990.271 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [2] ts=1794142607.652 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [3] ts=1794142657.404 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [4] ts=1794142795.123 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [5] ts=1794149096.385 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [6] ts=1794149538.174 bundle=crh.key.keyboard event=app_launch isUITest=0 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [7] ts=1794150095.344 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [8] ts=1794150613.848 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [9] ts=1794150621.912 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [10] ts=1794150685.543 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [11] ts=1794150738.874 bundle=crh.key.keyboard event=app_launch isUITest=0 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [12] ts=1794152620.059 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [13] ts=1794152631.347 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=1 wordLearning=1
+    [14] ts=1794152687.724 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [15] ts=1794152723.567 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [16] ts=1794152772.277 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [17] ts=1794152869.308 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [18] ts=1794152869.496 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [19] ts=1794152873.075 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=279 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [20] ts=1794153102.115 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [21] ts=1794153103.855 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [22] ts=1794153104.622 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=265 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [23] ts=1794153117.629 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [24] ts=1794153118.546 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [25] ts=1794153119.312 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=265 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [26] ts=1794153150.416 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [27] ts=1794153152.001 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [28] ts=1794153152.318 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [29] ts=1794153167.122 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [30] ts=1794153169.196 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [31] ts=1794153169.660 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=337 boundsWidth=1180 constraintHeight=385 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [32] ts=1794153183.714 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [33] ts=1794153185.311 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [34] ts=1794153186.519 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=337 boundsWidth=1180 constraintHeight=347 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [35] ts=1794153202.430 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [36] ts=1794153204.615 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [37] ts=1794153206.036 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [38] ts=1794153218.113 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [39] ts=1794153218.419 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=303 boundsWidth=320 constraintHeight=271 constraintPriority=999 isFloating=true locale=crh-Latn preferredContentHeight=271
+    [40] ts=1794153252.892 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [41] ts=1794153255.248 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [42] ts=1794153255.929 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=255 boundsWidth=320 constraintHeight=226 constraintPriority=999 isFloating=true locale=crh-Latn preferredContentHeight=226
+    [43] ts=1794153289.638 bundle=crh.key.keyboard.keyboard event=viewDidLoad locale=crh-Latn
+    [44] ts=1794153289.835 bundle=crh.key.keyboard.keyboard event=viewDidAppear boundsHeight=226 boundsWidth=820 constraintHeight=265 constraintPriority=999 isFloating=false locale=crh-Latn preferredContentHeight=0
+    [45] ts=1794153296.564 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [46] ts=1794153329.464 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [47] ts=1794153342.729 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [48] ts=1794153375.934 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [49] ts=1794153389.763 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [50] ts=1794153409.687 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [51] ts=1794153459.579 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [52] ts=1794159074.033 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [53] ts=1794159075.761 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [54] ts=1794159099.837 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [55] ts=1794159100.458 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=0 wordLearning=1
+    [56] ts=1794160784.785 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.Keyboard,crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian
+    [57] ts=1794160788.073 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=uk oneHanded=off suggestions=0 wordLearning=1
+    [58] ts=1794160820.105 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.Keyboard,crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian
+    [59] ts=1794160821.759 bundle=crh.key.keyboard event=app_launch isUITest=0 lang=uk oneHanded=off suggestions=0 wordLearning=1
+    [60] ts=1794160854.943 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [61] ts=1794160864.736 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [62] ts=1794161142.049 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [63] ts=1794161144.045 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [64] ts=1794161173.039 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [65] ts=1794161175.281 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [66] ts=1794161225.556 bundle=crh.key.keyboard.KeyboardCyrillic event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [67] ts=1794161225.867 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [68] ts=1794161227.704 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=279 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [69] ts=1794161492.393 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [70] ts=1794161495.086 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [71] ts=1794161497.349 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [72] ts=1794161498.034 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=265 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [73] ts=1794161515.826 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [74] ts=1794161518.261 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [75] ts=1794161519.465 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [76] ts=1794161520.266 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=265 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [77] ts=1794161556.478 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [78] ts=1794161558.969 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [79] ts=1794161560.619 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [80] ts=1794161560.968 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [81] ts=1794161580.209 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [82] ts=1794161580.869 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [83] ts=1794161582.572 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [84] ts=1794161583.556 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=337 boundsWidth=1180 constraintHeight=385 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [85] ts=1794161606.788 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [86] ts=1794161609.379 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [87] ts=1794161611.505 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [88] ts=1794161612.170 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=337 boundsWidth=1180 constraintHeight=347 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [89] ts=1794161643.194 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [90] ts=1794161645.186 bundle=crh.key.keyboard event=app_launch isUITest=1 lang=crh oneHanded=off suggestions=0 wordLearning=1
+    [91] ts=1794161649.362 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [92] ts=1794161817.285 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+    [93] ts=1794161818.954 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=255 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [94] ts=1794161954.060 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=303 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [95] ts=1794162024.916 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidAppear boundsHeight=303 boundsWidth=820 constraintHeight=303 constraintPriority=999 isFloating=false locale=crh-Cyrl preferredContentHeight=0
+    [96] ts=1794162047.735 bundle=crh.key.keyboard event=keyboard_settings_sync authoritative=true crhKeyboards=crh.key.keyboard.KeyboardCyrillic,crh.key.keyboard.KeyboardUkrainian,crh.key.keyboard.keyboard
+    [97] ts=1794162048.719 bundle=crh.key.keyboard event=app_launch isUITest=0 lang=crh oneHanded=off suggestions=1 wordLearning=1
+    [98] ts=1794162059.373 bundle=crh.key.keyboard.KeyboardCyrillic event=viewDidLoad locale=crh-Cyrl
+  metrickit_diagnostics.jsonl: 0 MXHangDiagnostic / MXCrashDiagnostic entries (0 hangs)
+  metrickit_diag_*.json payloads: 0 files
+
+================================================================================
+4. CROSS-DEVICE KEY STATE & SYNC AUDIT SUMMARY
+================================================================================
+  crh.key.interfaceLanguage: iPadAir3_1739='uk' | iPadAir3_1708='uk' | iPadAir3_1150='uk' | iPhone15Pro_1739='uk' | iPhone15Pro_1151='uk' | iPadSim_A16='uk'
+  crh.key.cyrillicEnabled: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.ukrainianCyrillicLayout: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.ipadAbvKeyDisabled: iPadAir3_1739=True | iPadAir3_1708=False | iPadAir3_1150=False | iPhone15Pro_1739=False | iPhone15Pro_1151=False | iPadSim_A16=False
+  crh.key.lastRenderedPrimaryAdded: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.lastRenderedCyrillicAdded: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.lastRenderedUkrainianAdded: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=False | iPhone15Pro_1739=True | iPhone15Pro_1151=False | iPadSim_A16=True
+  crh.key.primaryExtensionSeen: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.cyrillicExtensionSeen: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.ukrainianExtensionSeen: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=False | iPhone15Pro_1739=True | iPhone15Pro_1151=False | iPadSim_A16=True
+  crh.key.cachedSysPref.GesturesEnabled: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=False | iPhone15Pro_1151=False | iPadSim_A16=True
+  crh.key.extensionConfirmedFullAccess: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.statsEnabled: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.suggestionsEnabled: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.wordLearningEnabled: iPadAir3_1739=True | iPadAir3_1708=True | iPadAir3_1150=True | iPhone15Pro_1739=True | iPhone15Pro_1151=True | iPadSim_A16=True
+  crh.key.stats.bundledLexiconSignature.v3: iPadAir3_1739='3.1-18-v3' | iPadAir3_1708='3.1-18-v3' | iPadAir3_1150='3.1-18-v3' | iPhone15Pro_1739='3.1-18-v3' | iPhone15Pro_1151='3.1-18-v3' | iPadSim_A16='3.1-18-v3'
+  crh.key.debug.layout: iPadAir3_1739='view=385.0 constraint=385.0 host=385.0 window=385.0 width=1112.0' | iPadAir3_1708='view=347.0 constraint=347.0 host=347.0 window=347.0 width=1112.0' | iPadAir3_1150='view=347.0 constraint=347.0 host=347.0 window=347.0 width=1112.0' | iPhone15Pro_1739='view=235.7 constraint=235.5 host=235.7 window=235.7 width=393.0' | iPhone15Pro_1151='view=852.0 constraint=235.5 host=nan window=852.0 width=393.0' | iPadSim_A16='view=820.0 constraint=385.0 host=nan window=820.0 width=1180.0'
+
+================================================================================
+5. 5-PART SETTINGS -> KEYBOARDS <-> HOMEVIEW LIVE SYNCHRONIZATION ARCHITECTURE
+================================================================================
+  [1] TIPreferencesController.preferencesChangedCallback: + Background CFPreferencesAppSynchronize(kCFPreferencesAnyApplication):
+      - SystemKeyboardSettings.queryTIPreferencesEnabledKeyboards(forceUpdate: true) (AppConfiguration.swift#L2106-L2150)
+        calls CFPreferencesAppSynchronize(kCFPreferencesAnyApplication) / CFPreferencesAppSynchronize('com.apple.Preferences') (#L2107-L2112)
+        and invokes preferencesChangedCallback: and synchronizePreferences on TIPreferencesController & UIKeyboardPreferencesController
+        singletons (#L2134-L2140) to invalidate stale in-memory TextInput caches immediately after Settings.app changes.
+      - SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh:) (AppConfiguration.swift#L2315-L2498)
+        executes CFPreferencesAppSynchronize(kCFPreferencesAnyApplication) and CFPreferencesAppSynchronize('com.apple.Preferences')
+        on background queue sysPrefsRefreshQueue (#L2354-L2378) before reading Keyboards / AppleKeyboards.
+  [2] Authoritative AppleKeyboards Even When All 3 crh.key.* Keyboards Are OFF:
+      - recordAuthoritativeSource(_:alwaysAuthoritativeWhenNonEmpty: true) (AppConfiguration.swift#L2341-L2396) and
+        SystemKeyboardSettings.hasAuthoritativeSystemKeyboardsList() (AppConfiguration.swift#L2500-L2508) treat any non-empty
+        system keyboard list (e.g. ['en_US@sw=QWERTY', 'emoji']) from TIPreferencesController, com.apple.Preferences, or
+        .globalDomain as authoritative for both presence and absence of crh.key.* extensions.
+  [3] Priority 5 on Physical iOS/iPadOS Devices & Zero Union of Stale *ExtensionSeen:
+      - Priority 5 in SystemKeyboardSettings.enabledSystemKeyboardIdentifiers(forceRefresh:) (AppConfiguration.swift#L2408-L2420)
+        treats UITextInputMode.activeInputModes via activeInputModeLanguages(forceRefresh:) (#L2188-L2268) in isContainingApp
+        as an authoritative source (recordAuthoritativeSource(liveInputModes, alwaysAuthoritativeWhenNonEmpty: true)) when
+        !didReadAuthoritativeThirdPartyList on physical iOS/iPadOS devices.
+      - When didReadAuthoritativeThirdPartyList == true (AppConfiguration.swift#L2433-L2462, #L2270-L2310),
+        collected strips any crh.key.* identifier not present in authoritativeThirdPartySet and overwrites
+        primaryExtensionSeen / cyrillicExtensionSeen / ukrainianExtensionSeen in App Group UserDefaults to match
+        hasAuthLatin / hasAuthCyr / hasAuthUkr (including false on removal).
+  [4] Asynchronous 0.6s Polling on SystemKeyboardSettings.refreshQueue When scenePhase != .background + Darwin Observers:
+      - HomeView.homeLifecycleObserversView (HomeView.swift#L2363-L2383) runs Timer.publish(every: 0.6, on: .main, in: .common)
+        whenever scenePhase != .background (covering iPad Split View / Slide Over / Stage Manager alongside Settings.app),
+        refreshes activeInputModeLanguages(forceRefresh: true) on main thread, and dispatches
+        enabledSystemKeyboardIdentifiers(forceRefresh: true) asynchronously on SystemKeyboardSettings.refreshQueue before
+        updating refreshCyrillicStatus(force: true) on DispatchQueue.main, backed by Darwin observers in
+        HomeView.registerStatsSyncObserverIfNeeded() (HomeView.swift#L2677-L2695).
+  [5] Direct Settings -> Keyboards Launch on HomeView Switch Tap (Zero OnboardingView Modal):
+      - Tapping any of the 3 layout switches or row titles in HomeView (bentoStandardLayoutTile at HomeView.swift#L667,
+        abBentoLayoutsSection at #L1406 & #L1437, standardLayoutRowContent at #L4509 & #L4537, cyrillicLayoutsSection at #L4609 & #L4640)
+        directly invokes Self.openAppSettings() (HomeView.swift#L2912-L2922, UIApplication.openSettingsURLString) without
+        presenting OnboardingView.

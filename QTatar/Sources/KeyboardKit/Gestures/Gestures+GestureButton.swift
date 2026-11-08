@@ -174,7 +174,7 @@ private extension Gestures.GestureButton {
 private extension Gestures.GestureButton {
 
     func tryHandlePressInstant() {
-        if isPressed || didPressInActiveGesture { return }
+        if didPressInActiveGesture { return }
         didPressInActiveGesture = true
         isPressed = true
         pressAction?()
@@ -183,7 +183,7 @@ private extension Gestures.GestureButton {
     }
 
     func tryHandlePress(_ value: DragGesture.Value) {
-        if isPressed || didPressInActiveGesture { return }
+        if didPressInActiveGesture { return }
         didPressInActiveGesture = true
         isPressed = true
         pressAction?()
@@ -194,13 +194,26 @@ private extension Gestures.GestureButton {
 
     func tryHandleRelease(_ value: DragGesture.Value, in geo: GeometryProxy) {
         if !isPressed && !didPressInActiveGesture { return }
-        let wasPressed = isPressed
-        isPressed = false
+        let wasPressed = isPressed || didPressInActiveGesture
         didPressInActiveGesture = false
         longPressDate = Date()
         repeatDate = Date()
         repeatTimer.stop()
         releaseDate = tryTriggerDoubleTap() ? .distantPast : Date()
+        let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+        let holdHighlight = ProcessInfo.processInfo.arguments.contains("-qt_hold_callout")
+            || ProcessInfo.processInfo.arguments.contains("-qt_extend_input_callout")
+            || defaults?.bool(forKey: "crh.key.test.holdCallout") == true
+            || defaults?.bool(forKey: "crh.key.test.extendInputCalloutDuration") == true
+        if holdHighlight {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.60) {
+                if !self.didPressInActiveGesture {
+                    self.isPressed = false
+                }
+            }
+        } else {
+            isPressed = false
+        }
         dragEndAction?(value)
         if wasPressed {
             if geo.contains(value.location) {

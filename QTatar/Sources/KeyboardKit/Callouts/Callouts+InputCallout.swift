@@ -102,13 +102,14 @@ private struct InputCalloutBubbleShape: Shape {
         )
 
         if rightExpand > 0.5 && bottomH > 1 {
-            let rightStart = max(topR, topH - neckH * 0.68)
-            let rightEnd = min(h - bottomR, topH + neckH * 0.36)
-            p.addLine(to: CGPoint(x: w, y: rightStart))
+            let neckStartY = max(topR, topH - neckH * 0.42)
+            let neckEndY = min(h - bottomR, topH + neckH * 0.58)
+            let neckMidY = (neckStartY + neckEndY) * 0.5
+            p.addLine(to: CGPoint(x: w, y: neckStartY))
             p.addCurve(
-                to: CGPoint(x: stemMaxX, y: rightEnd),
-                control1: CGPoint(x: w, y: topH - neckH * 0.08),
-                control2: CGPoint(x: stemMaxX, y: topH - neckH * 0.14)
+                to: CGPoint(x: stemMaxX, y: neckEndY),
+                control1: CGPoint(x: w, y: neckMidY),
+                control2: CGPoint(x: stemMaxX, y: neckMidY)
             )
             p.addLine(to: CGPoint(x: stemMaxX, y: h - bottomR))
         } else {
@@ -128,13 +129,14 @@ private struct InputCalloutBubbleShape: Shape {
         )
 
         if leftExpand > 0.5 && bottomH > 1 {
-            let leftStart = min(h - bottomR, topH + neckH * 0.36)
-            let leftEnd = max(topR, topH - neckH * 0.68)
-            p.addLine(to: CGPoint(x: stemMinX, y: leftStart))
+            let neckStartY = max(topR, topH - neckH * 0.42)
+            let neckEndY = min(h - bottomR, topH + neckH * 0.58)
+            let neckMidY = (neckStartY + neckEndY) * 0.5
+            p.addLine(to: CGPoint(x: stemMinX, y: neckEndY))
             p.addCurve(
-                to: CGPoint(x: 0, y: leftEnd),
-                control1: CGPoint(x: stemMinX, y: topH - neckH * 0.14),
-                control2: CGPoint(x: 0, y: topH - neckH * 0.08)
+                to: CGPoint(x: 0, y: neckStartY),
+                control1: CGPoint(x: stemMinX, y: neckMidY),
+                control2: CGPoint(x: 0, y: neckMidY)
             )
             p.addLine(to: CGPoint(x: 0, y: topR))
         } else {
@@ -154,7 +156,8 @@ private struct InputCalloutBubbleShape: Shape {
 private extension Callouts.InputCallout {
 
     var usesModernPillStyle: Bool {
-        style.callout.curveSize.width <= 0.01 && style.callout.curveSize.height <= 0.01
+        guard #available(iOS 27.0, *), !keyboardContext.isKeyboardFloating, keyboardContext.deviceType == .phone else { return false }
+        return style.callout.curveSize.width <= 0.01 && style.callout.curveSize.height <= 0.01
     }
 
     @ViewBuilder
@@ -244,9 +247,7 @@ private extension Callouts.InputCallout {
     }
 
     var isTopConstrained: Bool {
-        guard buttonFrame.height > 0, calloutContext.topAvailableSpace > 0 else { return false }
-        let naturalTopY = buttonFrame.minY - calloutSizeHeight
-        return naturalTopY < minVisibleY
+        false
     }
 
     var effectiveCalloutHeight: CGFloat {
@@ -286,8 +287,10 @@ private extension Callouts.InputCallout {
     }
 
     var baseCurveWidth: CGFloat {
-        guard buttonSize.width > 0 else { return style.callout.curveSize.width }
-        return max(style.callout.curveSize.width, round((style.calloutSize.width - buttonSize.width) / 2.0))
+        let minExpand = max(style.callout.curveSize.width, 11.0)
+        guard buttonSize.width > 0 else { return minExpand }
+        let targetWidth = max(style.calloutSize.width, buttonSize.width + 22.0)
+        return max(minExpand, round((targetWidth - buttonSize.width) / 2.0))
     }
 
     var leftExpand: CGFloat {

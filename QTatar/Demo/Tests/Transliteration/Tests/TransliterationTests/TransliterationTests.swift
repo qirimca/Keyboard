@@ -1144,7 +1144,7 @@ struct TransliterationAndDatabaseSuite {
         #expect(p.bottomTopBottomInset == 5.5)
         #expect(p.visibleKeyHeight(forRowAt: 0) == 39.0)
         #expect(p.visibleKeyHeight(forRowAt: 3) == 39.0)
-        #expect(p.totalKeyboardHeight == 232.0)
+        #expect(p.totalKeyboardHeight == 229.0)
 
         let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
         #expect(pNoToolbar.totalKeyboardHeight == 200.0)
@@ -1167,15 +1167,16 @@ struct TransliterationAndDatabaseSuite {
         #expect(p.letterTopBottomInset == 5.5)
         #expect(p.bottomTopBottomInset == 5.5)
         #expect(p.visibleKeyHeight(forRowAt: 0) == 43.0)
-        #expect(p.toolbarHeight == 36.5)
-        #expect(p.totalKeyboardHeight == 243.0)
+        #expect(p.toolbarHeight == 29.0)
+        #expect(p.totalKeyboardHeight == 235.5)
 
         let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
-        #expect(pNoToolbar.totalKeyboardHeight == 206.5)
+        #expect(abs(pNoToolbar.totalKeyboardHeight - (206.5 + (7.0 / 3.0))) < 0.001)
 
         let l = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
         #expect(l.letterRowHeight == 40.0 && l.bottomRowHeight == 40.0)
         #expect(l.visibleKeyHeight(forRowAt: 0) == 33.0)
+        #expect(l.edgeHorizontalInset == 24.0)
         #expect(l.totalKeyboardHeight == 198.0)
 
         let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
@@ -1192,7 +1193,7 @@ struct TransliterationAndDatabaseSuite {
         #expect(p.bottomTopBottomInset == 5.5)
         #expect(p.visibleKeyHeight(forRowAt: 0) == 44.0)
         #expect(p.visibleKeyHeight(forRowAt: 3) == 43.0)
-        #expect(p.totalKeyboardHeight == 251.0)
+        #expect(p.totalKeyboardHeight == 248.0)
 
         let l = KeyboardAdaptiveGeometry.resolve(isPad: false, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
         #expect(l.letterRowHeight == 40.0 && l.bottomRowHeight == 40.0)
@@ -1221,66 +1222,66 @@ struct TransliterationAndDatabaseSuite {
         #expect(fNoToolbar.totalKeyboardHeight == 226.0)
     }
 
-    // 5. iPad Docked — Mini / 9.7" (<= 768 pt: 744x1133, 768x1024) -> invariant 258.0 pt Portrait / 338.0 pt Landscape
+    // 5. iPad Docked — Mini / 9.7" (<= 768 pt: 744x1133, 768x1024) -> 258.0 pt without toolbar / 296.0 pt with 38.0 pt toolbar Portrait; 338.0 pt / 379.0 pt Landscape
     for size in [CGSize(width: 744, height: 1133), CGSize(width: 768, height: 1024)] {
         let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
         let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
-        #expect(p.letterRowHeight == 56.0 && p.bottomRowHeight == 55.0)
-        #expect(p.toolbarHeight == 33.0)
-        #expect(p.totalKeyboardHeight == 258.0)
-        #expect(l.letterRowHeight == 75.5 && l.bottomRowHeight == 76.5)
-        #expect(l.toolbarHeight == 33.0)
-        #expect(l.totalKeyboardHeight == 338.0)
+        #expect(p.letterRowHeight == 64.0 && p.bottomRowHeight == 63.0)
+        #expect(p.toolbarHeight == 38.0)
+        #expect(p.totalKeyboardHeight == 296.0)
+        #expect(l.letterRowHeight == 83.5 && l.bottomRowHeight == 85.5)
+        #expect(l.toolbarHeight == 41.0)
+        #expect(l.totalKeyboardHeight == 379.0)
 
         let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
         let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
-        #expect(pNoToolbar.letterRowHeight == 67.0 && pNoToolbar.bottomRowHeight == 55.0)
+        #expect(pNoToolbar.letterRowHeight == 64.0 && pNoToolbar.bottomRowHeight == 63.0)
         #expect(pNoToolbar.totalKeyboardHeight == 258.0)
         #expect(lNoToolbar.letterRowHeight == 83.5 && lNoToolbar.bottomRowHeight == 85.5)
         #expect(lNoToolbar.totalKeyboardHeight == 338.0)
     }
 
-    // 6. iPad Docked — 10.5" Air 3 (834 pt) / 11" A16 (820 pt) / 11" Pro (769...959 pt) -> invariant 266.0 pt Portrait / 343.0 pt Landscape
+    // 6. iPad Docked — 10.5" Air 3 (834 pt) / 11" A16 (820 pt) / 11" Pro (769...959 pt) -> 262.0 pt / 300.0 pt Portrait; 347.0 pt / 388.0 pt Landscape
     for size in [CGSize(width: 810, height: 1080), CGSize(width: 820, height: 1180), CGSize(width: 834, height: 1112), CGSize(width: 834, height: 1194)] {
         let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
         let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
-        #expect(p.letterRowHeight == 58.0 && p.bottomRowHeight == 57.0)
-        #expect(p.toolbarHeight == 33.0)
-        #expect(p.totalKeyboardHeight == 266.0)
-        #expect(l.letterRowHeight == 76.0 && l.bottomRowHeight == 76.0)
-        #expect(l.toolbarHeight == 35.0)
-        #expect(l.totalKeyboardHeight == 343.0)
+        #expect(p.letterRowHeight == 64.0 && p.bottomRowHeight == 64.0)
+        #expect(p.toolbarHeight == 38.0)
+        #expect(p.totalKeyboardHeight == 300.0)
+        #expect(l.letterRowHeight == 84.5 && l.bottomRowHeight == 84.5)
+        #expect(l.toolbarHeight == 41.0)
+        #expect(l.totalKeyboardHeight == 388.0)
 
         let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
         let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
-        #expect(pNoToolbar.letterRowHeight == 69.0 && pNoToolbar.bottomRowHeight == 57.0)
-        #expect(pNoToolbar.totalKeyboardHeight == 266.0)
-        #expect(lNoToolbar.letterRowHeight == 84.5 && lNoToolbar.bottomRowHeight == 85.5)
-        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 0) == 71.5)
-        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 3) == 72.5)
-        #expect(lNoToolbar.totalKeyboardHeight == 343.0)
+        #expect(pNoToolbar.letterRowHeight == 64.0 && pNoToolbar.bottomRowHeight == 64.0)
+        #expect(pNoToolbar.totalKeyboardHeight == 262.0)
+        #expect(lNoToolbar.letterRowHeight == 84.5 && lNoToolbar.bottomRowHeight == 84.5)
+        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 0) == 73.0)
+        #expect(lNoToolbar.visibleKeyHeight(forRowAt: 3) == 73.0)
+        #expect(lNoToolbar.totalKeyboardHeight == 347.0)
     }
 
-    // 7. iPad Docked — 12.9" / 13" iPad Pro (>= 960 pt: 1024x1366, 1032x1376) -> invariant 296.0 pt Portrait / 378.0 pt Landscape
+    // 7. iPad Docked — 12.9" / 13" iPad Pro (>= 960 pt: 1024x1366, 1032x1376) -> 296.0 pt / 334.0 pt Portrait; 378.0 pt / 419.0 pt Landscape
     for size in [CGSize(width: 1024, height: 1366), CGSize(width: 1032, height: 1376)] {
         let p = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: true)
         let l = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: true)
-        #expect(p.letterRowHeight == 65.5 && p.bottomRowHeight == 64.5)
-        #expect(p.toolbarHeight == 33.0)
-        #expect(p.totalKeyboardHeight == 296.0)
+        #expect(p.letterRowHeight == 73.0 && p.bottomRowHeight == 72.0)
+        #expect(p.toolbarHeight == 38.0)
+        #expect(p.totalKeyboardHeight == 334.0)
         let p5RowsHeight: CGFloat = (0..<5).reduce(CGFloat(0)) { $0 + p.rowHeight(forRowAt: $1, totalRows: 5) }
         #expect(p5RowsHeight == p.totalRowsHeight)
         #expect(p.visibleKeyHeight(forRowAt: 0, totalRows: 5) > 35.0)
-        #expect(l.letterRowHeight == 84.5 && l.bottomRowHeight == 84.5)
-        #expect(l.toolbarHeight == 38.0)
-        #expect(l.totalKeyboardHeight == 378.0)
+        #expect(l.letterRowHeight == 94.0 && l.bottomRowHeight == 94.0)
+        #expect(l.toolbarHeight == 41.0)
+        #expect(l.totalKeyboardHeight == 419.0)
         let l5RowsHeight: CGFloat = (0..<5).reduce(CGFloat(0)) { $0 + l.rowHeight(forRowAt: $1, totalRows: 5) }
         #expect(l5RowsHeight == l.totalRowsHeight)
         #expect(l.visibleKeyHeight(forRowAt: 0, totalRows: 5) > 45.0)
 
         let pNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: true, screenSize: size, hasToolbar: false)
         let lNoToolbar = KeyboardAdaptiveGeometry.resolve(isPad: true, isFloating: false, isPortrait: false, screenSize: CGSize(width: size.height, height: size.width), hasToolbar: false)
-        #expect(pNoToolbar.letterRowHeight == 76.5 && pNoToolbar.bottomRowHeight == 64.5)
+        #expect(pNoToolbar.letterRowHeight == 73.0 && pNoToolbar.bottomRowHeight == 72.0)
         #expect(pNoToolbar.totalKeyboardHeight == 296.0)
         let pNoToolbar5Rows: CGFloat = (0..<5).reduce(CGFloat(0)) { $0 + pNoToolbar.rowHeight(forRowAt: $1, totalRows: 5) }
         #expect(pNoToolbar5Rows == pNoToolbar.totalRowsHeight)

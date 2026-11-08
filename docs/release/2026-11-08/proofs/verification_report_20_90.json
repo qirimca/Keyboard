@@ -1,0 +1,406 @@
+{
+  "proofs_dir": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs",
+  "synced_frames_count": 132,
+  "trimmed_videos": [
+    {
+      "source": "Video_20_90_LiquidGlass_Switchers_iPad_Sim.mp4",
+      "focused_output": "Video_20_90_LiquidGlass_Switchers_iPad_Sim_Focused.mp4",
+      "trimmed_output": "Video_20_90_LiquidGlass_Switchers_iPad_Sim_Trimmed.mp4",
+      "focused_size_bytes": 3751620,
+      "duration": 19.0,
+      "first_homeview_sec": 0.25,
+      "last_homeview_sec": 19.0,
+      "trim_start_sec": 0.0,
+      "trim_end_sec": 17.15,
+      "trim_duration_sec": 19.0
+    }
+  ],
+  "assembled_30fps_videos": [
+    "Video_20_90_LiquidGlass_Switchers_Burst30fps.mp4",
+    "Video_20_90_LiquidGlass_Switchers_Sequence30fps_ipad.mp4",
+    "Video_20_90_LiquidGlass_Switchers_Sequence30fps_iphone.mp4"
+  ],
+  "png_midhold_verifications": [
+    {
+      "file": "Extracted_Video_MidHold_Abv.png",
+      "target_slot": "ukrainian",
+      "glass_tint_pixels": 17845,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 790,
+      "contrast": 236.5,
+      "text_readable": true,
+      "stationary_badges_glyph_px": {
+        "abv": 228,
+        "kyr_K_hard": 215,
+        "ukr_K_apos": 324
+      },
+      "stationary_badges_intact": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Extracted_Video_MidHold_EN.png",
+      "target_slot": "en",
+      "glass_tint_pixels": 2293,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 303,
+      "interior_contrast": 215.4,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Extracted_Video_MidHold_UK.png",
+      "target_slot": "uk",
+      "glass_tint_pixels": 2878,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 239,
+      "interior_contrast": 223.7,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_HoldDrag_Abv_MidHold.png",
+      "target_slot": "ukrainian",
+      "glass_tint_pixels": 17845,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 790,
+      "contrast": 236.5,
+      "text_readable": true,
+      "stationary_badges_glyph_px": {
+        "abv": 228,
+        "kyr_K_hard": 215,
+        "ukr_K_apos": 324
+      },
+      "stationary_badges_intact": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_HoldDrag_Lang_MidHold.png",
+      "target_slot": "uk",
+      "glass_tint_pixels": 2878,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 239,
+      "interior_contrast": 223.7,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_HoldDrag_Lang_MidHold_EN.png",
+      "target_slot": "en",
+      "glass_tint_pixels": 2803,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 301,
+      "interior_contrast": 224.6,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_HoldDrag_Lang_MidHold_UK.png",
+      "target_slot": "uk",
+      "glass_tint_pixels": 2839,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 239,
+      "interior_contrast": 225.5,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "crh",
+      "tile_lang": "crh",
+      "ukr_card_visible": false,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_01_MidHold_UK_GlassOnly_ipad.png",
+      "target_slot": "uk",
+      "glass_tint_pixels": 2878,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 239,
+      "interior_contrast": 223.7,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_05_AbvBridge_MidHold_Ukr_GlassOnly_ipad.png",
+      "target_slot": "ukrainian",
+      "glass_tint_pixels": 17845,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 790,
+      "contrast": 236.5,
+      "text_readable": true,
+      "stationary_badges_glyph_px": {
+        "abv": 228,
+        "kyr_K_hard": 215,
+        "ukr_K_apos": 324
+      },
+      "stationary_badges_intact": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_08_MidHold_EN_GlassOnly_ipad.png",
+      "target_slot": "en",
+      "glass_tint_pixels": 2293,
+      "lens_covers_slot": true,
+      "dark_text_pixels": 303,
+      "interior_contrast": 215.4,
+      "text_visible": true,
+      "gold_red_pixels": 0,
+      "zero_line_art": true,
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "passed": true
+    }
+  ],
+  "postrelease_language_verifications": [
+    {
+      "file": "Proof_20_90_HoldDrag_Abv_PostRelease.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 229,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_HoldDrag_Lang_PostRelease.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 234,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 261
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_03_PostRelease_UK_LineDrawDone_ipad.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 229,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_06_AbvBridge_PostRelease_Ukr_LineDrawStart_ipad.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 229,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_07_AbvBridge_PostRelease_Ukr_LineDrawDone_ipad.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 229,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_09_PostRelease_EN_LineDrawDone_ipad.png",
+      "header_lang": "en",
+      "tile_lang": "en",
+      "ukr_card_visible": false,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 1185,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 0
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_10_Final_UK_ipad.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 229,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_00_Initial_CRH_ipad.png",
+      "header_lang": "crh",
+      "tile_lang": "crh",
+      "ukr_card_visible": false,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 1185,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 0
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    },
+    {
+      "file": "Proof_20_90_VideoFrame_04_AbvBridge_Initial_Cyr_ipad.png",
+      "header_lang": "uk",
+      "tile_lang": "uk",
+      "ukr_card_visible": true,
+      "ui_language_consistent": true,
+      "split_brain_detected": false,
+      "stationary_badges_glyph_px": {
+        "abv": 227,
+        "kyr_K_hard": 213,
+        "ukr_K_apos": 295
+      },
+      "stationary_badges_intact": true,
+      "passed": true
+    }
+  ],
+  "video_midhold_verifications": {
+    "Video_20_90_LiquidGlass_Switchers_iPad_Sim.mp4": {
+      "video_midhold_uk": {
+        "file": "frame_0026_6.50.png",
+        "target_slot": "uk",
+        "glass_tint_pixels": 2878,
+        "lens_covers_slot": true,
+        "dark_text_pixels": 239,
+        "interior_contrast": 223.7,
+        "text_visible": true,
+        "gold_red_pixels": 0,
+        "zero_line_art": true,
+        "header_lang": "uk",
+        "tile_lang": "uk",
+        "ukr_card_visible": true,
+        "ui_language_consistent": true,
+        "split_brain_detected": false,
+        "passed": true,
+        "extracted_saved_as": "Extracted_Video_MidHold_UK.png"
+      },
+      "video_midhold_abv": {
+        "file": "frame_0057_14.25.png",
+        "target_slot": "ukrainian",
+        "glass_tint_pixels": 17845,
+        "lens_covers_slot": true,
+        "dark_text_pixels": 790,
+        "contrast": 236.5,
+        "text_readable": true,
+        "stationary_badges_glyph_px": {
+          "abv": 228,
+          "kyr_K_hard": 215,
+          "ukr_K_apos": 324
+        },
+        "stationary_badges_intact": true,
+        "header_lang": "uk",
+        "tile_lang": "uk",
+        "ukr_card_visible": true,
+        "ui_language_consistent": true,
+        "split_brain_detected": false,
+        "passed": true,
+        "extracted_saved_as": "Extracted_Video_MidHold_Abv.png"
+      },
+      "video_midhold_en": {
+        "file": "frame_0065_16.25.png",
+        "target_slot": "en",
+        "glass_tint_pixels": 2293,
+        "lens_covers_slot": true,
+        "dark_text_pixels": 303,
+        "interior_contrast": 215.4,
+        "text_visible": true,
+        "gold_red_pixels": 0,
+        "zero_line_art": true,
+        "header_lang": "uk",
+        "tile_lang": "uk",
+        "ukr_card_visible": true,
+        "ui_language_consistent": true,
+        "split_brain_detected": false,
+        "passed": true,
+        "extracted_saved_as": "Extracted_Video_MidHold_EN.png"
+      }
+    }
+  }
+}

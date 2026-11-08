@@ -99,35 +99,45 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 KeyboardPreferences.setCyrillicEnabled(true)
                 didMutate = true
             }
+            if !isUITesting {
+                let rawHasUkExt = SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
+                if !rawHasUkExt && (defaults.bool(forKey: "crh.key.ukrainianCyrillicLayout") || KeyboardPreferences.ukrainianCyrillicLayoutEnabled) {
+                    KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
+                    didMutate = true
+                }
+            }
         } else {
             if Bundle.main.bundleIdentifier == AppConfiguration.keyboardBundleId,
                !defaults.bool(forKey: "crh.key.primaryExtensionSeen") {
                 defaults.set(true, forKey: "crh.key.primaryExtensionSeen")
                 didMutate = true
             }
-            if state.keyboardContext.deviceType == .pad && !isUITesting {
+            if !isUITesting {
                 let rawHasUkExt = SystemKeyboardSettings.isUkrainianKeyboardExtensionEnabled
-                let hasUkExt = (KeyboardPreferences.interfaceLanguage == "uk") && rawHasUkExt
-                let hasCyrExt = SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
-                if rawHasUkExt && !defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
-                    defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
+                if !rawHasUkExt && KeyboardPreferences.ukrainianCyrillicLayoutEnabled {
+                    KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
                     didMutate = true
                 }
-                if hasCyrExt && !defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
-                    defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
-                    didMutate = true
-                }
-                if hasCyrExt || hasUkExt {
-                    if !KeyboardPreferences.cyrillicEnabled {
-                        KeyboardPreferences.setCyrillicEnabled(true)
+                if state.keyboardContext.deviceType == .pad {
+                    let hasUkExt = (KeyboardPreferences.interfaceLanguage == "uk") && rawHasUkExt
+                    let hasCyrExt = SystemKeyboardSettings.isCyrillicKeyboardExtensionEnabled
+                    if rawHasUkExt && !defaults.bool(forKey: "crh.key.ukrainianExtensionSeen") {
+                        defaults.set(true, forKey: "crh.key.ukrainianExtensionSeen")
                         didMutate = true
                     }
-                    if hasUkExt && !hasCyrExt && !KeyboardPreferences.ukrainianCyrillicLayoutEnabled {
-                        KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(true)
+                    if hasCyrExt && !defaults.bool(forKey: "crh.key.cyrillicExtensionSeen") {
+                        defaults.set(true, forKey: "crh.key.cyrillicExtensionSeen")
                         didMutate = true
-                    } else if hasCyrExt && !rawHasUkExt && KeyboardPreferences.ukrainianCyrillicLayoutEnabled {
-                        KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(false)
-                        didMutate = true
+                    }
+                    if hasCyrExt || hasUkExt {
+                        if !KeyboardPreferences.cyrillicEnabled {
+                            KeyboardPreferences.setCyrillicEnabled(true)
+                            didMutate = true
+                        }
+                        if hasUkExt && !hasCyrExt && !KeyboardPreferences.ukrainianCyrillicLayoutEnabled {
+                            KeyboardPreferences.setUkrainianCyrillicLayoutEnabled(true)
+                            didMutate = true
+                        }
                     }
                 }
             }
@@ -215,7 +225,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
     private var lastLayoutDiagnostics = ""
 
     /// Records the real hosted height vs the requested constraint in the App Group (`crh.key.debug.layout`)
-    /// only when it changes, so keyboard-height parity can be audited from the device container.
+    /// asynchronously off the main thread only when it changes, avoiding main-thread `cfprefsd` stalls during CA fence resize animations.
     private func recordLayoutDiagnosticsIfChanged() {
         #if DEBUG
         let diag = String(
@@ -228,17 +238,21 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         )
         guard diag != lastLayoutDiagnostics else { return }
         lastLayoutDiagnostics = diag
-        KeyboardPreferences.defaults.set(diag, forKey: "crh.key.debug.layout")
+        Self.prefsSyncQueue.async {
+            KeyboardPreferences.defaults.set(diag, forKey: "crh.key.debug.layout")
+        }
         #endif
     }
 
     private func updateKeyboardHeightConstraint(targetSize: CGSize? = nil) {
         guard isViewLoaded else { return }
+        var didChangeGeometry = false
         if keyboardHeightConstraint == nil {
             let constraint = view.heightAnchor.constraint(equalToConstant: expectedKeyboardHeight(targetSize: targetSize))
             constraint.priority = .init(999)
             constraint.identifier = "crh.key.keyboardHeightConstraint"
             keyboardHeightConstraint = constraint
+            didChangeGeometry = true
         }
         guard let constraint = keyboardHeightConstraint else { return }
         let width = targetSize?.width ?? view.bounds.width
@@ -249,22 +263,29 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         let targetPriority: UILayoutPriority = .init(999)
         if constraint.priority != targetPriority {
             constraint.priority = targetPriority
+            didChangeGeometry = true
         }
         if usesCompactLayout {
             let desiredSize = CGSize(width: 0, height: targetH)
             if abs(preferredContentSize.height - desiredSize.height) > 0.5 || preferredContentSize.width != 0 {
                 preferredContentSize = desiredSize
+                didChangeGeometry = true
             }
         } else if preferredContentSize != .zero {
             preferredContentSize = .zero
+            didChangeGeometry = true
         }
         if abs(constraint.constant - targetH) > 0.5 {
             constraint.constant = targetH
+            didChangeGeometry = true
         }
         if !constraint.isActive {
             constraint.isActive = true
+            didChangeGeometry = true
         }
-        children.first?.view.invalidateIntrinsicContentSize()
+        if didChangeGeometry {
+            children.first?.view.invalidateIntrinsicContentSize()
+        }
     }
 
     private func syncPreferencesFromDiskInBackground() {
@@ -687,8 +708,9 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                         if controller.state.keyboardContext.oneHandedMode != mode {
                             SwipeTypingState.shared.clearKeyFrames()
                             controller.state.keyboardContext.oneHandedMode = mode
-                            controller.state.keyboardContext.renderVersion &+= 1
                         }
+                        controller.applyPreferences(syncDisk: false)
+                        controller.refreshProxyState(forceRender: true)
                     }
                 }
             },
@@ -795,7 +817,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 )
                 state.keyboardContext.setIsSpaceDragGestureActive(true, animated: true)
                 if state.feedbackConfiguration.isHapticFeedbackEnabled {
-                    HapticFeedback.lightImpact.trigger()
+                    KeyboardKit.HapticFeedback.lightImpact.trigger()
                 }
             }
             services.spaceDragGestureHandler.handleDragGesture(
@@ -909,6 +931,7 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
         (services.actionHandler as? DemoActionHandler)?.resetComposition()
         TextHistoryManager.shared.reset()
         SpaceBarState.shared.prepareForAppearance()
+        KeyboardPreferences.refreshCachedPreferences()
         GreetingBannerState.shared.prepareForAppearance(reshuffle: true)
         refreshProxyState(forceRender: true)
         updateTwoFingerTrackpadEligibility()
@@ -1321,7 +1344,6 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
             self.updateKeyboardHeightConstraint(targetSize: size)
             self.updateTwoFingerTrackpadEligibility()
             self.view.setNeedsLayout()
-            self.view.layoutIfNeeded()
         }, completion: { [weak self] _ in
             guard let self else { return }
             SwipeTypingState.shared.clearKeyFrames()
@@ -1446,6 +1468,8 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                             keyboardContext: controller.state.keyboardContext,
                             autocompleteAction: params.autocompleteAction
                         )
+                    } else {
+                        Color.clear
                     }
                 }
             )
@@ -1537,9 +1561,9 @@ struct FlickKeyContentView<PrimaryContent: View>: View {
             return 0
         }
     }
-    private var restingOffsetY: CGFloat { (isLandscape ? -20.5 : -14.5) + flickGlyphBaselineCompensation }
-    private var restingOpacity: Double { isDark ? 0.42 : 0.34 }
-    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 7.0 : 6.0 }
+    private var restingOffsetY: CGFloat { (isLandscape ? -18.0 : -13.0) + flickGlyphBaselineCompensation }
+    private var restingOpacity: Double { isDark ? 0.42 : 0.25 }
+    private var restingPrimaryOffsetY: CGFloat { isLandscape ? 10.5 : 8.5 }
 
     var body: some View {
         let currentFlickScale = restingScale + (1.0 - restingScale) * progress

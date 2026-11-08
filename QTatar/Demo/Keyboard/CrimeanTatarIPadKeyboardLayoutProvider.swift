@@ -238,7 +238,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
     }
     
     /// Row 0 side keys as fractions of the row width; the 12 letters share the rest, which defines the key pitch.
-    static let tabFraction = 0.10
+    static let tabFraction = 0.075
     static let backspaceFraction = 0.095
     static var letterPitch: Double { (1 - tabFraction - backspaceFraction) / 12 }
 
@@ -373,7 +373,7 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         case .symbolic:
             return [.custom(named: "redo")]
         case .alphabetic:
-            return (KeyboardPreferences.isIPadAbvToggleKeyActive || context.locale.identifier.contains("Cyrl")) ? [.custom(named: "toggle_script")] : [.capsLock]
+            return (KeyboardPreferences.isIPadAbvToggleKeyActive || context.locale.identifier.contains("Cyrl") || AppConfiguration.isCyrillicKeyboardExtensionBundleId(Bundle.main.bundleIdentifier)) ? [.custom(named: "toggle_script")] : [.capsLock]
         default:
             return [.characterMargin("â")]
         }
@@ -623,19 +623,21 @@ final class CrimeanTatarIPadKeyboardLayoutProvider: iPadKeyboardLayoutProvider {
         let pitch = Self.letterPitch
         if row == 0 {
             if action == .tab { return .percentage(tab) }
-            if action == .backspace { return .percentage(bs) }
-            return .available
+            if action == .backspace { return .available }
+            return .percentage(pitch)
         }
         if row == 1 {
             if index == 0 {
-                return .percentage(tab + pitch / 2.0)
+                return .percentage(tab + 0.5 * pitch)
             }
-            if case .primary = action { return .available }
+            if case .primary = action {
+                return .available
+            }
             return .percentage(pitch)
         }
         if row == 2 {
             if index == 0 {
-                return .percentage(isCyrillic ? tab + pitch : tab)
+                return .percentage(isCyrillic ? (tab + pitch) : tab)
             }
             switch action {
             case .shift, .keyboardType:

@@ -422,7 +422,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         typedWordBuffer = ""
 
         if feedbackConfiguration.isHapticFeedbackEnabled {
-            HapticFeedback.lightImpact.trigger()
+            KeyboardKit.HapticFeedback.lightImpact.trigger()
         }
         for _ in 0..<deleteCount {
             proxy.deleteBackward()

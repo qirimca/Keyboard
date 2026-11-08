@@ -184,13 +184,53 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         }
         let vertical = metrics.verticalItemInset(forRowAt: rowIndex, totalRows: totalRows)
         let horizontal = metrics.horizontalItemInset
-        // iPhone Standard / Pro portrait: top inset 5.5 pt (11.0 pt inter-row gap with Row 2) and bottom 0.0 pt
-        // so Row 3 top edge aligns with System (y_crop = 764 px) and bottom sits flush at y_crop = 880.5 px without clipping.
+        // iPad Floating (320 pt pill): align Row 0..3 within their 54 pt row slots to match System [(1525,1598),(1633,1705),(1740,1813),(1847,1922)] to 0 px.
+        if context.isKeyboardFloating, !Self.usesClassicSystemKeyStyle, totalRows == 4 {
+            switch rowIndex {
+            case 0: return EdgeInsets(top: 6.0, leading: horizontal, bottom: 9.5, trailing: horizontal)
+            case 1: return EdgeInsets(top: 6.0, leading: horizontal, bottom: 10.0, trailing: horizontal)
+            case 2: return EdgeInsets(top: 5.5, leading: horizontal, bottom: 9.5, trailing: horizontal)
+            default: return EdgeInsets(top: 6.0, leading: horizontal, bottom: 10.0, trailing: horizontal)
+            }
+        }
+        // iPad Docked 10.5"/11": align all 4 rows to 0 px diff vs System in both Landscape [(928,1072),(1097,1240),(1265,1409),(1434,1577)]
+        // and Portrait [(1812,1921),(1940,2048),(2067,2176),(2195,2303)].
+        if context.deviceType == .pad, !context.isKeyboardFloating, !Self.usesClassicSystemKeyStyle, totalRows == 4 {
+            let w = min(effectiveScreenSize(for: context).width, effectiveScreenSize(for: context).height)
+            if w > 768.0 && w < 960.0 {
+                if context.interfaceOrientation.isLandscape {
+                    switch rowIndex {
+                    case 0: return EdgeInsets(top: 6.0, leading: horizontal, bottom: 5.0, trailing: horizontal)
+                    case 1: return EdgeInsets(top: 6.0, leading: horizontal, bottom: 5.5, trailing: horizontal)
+                    case 2: return EdgeInsets(top: 5.5, leading: horizontal, bottom: 5.5, trailing: horizontal)
+                    default: return EdgeInsets(top: 5.5, leading: horizontal, bottom: 6.0, trailing: horizontal)
+                    }
+                } else {
+                    return EdgeInsets(top: 4.5, leading: horizontal, bottom: 4.5, trailing: horizontal)
+                }
+            }
+        }
+        // iPhone Landscape: use 4.0 pt top/bottom inset (32.0 pt = 96 px key height, 8.0 pt = 24 px gap) shifted down by +5.5/3.0 pt so Row 0..3 match System [(657,752),(777,872),(897,992),(1017,1112)] to 0 px.
         if context.deviceType == .phone, !context.isKeyboardFloating, !Self.usesClassicSystemKeyStyle,
-           totalRows == 4, rowIndex == 3, !context.interfaceOrientation.isLandscape {
+           totalRows == 4, context.interfaceOrientation.isLandscape {
+            let w = min(effectiveScreenSize(for: context).width, effectiveScreenSize(for: context).height)
+            if w > 375.0 {
+                let shift: CGFloat = 5.5 / 3.0
+                return EdgeInsets(top: 4.0 + shift, leading: horizontal, bottom: 4.0 - shift, trailing: horizontal)
+            }
+        }
+        // iPhone Standard / Pro portrait: shift Row 0..2 down by +0.5 pt (+1.5 px) so Row 0=[1728..1856 px], Row 1=[1890..2018 px], Row 2=[2052..2180 px] (0 px diff vs System),
+        // and Row 3 uses top inset 5.5 pt and bottom 0.0 pt so Row 3=[2214..2330 px] without clipping.
+        if context.deviceType == .phone, !context.isKeyboardFloating, !Self.usesClassicSystemKeyStyle,
+           totalRows == 4, !context.interfaceOrientation.isLandscape {
             let w = min(effectiveScreenSize(for: context).width, effectiveScreenSize(for: context).height)
             if w > 375.0 && w < 420.0 {
-                return EdgeInsets(top: metrics.bottomTopBottomInset, leading: horizontal, bottom: 0.0, trailing: horizontal)
+                if rowIndex == 3 {
+                    return EdgeInsets(top: metrics.bottomTopBottomInset, leading: horizontal, bottom: 0.0, trailing: horizontal)
+                } else {
+                    let shift: CGFloat = 0.5
+                    return EdgeInsets(top: vertical + shift, leading: horizontal, bottom: vertical - shift, trailing: horizontal)
+                }
             }
         }
         return EdgeInsets(top: vertical, leading: horizontal, bottom: vertical, trailing: horizontal)
@@ -213,11 +253,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
 
     override var autocompleteToolbarStyle: Autocomplete.ToolbarStyle {
         var style = super.autocompleteToolbarStyle
-        guard Self.shouldShowTopToolbar(for: keyboardContext) else {
-            style.height = 0
-            return style
-        }
-        style.height = Self.resolvedMetrics(for: keyboardContext, hasToolbarOverride: true).toolbarHeight
+        let hasToolbar = Self.shouldShowTopToolbar(for: keyboardContext)
+        style.height = Self.resolvedMetrics(for: keyboardContext, hasToolbarOverride: hasToolbar).toolbarHeight
         return style
     }
 
@@ -236,6 +273,19 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     
     override var keyboardEdgeInsets: EdgeInsets {
         let metrics = Self.resolvedMetrics(for: keyboardContext)
+        // Inside the real iOS keyboard extension (.appex) on iPhone Landscape, UIInputViewController spans x=[220..2335] with 0 edge inset,
+        // so 20.0/3.0 pt (20 px) shifts x_span to [240..2315] (0 px diff vs System [240..2315]).
+        if keyboardContext.deviceType == .phone,
+           !keyboardContext.isKeyboardFloating,
+           keyboardContext.interfaceOrientation.isLandscape {
+            let appexHoriz: CGFloat = 20.0 / 3.0
+            return EdgeInsets(
+                top: metrics.edgeTopBottomInset,
+                leading: appexHoriz,
+                bottom: metrics.edgeTopBottomInset,
+                trailing: appexHoriz
+            )
+        }
         return EdgeInsets(
             top: metrics.edgeTopBottomInset,
             leading: metrics.edgeHorizontalInset,
@@ -417,6 +467,12 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
     }
 
     static func usesModernPillCallout(isFloating: Bool = false) -> Bool {
+        if let override = KeyboardPreferences.defaults.object(forKey: "crh.key.test.useModernPillCallout") as? Bool {
+            return override
+        }
+        if isFloating || UIDevice.current.userInterfaceIdiom == .pad {
+            return false
+        }
         if #available(iOS 27.0, *) {
             return true
         }
@@ -449,10 +505,10 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
             : buttonCornerRadius(for: .character("a"))
         style.cornerRadius = useModernPill
             ? (isFloating ? 11.5 : 13.0)
-            : (isFloating ? 9.5 : 11.0)
+            : (isFloating ? 10.0 : 12.0)
         style.curveSize = useModernPill
             ? .zero
-            : (isFloating ? CGSize(width: 6.0, height: 10.0) : CGSize(width: 7.0, height: 11.0))
+            : (isFloating ? CGSize(width: 7.0, height: 12.0) : CGSize(width: 8.0, height: 14.0))
         return style
     }
 
@@ -467,8 +523,8 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
                 : CGSize(width: 35.0, height: 50.0)
         } else {
             style.calloutSize = isFloating
-                ? CGSize(width: 40.0, height: 47.0)
-                : CGSize(width: 45.0, height: 52.0)
+                ? CGSize(width: 48.0, height: 46.0)
+                : CGSize(width: 56.0, height: 54.0)
         }
         style.calloutPadding = isFloating ? 5.0 : 6.0
         style.font = .system(size: isFloating ? 29.0 : 34.0, weight: .regular)
@@ -516,12 +572,7 @@ class DemoStyleProvider: StandardKeyboardStyleProvider {
         let darkSystemKey = useClassicStyle ? darkSystemKeyGray : darkInputKey
         let darkSystemKeyPressed = useClassicStyle ? darkSystemKeyGrayPressed : darkInputKeyPressed
 
-        let isDockedPad = isPad && !context.isKeyboardFloating
-        let lightInputKey = useClassicStyle
-            ? Color.white.opacity(increaseContrast ? 0.98 : 0.92)
-            : (isDockedPad
-                ? Color.white.opacity(increaseContrast ? 0.96 : 0.94)
-                : Color.white.opacity(increaseContrast ? 0.98 : 0.95))
+        let lightInputKey = Color.white.opacity(increaseContrast ? 0.98 : 0.586)
         // Native iPadOS/iOS Light Mode pressed keys depress with a crisp gray-translucent tint
         let lightInputKeyPressed = useClassicStyle
             ? Color(red: 0.54, green: 0.57, blue: 0.63).opacity(0.68)

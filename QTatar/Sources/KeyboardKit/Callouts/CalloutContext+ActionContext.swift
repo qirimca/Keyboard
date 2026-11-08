@@ -126,7 +126,12 @@ public extension CalloutContext.ActionContext {
 
     /// Reset the context with an optional test hold delay (synchronous when minimumVisibleDuration == 0).
     func resetWithDelay() {
-        let delay = minimumVisibleDuration
+        let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
+        let extend = ProcessInfo.processInfo.arguments.contains("-qt_extend_input_callout")
+            || ProcessInfo.processInfo.arguments.contains("-qt_hold_callout")
+            || defaults?.bool(forKey: "crh.key.test.extendInputCalloutDuration") == true
+            || defaults?.bool(forKey: "crh.key.test.holdCallout") == true
+        let delay = extend ? max(1.60, minimumVisibleDuration) : minimumVisibleDuration
         guard delay > 0 else {
             reset()
             return

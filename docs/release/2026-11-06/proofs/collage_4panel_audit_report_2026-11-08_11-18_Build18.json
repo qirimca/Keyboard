@@ -1,0 +1,1759 @@
+{
+  "ipad_portrait_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Portrait_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Portrait_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-44_Build17_R17_ipad_03s_system_keyboard_sugg1.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_03_portrait_std_sugg1.png",
+    "sys_timestamp": "2026-11-08 09:44:50",
+    "qk_timestamp": "2026-11-08 21:28:04",
+    "collage_built_at": "2026-11-08 21:43:53 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-44_Build17_R17_ipad_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-44_Build17_R17_ipad_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17)",
+    "sys_platter_top": 1586,
+    "qk_platter_top": 1592,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1710,
+          1820,
+          111
+        ],
+        "qk_y": [
+          1715,
+          1824,
+          110
+        ],
+        "dy_top": 5,
+        "dy_bot": 4,
+        "dh": -1,
+        "sys_n_keys": 13,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 91,
+        "qk_key0_w": 100
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1839,
+          1949,
+          111
+        ],
+        "qk_y": [
+          1843,
+          1952,
+          110
+        ],
+        "dy_top": 4,
+        "dy_bot": 3,
+        "dh": -1,
+        "sys_n_keys": 13,
+        "qk_n_keys": 13,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 121,
+        "qk_key0_w": 157
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1968,
+          2078,
+          111
+        ],
+        "qk_y": [
+          1971,
+          2080,
+          110
+        ],
+        "dy_top": 3,
+        "dy_bot": 2,
+        "dh": -1,
+        "sys_n_keys": 11,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 186,
+        "qk_key0_w": 100
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          2097,
+          2207,
+          111
+        ],
+        "qk_y": [
+          2099,
+          2208,
+          110
+        ],
+        "dy_top": 2,
+        "dy_bot": 1,
+        "dh": -1,
+        "sys_n_keys": 6,
+        "qk_n_keys": 5,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 110,
+        "qk_key0_w": 115
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "ipad_portrait_sugg0": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Portrait_sugg0.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Portrait_sugg0.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-44_Build17_R17_ipad_07s_system_portrait_std_sugg0.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_07_portrait_std_sugg0.png",
+    "sys_timestamp": "2026-11-08 09:44:50",
+    "qk_timestamp": "2026-11-08 21:28:04",
+    "collage_built_at": "2026-11-08 21:43:54 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-44_Build17_R17_ipad_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-44_Build17_R17_ipad_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17)",
+    "sys_platter_top": 1662,
+    "qk_platter_top": 1668,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1710,
+          1820,
+          111
+        ],
+        "qk_y": [
+          1715,
+          1824,
+          110
+        ],
+        "dy_top": 5,
+        "dy_bot": 4,
+        "dh": -1,
+        "sys_n_keys": 13,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 91,
+        "qk_key0_w": 100
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1839,
+          1949,
+          111
+        ],
+        "qk_y": [
+          1843,
+          1952,
+          110
+        ],
+        "dy_top": 4,
+        "dy_bot": 3,
+        "dh": -1,
+        "sys_n_keys": 13,
+        "qk_n_keys": 13,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 121,
+        "qk_key0_w": 157
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1968,
+          2078,
+          111
+        ],
+        "qk_y": [
+          1971,
+          2080,
+          110
+        ],
+        "dy_top": 3,
+        "dy_bot": 2,
+        "dh": -1,
+        "sys_n_keys": 11,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 186,
+        "qk_key0_w": 100
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          2097,
+          2207,
+          111
+        ],
+        "qk_y": [
+          2099,
+          2208,
+          110
+        ],
+        "dy_top": 2,
+        "dy_bot": 1,
+        "dh": -1,
+        "sys_n_keys": 6,
+        "qk_n_keys": 5,
+        "sys_x_span": [
+          26,
+          1641
+        ],
+        "qk_x_span": [
+          21,
+          1646
+        ],
+        "dx_left": -5,
+        "dx_right": 5,
+        "sys_key0_w": 110,
+        "qk_key0_w": 115
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "ipad_landscape_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Landscape_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Landscape_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_10s_system_landscape_std_sugg1.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_10_landscape_std_sugg1.png",
+    "sys_timestamp": "2026-11-08 17:59:28",
+    "qk_timestamp": "2026-11-08 17:59:28",
+    "collage_built_at": "2026-11-08 21:43:56 EET",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null,
+    "sys_platter_top": 795,
+    "qk_platter_top": 801,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          928,
+          1072,
+          145
+        ],
+        "qk_y": [
+          927,
+          1073,
+          147
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 12,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 199,
+        "qk_key0_w": 141
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1097,
+          1240,
+          144
+        ],
+        "qk_y": [
+          1096,
+          1241,
+          146
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 11,
+        "qk_n_keys": 13,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 255,
+        "qk_key0_w": 143
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1265,
+          1409,
+          145
+        ],
+        "qk_y": [
+          1264,
+          1410,
+          147
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 11,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 338,
+        "qk_key0_w": 141
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1434,
+          1577,
+          144
+        ],
+        "qk_y": [
+          1433,
+          1578,
+          146
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 6,
+        "qk_n_keys": 5,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 154,
+        "qk_key0_w": 180
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "ipad_landscape_sugg0": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Landscape_sugg0.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Landscape_sugg0.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_10s_system_landscape_std_sugg0.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_10_landscape_std_sugg0.png",
+    "sys_timestamp": "2026-11-08 17:59:28",
+    "qk_timestamp": "2026-11-08 17:59:28",
+    "collage_built_at": "2026-11-08 21:43:58 EET",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null,
+    "sys_platter_top": 877,
+    "qk_platter_top": 877,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          928,
+          1072,
+          145
+        ],
+        "qk_y": [
+          927,
+          1073,
+          147
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 12,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 199,
+        "qk_key0_w": 141
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1097,
+          1240,
+          144
+        ],
+        "qk_y": [
+          1096,
+          1241,
+          146
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 11,
+        "qk_n_keys": 13,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 255,
+        "qk_key0_w": 143
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1265,
+          1409,
+          145
+        ],
+        "qk_y": [
+          1264,
+          1410,
+          147
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 11,
+        "qk_n_keys": 14,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 338,
+        "qk_key0_w": 141
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1434,
+          1577,
+          144
+        ],
+        "qk_y": [
+          1433,
+          1578,
+          146
+        ],
+        "dy_top": -1,
+        "dy_bot": 1,
+        "dh": 2,
+        "sys_n_keys": 6,
+        "qk_n_keys": 5,
+        "sys_x_span": [
+          33,
+          2326
+        ],
+        "qk_x_span": [
+          43,
+          2316
+        ],
+        "dx_left": 10,
+        "dx_right": -10,
+        "sys_key0_w": 154,
+        "qk_key0_w": 180
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "ipad_floating_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Floating_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Floating_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_09s_system_ipad_floating.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_09_ipad_floating.png",
+    "sys_timestamp": "2026-11-08 17:59:28",
+    "qk_timestamp": "2026-11-08 17:59:28",
+    "collage_built_at": "2026-11-08 21:44:00 EET",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null,
+    "sys_platter_top": 1413,
+    "qk_platter_top": 1410,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1525,
+          1598,
+          74
+        ],
+        "qk_y": [
+          1523,
+          1595,
+          73
+        ],
+        "dy_top": -2,
+        "dy_bot": -3,
+        "dh": -1,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1633,
+          1705,
+          73
+        ],
+        "qk_y": [
+          1632,
+          1703,
+          72
+        ],
+        "dy_top": -1,
+        "dy_bot": -2,
+        "dh": -1,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1740,
+          1813,
+          74
+        ],
+        "qk_y": [
+          1740,
+          1813,
+          74
+        ],
+        "dy_top": 0,
+        "dy_bot": 0,
+        "dh": 0,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1847,
+          1922,
+          76
+        ],
+        "qk_y": [
+          1847,
+          1922,
+          76
+        ],
+        "dy_top": 0,
+        "dy_bot": 0,
+        "dh": 0,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          23,
+          644
+        ],
+        "qk_x_span": [
+          30,
+          637
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 145,
+        "qk_key0_w": 62
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "ipad_floating_sugg0": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Floating_sugg0.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPad_Floating_sugg0.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_09s_system_ipad_floating_sugg0.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/proofs/Proof_20_83_Build18_R16_ipad_09_ipad_floating_sugg0.png",
+    "sys_timestamp": "2026-11-08 17:59:28",
+    "qk_timestamp": "2026-11-08 17:59:28",
+    "collage_built_at": "2026-11-08 21:44:01 EET",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null,
+    "sys_platter_top": 1496,
+    "qk_platter_top": 1498,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1522,
+          1596,
+          75
+        ],
+        "qk_y": [
+          1523,
+          1595,
+          73
+        ],
+        "dy_top": 1,
+        "dy_bot": -1,
+        "dh": -2,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1631,
+          1704,
+          74
+        ],
+        "qk_y": [
+          1632,
+          1703,
+          72
+        ],
+        "dy_top": 1,
+        "dy_bot": -1,
+        "dh": -2,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          1739,
+          1813,
+          75
+        ],
+        "qk_y": [
+          1740,
+          1813,
+          74
+        ],
+        "dy_top": 1,
+        "dy_bot": 0,
+        "dh": -1,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          22,
+          645
+        ],
+        "qk_x_span": [
+          29,
+          638
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 41,
+        "qk_key0_w": 36
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1847,
+          1922,
+          76
+        ],
+        "qk_y": [
+          1847,
+          1922,
+          76
+        ],
+        "dy_top": 0,
+        "dy_bot": 0,
+        "dh": 0,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          23,
+          644
+        ],
+        "qk_x_span": [
+          30,
+          637
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 145,
+        "qk_key0_w": 62
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "iphone_portrait_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Portrait_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Portrait_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_03s_system_keyboard_sugg1.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_03_portrait_std_sugg1.png",
+    "sys_timestamp": "2026-11-08 10:16:05",
+    "qk_timestamp": "2026-11-08 10:16:05",
+    "collage_built_at": "2026-11-08 21:44:03 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17)",
+      "qk_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_03_portrait_std_sugg1.png (matched_stale_marker:Build17)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_03_portrait_std_sugg1.png (matched_stale_marker:Build17)",
+    "sys_platter_top": 1575,
+    "qk_platter_top": 1576,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1728,
+          1856,
+          129
+        ],
+        "qk_y": [
+          1726,
+          1855,
+          130
+        ],
+        "dy_top": -2,
+        "dy_bot": -1,
+        "dh": 1,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1890,
+          2018,
+          129
+        ],
+        "qk_y": [
+          1889,
+          2017,
+          129
+        ],
+        "dy_top": -1,
+        "dy_bot": -1,
+        "dh": 0,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          2052,
+          2180,
+          129
+        ],
+        "qk_y": [
+          2050,
+          2179,
+          130
+        ],
+        "dy_top": -2,
+        "dy_bot": -1,
+        "dh": 1,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          2214,
+          2342,
+          129
+        ],
+        "qk_y": [
+          2214,
+          2330,
+          117
+        ],
+        "dy_top": 0,
+        "dy_bot": -12,
+        "dh": -12,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 265,
+        "qk_key0_w": 259
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "iphone_portrait_sugg0": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Portrait_sugg0.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Portrait_sugg0.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_07s_system_portrait_std_sugg0.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_07_portrait_std_sugg0.png",
+    "sys_timestamp": "2026-11-08 10:16:05",
+    "qk_timestamp": "2026-11-08 10:16:05",
+    "collage_built_at": "2026-11-08 21:44:04 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17)",
+      "qk_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_07_portrait_std_sugg0.png (matched_stale_marker:Build17)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_07_portrait_std_sugg0.png (matched_stale_marker:Build17)",
+    "sys_platter_top": 1656,
+    "qk_platter_top": 1656,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          1728,
+          1856,
+          129
+        ],
+        "qk_y": [
+          1727,
+          1855,
+          129
+        ],
+        "dy_top": -1,
+        "dy_bot": -1,
+        "dh": 0,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          1890,
+          2018,
+          129
+        ],
+        "qk_y": [
+          1889,
+          2017,
+          129
+        ],
+        "dy_top": -1,
+        "dy_bot": -1,
+        "dh": 0,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          2052,
+          2180,
+          129
+        ],
+        "qk_y": [
+          2051,
+          2179,
+          129
+        ],
+        "dy_top": -1,
+        "dy_bot": -1,
+        "dh": 0,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 72,
+        "qk_key0_w": 75
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          2214,
+          2342,
+          129
+        ],
+        "qk_y": [
+          2214,
+          2330,
+          117
+        ],
+        "dy_top": 0,
+        "dy_bot": -12,
+        "dh": -12,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          23,
+          1156
+        ],
+        "qk_x_span": [
+          20,
+          1159
+        ],
+        "dx_left": -3,
+        "dx_right": 3,
+        "sys_key0_w": 265,
+        "qk_key0_w": 259
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "iphone_landscape_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg1.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-07_23-23_Build16_R16_iphone_10_landscape_std_sugg1.png",
+    "sys_timestamp": "2026-11-08 11:37:56",
+    "qk_timestamp": "2026-11-07 23:23:53",
+    "collage_built_at": "2026-11-08 21:44:06 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg1.png (matched_stale_marker:Build17)",
+      "qk_path": "Proof_2026-11-07_23-23_Build16_R16_iphone_10_landscape_std_sugg1.png (matched_stale_marker:Build16)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg1.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-07_23-23_Build16_R16_iphone_10_landscape_std_sugg1.png (matched_stale_marker:Build16)",
+    "sys_platter_top": 510,
+    "qk_platter_top": 480,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          657,
+          752,
+          96
+        ],
+        "qk_y": [
+          649,
+          747,
+          99
+        ],
+        "dy_top": -8,
+        "dy_bot": -5,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          220,
+          2335
+        ],
+        "dx_left": -20,
+        "dx_right": 20,
+        "sys_key0_w": 151,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          777,
+          872,
+          96
+        ],
+        "qk_y": [
+          769,
+          867,
+          99
+        ],
+        "dy_top": -8,
+        "dy_bot": -5,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 11,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          309,
+          2246
+        ],
+        "dx_left": 69,
+        "dx_right": -69,
+        "sys_key0_w": 151,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          897,
+          992,
+          96
+        ],
+        "qk_y": [
+          889,
+          987,
+          99
+        ],
+        "dy_top": -8,
+        "dy_bot": -5,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          220,
+          2335
+        ],
+        "dx_left": -20,
+        "dx_right": 20,
+        "sys_key0_w": 151,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1017,
+          1112,
+          96
+        ],
+        "qk_y": [
+          1009,
+          1107,
+          99
+        ],
+        "dy_top": -8,
+        "dy_bot": -5,
+        "dh": 3,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          220,
+          1917
+        ],
+        "dx_left": -20,
+        "dx_right": -398,
+        "sys_key0_w": 396,
+        "qk_key0_w": 393
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      69.8,
+      69.8,
+      70.2
+    ]
+  },
+  "iphone_landscape_sugg0": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_sugg0.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_sugg0.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg0.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-45_Build17_R16_iphone_10_landscape_std_sugg0.png",
+    "sys_timestamp": "2026-11-08 11:37:55",
+    "qk_timestamp": "2026-11-08 11:37:56",
+    "collage_built_at": "2026-11-08 21:44:07 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg0.png (matched_stale_marker:Build17)",
+      "qk_path": "Proof_2026-11-08_09-45_Build17_R16_iphone_10_landscape_std_sugg0.png (matched_stale_marker:Build17)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg0.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10_landscape_std_sugg0.png (matched_stale_marker:Build17)",
+    "sys_platter_top": 642,
+    "qk_platter_top": 642,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          657,
+          752,
+          96
+        ],
+        "qk_y": [
+          650,
+          748,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          310,
+          2246
+        ],
+        "dx_left": 70,
+        "dx_right": -69,
+        "sys_key0_w": 151,
+        "qk_key0_w": 139
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          777,
+          872,
+          96
+        ],
+        "qk_y": [
+          770,
+          868,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          310,
+          2246
+        ],
+        "dx_left": 70,
+        "dx_right": -69,
+        "sys_key0_w": 151,
+        "qk_key0_w": 139
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          897,
+          992,
+          96
+        ],
+        "qk_y": [
+          890,
+          988,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          310,
+          2246
+        ],
+        "dx_left": 70,
+        "dx_right": -69,
+        "sys_key0_w": 151,
+        "qk_key0_w": 139
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1017,
+          1112,
+          96
+        ],
+        "qk_y": [
+          1010,
+          1108,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 3,
+        "qk_n_keys": 3,
+        "sys_x_span": [
+          240,
+          2315
+        ],
+        "qk_x_span": [
+          310,
+          2246
+        ],
+        "dx_left": 70,
+        "dx_right": -69,
+        "sys_key0_w": 396,
+        "qk_key0_w": 358
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ]
+  },
+  "iphone_landscape_safari_light_sugg1": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_Safari_Light_sugg1.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_iPhone_Landscape_Safari_Light_sugg1.png",
+    "sys_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_sim_safari_light_native_2622x1206.png",
+    "qk_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_sim_safari_light_qk_2622x1206.png",
+    "sys_timestamp": "2026-11-03 03:20:58",
+    "qk_timestamp": "2026-11-03 03:22:39",
+    "collage_built_at": "2026-11-08 21:44:08 EET",
+    "uses_stale_fallback_sources": true,
+    "stale_source_details": {
+      "sys_path": "Proof_2026-11-08_21-43_Build18_sim_safari_light_native_2622x1206.png (matched_stale_marker:sim_safari_light_)",
+      "qk_path": "Proof_2026-11-08_21-43_Build18_sim_safari_light_qk_2622x1206.png (matched_stale_marker:sim_safari_light_)"
+    },
+    "build_mismatch_warning": "BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_21-43_Build18_sim_safari_light_native_2622x1206.png (matched_stale_marker:sim_safari_light_), qk_path=Proof_2026-11-08_21-43_Build18_sim_safari_light_qk_2622x1206.png (matched_stale_marker:sim_safari_light_)",
+    "sys_platter_top": 532,
+    "qk_platter_top": 544,
+    "row_deltas": [
+      {
+        "row": 0,
+        "sys_y": [
+          684,
+          779,
+          96
+        ],
+        "qk_y": [
+          677,
+          775,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2381
+        ],
+        "qk_x_span": [
+          247,
+          2374
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 157,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 1,
+        "sys_y": [
+          804,
+          899,
+          96
+        ],
+        "qk_y": [
+          797,
+          895,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2381
+        ],
+        "qk_x_span": [
+          247,
+          2374
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 157,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 2,
+        "sys_y": [
+          924,
+          1019,
+          96
+        ],
+        "qk_y": [
+          917,
+          1015,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 12,
+        "qk_n_keys": 12,
+        "sys_x_span": [
+          240,
+          2381
+        ],
+        "qk_x_span": [
+          247,
+          2374
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 157,
+        "qk_key0_w": 153
+      },
+      {
+        "row": 3,
+        "sys_y": [
+          1044,
+          1139,
+          96
+        ],
+        "qk_y": [
+          1037,
+          1135,
+          99
+        ],
+        "dy_top": -7,
+        "dy_bot": -4,
+        "dh": 3,
+        "sys_n_keys": 4,
+        "qk_n_keys": 4,
+        "sys_x_span": [
+          240,
+          2381
+        ],
+        "qk_x_span": [
+          247,
+          2374
+        ],
+        "dx_left": 7,
+        "dx_right": -7,
+        "sys_key0_w": 193,
+        "qk_key0_w": 211
+      }
+    ],
+    "sys_key_rgb": [
+      255.0,
+      255.0,
+      255.0
+    ],
+    "qk_key_rgb": [
+      251.0,
+      251.0,
+      251.0
+    ]
+  },
+  "input_callout": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_InputCallout_iPad_and_iPhone.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_InputCallout_iPad_and_iPhone.png",
+    "ipad_sys": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_09-44_Build17_R17_ipad_03sp_system_keypress_callout.png",
+    "ipad_qk": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_94_Build18_R22_ipad_03p_qirimkey_keypress_callout.png",
+    "iphone_qk_os26": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_89_Build17_R19_ipad_09p_ipad_floating_keypress_callout.png",
+    "iphone_qk_os27": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_83_Build18_InputCallout_KeyQ_iphone_sim_ios27.png",
+    "ipad_float_callout": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_89_Build17_R19_ipad_09p_ipad_floating_keypress_callout.png",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null
+  },
+  "switcher_20_90": {
+    "out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_Switcher_Tamga_And_AbvLiquidGlass.png",
+    "timestamped_out_path": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Collage_2026-11-08_21-43_Build18_Switcher_Tamga_And_AbvLiquidGlass.png",
+    "tamga_crop_out": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Crop_2026-11-08_21-43_Build18_20_90_HomeView_Tamga_Switcher.png",
+    "abv_crop_out": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Crop_2026-11-08_21-43_Build18_20_90_iPadAbvLiquidGlassBridge.png",
+    "latest_home_sugg": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png",
+    "abv_uk_shot": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png",
+    "abv_cyr_shot": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png",
+    "home_light_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png",
+    "home_dark_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png",
+    "lang_crh_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png",
+    "lang_uk_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png",
+    "lang_en_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png",
+    "stats_expanded_b18": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png",
+    "uses_stale_fallback_sources": false,
+    "stale_source_details": {},
+    "build_mismatch_warning": null
+  },
+  "uses_stale_fallback_sources": true,
+  "strict_build18": false,
+  "build_mismatch_warnings": [
+    "[ipad_portrait_sugg1] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-44_Build17_R17_ipad_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17)",
+    "[ipad_portrait_sugg0] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-44_Build17_R17_ipad_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17)",
+    "[iphone_portrait_sugg1] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_03s_system_keyboard_sugg1.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_03_portrait_std_sugg1.png (matched_stale_marker:Build17)",
+    "[iphone_portrait_sugg0] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_07s_system_portrait_std_sugg0.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_07_portrait_std_sugg0.png (matched_stale_marker:Build17)",
+    "[iphone_landscape_sugg1] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg1.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-07_23-23_Build16_R16_iphone_10_landscape_std_sugg1.png (matched_stale_marker:Build16)",
+    "[iphone_landscape_sugg0] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10s_system_landscape_std_sugg0.png (matched_stale_marker:Build17), qk_path=Proof_2026-11-08_09-45_Build17_R16_iphone_10_landscape_std_sugg0.png (matched_stale_marker:Build17)",
+    "[iphone_landscape_safari_light_sugg1] BUILD-MISMATCH WARNING: Build18 collage uses stale fallback source(s) (Build16/Build17 or pre-Nov-8): sys_path=Proof_2026-11-08_21-43_Build18_sim_safari_light_native_2622x1206.png (matched_stale_marker:sim_safari_light_), qk_path=Proof_2026-11-08_21-43_Build18_sim_safari_light_qk_2622x1206.png (matched_stale_marker:sim_safari_light_)"
+  ],
+  "_mirrored_tmp_artifacts": {
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsSheet_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsSheet_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsSheet_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsSheet_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsSheet_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsSheet_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsTile_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsTile_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsTile_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsTile_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_CRH_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_CRH_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_EN_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_EN_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_EN_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_EN_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_UK_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_UK_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_23_NoScrollJump_ThemeSwitch_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_23_NoScrollJump_ThemeSwitch_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_30_AboutView_NoTruncation_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_30_AboutView_NoTruncation_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_30_AboutView_NoTruncation_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_30_AboutView_NoTruncation_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_30_AboutView_NoTruncation_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_30_AboutView_NoTruncation_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Dark_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Dark_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Light_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Light_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Light_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Light_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_20_39_HomeView_Backdrop_Light_Build18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_39_HomeView_Backdrop_Light_Build18.png",
+    "/tmp/b18_ipad_docs/Proof_20_39_HomeView_Backdrop_Light_Build18_iPad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_39_HomeView_Backdrop_Light_Build18_iPad.png",
+    "/tmp/b18_ipad_docs/Proof_20_39_HomeView_Backdrop_Light_ipad_air3_b18.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_39_HomeView_Backdrop_Light_ipad_air3_b18.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_01_home.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_01_home.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_02a_switcher_uk_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_02a_switcher_uk_mid_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_02b_switcher_uk_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_02b_switcher_uk_post_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_02c_abv_bridge_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_02c_abv_bridge_mid_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_02d_abv_bridge_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_02d_abv_bridge_post_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_05_smart_quotes_ok.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_05_smart_quotes_ok.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_05b_backspace_undo_qirim.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_05b_backspace_undo_qirim.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_05c_orthography_yaptinmi_gece_kunduz.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_05c_orthography_yaptinmi_gece_kunduz.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_iPad_ipad_06_ukrainian_fiva_translit.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPad_ipad_06_ukrainian_fiva_translit.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_01_home.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_01_home.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_02a_switcher_uk_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_02a_switcher_uk_mid_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_02b_switcher_uk_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_02b_switcher_uk_post_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_02c_abv_bridge_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_02c_abv_bridge_mid_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_02d_abv_bridge_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_02d_abv_bridge_post_drag.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_05_smart_quotes_ok.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_05_smart_quotes_ok.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_05b_backspace_undo_qirim.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_05b_backspace_undo_qirim.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_05c_orthography_yaptinmi_gece_kunduz.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_05c_orthography_yaptinmi_gece_kunduz.png",
+    "/tmp/b18_ipad_docs/Proof_Build18_ipad_06_ukrainian_fiva_translit.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_ipad_06_ukrainian_fiva_translit.png",
+    "/tmp/b18_iphone_docs/Proof_20_18_Stats_LearnedWordsSheet_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsSheet_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_18_Stats_LearnedWordsTile_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_18_Stats_LearnedWordsTile_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_20_StageManager_Lang_CRH_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_CRH_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_20_StageManager_Lang_EN_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_EN_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_20_StageManager_Lang_UK_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_20_StageManager_Lang_UK_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_23_NoScrollJump_ThemeSwitch_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_30_AboutView_NoTruncation_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_30_AboutView_NoTruncation_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_33_Unified_HomeView_Dark_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Dark_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_33_Unified_HomeView_Light_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_33_Unified_HomeView_Light_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_20_39_HomeView_Backdrop_Light_Build18_iPhone.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_20_39_HomeView_Backdrop_Light_Build18_iPhone.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_01_home.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_01_home.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_02a_switcher_uk_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_02a_switcher_uk_mid_drag.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_02b_switcher_uk_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_02b_switcher_uk_post_drag.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_02c_abv_bridge_mid_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_02c_abv_bridge_mid_drag.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_02d_abv_bridge_post_drag.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_02d_abv_bridge_post_drag.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_05_smart_quotes_ok.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_05_smart_quotes_ok.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_05b_backspace_undo_qirim.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_05b_backspace_undo_qirim.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_05c_orthography_yaptinmi_gece_kunduz.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_05c_orthography_yaptinmi_gece_kunduz.png",
+    "/tmp/b18_iphone_docs/Proof_Build18_iPhone_ipad_06_ukrainian_fiva_translit.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_Build18_iPhone_ipad_06_ukrainian_fiva_translit.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_45_20_21_Settings_AppPage_ipad_sim_ios27.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_45_20_21_Settings_AppPage_ipad_sim_ios27.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_52_AllowFullAccess_PostStress_KeyboardIntact_ipad_sim_ios27.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_52_AllowFullAccess_PostStress_KeyboardIntact_ipad_sim_ios27.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_73_Compact2Tile_FullScreenHeader_crh_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_73_Compact2Tile_FullScreenHeader_crh_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_73_Compact2Tile_FullScreenHeader_uk_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_73_Compact2Tile_FullScreenHeader_uk_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_73_ExpandedStats_uk_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_73_ExpandedStats_uk_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_74_EditorV2_Compact_crh_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_74_EditorV2_Compact_crh_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_74_EditorV2_ExpandedStats_crh_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_74_EditorV2_ExpandedStats_crh_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_74_EditorV2_ExpandedStats_uk_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_74_EditorV2_ExpandedStats_uk_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_75_ZeroHangs_GlobeResilience_crh_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_75_ZeroHangs_GlobeResilience_crh_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_75_ZeroHangs_GlobeResilience_uk_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_75_ZeroHangs_GlobeResilience_uk_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_00_Initial_CRH_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_00_Initial_CRH_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_01_MidHold_UK_GlassOnly_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_01_MidHold_UK_GlassOnly_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_02_PostRelease_UK_LineDrawStart_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_02_PostRelease_UK_LineDrawStart_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_03_PostRelease_UK_LineDrawDone_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_03_PostRelease_UK_LineDrawDone_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_04_AbvBridge_Initial_Cyr_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_04_AbvBridge_Initial_Cyr_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_05_AbvBridge_MidHold_Ukr_GlassOnly_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_05_AbvBridge_MidHold_Ukr_GlassOnly_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_06_AbvBridge_PostRelease_Ukr_LineDrawStart_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_06_AbvBridge_PostRelease_Ukr_LineDrawStart_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_07_AbvBridge_PostRelease_Ukr_LineDrawDone_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_07_AbvBridge_PostRelease_Ukr_LineDrawDone_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_08_MidHold_EN_GlassOnly_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_08_MidHold_EN_GlassOnly_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_09_PostRelease_EN_LineDrawDone_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_09_PostRelease_EN_LineDrawDone_ipad.png",
+    "/tmp/exported_qk_b18_sim_named/Proof_20_90_VideoFrame_10_Final_UK_ipad.png": "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/proofs/Proof_2026-11-08_21-43_Build18_Proof_20_90_VideoFrame_10_Final_UK_ipad.png"
+  },
+  "_exported_xcresult_attachments": {}
+}

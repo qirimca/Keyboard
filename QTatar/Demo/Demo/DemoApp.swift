@@ -7,6 +7,40 @@
 //
 
 import SwiftUI
+import UIKit
+
+final class DemoAppDelegate: NSObject, UIApplicationDelegate {
+    static var temporarilyDisallowThirdPartyKeyboards: Bool = false
+
+    func application(
+        _ application: UIApplication,
+        shouldAllowExtensionPointIdentifier extensionPointIdentifier: UIApplication.ExtensionPointIdentifier
+    ) -> Bool {
+        if extensionPointIdentifier == .keyboard {
+            if Self.temporarilyDisallowThirdPartyKeyboards || ProcessInfo.processInfo.arguments.contains("-qt_force_system_keyboard") {
+                return false
+            }
+        }
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            return .all
+        }
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-qt_force_landscape") {
+            return .landscapeLeft
+        }
+        if args.contains("-qt_keep_orientation") {
+            return .allButUpsideDown
+        }
+        return .portrait
+    }
+}
 
 /**
  This is the main demo app.
@@ -17,7 +51,7 @@ import SwiftUI
  */
 @main
 struct DemoApp: App {
-    
+    @UIApplicationDelegateAdaptor(DemoAppDelegate.self) private var appDelegate
     @State private var navigationPath = NavigationPath()
 
     init() {
@@ -60,10 +94,21 @@ struct DemoApp: App {
                 KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.extendInputCalloutDuration")
             }
         }
+        let isActualUITestRun = (args.contains("-UITesting")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
+            && !args.contains("-qt_live_system_keyboards")
+        if !isActualUITestRun {
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.isUITesting")
+            KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.uiTestingTimestamp")
+        }
         KeyboardPreferences.defaults.removeObject(forKey: "crh.key.test.forceFloating")
+        #if canImport(MetricKit) && os(iOS)
+        QirimKeyDiagnosticsSubscriber.shared.start()
+        #endif
         DispatchQueue.global(qos: .utility).async {
+            CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication)
             CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
-            SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: false)
+            SystemKeyboardSettings.triggerAsyncRefreshIfNeeded(force: true)
         }
     }
 

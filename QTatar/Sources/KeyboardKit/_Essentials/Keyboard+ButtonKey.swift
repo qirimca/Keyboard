@@ -48,6 +48,16 @@ public extension Keyboard {
                 )
                 .overlay(isPressed ? style.pressedOverlayColor : .clear)
                 .cornerRadius(cornerRadius)
+                .overlay(
+                    Group {
+                        if !isPressed && backgroundColor == Color.white.opacity(0.586) {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(Color.white.opacity(0.06))
+                                .blendMode(.plusLighter)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                )
                 .overlay(Keyboard.ButtonShadow())
                 .keyboardButtonStyle(style)  // Not needed in 9.0
         }

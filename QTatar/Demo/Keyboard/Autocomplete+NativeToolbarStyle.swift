@@ -980,6 +980,15 @@ final class GreetingBannerState: ObservableObject {
         }
     }
 
+    func forcePhrase(id: Int) {
+        if let target = KeyboardGreetingPhrase.all.first(where: { $0.id == id }) {
+            shuffledPool = [target]
+            candidateIndex = 0
+            lastPickedID = target.id
+            isDismissedForCurrentSession = false
+        }
+    }
+
     func currentPhrase(for date: Date = Date()) -> KeyboardGreetingPhrase {
         let pool = shuffledPool.isEmpty ? KeyboardGreetingPhrase.candidates(for: date) : shuffledPool
         let idx = abs(candidateIndex) % max(pool.count, 1)
@@ -1156,14 +1165,7 @@ struct NativeAutocompleteToolbar: View {
     }
 
     private var verticalCenterOffset: CGFloat {
-        guard !DemoStyleProvider.usesClassicSystemKeyStyle else { return 0 }
-        if isFloating {
-            return 6.0
-        }
-        if isDockedPad {
-            return -1.5
-        }
-        return -max(0, (height - selectionHeight) / 2.0 - 0.25)
+        return 0
     }
 
     var body: some View {
@@ -1322,7 +1324,7 @@ struct NativeAutocompleteToolbar: View {
                     .frame(width: 12.5, height: 7.0)
 
                 Text(phrase.bannerCRH)
-                    .font(.system(size: 12.5, weight: .regular))
+                    .font(.system(size: 16.0, weight: .regular))
                     .foregroundStyle(primaryColor)
                     .lineLimit(2)
                     .minimumScaleFactor(0.55)
@@ -1334,9 +1336,8 @@ struct NativeAutocompleteToolbar: View {
             .padding(.vertical, 2.5)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: max(clusterWidth - 12, 120), minHeight: pillHeight, maxHeight: pillHeight + 4)
-            .background(greetingPlatterBackground)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
         .accessibilityIdentifier("autocomplete.greetingBanner")
     }
 
@@ -1351,45 +1352,47 @@ struct NativeAutocompleteToolbar: View {
                 } label: {
                     HStack(spacing: 5) {
                         Text(attributionText)
-                            .font(.system(size: 12.0, weight: .regular))
+                            .font(.system(size: 15.0, weight: .regular))
                             .foregroundStyle(primaryColor)
                             .lineLimit(1)
                             .minimumScaleFactor(0.65)
 
                         Image(systemName: "arrow.up.left.circle.fill")
-                            .font(.system(size: 11.5, weight: .medium))
+                            .font(.system(size: 12.5, weight: .medium))
                             .foregroundStyle(primaryColor.opacity(0.72))
                     }
                     .padding(.horizontal, 9)
                     .padding(.vertical, 3.0)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(minHeight: pillHeight, maxHeight: pillHeight)
-                    .background(greetingPlatterBackground)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             } else {
                 Button {
                     insertCurrentPhrase(phrase)
                 } label: {
                     Image(systemName: "arrow.up.left.circle.fill")
-                        .font(.system(size: 13.0, weight: .medium))
+                        .font(.system(size: 13.5, weight: .medium))
                         .foregroundStyle(primaryColor.opacity(0.75))
                         .frame(width: pillHeight, height: pillHeight)
-                        .background(greetingPlatterBackground)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             }
 
             Button {
                 greetingState.cycleNext()
             } label: {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(primaryColor)
-                    .frame(width: pillHeight, height: pillHeight)
-                    .background(greetingPlatterBackground)
+                ZStack {
+                    Circle()
+                        .fill(primaryColor.opacity(isDark ? 0.14 : 0.09))
+                        .frame(width: 19, height: 19)
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(primaryColor.opacity(0.88))
+                }
+                .frame(width: pillHeight, height: pillHeight)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             .accessibilityLabel({
                 switch KeyboardPreferences.interfaceLanguage {
                 case "uk": return "Наступна фраза"
@@ -1403,60 +1406,89 @@ struct NativeAutocompleteToolbar: View {
         .frame(maxWidth: max(clusterWidth - 10, 120))
     }
 
+    private struct CompactGreetingButtonStyle: ButtonStyle {
+        let isDark: Bool
+
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .background(
+                    ZStack {
+                        Color.primary.opacity(0.001)
+                        if configuration.isPressed {
+                            RoundedRectangle(cornerRadius: 14.0, style: .continuous)
+                                .fill(isDark ? Color.white.opacity(0.32) : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.42))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                        }
+                    }
+                )
+                .contentShape(Rectangle())
+                .opacity(configuration.isPressed ? 0.88 : 1.0)
+        }
+    }
+
     @ViewBuilder
     private func greetingBannerView(centerWidth: CGFloat) -> some View {
         let phrase = greetingState.currentPhrase()
         let pillHeight = greetingPillHeight
-        let isTwoLinePhrase = isFloating ? (phrase.bannerCRH.count > 32) : (!isDockedPad && phrase.bannerCRH.count >= 46)
+        let isTwoLinePhrase = isFloating ? (phrase.bannerCRH.count > 44) : (!isDockedPad && phrase.bannerCRH.count >= 46)
         let bannerPillHeight: CGFloat = isTwoLinePhrase ? min(38.0, max(pillHeight, height - 1)) : pillHeight
         let twoLineMinScale: CGFloat = bannerPillHeight < 36 ? 0.62 : 0.95
         let bannerVerticalOffset: CGFloat = isTwoLinePhrase ? (isFloating ? -1.5 : (!isDockedPad ? -2.0 : 0.0)) : 0.0
         let rightReserved: CGFloat = isDockedPad ? 96 : 10
         let maxPillWidth = min(max(centerWidth - rightReserved, 160), isDockedPad ? 660 : 520)
+        let nativeFontSize: CGFloat = isFloating ? 16.0 : (isDockedPad ? 17.0 : 16.0)
 
-        HStack(alignment: .center, spacing: 6) {
+        HStack(alignment: .center, spacing: 2) {
+            Color.clear
+                .frame(width: isFloating ? 17 : 19, height: 1)
+                .accessibilityHidden(true)
+
             Button {
                 insertCurrentPhrase(phrase)
             } label: {
                 HStack(spacing: 6) {
                     BreathingTamgaView(isDark: isDark, minOpacity: 0.55, maxOpacity: 0.92)
-                        .frame(width: 13.5, height: 7.5)
+                        .frame(width: 14.0, height: 8.0)
 
                     Text(phrase.bannerCRH)
-                        .font(.system(size: isFloating ? (isTwoLinePhrase ? 12.5 : 13.5) : (isDockedPad ? 15.5 : (isTwoLinePhrase ? 14.0 : 14.5)), weight: .regular))
+                        .font(.system(size: nativeFontSize, weight: .regular))
                         .foregroundStyle(primaryColor)
                         .lineSpacing(1.0)
-                        .lineLimit(2)
-                        .minimumScaleFactor(isTwoLinePhrase ? twoLineMinScale : 0.62)
+                        .lineLimit(isTwoLinePhrase ? 2 : 1)
+                        .minimumScaleFactor(isTwoLinePhrase ? twoLineMinScale : (isFloating ? 0.75 : 0.65))
                         .allowsTightening(true)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
-                        .offset(y: -0.5)
 
                     Image(systemName: "arrow.up.left.circle.fill")
-                        .font(.system(size: 12.5, weight: .medium))
+                        .font(.system(size: 13.0, weight: .medium))
                         .foregroundStyle(primaryColor.opacity(0.72))
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, isFloating ? (isTwoLinePhrase ? 2.0 : 2.5) : (isDockedPad ? 2.5 : (isTwoLinePhrase ? 2.0 : 3.5)))
+                .padding(.leading, isFloating ? 7 : 10)
+                .padding(.trailing, isFloating ? 3 : 4)
+                .padding(.vertical, isFloating ? 2.0 : (isDockedPad ? 2.5 : 3.0))
                 .frame(height: bannerPillHeight)
-                .background(greetingPlatterBackground)
                 .offset(y: bannerVerticalOffset)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             .accessibilityLabel(phrase.bannerCRH)
             .accessibilityIdentifier("autocomplete.greetingBanner")
 
             Button {
                 greetingState.cycleNext()
             } label: {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundStyle(primaryColor)
-                    .frame(width: pillHeight, height: pillHeight)
-                    .background(greetingPlatterBackground)
+                ZStack {
+                    Circle()
+                        .fill(primaryColor.opacity(isDark ? 0.14 : 0.09))
+                        .frame(width: isFloating ? 17 : 19, height: isFloating ? 17 : 19)
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: isFloating ? 10.5 : 11.5, weight: .semibold))
+                        .foregroundStyle(primaryColor.opacity(0.88))
+                }
+                .frame(width: isFloating ? 22 : 24, height: pillHeight)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(CompactGreetingButtonStyle(isDark: isDark))
             .accessibilityLabel({
                 switch KeyboardPreferences.interfaceLanguage {
                 case "uk": return "Наступна фраза"
@@ -1466,7 +1498,8 @@ struct NativeAutocompleteToolbar: View {
             }())
             .accessibilityIdentifier("autocomplete.greetingNext")
         }
-        .frame(maxWidth: maxPillWidth, minHeight: pillHeight, maxHeight: pillHeight)
+        .frame(maxWidth: maxPillWidth, minHeight: pillHeight, maxHeight: pillHeight, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
 

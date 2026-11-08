@@ -120,53 +120,55 @@ private final class FullAccessInspector: UIInputViewController {
     private static var didRegisterLifecycleObservers = false
     private static let appGroupSuiteName = "group.crh.key.keyboardplus"
     private static let extensionConfirmedFullAccessKey = "crh.key.extensionConfirmedFullAccess"
+    private static let sharedSuiteDefaults = UserDefaults(suiteName: appGroupSuiteName)
+    private static let isExtensionProcess = Bundle.main.bundlePath.hasSuffix(".appex")
+    private static let processLaunchUptime: TimeInterval = ProcessInfo.processInfo.systemUptime
+    private static var didResumeFromBackground = false
+    private static var sharedInstance: FullAccessInspector?
 
     private static func registerLifecycleObserversIfNeeded() {
         guard !didRegisterLifecycleObservers else { return }
         didRegisterLifecycleObservers = true
         let nc = NotificationCenter.default
         for name in [
-            UIApplication.didBecomeActiveNotification,
             UIApplication.didEnterBackgroundNotification,
             UIApplication.willEnterForegroundNotification,
+            UIApplication.didBecomeActiveNotification,
+            UIApplication.willResignActiveNotification,
             .NSExtensionHostDidEnterBackground,
             .NSExtensionHostWillEnterForeground
         ] {
             nc.addObserver(forName: name, object: nil, queue: .main) { _ in
+                didResumeFromBackground = true
                 cachedValue = nil
                 lastCheckUptime = 0
+                sharedInstance = nil
             }
         }
     }
 
     static func sharedHasFullAccess() -> Bool {
         guard Thread.isMainThread else {
-            return cachedValue ?? false
+            return cachedValue ?? (sharedSuiteDefaults?.bool(forKey: extensionConfirmedFullAccessKey) ?? false)
         }
         registerLifecycleObserversIfNeeded()
         let now = ProcessInfo.processInfo.systemUptime
-        if let cached = cachedValue, (now - lastCheckUptime) < 0.75 {
+        if let cached = cachedValue, (now - lastCheckUptime) < 0.45 {
             return cached
         }
         lastCheckUptime = now
-        let isExtensionProcess = Bundle.main.bundlePath.hasSuffix(".appex")
-        if !isExtensionProcess,
-           UserDefaults(suiteName: appGroupSuiteName)?.bool(forKey: extensionConfirmedFullAccessKey) == true {
-            cachedValue = true
-            return true
-        }
-        let directResult = FullAccessInspector().hasFullAccess
+        let inspector = FullAccessInspector()
+        sharedInstance = inspector
+        let directResult = inspector.hasFullAccess
         let result: Bool
         if directResult {
             result = true
-            if isExtensionProcess {
-                UserDefaults(suiteName: appGroupSuiteName)?.set(true, forKey: extensionConfirmedFullAccessKey)
-            }
-        } else {
+            sharedSuiteDefaults?.set(true, forKey: extensionConfirmedFullAccessKey)
+        } else if isExtensionProcess || didResumeFromBackground || (now - processLaunchUptime) >= 1.5 {
             result = false
-            if isExtensionProcess {
-                UserDefaults(suiteName: appGroupSuiteName)?.set(false, forKey: extensionConfirmedFullAccessKey)
-            }
+            sharedSuiteDefaults?.set(false, forKey: extensionConfirmedFullAccessKey)
+        } else {
+            result = sharedSuiteDefaults?.bool(forKey: extensionConfirmedFullAccessKey) == true
         }
         cachedValue = result
         return result

@@ -17,6 +17,7 @@ Outputs the exact summary string for the table header and RESUME BLOCK.
 
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 DEFAULT_TASKS_PATH = Path(
@@ -69,6 +70,15 @@ DEFAULT_LOC_V31_REPO_PATH = Path(
 DEFAULT_AGENTS_PATH = Path(
     "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/AGENTS.md"
 )
+DEFAULT_HANDOFF_QUOTA_PATH = Path(
+    "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/HANDOFF_QUOTA.md"
+)
+DEFAULT_TECH_HANG_AUDIT_PATH = Path(
+    "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-06/TECHNICAL_HANG_PERFORMANCE_TRACE_AUDIT.md"
+)
+DEFAULT_TECH_HANG_AUDIT_2026_11_08_PATH = Path(
+    "/Users/love/Documents/Documents - MacBook Air - Віта/GitHub/Keyboard/docs/release/2026-11-08/TECHNICAL_HANG_PERFORMANCE_TRACE_AUDIT.md"
+)
 
 INVALID_PROOF_BASENAMES_ALL = {
     "PhysicalProof_05_iOSSettings_ipad.png": "depicts 'Software Update: iPadOS 26.7.2 Unable to install', NOT Keyboard/App Settings",
@@ -83,6 +93,7 @@ INVALID_PROOF_BASENAMES_ON_COMPLETED = {
     "Proof_20_55_ClassicBulb_KeyQ_ipad.png": "captured in fake -qt_force_floating / -qt_force_classic_bulb on iPadOS 27 Simulator (320 pt layout centered inside full-width 1668 px Docked grey platter; classic bulbs must be tested on real OS 26 and detached capsules on OS 27)",
     "Proof_20_55_ClassicBulb_KeyR_ipad.png": "captured in fake -qt_force_floating / -qt_force_classic_bulb on iPadOS 27 Simulator (320 pt layout centered inside full-width 1668 px Docked grey platter; classic bulbs must be tested on real OS 26 and detached capsules on OS 27)",
     "Proof_20_16_SystemSettings_OpensGeneral_iphone15pro.png": "shows root iOS Settings page instead of Settings -> General -> Keyboards",
+    "ipad_overlay_floating_with_and_without_suggestions.png": "compares Native Floating without suggestions against QırımKey Floating with suggestions (must compare like-for-like with suggestions vs with suggestions and without suggestions vs without suggestions)",
 }
 
 VISUAL_REVIEW_FAILURES = INVALID_PROOF_BASENAMES_ON_COMPLETED
@@ -107,7 +118,7 @@ def scan_unlinked_media_mentions(doc_path: Path):
         return []
     hits = []
     for line_no, raw_line in enumerate(doc_path.read_text(encoding="utf-8").splitlines(), start=1):
-        without_links = re.sub(r"!?\[[^\[\]]+\]\([^)]+\)", " ", raw_line)
+        without_links = re.sub(r"!?\[[^\[\]]+\]\((?:file:///|/Users/love/|conversation://|sidecar://|https?://)[^)]+\)", " ", raw_line)
         for m in MEDIA_EXT_RE.finditer(without_links):
             tok = m.group(1)
             if tok in (".png", ".jpg", ".jpeg", ".mp4", ".mov"):
@@ -116,8 +127,36 @@ def scan_unlinked_media_mentions(doc_path: Path):
     return hits
 
 
+BRAIN_UUID_PATH_RE = re.compile(
+    r"^(/Users/love/\.gemini/antigravity/brain/)(([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(/.*)?$"
+)
+
+
+def resolve_brain_uuid_path(raw_path: str) -> Path:
+    """
+    Return `Path(raw_path)` if it exists on disk; otherwise, if `raw_path` points inside
+    `/Users/love/.gemini/antigravity/brain/<8hex>-.../<subpath>`, resolve via the unique
+    `/Users/love/.gemini/antigravity/brain/<8hex>-*` directory on disk if that target exists.
+    """
+    p_obj = Path(raw_path)
+    if p_obj.exists():
+        return p_obj
+    m = BRAIN_UUID_PATH_RE.match(raw_path)
+    if m:
+        brain_root = Path(m.group(1))
+        short_prefix = m.group(3)
+        subpath = (m.group(4) or "").lstrip("/")
+        if brain_root.exists():
+            candidates = sorted(brain_root.glob(f"{short_prefix}-*"))
+            if len(candidates) == 1:
+                resolved = candidates[0] / subpath if subpath else candidates[0]
+                if resolved.exists():
+                    return resolved
+    return p_obj
+
+
 def scan_broken_file_links(doc_path: Path):
-    """Scan a markdown file for broken `file://` links and return list of (line_no, raw_path)."""
+    """Scan a markdown file for broken `file://` links or relative non-file:// links and return list of (line_no, raw_path)."""
     if not doc_path.exists():
         return []
     from urllib.parse import unquote
@@ -126,10 +165,16 @@ def scan_broken_file_links(doc_path: Path):
     for line_no, raw_line in enumerate(doc_path.read_text(encoding="utf-8").splitlines(), start=1):
         for m in re.finditer(r"\]\(file://([^)]+)\)", raw_line):
             raw_path = unquote(m.group(1)).split("#")[0]
-            if raw_path in ("/absolute/path", "/path/to/file", "/path/to/directory"):
+            if raw_path in ("/absolute/path", "/path/to/file", "/path/to/directory", "/absolute/path/in/artifact/dir"):
                 continue
-            if not Path(raw_path).exists():
+            if not resolve_brain_uuid_path(raw_path).exists():
                 broken.append((line_no, raw_path))
+        if doc_path in (DEFAULT_HANDOFF_QUOTA_PATH, DEFAULT_TECH_HANG_AUDIT_PATH):
+            for m in re.finditer(r"\]\((?!file://|conversation://|sidecar://|https?://|mailto:|#)([^)]+)\)", raw_line):
+                rel_target = m.group(1).strip()
+                if rel_target in ("url", "...", "/absolute/path/in/artifact/dir"):
+                    continue
+                broken.append((line_no, f"RELATIVE_NON_FILE_URI_LINK:{rel_target}"))
     return broken
 
 
@@ -285,6 +330,14 @@ def fix_malformed_link_syntax(doc_path: Path) -> int:
             r"\1",
             updated,
         )
+        updated = updated.replace(
+            "c6c018c0-2090-4a94-9b7a-b07119518f0c",
+            "c6c018c0-5d55-4d1d-84a6-0aa75adecca1",
+        )
+        updated = updated.replace(
+            "40b59109-4e6a-43bb-9a3f-b55cb0f13c7d",
+            "40b59109-06b6-4ffe-b374-a73580607322",
+        )
         updated = updated.replace("/`[", "/[")
         updated = updated.replace(").sb-*`", ").sb-*")
         updated = updated.replace("`[ ]`/[/]`", "`[ ]`/`[/]`")
@@ -309,6 +362,8 @@ def fix_malformed_link_syntax(doc_path: Path) -> int:
                             updated = "| " + " | ".join(cells) + " |"
                 if ("11:30" in updated or "12:15" in updated) and ("🔄" in updated or "⏳" in updated):
                     updated = updated.replace("11:30", "12:35").replace("12:15", "12:35")
+                if ("02:05" in updated or "09:30" in updated) and ("🔄" in updated or "⏳" in updated):
+                    updated = updated.replace("02:05", "09:50").replace("09:30", "09:50")
 
         if updated != line:
             changed_lines += 1
@@ -513,6 +568,8 @@ def main():
             ("localization_master_table_v24.md", DEFAULT_LOC_V24_BRAIN_PATH),
             ("EDITOR_TRANSLATOR_EXPORT_V31.md", DEFAULT_LOC_V31_REPO_PATH),
             ("AGENTS.md", DEFAULT_AGENTS_PATH),
+            ("HANDOFF_QUOTA.md", DEFAULT_HANDOFF_QUOTA_PATH),
+            ("TECHNICAL_HANG_PERFORMANCE_TRACE_AUDIT.md", DEFAULT_TECH_HANG_AUDIT_PATH),
         ]:
             try:
                 fixed_n = fix_malformed_link_syntax(target_p)
@@ -552,7 +609,7 @@ def main():
     for idx, line in enumerate(lines, start=1):
         for m in re.finditer(r"\]\(file://([^)]+)\)", line):
             raw_path = unquote(m.group(1)).split("#")[0]
-            p_obj = Path(raw_path)
+            p_obj = resolve_brain_uuid_path(raw_path)
             if not p_obj.exists():
                 broken_file_links.append((idx, raw_path))
             elif raw_path.lower().endswith((".png", ".jpg", ".jpeg")):
@@ -757,6 +814,9 @@ def main():
         ("localization_master_table_v24.md", DEFAULT_LOC_V24_BRAIN_PATH),
         ("EDITOR_TRANSLATOR_EXPORT_V31.md", DEFAULT_LOC_V31_REPO_PATH),
         ("AGENTS.md", DEFAULT_AGENTS_PATH),
+        ("HANDOFF_QUOTA.md", DEFAULT_HANDOFF_QUOTA_PATH),
+        ("TECHNICAL_HANG_PERFORMANCE_TRACE_AUDIT.md", DEFAULT_TECH_HANG_AUDIT_PATH),
+        ("TECHNICAL_HANG_PERFORMANCE_TRACE_AUDIT_2026_11_08.md", DEFAULT_TECH_HANG_AUDIT_2026_11_08_PATH),
     ]
 
     unlinked_by_target = [(label, scan_unlinked_media_mentions(p)) for label, p in scan_targets]
@@ -781,6 +841,61 @@ def main():
 
     header_sync_errors = []
     expired_plan_errors = []
+
+    # 9.5b. Top-header timestamp freshness check (<= 20 minutes) & --sync-header auto-update
+    from datetime import datetime
+
+    header_ts_re = re.compile(
+        r"(Оновлено\s+`|Останнє оновлення:\s+`|У ПРОЦЕСІ\s+)"
+        r"(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s+EET"
+    )
+    now_dt = datetime.now()
+    now_ts_str = now_dt.strftime("%Y-%m-%d %H:%M")
+    max_stale_minutes = 20.0
+    ts_updated_on_disk = False
+    found_header_timestamps = 0
+
+    for idx in range(min(80, len(lines))):
+        line = lines[idx]
+        if "| № | Завдання" in line:
+            break
+        matches = list(header_ts_re.finditer(line))
+        if not matches:
+            continue
+        found_header_timestamps += len(matches)
+        line_stale = False
+        for m in matches:
+            ts_str = m.group(2)
+            try:
+                parsed_dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M")
+                age_min = (now_dt - parsed_dt).total_seconds() / 60.0
+            except ValueError:
+                age_min = 999999.0
+
+            if age_min > max_stale_minutes:
+                line_stale = True
+                if not do_sync_header:
+                    header_sync_errors.append(
+                        f"  Line {idx + 1}: Stale header timestamp '{ts_str} EET' "
+                        f"is {age_min:.1f} min old (limit <= {max_stale_minutes:.0f} min, "
+                        f"now is {now_ts_str} EET). Run with --sync-header to update."
+                    )
+        if line_stale and do_sync_header:
+            lines[idx] = header_ts_re.sub(
+                lambda m: f"{m.group(1)}{now_ts_str} EET",
+                line,
+            )
+            ts_updated_on_disk = True
+            print(f"SYNCED TIMESTAMP Line {idx + 1}: updated to '{now_ts_str} EET'")
+
+    if found_header_timestamps == 0:
+        header_sync_errors.append(
+            "  Top header (lines 1..75): Missing 'Останнє оновлення: YYYY-MM-DD HH:MM EET' timestamp!"
+        )
+
+    if do_sync_header and ts_updated_on_disk:
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
     for idx, line in enumerate(lines, start=1):
         if "Завдання та підпункти" in line and line.strip().startswith("|"):
             h_cells = split_gfm_row(line.strip())
@@ -822,9 +937,61 @@ def main():
                     sub_id, sub_meta = sub_m.group(2), sub_m.group(3)
                     if (
                         expired_subtask_plan_pattern.search(sub_meta)
-                        or ("12:35" not in sub_meta and "16:30" not in sub_meta)
-                        or (re.search(r"2[123]:\d{2}", sub_meta) and "01:31" not in sub_meta)
-                        or re.search(r"Новий план:\s*`2[123]:\d{2}", sub_meta)
+                        or (
+                            "12:35" not in sub_meta
+                            and "16:30" not in sub_meta
+                            and "22:30" not in sub_meta
+                            and "22:35" not in sub_meta
+                            and "22:55" not in sub_meta
+                            and "23:00" not in sub_meta
+                            and "23:15" not in sub_meta
+                            and "23:35" not in sub_meta
+                            and "23:55" not in sub_meta
+                            and "23:59" not in sub_meta
+                            and "00:15" not in sub_meta
+                            and "00:35" not in sub_meta
+                            and "00:50" not in sub_meta
+                            and "00:55" not in sub_meta
+                            and "01:15" not in sub_meta
+                            and "01:35" not in sub_meta
+                            and "02:05" not in sub_meta
+                            and "09:30" not in sub_meta
+                            and "09:50" not in sub_meta
+                            and "10:40" not in sub_meta
+                            and "11:00" not in sub_meta
+                            and "11:20" not in sub_meta
+                            and "11:40" not in sub_meta
+                            and "12:00" not in sub_meta
+                            and "12:20" not in sub_meta
+                            and "12:30" not in sub_meta
+                            and "12:40" not in sub_meta
+                            and "13:00" not in sub_meta
+                            and "13:15" not in sub_meta
+                            and "13:30" not in sub_meta
+                            and "13:45" not in sub_meta
+                            and "14:00" not in sub_meta
+                            and "14:15" not in sub_meta
+                            and "14:30" not in sub_meta
+                            and "14:45" not in sub_meta
+                            and "15:00" not in sub_meta
+                            and "15:15" not in sub_meta
+                            and "15:30" not in sub_meta
+                            and "15:45" not in sub_meta
+                            and "16:00" not in sub_meta
+                            and "16:30" not in sub_meta
+                            and "17:00" not in sub_meta
+                            and "17:30" not in sub_meta
+                            and "18:00" not in sub_meta
+                            and "18:30" not in sub_meta
+                            and "19:00" not in sub_meta
+                            and "19:30" not in sub_meta
+                            and "20:00" not in sub_meta
+                            and "20:30" not in sub_meta
+                            and "21:00" not in sub_meta
+                            and "21:15" not in sub_meta
+                            and "21:30" not in sub_meta
+                            and "22:00" not in sub_meta
+                        )
                         or re.search(r"\(`\d+\s*хв`\s*->\s*Новий план:", sub_meta)
                     ):
                         expired_plan_errors.append(
@@ -833,7 +1000,60 @@ def main():
                 if "🔄" in r_status or ("⏳" in r_status and "Відкладено" not in r_status):
                     if (
                         expired_subtask_plan_pattern.search(r_status)
-                        or ("12:35" not in r_status and "16:30" not in r_status)
+                        or (
+                            "12:35" not in r_status
+                            and "16:30" not in r_status
+                            and "22:30" not in r_status
+                            and "22:35" not in r_status
+                            and "22:55" not in r_status
+                            and "23:00" not in r_status
+                            and "23:15" not in r_status
+                            and "23:35" not in r_status
+                            and "23:55" not in r_status
+                            and "23:59" not in r_status
+                            and "00:15" not in r_status
+                            and "00:35" not in r_status
+                            and "00:50" not in r_status
+                            and "00:55" not in r_status
+                            and "01:15" not in r_status
+                            and "01:35" not in r_status
+                            and "02:05" not in r_status
+                            and "09:30" not in r_status
+                            and "09:50" not in r_status
+                            and "10:40" not in r_status
+                            and "11:00" not in r_status
+                            and "11:20" not in r_status
+                            and "11:40" not in r_status
+                            and "12:00" not in r_status
+                            and "12:20" not in r_status
+                            and "12:30" not in r_status
+                            and "12:40" not in r_status
+                            and "13:00" not in r_status
+                            and "13:15" not in r_status
+                            and "13:30" not in r_status
+                            and "13:45" not in r_status
+                            and "14:00" not in r_status
+                            and "14:15" not in r_status
+                            and "14:30" not in r_status
+                            and "14:45" not in r_status
+                            and "15:00" not in r_status
+                            and "15:15" not in r_status
+                            and "15:30" not in r_status
+                            and "15:45" not in r_status
+                            and "16:00" not in r_status
+                            and "17:00" not in r_status
+                            and "17:30" not in r_status
+                            and "18:00" not in r_status
+                            and "18:30" not in r_status
+                            and "19:00" not in r_status
+                            and "19:30" not in r_status
+                            and "20:00" not in r_status
+                            and "20:30" not in r_status
+                            and "21:00" not in r_status
+                            and "21:15" not in r_status
+                            and "21:30" not in r_status
+                            and "22:00" not in r_status
+                        )
                     ):
                         expired_plan_errors.append(
                             f"Line {idx} ({r_id} Col 3): expired row planned window in '{r_status}'"

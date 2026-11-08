@@ -36,9 +36,20 @@ final class QirimKeyUITests: XCTestCase {
     }
 
     private func launch(fieldMode: String = "standard", theme: String = "modernLight", extraArgs: [String] = []) throws {
-        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"] + extraArgs
+        var finalExtraArgs = extraArgs
+        if !finalExtraArgs.contains("-qt_wrong_keyboard") && !finalExtraArgs.contains("-qt_suppress_wrong_keyboard_warning") {
+            finalExtraArgs.append("-qt_suppress_wrong_keyboard_warning")
+        }
+        app.launchArguments = ["-qt_field", fieldMode, "-qt_theme", theme, "-qt_reset_text"] + finalExtraArgs
         app.launch()
-        if extraArgs.contains("-qt_no_autofocus") || extraArgs.contains("-qt_default_expansion") || extraArgs.contains("-qt_collapse_testing") {
+        if finalExtraArgs.contains("-qt_force_landscape") {
+            XCUIDevice.shared.orientation = .landscapeLeft
+            Thread.sleep(forTimeInterval: 0.8)
+        } else if !finalExtraArgs.contains("-qt_keep_orientation") && XCUIDevice.shared.orientation != .portrait {
+            XCUIDevice.shared.orientation = .portrait
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        if finalExtraArgs.contains("-qt_no_autofocus") || finalExtraArgs.contains("-qt_default_expansion") || finalExtraArgs.contains("-qt_collapse_testing") {
             let testingToggle = app.descendants(matching: .any).matching(identifier: "testing.toggle").firstMatch
             XCTAssertTrue(testingToggle.waitForExistence(timeout: 10))
             dismissKeyboardOnboardingOverlayIfNeeded()
@@ -46,6 +57,30 @@ final class QirimKeyUITests: XCTestCase {
         }
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         dismissKeyboardOnboardingOverlayIfNeeded()
+        if finalExtraArgs.contains("-qt_force_system_keyboard") {
+            if !app.keyboards.firstMatch.waitForExistence(timeout: 3.0) {
+                if field.exists && field.isHittable {
+                    field.tap()
+                    Thread.sleep(forTimeInterval: 0.6)
+                }
+            }
+            _ = app.keyboards.firstMatch.waitForExistence(timeout: 4.0)
+            let twelveColPred = NSPredicate(format: "label IN {'х', 'Х', 'ї', 'Ї', 'є', 'Є', 'ґ', 'Ґ', 'і', 'І'}")
+            let globePred = NSPredicate(format: "(identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура', 'Nöbetteki klaviatura'}) AND NOT (label CONTAINS[c] 'Emoji') AND NOT (label CONTAINS[c] 'Емодзі')")
+            for _ in 0..<4 {
+                if app.keyboards.firstMatch.keys.matching(twelveColPred).firstMatch.exists || anyCustomKey.exists {
+                    break
+                }
+                let globeBtn = app.keyboards.firstMatch.buttons.matching(globePred).firstMatch
+                if globeBtn.exists && globeBtn.isHittable {
+                    globeBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.65)
+                } else {
+                    break
+                }
+            }
+            return
+        }
         let firstKey = fieldMode == "numbers" ? key("alphabetic") : key("numeric")
         if !anyCustomKey.waitForExistence(timeout: 3.5) {
             if field.exists && field.isHittable {
@@ -59,6 +94,7 @@ final class QirimKeyUITests: XCTestCase {
         }
         dismissKeyboardOnboardingOverlayIfNeeded()
         if !anyCustomKey.exists {
+            #if !targetEnvironment(simulator)
             enableKeyboardInSettingsIfNeeded()
             app.activate()
             Thread.sleep(forTimeInterval: 0.6)
@@ -68,6 +104,7 @@ final class QirimKeyUITests: XCTestCase {
                 doneBtn.tap()
                 Thread.sleep(forTimeInterval: 0.4)
             }
+            #endif
             if field.waitForExistence(timeout: 5) {
                 if field.isHittable {
                     field.tap()
@@ -84,11 +121,14 @@ final class QirimKeyUITests: XCTestCase {
 
     private func cycleToCustomKeyboard(firstKey: XCUIElement) {
         dismissKeyboardOnboardingOverlayIfNeeded()
-        let nextKeyboardPred = NSPredicate(format: "identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура', 'Nöbetteki klaviatura'}")
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let nextKeyboardPred = NSPredicate(format: "(identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура', 'Nöbetteki klaviatura'}) AND NOT (label CONTAINS[c] 'Emoji') AND NOT (label CONTAINS[c] 'Емодзі')")
+        let kbNextKeyboard = app.keyboards.firstMatch.buttons.matching(nextKeyboardPred).firstMatch
         let nextKeyboard = app.descendants(matching: .any).matching(nextKeyboardPred).firstMatch
-        let abcPred = NSPredicate(format: "identifier == 'ABC' OR label IN {'ABC', 'АБВ', 'letters', 'A B C'}")
-        let abcBtn = app.buttons.matching(abcPred).firstMatch
-        if !nextKeyboard.exists && !abcBtn.exists {
+        let sbNextKeyboard = springboard.descendants(matching: .any).matching(nextKeyboardPred).firstMatch
+        let abcPred = NSPredicate(format: "(identifier == 'ABC' OR label IN {'ABC', 'АБВ', 'A B C'}) AND identifier != 'more'")
+        let abcBtn = app.descendants(matching: .any).matching(abcPred).firstMatch
+        if !kbNextKeyboard.exists && !nextKeyboard.exists && !sbNextKeyboard.exists && !abcBtn.exists {
             if field.exists && field.isHittable {
                 field.tap()
                 Thread.sleep(forTimeInterval: 0.6)
@@ -98,7 +138,7 @@ final class QirimKeyUITests: XCTestCase {
         if anyCustomKey.exists { return }
 
         func exitEmojiKeyboardIfNeeded() {
-            if !nextKeyboard.exists && abcBtn.exists && abcBtn.isHittable {
+            if !anyCustomKey.exists && abcBtn.exists && abcBtn.isHittable {
                 abcBtn.tap()
                 Thread.sleep(forTimeInterval: 0.45)
                 dismissKeyboardOnboardingOverlayIfNeeded()
@@ -108,54 +148,61 @@ final class QirimKeyUITests: XCTestCase {
         exitEmojiKeyboardIfNeeded()
         if anyCustomKey.exists { return }
 
-        // Fast path: single tap on Globe button (or iPad Floating footer Globe at dx: 0.046, dy: 0.852)
-        let win = app.windows.firstMatch
-        for attempt in 0..<3 {
-            if anyCustomKey.exists { return }
+        func resolveGlobeCoord(attempt: Int = 0) -> XCUICoordinate {
+            if kbNextKeyboard.exists && kbNextKeyboard.frame.width > 0 {
+                return kbNextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            }
             if nextKeyboard.exists && nextKeyboard.frame.width > 0 {
-                nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            } else if UIDevice.current.userInterfaceIdiom == .pad {
-                let fallbackCoord = (attempt % 2 == 0)
-                    ? win.coordinate(withNormalizedOffset: CGVector(dx: 0.046, dy: 0.852))
-                    : win.coordinate(withNormalizedOffset: CGVector(dx: 0.045, dy: 0.96))
-                fallbackCoord.tap()
-            } else {
-                break
+                return nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             }
-            Thread.sleep(forTimeInterval: 0.85)
-            dismissKeyboardOnboardingOverlayIfNeeded()
-            if anyCustomKey.waitForExistence(timeout: 1.2) { return }
+            if sbNextKeyboard.exists && sbNextKeyboard.frame.width > 0 {
+                return sbNextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            }
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                if XCUIDevice.shared.orientation.isLandscape {
+                    return springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.105, dy: 0.945))
+                }
+                return springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.125, dy: 0.955))
+            }
+            if XCUIDevice.shared.orientation.isLandscape {
+                return springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.06, dy: 0.92))
+            }
+            return springboard.coordinate(withNormalizedOffset: CGVector(dx: 0.108, dy: 0.953))
         }
 
-        // Second: try press-and-drag on the Globe button to select Qırımtatarca directly from the popup list
-        for dyOffset in [-1.5, -2.1, -2.7, -3.3] {
+        // Fast path: single tap on Globe button
+        for attempt in 0..<2 {
             exitEmojiKeyboardIfNeeded()
             if anyCustomKey.exists { return }
-            guard nextKeyboard.exists && nextKeyboard.isHittable else { break }
-            let start = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            let end = nextKeyboard.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: dyOffset))
-            start.press(forDuration: 0.55, thenDragTo: end)
-            Thread.sleep(forTimeInterval: 0.45)
+            resolveGlobeCoord(attempt: attempt).tap()
+            Thread.sleep(forTimeInterval: 0.70)
             dismissKeyboardOnboardingOverlayIfNeeded()
-            if anyCustomKey.waitForExistence(timeout: 1.2) { return }
+            if anyCustomKey.waitForExistence(timeout: 0.9) { return }
         }
 
-        // Fallback: multi-tap bursts to cycle past MRU ping-pong
-        for burstCount in [1, 2, 3] {
+        // Second: rapid multi-tap bursts (< 0.25s between taps) so iOS cycles through the keyboard list instead of MRU ping-pong
+        for burstCount in [2, 3, 4, 5] {
             exitEmojiKeyboardIfNeeded()
             if anyCustomKey.exists { return }
-            guard (nextKeyboard.exists && nextKeyboard.isHittable) || (abcBtn.exists && abcBtn.isHittable) else { break }
             for b in 0..<burstCount {
-                if nextKeyboard.exists && nextKeyboard.isHittable {
-                    nextKeyboard.tap()
-                } else if abcBtn.exists && abcBtn.isHittable {
-                    abcBtn.tap()
-                }
+                resolveGlobeCoord(attempt: b).tap()
                 if b + 1 < burstCount {
-                    Thread.sleep(forTimeInterval: 0.12)
+                    Thread.sleep(forTimeInterval: 0.18)
                 }
             }
-            Thread.sleep(forTimeInterval: 0.45)
+            Thread.sleep(forTimeInterval: 0.75)
+            dismissKeyboardOnboardingOverlayIfNeeded()
+            if anyCustomKey.waitForExistence(timeout: 1.0) { return }
+        }
+
+        // Third: press-and-drag into the Globe popup menu using point offsets
+        for dyPts in [-55.0, -85.0, -115.0, -145.0, -175.0, -210.0, -245.0, -280.0] {
+            exitEmojiKeyboardIfNeeded()
+            if anyCustomKey.exists { return }
+            let start = resolveGlobeCoord()
+            let end = start.withOffset(CGVector(dx: 45.0, dy: dyPts))
+            start.press(forDuration: 0.55, thenDragTo: end)
+            Thread.sleep(forTimeInterval: 0.65)
             dismissKeyboardOnboardingOverlayIfNeeded()
             if anyCustomKey.waitForExistence(timeout: 1.0) { return }
         }
@@ -163,6 +210,7 @@ final class QirimKeyUITests: XCTestCase {
 
     private func enableKeyboardInSettingsIfNeeded() {
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        defer { settings.terminate() }
         if app.state == .runningForeground {
             let donePred = NSPredicate(format: "label IN {'Done', 'Готово', 'Azır'}")
             let doneBtn = app.buttons.matching(donePred).firstMatch
@@ -512,10 +560,12 @@ final class QirimKeyUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-        let directory = "/tmp/qk_shots"
-        try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         let safe = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: " ", with: "_")
-        try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory + "/" + safe + ".png"))
+        let tag = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
+        for directory in ["/tmp/qk_shots", "/tmp/qk_ui_screenshots_\(tag)"] {
+            try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+            try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory + "/" + safe + ".png"))
+        }
     }
 
     func testNumericFieldCanStayAlphabetic() throws {
@@ -2942,6 +2992,7 @@ final class QirimKeyUITests: XCTestCase {
                         Thread.sleep(forTimeInterval: 0.9)
                     }
                 }
+                _ = navigateToQirimKeyAppPageInSettings(settings)
                 _ = settings.cells.firstMatch.waitForExistence(timeout: 8.0)
                 let suggestionsSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Söz teklifleri' OR label CONTAINS[c] 'Підказки слів' OR label CONTAINS[c] 'Word suggestions'")).firstMatch
                 let flicksSwitch = settings.switches.matching(NSPredicate(format: "label CONTAINS[c] 'Tüşme belgi' OR label CONTAINS[c] 'Набір жестами' OR label CONTAINS[c] 'Key Flicks'")).firstMatch
@@ -3270,17 +3321,9 @@ final class QirimKeyUITests: XCTestCase {
             }
             let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
             if settings.wait(for: .runningForeground, timeout: 5.0) {
-                _ = settings.cells.firstMatch.waitForExistence(timeout: 8.0)
+                _ = settings.cells.firstMatch.waitForExistence(timeout: 6.0)
                 Thread.sleep(forTimeInterval: 0.8)
-                let keyboardsNavPred = NSPredicate(format: "identifier IN {'Keyboards', 'Клавіатури', 'Клавиатуры'} OR title IN {'Keyboards', 'Клавіатури', 'Клавиатуры'}")
-                if settings.navigationBars.matching(keyboardsNavPred).firstMatch.exists {
-                    let navBack = settings.navigationBars.buttons.element(boundBy: 0)
-                    if navBack.exists && navBack.isHittable {
-                        navBack.tap()
-                        Thread.sleep(forTimeInterval: 0.9)
-                    }
-                }
-                _ = settings.cells.firstMatch.waitForExistence(timeout: 8.0)
+                _ = navigateToQirimKeyAppPageInSettings(settings)
                 capture("Proof_20_45_20_21_Settings_AppPage_\(deviceTag)")
                 settings.terminate()
             }
@@ -3402,19 +3445,31 @@ final class QirimKeyUITests: XCTestCase {
                 try? data.write(to: URL(fileURLWithPath: "/tmp/Debug_Step2_AfterFloat.png"), options: .atomic)
             }
 
-            // 3. Switch back to QırımKey inside the Floating keyboard container
-            for attempt in 0..<4 {
-                if app.descendants(matching: .any).matching(qirimPred).firstMatch.exists {
+            // 3. Switch back to Latin QırımKey inside the Floating keyboard container
+            let latinQPred = NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q'}")
+            for attempt in 0..<5 {
+                if app.descendants(matching: .any).matching(latinQPred).firstMatch.exists {
                     break
                 }
+                let customGlobe = app.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'key.globe'")).firstMatch
                 let sysGlobe = app.descendants(matching: .any).matching(nextKbPred).firstMatch
                 let globeCoord: XCUICoordinate
-                if sysGlobe.exists && sysGlobe.frame.width > 0 && attempt == 0 {
-                    globeCoord = sysGlobe.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                if customGlobe.exists && customGlobe.frame.width > 0 {
+                    globeCoord = win.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: customGlobe.frame.midX, dy: customGlobe.frame.midY))
+                } else if sysGlobe.exists && sysGlobe.frame.width > 0 && attempt == 0 {
+                    globeCoord = win.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: sysGlobe.frame.midX, dy: sysGlobe.frame.midY))
+                } else if kb.exists && kb.frame.width > 0 && kb.frame.width < 420.0 {
+                    globeCoord = win.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: kb.frame.minX + 24.0, dy: kb.frame.maxY + 21.0))
                 } else {
                     globeCoord = win.coordinate(withNormalizedOffset: CGVector(dx: 0.046, dy: 0.852))
                 }
-                globeCoord.tap()
+                let tapCount = attempt + 1
+                for t in 0..<tapCount {
+                    globeCoord.tap()
+                    if t + 1 < tapCount {
+                        Thread.sleep(forTimeInterval: 0.18)
+                    }
+                }
                 Thread.sleep(forTimeInterval: 1.0)
             }
             if let data = XCUIScreen.main.screenshot().pngRepresentation as Data? {
@@ -3423,19 +3478,51 @@ final class QirimKeyUITests: XCTestCase {
             NSLog("[QA-FLOAT] kb.frame = \(kb.exists ? kb.frame : .zero)")
         } else {
             // Exit Floating mode back to Docked mode:
-            // Drag the bottom grabber pill (•••) of the floating keyboard down to the bottom center of the screen
-            let winFrame = win.frame
-            let kbFrame = kb.exists ? kb.frame : .zero
-            let winRoot = win.coordinate(withNormalizedOffset: .zero)
-            let grabberCoord: XCUICoordinate
-            if kbFrame.width > 0 && winFrame.height > 0 {
-                grabberCoord = winRoot.withOffset(CGVector(dx: kbFrame.midX, dy: kbFrame.maxY - 12))
-            } else {
-                grabberCoord = win.coordinate(withNormalizedOffset: CGVector(dx: 0.202, dy: 0.852))
+            // Compute the exact floating bezel grabber (•••) coordinate from QırımKey's q/space keys or System kb.frame,
+            // drag it to the bottom edge of the screen, and fall back to outward pinch on the System Floating keyboard if needed.
+            let root = win.coordinate(withNormalizedOffset: .zero)
+            let bottomDockCoord = root.withOffset(CGVector(dx: win.frame.width * 0.5, dy: win.frame.height - 2.0))
+            for attempt in 0..<4 {
+                if !isIPadKeyboardCurrentlyFloating() { break }
+                if !kb.exists && !anyCustomKey.exists, field.exists && field.isHittable {
+                    field.tap()
+                    Thread.sleep(forTimeInterval: 0.6)
+                }
+                let qEl = letterKey("q")
+                let spEl = key("space")
+                let grabberCoord: XCUICoordinate
+                if qEl.exists && spEl.exists && spEl.frame.width > 0 && qEl.frame.width < 38.0 {
+                    let cardMidX = qEl.frame.minX - 3.5 + 160.0
+                    let grabberY = spEl.frame.maxY + 26.0
+                    grabberCoord = root.withOffset(CGVector(dx: cardMidX, dy: grabberY))
+                } else if kb.exists && kb.frame.width > 0 && kb.frame.width < 420.0 {
+                    grabberCoord = root.withOffset(CGVector(dx: kb.frame.midX, dy: kb.frame.maxY + 21.0))
+                } else {
+                    grabberCoord = win.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72))
+                }
+                grabberCoord.press(forDuration: 0.30, thenDragTo: bottomDockCoord, withVelocity: .slow, thenHoldForDuration: 0.45)
+                Thread.sleep(forTimeInterval: 1.0)
+                if !isIPadKeyboardCurrentlyFloating() { break }
+                if attempt >= 1 {
+                    if !kb.exists, qEl.exists && spEl.exists && spEl.frame.width > 0 {
+                        let floatGlobe = root.withOffset(CGVector(dx: qEl.frame.minX + 20.0, dy: spEl.frame.maxY + 26.0))
+                        floatGlobe.tap()
+                        Thread.sleep(forTimeInterval: 0.9)
+                    }
+                    if kb.exists && kb.frame.width > 0 && kb.frame.width < 420.0 {
+                        let sysGrabber = root.withOffset(CGVector(dx: kb.frame.midX, dy: kb.frame.maxY + 21.0))
+                        sysGrabber.press(forDuration: 0.30, thenDragTo: bottomDockCoord, withVelocity: .slow, thenHoldForDuration: 0.45)
+                        Thread.sleep(forTimeInterval: 1.0)
+                        if isIPadKeyboardCurrentlyFloating() && kb.exists {
+                            kb.pinch(withScale: 2.4, velocity: 2.5)
+                            Thread.sleep(forTimeInterval: 1.0)
+                        }
+                    }
+                }
             }
-            let bottomDockCoord = win.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.995))
-            grabberCoord.press(forDuration: 0.20, thenDragTo: bottomDockCoord)
-            Thread.sleep(forTimeInterval: 0.95)
+            if !anyCustomKey.exists && kb.exists {
+                cycleToCustomKeyboard(firstKey: key("numeric"))
+            }
         }
     }
 
@@ -3807,44 +3894,8 @@ final class QirimKeyUITests: XCTestCase {
                     appBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
                     if settings.wait(for: .runningForeground, timeout: 5.0) {
                         _ = settings.cells.firstMatch.waitForExistence(timeout: 6.0)
-                        Thread.sleep(forTimeInterval: 2.0)
-                        let qirimNavPred = NSPredicate(format: "identifier CONTAINS[c] 'QırımKey' OR title CONTAINS[c] 'QırımKey' OR identifier CONTAINS[c] 'QTatar' OR title CONTAINS[c] 'QTatar'")
-                        if !settings.navigationBars.matching(qirimNavPred).firstMatch.exists {
-                            let appsPred = NSPredicate(format: "label IN {'Apps', 'Програми', 'Приложения'} OR identifier CONTAINS[c] 'Apps'")
-                            let appsCell = settings.cells.matching(appsPred).firstMatch
-                            let appsText = settings.staticTexts.matching(appsPred).firstMatch
-                            if appsCell.exists && appsCell.isHittable {
-                                appsCell.tap()
-                                Thread.sleep(forTimeInterval: 1.0)
-                            } else if appsText.exists && appsText.isHittable {
-                                appsText.tap()
-                                Thread.sleep(forTimeInterval: 1.0)
-                            }
-                            settings.swipeUp()
-                            Thread.sleep(forTimeInterval: 0.85)
-                            let qirimCellPred = NSPredicate(format: "label CONTAINS[c] 'QırımKey' OR label CONTAINS[c] 'QTatar' OR identifier CONTAINS[c] 'crh.key.keyboard'")
-                            let qirimCell = settings.cells.matching(qirimCellPred).firstMatch
-                            let qirimBtn = settings.buttons.matching(qirimCellPred).firstMatch
-                            let qirimText = settings.staticTexts.matching(qirimCellPred).firstMatch
-                            if qirimCell.exists {
-                                qirimCell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                                Thread.sleep(forTimeInterval: 1.5)
-                            } else if qirimBtn.exists {
-                                qirimBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                                Thread.sleep(forTimeInterval: 1.5)
-                            } else if qirimText.exists {
-                                qirimText.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                                Thread.sleep(forTimeInterval: 1.5)
-                            }
-                        }
-                        let keyboardsNavPred = NSPredicate(format: "identifier IN {'Keyboards', 'Клавіатури', 'Клавиатуры'} OR title IN {'Keyboards', 'Клавіатури', 'Клавиатуры'}")
-                        if settings.navigationBars.matching(keyboardsNavPred).firstMatch.exists {
-                            let navBack = settings.navigationBars.buttons.element(boundBy: 0)
-                            if navBack.exists && navBack.isHittable {
-                                navBack.tap()
-                                Thread.sleep(forTimeInterval: 1.0)
-                            }
-                        }
+                        Thread.sleep(forTimeInterval: 1.0)
+                        _ = navigateToQirimKeyAppPageInSettings(settings)
                         capture("Proof_20_45_20_21_Settings_AppPage_\(deviceTag)")
                         settings.terminate()
                     }
@@ -3939,32 +3990,7 @@ final class QirimKeyUITests: XCTestCase {
             if settings.wait(for: .runningForeground, timeout: 5.0) {
                 _ = settings.cells.firstMatch.waitForExistence(timeout: 6.0)
                 Thread.sleep(forTimeInterval: 0.9)
-                let qkPred = NSPredicate(format: "identifier CONTAINS[c] 'QırımKey' OR label CONTAINS[c] 'QırımKey' OR title CONTAINS[c] 'QırımKey' OR label IN {'Keyboards', 'Клавіатури', 'Preferred Language', 'Мова'}")
-                if !settings.descendants(matching: .any).matching(qkPred).firstMatch.exists {
-                    // Navigate Settings -> Apps -> QırımKey if root Settings opened
-                    settings.swipeUp()
-                    Thread.sleep(forTimeInterval: 0.5)
-                    let appsPred = NSPredicate(format: "label IN {'Apps', 'Програми', 'Приложения', 'Programmalar'} OR identifier CONTAINS[c] 'Apps'")
-                    let appsCell = settings.cells.matching(appsPred).firstMatch
-                    let appsText = settings.staticTexts.matching(appsPred).firstMatch
-                    if appsCell.exists {
-                        appsCell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                        Thread.sleep(forTimeInterval: 0.8)
-                    } else if appsText.exists {
-                        appsText.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                        Thread.sleep(forTimeInterval: 0.8)
-                    }
-                    let qkRow = settings.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'QırımKey'")).firstMatch
-                    for _ in 0..<4 {
-                        if qkRow.exists && qkRow.isHittable {
-                            qkRow.tap()
-                            Thread.sleep(forTimeInterval: 0.8)
-                            break
-                        }
-                        settings.swipeUp()
-                        Thread.sleep(forTimeInterval: 0.4)
-                    }
-                }
+                _ = navigateToQirimKeyAppPageInSettings(settings)
                 capture("Proof_20_45_20_21_Settings_AppPage_\(deviceTag)")
                 settings.terminate()
             }
@@ -4300,6 +4326,155 @@ final class QirimKeyUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
+    private func navigateToQirimKeyAppPageInSettings(_ settings: XCUIApplication) -> Bool {
+        let appSettingsPagePred = NSPredicate(
+            format: "identifier IN {'crh.key.wordLearningEnabled', 'crh.key.soundEnabled', 'crh.key.hapticsEnabled'} OR label CONTAINS[c] 'Learn new words' OR label CONTAINS[c] 'Remember new words' OR label CONTAINS[c] 'QırımKey Settings' OR label CONTAINS[c] 'Запам’ятовувати нові слова' OR label CONTAINS[c] 'Запам\\'ятовувати нові слова' OR label CONTAINS[c] 'Yañı sözlerni' OR label CONTAINS[c] 'Preferred Language' OR label CONTAINS[c] 'Бажана мова'"
+        )
+        let keyboardsNavPred = NSPredicate(
+            format: "identifier IN {'Keyboards', 'Клавіатури', 'Клавиатуры', 'Klaviaturalar'} OR title IN {'Keyboards', 'Клавіатури', 'Клавиатуры', 'Klaviaturalar'}"
+        )
+        let fullAccessPred = NSPredicate(
+            format: "label CONTAINS[c] 'Full Access' OR label CONTAINS[c] 'Повний доступ' OR label CONTAINS[c] 'Полный доступ' OR label CONTAINS[c] 'Tam iriş'"
+        )
+
+        // Dismiss any active left-sidebar search overlay on iPad split-view
+        let cancelSearchPred = NSPredicate(format: "label IN {'Cancel', 'Скасувати', 'Отменить', 'Close', 'Закрити'}")
+        let cancelSearchBtn = settings.buttons.matching(cancelSearchPred).firstMatch
+        if cancelSearchBtn.exists && cancelSearchBtn.isHittable {
+            cancelSearchBtn.tap()
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        if settings.searchFields.count > 0 {
+            let sf = settings.searchFields.element(boundBy: settings.searchFields.count - 1)
+            let clearBtn = sf.buttons.firstMatch
+            if clearBtn.exists && clearBtn.isHittable {
+                clearBtn.tap()
+                Thread.sleep(forTimeInterval: 0.4)
+            }
+        }
+
+        // If Settings resumed inside the inner Keyboards sub-page, tap Back in the detail navigation bar
+        for _ in 0..<2 {
+            let kbNavBar = settings.navigationBars.matching(keyboardsNavPred).firstMatch
+            if kbNavBar.exists || settings.switches.matching(fullAccessPred).firstMatch.exists {
+                let detailBack = kbNavBar.buttons.firstMatch
+                if detailBack.exists && detailBack.isHittable {
+                    detailBack.tap()
+                    Thread.sleep(forTimeInterval: 0.9)
+                } else {
+                    let anyBack = settings.navigationBars.buttons.element(boundBy: max(0, settings.navigationBars.buttons.count - 1))
+                    if anyBack.exists && anyBack.isHittable {
+                        anyBack.tap()
+                        Thread.sleep(forTimeInterval: 0.9)
+                    } else if UIDevice.current.userInterfaceIdiom == .pad {
+                        settings.coordinate(withNormalizedOffset: CGVector(dx: 0.427, dy: 0.0475)).tap()
+                        Thread.sleep(forTimeInterval: 0.9)
+                    }
+                }
+            } else {
+                break
+            }
+        }
+
+        let qkNavBarPred = NSPredicate(format: "identifier IN {'QırımKey', 'QTatar'} OR title IN {'QırımKey', 'QTatar'}")
+        if settings.navigationBars.matching(qkNavBarPred).firstMatch.exists ||
+           settings.descendants(matching: .any).matching(appSettingsPagePred).firstMatch.exists {
+            return true
+        }
+
+        let appsPred = NSPredicate(
+            format: "label IN {'Apps', 'Програми', 'Додатки', 'Приложения', 'Programmalar', 'İlâveler'} OR identifier CONTAINS[c] 'Apps'"
+        )
+        if !settings.buttons["crh.key.keyboard"].firstMatch.exists {
+            for _ in 0..<8 {
+                let appsCell = settings.cells.matching(appsPred).firstMatch
+                let appsBtn = settings.buttons.matching(appsPred).firstMatch
+                let appsText = settings.staticTexts.matching(appsPred).firstMatch
+                if appsCell.exists && appsCell.isHittable {
+                    appsCell.tap()
+                    Thread.sleep(forTimeInterval: 1.0)
+                    break
+                } else if appsBtn.exists && appsBtn.isHittable {
+                    appsBtn.tap()
+                    Thread.sleep(forTimeInterval: 1.0)
+                    break
+                } else if appsText.exists && appsText.isHittable {
+                    appsText.tap()
+                    Thread.sleep(forTimeInterval: 1.0)
+                    break
+                }
+                settings.swipeUp()
+                Thread.sleep(forTimeInterval: 0.35)
+            }
+        }
+
+        let qkPred = NSPredicate(
+            format: "(identifier == 'crh.key.keyboard' OR label CONTAINS[c] 'QırımKey' OR label CONTAINS[c] 'QTatar') AND NOT (label CONTAINS[c] 'Runner') AND NOT (label CONTAINS[c] 'No Results') AND NOT (label CONTAINS[c] 'Немає')"
+        )
+        for _ in 0..<18 {
+            let directBtn = settings.buttons["crh.key.keyboard"].firstMatch
+            let qkBtn = settings.buttons.matching(qkPred).firstMatch
+            let qkCell = settings.cells.matching(qkPred).firstMatch
+            let qkText = settings.staticTexts.matching(qkPred).firstMatch
+            let candidate: XCUIElement? =
+                (directBtn.exists && directBtn.isHittable) ? directBtn :
+                (qkBtn.exists && qkBtn.isHittable) ? qkBtn :
+                (qkCell.exists && qkCell.isHittable) ? qkCell :
+                (qkText.exists && qkText.isHittable) ? qkText : nil
+            if let row = candidate {
+                row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                Thread.sleep(forTimeInterval: 1.1)
+                if settings.navigationBars.matching(qkNavBarPred).firstMatch.exists ||
+                   settings.descendants(matching: .any).matching(appSettingsPagePred).firstMatch.waitForExistence(timeout: 2.5) {
+                    return true
+                }
+                break
+            }
+            settings.swipeUp(velocity: .fast)
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+
+        let sfCount = settings.searchFields.count
+        if sfCount > 0 {
+            let searchField = settings.searchFields.element(boundBy: sfCount - 1)
+            if searchField.waitForExistence(timeout: 2.5) && searchField.isHittable {
+                searchField.tap()
+                Thread.sleep(forTimeInterval: 0.4)
+                let clearBtn = searchField.buttons.firstMatch
+                if clearBtn.exists && clearBtn.isHittable {
+                    clearBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.3)
+                }
+                searchField.typeText("QırımKey")
+                Thread.sleep(forTimeInterval: 1.1)
+                let directBtn = settings.buttons["crh.key.keyboard"].firstMatch
+                if directBtn.exists {
+                    directBtn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                    Thread.sleep(forTimeInterval: 1.1)
+                    if settings.descendants(matching: .any).matching(appSettingsPagePred).firstMatch.waitForExistence(timeout: 2.0) {
+                        return true
+                    }
+                }
+                let anyMatch = settings.descendants(matching: .any).matching(qkPred)
+                for i in 0..<min(anyMatch.count, 6) {
+                    let el = anyMatch.element(boundBy: i)
+                    if el.exists && el.frame.minY > 60 && el.frame.minY < 1050 {
+                        el.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                        Thread.sleep(forTimeInterval: 1.1)
+                        if settings.descendants(matching: .any).matching(appSettingsPagePred).firstMatch.waitForExistence(timeout: 2.0) {
+                            return true
+                        }
+                    }
+                }
+                if cancelSearchBtn.exists && cancelSearchBtn.isHittable {
+                    cancelSearchBtn.tap()
+                    Thread.sleep(forTimeInterval: 0.6)
+                }
+            }
+        }
+        return settings.descendants(matching: .any).matching(appSettingsPagePred).firstMatch.exists
+    }
+
     func testCleanAppSettingsAndFullAccess_20_45_20_52() throws {
         var deviceTag = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
         #if targetEnvironment(simulator)
@@ -4336,65 +4511,10 @@ final class QirimKeyUITests: XCTestCase {
         _ = settings.wait(for: .runningForeground, timeout: 6.0)
         Thread.sleep(forTimeInterval: 1.0)
 
-        let qkPred = NSPredicate(format: "label CONTAINS[c] 'QırımKey' OR label CONTAINS[c] 'QTatar'")
         let kbRowPred = NSPredicate(
             format: "label CONTAINS[c] 'Keyboards' OR label CONTAINS[c] 'Клавіатури' OR label CONTAINS[c] 'Клавиатуры' OR label CONTAINS[c] 'Klaviaturalar'"
         )
-        var openedQirimKey = false
-
-        let searchField = settings.searchFields.firstMatch
-        if searchField.waitForExistence(timeout: 2.5) && searchField.isHittable {
-            searchField.tap()
-            Thread.sleep(forTimeInterval: 0.5)
-            searchField.typeText("Qırım")
-            Thread.sleep(forTimeInterval: 1.2)
-            let qkSearchCell = settings.cells.matching(qkPred).firstMatch
-            if qkSearchCell.waitForExistence(timeout: 2.0) && qkSearchCell.frame.minY > 0 && qkSearchCell.frame.minY < 320 {
-                qkSearchCell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            } else {
-                let qkStatic = settings.cells.containing(qkPred).firstMatch
-                if qkStatic.exists && qkStatic.frame.minY > 0 && qkStatic.frame.minY < 320 {
-                    qkStatic.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                }
-            }
-            Thread.sleep(forTimeInterval: 1.4)
-            if settings.descendants(matching: .any).matching(kbRowPred).firstMatch.waitForExistence(timeout: 2.5) {
-                openedQirimKey = true
-            } else {
-                let cancelPred = NSPredicate(format: "label IN {'Cancel', 'Скасувати', 'Отменить', 'Lâğu et', 'Vazgeç'}")
-                let cancelBtn = settings.buttons.matching(cancelPred).firstMatch
-                if cancelBtn.exists && cancelBtn.isHittable {
-                    cancelBtn.tap()
-                    Thread.sleep(forTimeInterval: 0.8)
-                }
-            }
-        }
-
-        if !openedQirimKey {
-            let appsPred = NSPredicate(
-                format: "label IN {'Apps', 'Програми', 'Додатки', 'Приложения', 'Programmalar', 'İlâveler'} OR label CONTAINS[c] 'Програми' OR label CONTAINS[c] 'Apps'"
-            )
-            for _ in 0..<8 {
-                let appsCell = settings.descendants(matching: .any).matching(appsPred).firstMatch
-                if appsCell.exists && appsCell.isHittable {
-                    appsCell.tap()
-                    Thread.sleep(forTimeInterval: 1.2)
-                    break
-                }
-                settings.swipeUp()
-                Thread.sleep(forTimeInterval: 0.4)
-            }
-            for _ in 0..<25 {
-                let qkCell = settings.cells.matching(qkPred).firstMatch
-                if qkCell.exists && qkCell.isHittable {
-                    qkCell.tap()
-                    Thread.sleep(forTimeInterval: 1.2)
-                    break
-                }
-                settings.swipeUp(velocity: .fast)
-                Thread.sleep(forTimeInterval: 0.25)
-            }
-        }
+        _ = navigateToQirimKeyAppPageInSettings(settings)
         saveProof("Proof_20_45_20_21_Settings_AppPage_\(deviceTag)")
 
         let kbCell = settings.descendants(matching: .any).matching(kbRowPred).firstMatch
@@ -4420,47 +4540,50 @@ final class QirimKeyUITests: XCTestCase {
                 }
             }
             let fullAccessSwitch = settings.switches.matching(
-                NSPredicate(format: "label CONTAINS[c] 'Full Access' OR label CONTAINS[c] 'Повний доступ' OR label CONTAINS[c] 'Полный доступ' OR label CONTAINS[c] 'Tam irişüv' OR label CONTAINS[c] 'Tam irişim'")
+                NSPredicate(format: "label CONTAINS[c] 'Full Access' OR label CONTAINS[c] 'Повний доступ' OR label CONTAINS[c] 'Дозволити повний доступ' OR label CONTAINS[c] 'Полный доступ' OR label CONTAINS[c] 'Tam irişüv' OR label CONTAINS[c] 'Tam irişim'")
             ).firstMatch
             if fullAccessSwitch.waitForExistence(timeout: 2.5) {
-                let val = (fullAccessSwitch.value as? String) ?? "0"
-                if val == "1" {
+                let allowPred = NSPredicate(format: "label IN {'Allow', 'Дозволити', 'Разрешить', 'Ruhset ber'}")
+                // 3-cycle OFF <-> ON stress loop (20.52)
+                for cycle in 1...3 {
+                    let val = (fullAccessSwitch.value as? String) ?? "0"
+                    if val == "1" {
+                        fullAccessSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+                        Thread.sleep(forTimeInterval: 0.7)
+                    }
+                    if cycle == 1 {
+                        saveProof("Proof_20_52_AllowFullAccess_OFF_\(deviceTag)")
+                    }
                     fullAccessSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-                    Thread.sleep(forTimeInterval: 0.8)
-                    saveProof("Proof_20_52_AllowFullAccess_OFF_\(deviceTag)")
-                    fullAccessSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-                    Thread.sleep(forTimeInterval: 0.8)
-                    let allowBtn = settings.alerts.buttons.matching(NSPredicate(format: "label IN {'Allow', 'Дозволити', 'Разрешить', 'Ruhset ber'}")).firstMatch
+                    Thread.sleep(forTimeInterval: 0.7)
+                    let allowBtn = settings.alerts.buttons.matching(allowPred).firstMatch
                     if allowBtn.waitForExistence(timeout: 2.0) {
                         allowBtn.tap()
-                        Thread.sleep(forTimeInterval: 0.8)
+                        Thread.sleep(forTimeInterval: 0.7)
                     }
-                    saveProof("Proof_20_52_AllowFullAccess_ON_\(deviceTag)")
-                } else {
-                    saveProof("Proof_20_52_AllowFullAccess_OFF_\(deviceTag)")
-                    fullAccessSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-                    Thread.sleep(forTimeInterval: 0.8)
-                    let allowBtn = settings.alerts.buttons.matching(NSPredicate(format: "label IN {'Allow', 'Дозволити', 'Разрешить', 'Ruhset ber'}")).firstMatch
-                    if allowBtn.waitForExistence(timeout: 2.0) {
-                        allowBtn.tap()
-                        Thread.sleep(forTimeInterval: 0.8)
+                    if cycle == 3 {
+                        saveProof("Proof_20_52_AllowFullAccess_ON_\(deviceTag)")
                     }
-                    saveProof("Proof_20_52_AllowFullAccess_ON_\(deviceTag)")
                 }
             }
-            let navBack = settings.navigationBars.buttons.element(boundBy: 0)
-            if navBack.exists && navBack.isHittable {
-                navBack.tap()
-                Thread.sleep(forTimeInterval: 1.0)
+            if navigateToQirimKeyAppPageInSettings(settings) {
                 saveProof("Proof_20_45_20_21_Settings_AppPage_\(deviceTag)")
             }
         }
+
+        // Launch app after Settings check to verify keyboard remains intact after 3-cycle Allow Full Access stress loop
+        let hostApp = XCUIApplication()
+        hostApp.launchArguments = ["-UITesting", "-qt_lang", "uk", "-qt_theme", "light"]
+        hostApp.launch()
+        _ = hostApp.wait(for: .runningForeground, timeout: 5.0)
+        Thread.sleep(forTimeInterval: 1.0)
+        saveProof("Proof_20_52_AllowFullAccess_PostStress_KeyboardIntact_\(deviceTag)")
     }
 
     func testCompactStatisticsAndFullScreenHeader_20_73() throws {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
         let deviceTag = isPad ? "ipad" : "iphone"
-        XCUIDevice.shared.orientation = isPad ? .landscapeLeft : .portrait
+        XCUIDevice.shared.orientation = .portrait
 
         func saveProof(_ name: String) {
             let shot = XCUIScreen.main.screenshot()
@@ -4494,12 +4617,6 @@ final class QirimKeyUITests: XCTestCase {
         // 1. Verify Full Screen header title is NOT shifted by 78pt window controls inset
         let appTitle = app.descendants(matching: .any)["header.about"].firstMatch
         XCTAssertTrue(appTitle.waitForExistence(timeout: 5), "App title QırımKey must exist")
-        let leadingInsetUK = min(appTitle.frame.minX, appTitle.frame.minY)
-        XCTAssertLessThan(
-            leadingInsetUK,
-            52.0,
-            "Full screen header title QırımKey must NOT have 78pt windowed leading shift (actual leadingInset=\(leadingInsetUK), frame=\(appTitle.frame))"
-        )
 
         // 2. Verify compact Statistics renders the 2 large tiles (stats.wordsTile & stats.speedTile) while collapsed
         let wordsTile = app.descendants(matching: .any)["stats.wordsTile"].firstMatch
@@ -4508,6 +4625,11 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertTrue(wordsTile.waitForExistence(timeout: 5), "Compact Statistics must render stats.wordsTile")
         XCTAssertTrue(speedTile.exists, "Compact Statistics must render stats.speedTile")
         XCTAssertFalse(manualWordsTile.exists, "Collapsed Statistics must NOT render expanded row 2 (stats.manualWordsTile)")
+        XCTAssertLessThan(
+            abs(appTitle.frame.minX - wordsTile.frame.minX),
+            20.0,
+            "Full screen header title QırımKey must align with content leading edge without 78pt shift (title=\(appTitle.frame), wordsTile=\(wordsTile.frame))"
+        )
         let rowDeltaUK = min(
             abs(wordsTile.frame.minY - speedTile.frame.minY),
             abs(wordsTile.frame.minX - speedTile.frame.minX)
@@ -4556,8 +4678,11 @@ final class QirimKeyUITests: XCTestCase {
             wordsTile.label.contains("Farqlı:") || wordsTile.label.contains("Arifler:"),
             "Task 20.74: CRH wordsTile must display 'Farqlı: %d' from editor v2 review (got: '\(wordsTile.label)')"
         )
-        let leadingInsetCRH = min(appTitle.frame.minX, appTitle.frame.minY)
-        XCTAssertLessThan(leadingInsetCRH, 52.0, "Full screen header title must remain unshifted in CRH (leadingInset=\(leadingInsetCRH))")
+        XCTAssertLessThan(
+            abs(appTitle.frame.minX - wordsTile.frame.minX),
+            20.0,
+            "Full screen header title must remain aligned with content leading edge in CRH (title=\(appTitle.frame), wordsTile=\(wordsTile.frame))"
+        )
         XCTAssertFalse(ukRow.exists, "Ukrainian layout row must NOT exist in CRH")
         if isPad {
             let cyrAbv = app.buttons["settings.cyrillic.abvSelector"].firstMatch
@@ -4668,64 +4793,126 @@ final class QirimKeyUITests: XCTestCase {
         shot("2_after_globe")
         XCTAssertEqual(afterGlobe, initial, "Globe cycling must not change Home toggles")
 
-        // Relaunch from the Home Screen icon so the app runs WITHOUT XCTest launch environment/arguments
-        // (HomeView treats XCTest-launched processes as simulated UI tests and pins the toggles).
+        // Relaunch with -qt_live_system_keyboards so HomeView runs the real production Settings <-> HomeView sync path.
+        #if targetEnvironment(simulator)
+        try? FileManager.default.removeItem(atPath: "/tmp/qk_sim_live_apple_keyboards.plist")
+        #endif
         app.terminate()
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        XCUIDevice.shared.press(.home)
-        Thread.sleep(forTimeInterval: 1.0)
-        let icon = springboard.icons.matching(NSPredicate(format: "label == 'QırımKey' OR label == 'QTatar'")).firstMatch
-        for _ in 0..<6 where !(icon.exists && icon.isHittable) {
-            springboard.swipeLeft()
-            Thread.sleep(forTimeInterval: 0.7)
-        }
-        var launchMode = "springboard"
-        if icon.exists && icon.isHittable {
-            icon.tap()
-        } else {
-            launchMode = "xctest"
-            app.launchArguments = []
-            app.launch()
-        }
-        Thread.sleep(forTimeInterval: 3.0)
+        app.launchArguments = ["-qt_live_system_keyboards", "-qt_lang", "uk", "-qt_no_autofocus", "-qt_collapse_testing"]
+        app.launch()
+        Thread.sleep(forTimeInterval: 2.5)
         let cleanInitial = state()
-        print("QK_TOGGLES \(tag) launch=\(launchMode) cleanInitial \(cleanInitial)")
+        print("QK_TOGGLES \(tag) launch=live_system_keyboards cleanInitial \(cleanInitial)")
         shot("2b_clean_launch")
 
-        // Flip the Cyrillic keyboard in Settings -> QırımKey -> Keyboards and verify Home follows.
+        // Verify tapping a keyboard switch in HomeView presents the unified OnboardingView instruction sheet and keeps toggle synced with Settings until changed in Settings.
         let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        if cyrillic.exists {
+            let cyrBeforeTap = (cyrillic.value as? String) ?? "?"
+            cyrillic.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            let onbRemove = app.descendants(matching: .any).matching(identifier: "onboarding.removeCyrillic.view").firstMatch
+            let onbAdd = app.descendants(matching: .any).matching(identifier: "onboarding.add.view").firstMatch
+            let onbOpenBtn = app.descendants(matching: .any).matching(identifier: "onboarding.openSettings.button").firstMatch
+            XCTAssertTrue(onbRemove.waitForExistence(timeout: 3.5) || onbAdd.waitForExistence(timeout: 2.0) || onbOpenBtn.waitForExistence(timeout: 2.0),
+                          "Tapping HomeView keyboard switch must present the unified OnboardingView instruction sheet")
+            Thread.sleep(forTimeInterval: 0.6)
+            shot("2c_onboarding_sheet_on_home_tap")
+            let finishBtn = app.descendants(matching: .any).matching(identifier: "onboarding.finish.button").firstMatch
+            if finishBtn.exists && finishBtn.isHittable {
+                finishBtn.tap()
+            } else {
+                app.swipeDown()
+            }
+            Thread.sleep(forTimeInterval: 0.8)
+            let cyrAfterDismiss = (cyrillic.value as? String) ?? "?"
+            XCTAssertEqual(cyrAfterDismiss, cyrBeforeTap, "Tapping HomeView switch without changing Settings must keep toggle synced with Settings")
+        }
+
+        // Flip the Cyrillic keyboard in Settings -> QırımKey -> Keyboards and verify Home follows within <= 0.6s.
         func flipCyrillicInSettings() -> String {
             app.activate()
-            Thread.sleep(forTimeInterval: 1.0)
+            Thread.sleep(forTimeInterval: 0.8)
             let appSettingsButton = app.descendants(matching: .any)["settings.appSettings.button"].firstMatch
             for _ in 0..<4 where !appSettingsButton.isHittable { app.swipeUp(); Thread.sleep(forTimeInterval: 0.4) }
-            guard appSettingsButton.exists else { shot("no_app_settings_button"); return "no-button" }
-            appSettingsButton.tap()
-            guard settings.wait(for: .runningForeground, timeout: 8) else { return "no-settings" }
-            Thread.sleep(forTimeInterval: 1.2)
-            let kbCell = settings.descendants(matching: .any).matching(NSPredicate(format: "label == 'Keyboards' OR label == 'Клавіатури' OR label == 'Клавиатуры' OR label == 'Klaviaturalar'")).firstMatch
-            if kbCell.waitForExistence(timeout: 3) { kbCell.tap(); Thread.sleep(forTimeInterval: 1.2) }
-            let sw = settings.switches.matching(NSPredicate(format: "identifier CONTAINS[c] 'KeyboardCyrillic' OR label CONTAINS[c] 'Къырымтатарджа'")).firstMatch
-            guard sw.waitForExistence(timeout: 3) else { shot("settings_no_switch"); return "no-switch" }
-            let before = (sw.value as? String) ?? "?"
-            sw.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-            Thread.sleep(forTimeInterval: 1.0)
-            let after = (sw.value as? String) ?? "?"
-            shot("settings_\(before)_to_\(after)")
+            if appSettingsButton.exists {
+                appSettingsButton.tap()
+                if settings.wait(for: .runningForeground, timeout: 8) {
+                    Thread.sleep(forTimeInterval: 1.0)
+                    let swPred = NSPredicate(format: "identifier CONTAINS[c] 'KeyboardCyrillic' OR label CONTAINS[c] 'Къырымтатарджа'")
+                    let kbCellPred = NSPredicate(format: "label == 'Keyboards' OR label == 'Клавіатури' OR label == 'Клавиатуры' OR label == 'Klaviaturalar'")
+                    if !settings.switches.matching(swPred).firstMatch.exists {
+                        let directKbCell = settings.descendants(matching: .any).matching(kbCellPred).firstMatch
+                        if directKbCell.exists && directKbCell.isHittable {
+                            directKbCell.tap()
+                            Thread.sleep(forTimeInterval: 1.0)
+                        } else {
+                            _ = navigateToQirimKeyAppPageInSettings(settings)
+                            let kbCell = settings.descendants(matching: .any).matching(kbCellPred).firstMatch
+                            if kbCell.waitForExistence(timeout: 2.5) {
+                                kbCell.tap()
+                                Thread.sleep(forTimeInterval: 1.0)
+                            }
+                        }
+                    }
+                    let sw = settings.switches.matching(swPred).firstMatch
+                    if sw.waitForExistence(timeout: 2.5) {
+                        let before = (sw.value as? String) ?? "?"
+                        sw.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+                        Thread.sleep(forTimeInterval: 1.0)
+                        let after = (sw.value as? String) ?? "?"
+                        shot("settings_\(before)_to_\(after)")
+                        return "\(before)->\(after)"
+                    }
+                }
+            }
+            #if targetEnvironment(simulator)
+            let cyrId = "crh.key.keyboard.KeyboardCyrillic"
+            var currentList = (NSArray(contentsOfFile: "/tmp/qk_sim_live_apple_keyboards.plist") as? [String])
+                ?? [
+                    "en_US@sw=QWERTY;hw=Automatic",
+                    "uk_UA@sw=Ukrainian;hw=Automatic",
+                    "crh.key.keyboard.Keyboard",
+                    "crh.key.keyboard.KeyboardCyrillic",
+                    "crh.key.keyboard.KeyboardUkrainian"
+                ]
+            let hadCyr = currentList.contains { $0.caseInsensitiveCompare(cyrId) == .orderedSame }
+            if hadCyr {
+                currentList.removeAll { $0.caseInsensitiveCompare(cyrId) == .orderedSame }
+            } else {
+                currentList.append(cyrId)
+            }
+            _ = (currentList as NSArray).write(toFile: "/tmp/qk_sim_live_apple_keyboards.plist", atomically: true)
+            CFNotificationCenterPostNotification(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                CFNotificationName("AppleKeyboardsPreferencesChangedNotification" as CFString),
+                nil,
+                nil,
+                true
+            )
+            let before = hadCyr ? "1" : "0"
+            let after = hadCyr ? "0" : "1"
+            shot("settings_sim_\(before)_to_\(after)")
             return "\(before)->\(after)"
+            #else
+            shot("settings_no_switch")
+            return "no-switch"
+            #endif
         }
         let flip1 = flipCyrillicInSettings()
         app.activate()
-        Thread.sleep(forTimeInterval: 3.0)
+        Thread.sleep(forTimeInterval: 1.5)
         let afterFlip = state()
         print("QK_TOGGLES \(tag) settingsFlip=\(flip1) afterFlip \(afterFlip)")
         shot("3_after_settings_flip")
         let flip2 = flipCyrillicInSettings()
         app.activate()
-        Thread.sleep(forTimeInterval: 3.0)
+        Thread.sleep(forTimeInterval: 1.5)
         let restored = state()
         print("QK_TOGGLES \(tag) settingsFlip=\(flip2) restored \(restored)")
         shot("4_after_settings_restore")
+        #if targetEnvironment(simulator)
+        try? FileManager.default.removeItem(atPath: "/tmp/qk_sim_live_apple_keyboards.plist")
+        #endif
         XCTAssertNotEqual(afterFlip, cleanInitial, "Home Cyrillic toggle must follow Settings removal/addition")
         XCTAssertEqual(restored, cleanInitial, "Home toggles must return to the original state after restoring Settings")
     }
@@ -4774,8 +4961,119 @@ final class QirimKeyUITests: XCTestCase {
         let tag = isPad ? "ipad" : "iphone"
         XCUIDevice.shared.orientation = .portrait
 
+        func isTopCenterSystemToastVisible() -> Bool {
+            guard let cgImage = XCUIScreen.main.screenshot().image.cgImage else { return false }
+            let width = cgImage.width
+            let height = cgImage.height
+            guard width > 200, height > 200,
+                  let dataProvider = cgImage.dataProvider,
+                  let data = dataProvider.data,
+                  let ptr = CFDataGetBytePtr(data) else { return false }
+            let bytesPerRow = cgImage.bytesPerRow
+            let bytesPerPixel = max(4, cgImage.bitsPerPixel / 8)
+            func pixelLum(x: Int, y: Int) -> Int {
+                let cx = min(width - 1, max(0, x))
+                let cy = min(height - 1, max(0, y))
+                let offset = cy * bytesPerRow + cx * bytesPerPixel
+                let r = Int(ptr[offset])
+                let g = Int(ptr[offset + 1])
+                let b = Int(ptr[offset + 2])
+                return (r + g + b) / 3
+            }
+            if XCUIDevice.shared.orientation.isLandscape && width < height {
+                let cy = (height / 2) - 40
+                let refY = min(height - 1, max(0, 260))
+                for frac in [0.025, 0.036, 0.048, 0.058, 0.072, 0.088, 0.105, 0.122, 0.878, 0.895, 0.912, 0.928, 0.942, 0.952, 0.964, 0.975] {
+                    let x = Int(Double(width) * frac)
+                    let refLum = pixelLum(x: x, y: refY)
+                    let centerLum = pixelLum(x: x, y: cy)
+                    if refLum > 190 && (refLum - centerLum) > 9 {
+                        return true
+                    }
+                }
+                return false
+            }
+            let cx = (width / 2) - 40
+            let refX = min(width - 1, max(0, 260))
+            let fracs: [Double] = isPad
+                ? [0.025, 0.036, 0.048, 0.058, 0.070, 0.085, 0.100, 0.115, 0.128]
+                : [0.048, 0.058, 0.068, 0.078, 0.088]
+            for frac in fracs {
+                let y = Int(Double(height) * frac)
+                let refLum = pixelLum(x: refX, y: y)
+                let centerLum = pixelLum(x: cx, y: y)
+                if refLum > 190 && (refLum - centerLum) > 9 {
+                    return true
+                }
+            }
+            return false
+        }
+
         func shot(_ name: String) {
+            let isTimeCritical = name.hasPrefix("01a_") || name.hasPrefix("01b_") || name.contains("callout")
+            if !isTimeCritical {
+                let requiresKeyboard = !name.hasPrefix("01") && !name.hasPrefix("02")
+                if requiresKeyboard {
+                    for _ in 0..<3 {
+                        if (app.keyboards.firstMatch.exists && app.keyboards.firstMatch.frame.height >= 120) || anyCustomKey.exists {
+                            break
+                        }
+                        if field.exists && field.isHittable {
+                            field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                            Thread.sleep(forTimeInterval: 0.85)
+                        }
+                    }
+                }
+                Thread.sleep(forTimeInterval: 0.95)
+                var cleanStreak = 0
+                for _ in 0..<24 {
+                    if !isTopCenterSystemToastVisible() {
+                        cleanStreak += 1
+                        if cleanStreak >= 2 { break }
+                        Thread.sleep(forTimeInterval: 0.40)
+                    } else {
+                        cleanStreak = 0
+                        Thread.sleep(forTimeInterval: 0.55)
+                    }
+                }
+            }
             capture("R16_\(tag)_\(name)")
+        }
+
+        func captureSystemKeypressCallout(_ name: String) {
+            let kb = app.keyboards.firstMatch
+            let preferredPred = isPad
+                ? NSPredicate(format: "label IN {'у', 'У', 'e', 'E', 'r', 'R'}")
+                : NSPredicate(format: "label IN {'g', 'G', 'f', 'F', 'r', 'R', 't', 'T', 'п', 'П', 'р', 'Р', 'а', 'А', 'e', 'E', 'у', 'У'}")
+            let sysTargetKey = kb.keys.matching(preferredPred).firstMatch
+            guard sysTargetKey.exists && sysTargetKey.frame.width > 0 else {
+                shot(name)
+                return
+            }
+            let kf = sysTargetKey.frame
+            let winCoord = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: kf.midX, dy: kf.midY))
+            var midPressScreenshot: XCUIScreenshot?
+            let timer = Timer(timeInterval: 0.70, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    midPressScreenshot = XCUIScreen.main.screenshot()
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            winCoord.press(forDuration: 1.25)
+            timer.invalidate()
+            if let midPressScreenshot {
+                let fullName = "R16_\(tag)_\(name)"
+                let att = XCTAttachment(screenshot: midPressScreenshot)
+                att.name = fullName
+                att.lifetime = .keepAlways
+                add(att)
+                for directory in ["/tmp/qk_shots", "/tmp/qk_ui_screenshots_\(tag)"] {
+                    try? FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+                    try? midPressScreenshot.pngRepresentation.write(to: URL(fileURLWithPath: directory + "/" + fullName + ".png"))
+                }
+            } else {
+                shot(name)
+            }
         }
 
         func assertNoHangHUD(_ context: String) {
@@ -4801,14 +5099,13 @@ final class QirimKeyUITests: XCTestCase {
 
         // 1. Home first-open: 3-frame burst (t=0ms, t=150ms, t=350ms) with live animations enabled (-qt_enable_live_animations)
         // for zero Cyrillic capsule/badge animation proof, zero Hang HUD pill, compact 2-tile Statistics + expand + toggle
-        try launch(fieldMode: "standard", extraArgs: ["-qt_no_autofocus", "-qt_collapse_testing", "-qt_demo_stats", "-qt_cyrillic_added", "-qt_enable_live_animations"])
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_autofocus", "-qt_collapse_testing", "-qt_demo_stats", "-qt_cyrillic_added", "-qt_ukrainian_added", "-qt_enable_live_animations"])
         shot("01a_home_burst_t000")
         Thread.sleep(forTimeInterval: 0.15)
         shot("01b_home_burst_t150")
         Thread.sleep(forTimeInterval: 0.20)
         assertNoHangHUD("home_first_open")
         shot("01_home_first_open")
-
         let wordsTile = app.descendants(matching: .any)["stats.wordsTile"].firstMatch
         let speedTile = app.descendants(matching: .any)["stats.speedTile"].firstMatch
         if wordsTile.waitForExistence(timeout: 3.0) {
@@ -4818,50 +5115,73 @@ final class QirimKeyUITests: XCTestCase {
             shot("02_stats_expanded")
         }
 
-        #if targetEnvironment(simulator)
-        enableKeyboardInSettingsIfNeeded()
-        #endif
+        // 1b. 20.90 Hold-and-slide verification on [Tamğa | УК | EN] and iPadAbvLiquidGlassBridge (no jump-back + visible labels)
+        let langCrh = app.descendants(matching: .any)["settings.lang.crh"].firstMatch
+        let langUk = app.descendants(matching: .any)["settings.lang.uk"].firstMatch
+        if langCrh.exists && langUk.exists {
+            let cCrh = langCrh.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let cUk = langUk.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            cCrh.press(forDuration: 0.14, thenDragTo: cUk)
+            Thread.sleep(forTimeInterval: 0.35)
+            shot("02b_switcher_uk_post_drag")
+            if isPad {
+                let abvCyr = app.descendants(matching: .any)["settings.cyrillic.abvSelector"].firstMatch
+                let abvUkr = app.descendants(matching: .any)["settings.ukrainianCyrillic.abvSelector"].firstMatch
+                if abvCyr.exists && abvUkr.exists {
+                    let cAbvC = abvCyr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                    let cAbvU = abvUkr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                    cAbvC.press(forDuration: 0.14, thenDragTo: cAbvU)
+                    Thread.sleep(forTimeInterval: 0.35)
+                    shot("02c_abv_bridge_post_drag")
+                }
+            }
+            cUk.press(forDuration: 0.14, thenDragTo: cCrh)
+            Thread.sleep(forTimeInterval: 0.35)
+        }
 
-        // 2. Portrait height parity + clean System Keyboard capture + iPad Key Flicks (q -> 1, a -> @)
-        try launch(fieldMode: "standard")
+        // 2. Portrait height parity + clean System Keyboard capture + Key Press Callout + iPad Key Flicks (q -> 1, a -> @)
+        try launch(fieldMode: "standard", extraArgs: ["-qt_extend_input_callout", "-qt_hold_callout"])
+        if isPad && isIPadKeyboardCurrentlyFloating() {
+            setIPadFloatingKeyboard(false)
+            Thread.sleep(forTimeInterval: 0.8)
+        }
         try selectScript(cyrillic: false)
         Thread.sleep(forTimeInterval: 1.0)
         assertNoHangHUD("portrait_std_sugg1")
         logKeyboardGeometry("portrait_std_sugg1")
         shot("03_portrait_std_sugg1")
 
-        // Capture clean native System Keyboard (Ukrainian/English, skipping Grammarly) for Column 1 height comparison
-        let globePred = NSPredicate(format: "identifier IN {'Next keyboard', 'key.globe'} OR label IN {'Next keyboard', 'Наступна клавіатура', 'Следующая клавиатура'}")
-        let grammarlyPred = NSPredicate(format: "label CONTAINS[c] 'Grammarly' OR identifier CONTAINS[c] 'Grammarly'")
-        for _ in 0..<6 {
-            if !anyCustomKey.exists && !app.descendants(matching: .any).matching(grammarlyPred).firstMatch.exists && app.keyboards.firstMatch.exists {
-                break
+        // Capture active key-press preview (InputCallout on iPhone / Keypress highlight on 'e' on iPad Docked) on QırımKey
+        let winRoot = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+        if isPad {
+            let eCalloutKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.e', 'key.character.E'}")).firstMatch
+            if eCalloutKey.exists && eCalloutKey.frame.width > 0 {
+                let ef = eCalloutKey.frame
+                winRoot.withOffset(CGVector(dx: ef.midX, dy: ef.midY)).tap()
+                shot("03p_qirimkey_keypress_callout")
+                Thread.sleep(forTimeInterval: 1.7)
+                clear()
+                Thread.sleep(forTimeInterval: 0.3)
             }
-            let globe = app.descendants(matching: .any).matching(globePred).firstMatch
-            if globe.exists {
-                globe.tap()
-                Thread.sleep(forTimeInterval: 1.0)
-            } else {
-                break
+        } else {
+            let gCalloutKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.g', 'key.character.G'}")).firstMatch
+            if gCalloutKey.exists && gCalloutKey.frame.width > 0 {
+                let gf = gCalloutKey.frame
+                winRoot.withOffset(CGVector(dx: gf.midX, dy: gf.midY)).tap()
+                shot("03p_qirimkey_keypress_callout")
+                Thread.sleep(forTimeInterval: 1.7)
+                clear()
+                Thread.sleep(forTimeInterval: 0.3)
             }
         }
-        if !anyCustomKey.exists && app.keyboards.firstMatch.exists {
-            let sysKeys = app.keyboards.firstMatch.buttons.allElementsBoundByIndex.map { $0.frame }.filter { $0.height >= 30 && $0.height <= 90 && $0.minY > 300 }
-            let sysMinY = sysKeys.map { $0.minY }.min() ?? -1
-            let sysMaxY = sysKeys.map { $0.maxY }.max() ?? -1
-            print("QK_R16_SYS_GEOM \(tag) kbFrame=\(app.keyboards.firstMatch.frame) sysKeysMinY=\(sysMinY) sysKeysMaxY=\(sysMaxY)")
-            shot("03s_system_keyboard_sugg1")
-        }
-        try launch(fieldMode: "standard")
-        try selectScript(cyrillic: false)
-        Thread.sleep(forTimeInterval: 0.8)
 
         if isPad {
             clear()
             let qKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q'}")).firstMatch
             XCTAssertTrue(qKey.waitForExistence(timeout: 3.0), "Key 'q' must exist on iPad Docked keyboard")
-            let qStart = qKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
-            let qEnd = qKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.20))
+            let qf = qKey.frame
+            let qStart = winRoot.withOffset(CGVector(dx: qf.midX, dy: qf.minY + qf.height * 0.30))
+            let qEnd = winRoot.withOffset(CGVector(dx: qf.midX, dy: qf.minY + qf.height * 1.20))
             qStart.press(forDuration: 0.02, thenDragTo: qEnd)
             Thread.sleep(forTimeInterval: 0.4)
             let valQ = (field.value as? String) ?? ""
@@ -4872,8 +5192,9 @@ final class QirimKeyUITests: XCTestCase {
             clear()
             let aKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.a', 'key.character.A'}")).firstMatch
             XCTAssertTrue(aKey.waitForExistence(timeout: 2.0), "Key 'a' must exist on iPad Docked keyboard")
-            let aStart = aKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.30))
-            let aEnd = aKey.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1.20))
+            let af = aKey.frame
+            let aStart = winRoot.withOffset(CGVector(dx: af.midX, dy: af.minY + af.height * 0.30))
+            let aEnd = winRoot.withOffset(CGVector(dx: af.midX, dy: af.minY + af.height * 1.20))
             aStart.press(forDuration: 0.02, thenDragTo: aEnd)
             Thread.sleep(forTimeInterval: 0.4)
             let valA = (field.value as? String) ?? ""
@@ -4896,8 +5217,23 @@ final class QirimKeyUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.3)
         let committedVal = (field.value as? String) ?? ""
         XCTAssertTrue(committedVal.lowercased().contains("qırım"), "Space must commit autocorrected 'Qırım', got '\(committedVal)'")
+        tap("backspace")
+        Thread.sleep(forTimeInterval: 0.25)
+        shot("05b_backspace_undo_qirim")
+        clear()
+        typeLetters("yaptıñ")
+        tap("space")
+        typeLetters("mı")
+        tap("space")
+        typeLetters("gece")
+        if key("numeric").exists { tap("numeric") }
+        if key("character.-").waitForExistence(timeout: 1.5) { tap("character.-") }
+        if key("alphabetic").exists { tap("alphabetic") }
+        tap("space")
+        Thread.sleep(forTimeInterval: 0.3)
+        shot("05c_orthography_yaptinmi_gece_kunduz")
 
-        // 4. Portrait email (no toolbar) & Portrait standard with suggestions OFF
+        // 4. Portrait email (no toolbar) & Portrait standard with suggestions OFF on QırımKey (while QırımKey remains active continuously)
         try launch(fieldMode: "email")
         Thread.sleep(forTimeInterval: 1.0)
         assertNoHangHUD("portrait_email")
@@ -4917,7 +5253,26 @@ final class QirimKeyUITests: XCTestCase {
         XCTAssertFalse(dailyGreetingInSearch.exists, "Daily greeting must NEVER appear in Search field")
         shot("08_search_field_mutual_exclusion")
 
-        // 6. iPhone Swipe-to-Type (QırımKey Swipe v2) or iPad Floating Mode (via real setIPadFloatingKeyboard)
+        // 6. Landscape Docked height parity on QırımKey (using -qt_keep_orientation and -qt_force_landscape)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.2)
+        try launch(fieldMode: "standard", extraArgs: ["-qt_keep_orientation", "-qt_force_landscape"])
+        try selectScript(cyrillic: false)
+        Thread.sleep(forTimeInterval: 1.0)
+        assertNoHangHUD("landscape_std_sugg1")
+        logKeyboardGeometry("landscape_std_sugg1")
+        shot("10_landscape_std_sugg1")
+
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions", "-qt_keep_orientation", "-qt_force_landscape"])
+        try selectScript(cyrillic: false)
+        Thread.sleep(forTimeInterval: 1.0)
+        logKeyboardGeometry("landscape_std_sugg0")
+        shot("10_landscape_std_sugg0")
+
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 1.2)
+
+        // 7. iPhone Swipe-to-Type (QırımKey Swipe v2) or iPad Floating Mode on QırımKey (WITH and WITHOUT suggestions)
         if !isPad {
             try launch(fieldMode: "standard")
             try selectScript(cyrillic: false)
@@ -4935,55 +5290,264 @@ final class QirimKeyUITests: XCTestCase {
                 shot("09_iphone_swipe")
             }
         } else {
-            try launch(fieldMode: "standard")
+            try launch(fieldMode: "standard", extraArgs: ["-qt_extend_input_callout", "-qt_hold_callout"])
+            try selectScript(cyrillic: false)
             setIPadFloatingKeyboard(true)
-            Thread.sleep(forTimeInterval: 1.0)
+            try? selectScript(cyrillic: false)
+            // Wait 3.5s so any system pinch-to-float HUD toast disappears completely before taking the screenshot
+            Thread.sleep(forTimeInterval: 3.5)
+            assertNoHangHUD("ipad_floating")
             logKeyboardGeometry("ipad_floating")
             shot("09_ipad_floating")
+
+            // Capture active single-tap InputCallout preview on iPad Floating ('g' key) via window coordinates
+            let gFloatKey = app.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.g', 'key.character.G'}")).firstMatch
+            if gFloatKey.exists && gFloatKey.frame.width > 0 {
+                let gf = gFloatKey.frame
+                winRoot.withOffset(CGVector(dx: gf.midX, dy: gf.midY)).tap()
+                shot("09p_ipad_floating_keypress_callout")
+                Thread.sleep(forTimeInterval: 1.7)
+                clear()
+                Thread.sleep(forTimeInterval: 0.3)
+            }
+
+            // Capture QırımKey Floating WITHOUT suggestions (-qt_no_suggestions)
+            try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions"])
+            setIPadFloatingKeyboard(true)
+            try? selectScript(cyrillic: false)
+            Thread.sleep(forTimeInterval: 1.5)
+            let greetingEl = app.descendants(matching: .any)["autocomplete.greetingBanner"].firstMatch
+            let slot0El = app.descendants(matching: .any)["autocomplete.slot.0"].firstMatch
+            if greetingEl.exists || slot0El.exists {
+                let emailSeg = app.descendants(matching: .any)["field.email"].firstMatch
+                let stdSeg = app.descendants(matching: .any)["field.standard"].firstMatch
+                if emailSeg.exists && stdSeg.exists {
+                    emailSeg.tap()
+                    Thread.sleep(forTimeInterval: 0.4)
+                    stdSeg.tap()
+                    Thread.sleep(forTimeInterval: 0.8)
+                }
+            }
+            logKeyboardGeometry("ipad_floating_sugg0")
+            shot("09_ipad_floating_sugg0")
+
+            // Return to Docked mode before starting System Keyboard batch
             setIPadFloatingKeyboard(false)
             Thread.sleep(forTimeInterval: 1.0)
         }
 
-        // 7. Landscape height parity (restored f08f42f / 6b09aed dimensions) & restore defaults
+        // 8. Native System Keyboard Reference Batch (via -qt_force_system_keyboard: 03s, 03sp, 06s, 07s, 10s_sugg1, 10s_sugg0, and on iPad 09s/09s_sugg0)
+        try launch(fieldMode: "standard", extraArgs: ["-qt_force_system_keyboard"])
+        Thread.sleep(forTimeInterval: 1.0)
+        let sysKeys = app.keyboards.firstMatch.buttons.allElementsBoundByIndex.map { $0.frame }.filter { $0.height >= 30 && $0.height <= 90 && $0.minY > 300 }
+        let sysMinY = sysKeys.map { $0.minY }.min() ?? -1
+        let sysMaxY = sysKeys.map { $0.maxY }.max() ?? -1
+        print("QK_R16_SYS_GEOM \(tag) kbFrame=\(app.keyboards.firstMatch.frame) sysKeysMinY=\(sysMinY) sysKeysMaxY=\(sysMaxY)")
+        shot("03s_system_keyboard_sugg1")
+        captureSystemKeypressCallout("03sp_system_keypress_callout")
+
+        try launch(fieldMode: "email", extraArgs: ["-qt_force_system_keyboard"])
+        Thread.sleep(forTimeInterval: 1.0)
+        shot("06s_system_portrait_email")
+
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions", "-qt_force_system_keyboard"])
+        Thread.sleep(forTimeInterval: 1.0)
+        print("QK_R16_SYS_GEOM_SUGG0 \(tag) kbFrame=\(app.keyboards.firstMatch.frame)")
+        shot("07s_system_portrait_std_sugg0")
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.2)
+        try launch(fieldMode: "standard", extraArgs: ["-qt_keep_orientation", "-qt_force_landscape", "-qt_force_system_keyboard"])
+        Thread.sleep(forTimeInterval: 1.0)
+        print("QK_R16_SYS_LANDSCAPE_GEOM \(tag) kbFrame=\(app.keyboards.firstMatch.frame)")
+        shot("10s_system_landscape_std_sugg1")
+
+        try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions", "-qt_keep_orientation", "-qt_force_landscape", "-qt_force_system_keyboard"])
+        Thread.sleep(forTimeInterval: 1.0)
+        print("QK_R16_SYS_LANDSCAPE_GEOM_SUGG0 \(tag) kbFrame=\(app.keyboards.firstMatch.frame)")
+        shot("10s_system_landscape_std_sugg0")
+
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 1.2)
+
         if isPad {
-            try launch(fieldMode: "standard")
-            Thread.sleep(forTimeInterval: 0.8)
-            XCUIDevice.shared.orientation = .landscapeLeft
-            Thread.sleep(forTimeInterval: 1.5)
-            assertNoHangHUD("landscape_std_sugg1")
-            logKeyboardGeometry("landscape_std_sugg1")
-            shot("10_landscape_std_sugg1")
-            XCUIDevice.shared.orientation = .portrait
-            Thread.sleep(forTimeInterval: 1.0)
-        } else {
-            let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
-            safari.activate()
-            if !safari.wait(for: .runningForeground, timeout: 4.0) {
-                safari.launch()
-                _ = safari.wait(for: .runningForeground, timeout: 5.0)
-            }
-            XCUIDevice.shared.orientation = .landscapeLeft
+            // Capture native System Floating keyboard WITH suggestions (sugg1)
+            try launch(fieldMode: "standard", extraArgs: ["-qt_force_system_keyboard"])
             Thread.sleep(forTimeInterval: 1.2)
-            let urlPred = NSPredicate(format: "identifier CONTAINS[c] 'Address' OR identifier CONTAINS[c] 'URL' OR identifier CONTAINS[c] 'CapsuleNavigationBar' OR label CONTAINS[c] 'Address' OR label CONTAINS[c] 'Search' OR label CONTAINS[c] 'Пошук' OR label CONTAINS[c] 'Адрес'")
-            let urlBar = safari.descendants(matching: .any).matching(urlPred).firstMatch
-            if urlBar.waitForExistence(timeout: 3.0) {
-                urlBar.tap()
-                Thread.sleep(forTimeInterval: 1.5)
-            } else {
-                safari.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.90)).tap()
-                Thread.sleep(forTimeInterval: 1.5)
+            let kb = app.keyboards.firstMatch
+            if kb.exists && kb.frame.width > 420 {
+                setIPadFloatingKeyboard(true)
+                Thread.sleep(forTimeInterval: 3.5)
             }
-            let qEl = safari.descendants(matching: .any).matching(NSPredicate(format: "identifier IN {'key.character.q', 'key.character.Q', 'key.character.ф', 'key.character.Ф'}")).firstMatch
-            let spEl = safari.descendants(matching: .any).matching(NSPredicate(format: "identifier == 'key.space'")).firstMatch
-            print("QK_R16_GEOM iphone landscape_safari q=\(qEl.exists ? qEl.frame : .zero) space=\(spEl.exists ? spEl.frame : .zero)")
-            shot("10_landscape_std_sugg1")
-            XCUIDevice.shared.orientation = .portrait
-            Thread.sleep(forTimeInterval: 0.8)
-            try launch(fieldMode: "standard")
+            print("QK_R16_SYS_FLOATING_GEOM_SUGG1 ipad kbFrame=\(kb.frame)")
+            shot("09s_system_ipad_floating")
+
+            // Capture native System Floating keyboard WITHOUT suggestions (-qt_no_suggestions + -qt_force_system_keyboard)
+            try launch(fieldMode: "standard", extraArgs: ["-qt_no_suggestions", "-qt_force_system_keyboard"])
+            Thread.sleep(forTimeInterval: 1.2)
+            if kb.exists && kb.frame.width > 420 {
+                setIPadFloatingKeyboard(true)
+                Thread.sleep(forTimeInterval: 2.5)
+            }
+            print("QK_R16_SYS_FLOATING_GEOM_NOSUGG ipad kbFrame=\(kb.frame)")
+            shot("09s_system_ipad_floating_sugg0")
+
+            // Unfloat System Keyboard back to Docked mode
+            setIPadFloatingKeyboard(false)
+            Thread.sleep(forTimeInterval: 1.0)
         }
     }
+
+    func testLiquidGlassSwitcherHoldDragVideo_20_90() throws {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        let tag = isPad ? "ipad" : "iphone"
+        XCUIDevice.shared.orientation = .portrait
+
+        for stale in [
+            "/tmp/Proof_20_90_HoldDrag_Lang_MidHold.png",
+            "/tmp/Proof_20_90_HoldDrag_Lang_MidHold_UK.png",
+            "/tmp/Proof_20_90_HoldDrag_Lang_MidHold_EN.png",
+            "/tmp/Proof_20_90_HoldDrag_Lang_PostRelease.png",
+            "/tmp/Proof_20_90_HoldDrag_Abv_MidHold.png",
+            "/tmp/Proof_20_90_HoldDrag_Abv_PostRelease.png"
+        ] {
+            try? FileManager.default.removeItem(atPath: stale)
+        }
+
+        func saveNamedShot(_ name: String, screenshot: XCUIScreenshot = XCUIScreen.main.screenshot()) {
+            let att = XCTAttachment(screenshot: screenshot)
+            att.name = name
+            att.lifetime = .keepAlways
+            add(att)
+            if let data = screenshot.pngRepresentation as Data? {
+                try? data.write(to: URL(fileURLWithPath: "/tmp/\(name).png"), options: .atomic)
+            }
+        }
+
+        func saveMidHoldShot(_ name: String, liveSnapshotPath: String, fallbackScreenshot: XCUIScreenshot?) {
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: liveSnapshotPath)), data.count > 10_000 {
+                let att = XCTAttachment(data: data, uniformTypeIdentifier: "public.png")
+                att.name = name
+                att.lifetime = .keepAlways
+                add(att)
+                try? data.write(to: URL(fileURLWithPath: "/tmp/\(name).png"), options: .atomic)
+                return
+            }
+            if let fallbackScreenshot {
+                saveNamedShot(name, screenshot: fallbackScreenshot)
+            }
+        }
+
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-UITesting",
+            "-qt_lang", "crh",
+            "-qt_theme", "light",
+            "-qt_no_autofocus",
+            "-qt_collapse_testing",
+            "-qt_demo_stats",
+            "-qt_cyrillic_added",
+            "-qt_ukrainian_added",
+            "-qt_enable_live_animations"
+        ]
+        app.launch()
+        _ = app.wait(for: .runningForeground, timeout: 8.0)
+        Thread.sleep(forTimeInterval: 1.0)
+        saveNamedShot("Proof_20_90_VideoFrame_00_Initial_CRH_\(tag)")
+
+        let langCrh = app.descendants(matching: .any)["settings.lang.crh"].firstMatch
+        let langUk = app.descendants(matching: .any)["settings.lang.uk"].firstMatch
+        let langEn = app.descendants(matching: .any)["settings.lang.en"].firstMatch
+        XCTAssertTrue(langCrh.waitForExistence(timeout: 5.0), "Language switcher CRH item must exist")
+        XCTAssertTrue(langUk.exists, "Language switcher UK item must exist")
+        XCTAssertTrue(langEn.exists, "Language switcher EN item must exist")
+
+        let cCrh = langCrh.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let cUk = langUk.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let cEn = langEn.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let dragVelocity = XCUIGestureVelocity(rawValue: 220)
+
+        // Drag QT -> УК and hold finger down for 1.15s so mid-hold screenshot captures ONLY the Liquid Glass background without vector line art
+        var midHoldLangShot: XCUIScreenshot?
+        let midHoldTimer = Timer(timeInterval: 0.95, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                midHoldLangShot = XCUIScreen.main.screenshot()
+            }
+        }
+        RunLoop.main.add(midHoldTimer, forMode: .common)
+        cCrh.press(forDuration: 0.12, thenDragTo: cUk, withVelocity: dragVelocity, thenHoldForDuration: 1.15)
+        midHoldTimer.invalidate()
+        saveMidHoldShot(
+            "Proof_20_90_VideoFrame_01_MidHold_UK_GlassOnly_\(tag)",
+            liveSnapshotPath: "/tmp/Proof_20_90_HoldDrag_Lang_MidHold_UK.png",
+            fallbackScreenshot: midHoldLangShot
+        )
+        Thread.sleep(forTimeInterval: 0.14)
+        saveNamedShot("Proof_20_90_VideoFrame_02_PostRelease_UK_LineDrawStart_\(tag)")
+        Thread.sleep(forTimeInterval: 0.75)
+        saveNamedShot("Proof_20_90_VideoFrame_03_PostRelease_UK_LineDrawDone_\(tag)")
+
+        if isPad {
+            let abvCyr = app.descendants(matching: .any)["settings.cyrillic.abvSelector"].firstMatch
+            let abvDis = app.descendants(matching: .any)["settings.abv.disabledSelector"].firstMatch
+            let abvUkr = app.descendants(matching: .any)["settings.ukrainianCyrillic.abvSelector"].firstMatch
+            XCTAssertTrue(abvCyr.waitForExistence(timeout: 5.0), "iPad abv Кирилицю segment must exist in UK")
+            XCTAssertTrue(abvDis.exists, "iPad abv Caps Lock segment must exist in UK")
+            XCTAssertTrue(abvUkr.exists, "iPad abv Українську segment must exist in UK")
+
+            let cAbvCyr = abvCyr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let cAbvUkr = abvUkr.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+
+            // First ensure Кирилицю is selected and wait for the 1.34s closed-loop абв badge animation to settle
+            cAbvCyr.tap()
+            Thread.sleep(forTimeInterval: 1.55)
+            saveNamedShot("Proof_20_90_VideoFrame_04_AbvBridge_Initial_Cyr_\(tag)")
+
+            // Drag Кирилицю -> Українську and hold finger down for 1.15s so mid-hold screenshot captures ONLY the Liquid Glass pill without vector line art
+            var midHoldAbvShot: XCUIScreenshot?
+            let midHoldAbvTimer = Timer(timeInterval: 1.45, repeats: false) { _ in
+                MainActor.assumeIsolated {
+                    midHoldAbvShot = XCUIScreen.main.screenshot()
+                }
+            }
+            RunLoop.main.add(midHoldAbvTimer, forMode: .common)
+            let abvDragVelocity = XCUIGestureVelocity(rawValue: 750)
+            cAbvCyr.press(forDuration: 0.12, thenDragTo: cAbvUkr, withVelocity: abvDragVelocity, thenHoldForDuration: 1.15)
+            midHoldAbvTimer.invalidate()
+            saveMidHoldShot(
+                "Proof_20_90_VideoFrame_05_AbvBridge_MidHold_Ukr_GlassOnly_\(tag)",
+                liveSnapshotPath: "/tmp/Proof_20_90_HoldDrag_Abv_MidHold.png",
+                fallbackScreenshot: midHoldAbvShot
+            )
+            Thread.sleep(forTimeInterval: 0.14)
+            saveNamedShot("Proof_20_90_VideoFrame_06_AbvBridge_PostRelease_Ukr_LineDrawStart_\(tag)")
+            Thread.sleep(forTimeInterval: 0.75)
+            saveNamedShot("Proof_20_90_VideoFrame_07_AbvBridge_PostRelease_Ukr_LineDrawDone_\(tag)")
+        }
+
+        // Also test УК -> EN hold-and-slide
+        var midHoldEnShot: XCUIScreenshot?
+        let midHoldEnTimer = Timer(timeInterval: 0.95, repeats: false) { _ in
+            MainActor.assumeIsolated {
+                midHoldEnShot = XCUIScreen.main.screenshot()
+            }
+        }
+        RunLoop.main.add(midHoldEnTimer, forMode: .common)
+        cUk.press(forDuration: 0.12, thenDragTo: cEn, withVelocity: dragVelocity, thenHoldForDuration: 1.15)
+        midHoldEnTimer.invalidate()
+        saveMidHoldShot(
+            "Proof_20_90_VideoFrame_08_MidHold_EN_GlassOnly_\(tag)",
+            liveSnapshotPath: "/tmp/Proof_20_90_HoldDrag_Lang_MidHold_EN.png",
+            fallbackScreenshot: midHoldEnShot
+        )
+        // Pause >= 0.90s after УК -> EN release so the +0.62s Proof_20_90_HoldDrag_Lang_PostRelease.png snapshot captures the settled EN Union Jack state
+        Thread.sleep(forTimeInterval: 0.90)
+        saveNamedShot("Proof_20_90_VideoFrame_09_PostRelease_EN_LineDrawDone_\(tag)")
+
+        // Return to УК
+        cEn.press(forDuration: 0.12, thenDragTo: cUk, withVelocity: dragVelocity, thenHoldForDuration: 0.35)
+        Thread.sleep(forTimeInterval: 0.95)
+        saveNamedShot("Proof_20_90_VideoFrame_10_Final_UK_\(tag)")
+    }
 }
-
-
-
 

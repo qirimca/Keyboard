@@ -84,10 +84,11 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         if let action = keyboardSwitchActionForBottomRow(for: context) {
             result.append(action)
         }
-        // In iPad Floating mode, classic apps (e.g. Gmail) do not render a system bottom bar with a Globe button below the floating platter,
-        // and an out-of-process UIInputViewController cannot inspect the host window's private floating chrome bar.
-        // Always include .nextKeyboard in Floating mode so users can switch keyboards in every app.
-        let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
+        // On iPad Floating, the iPadOS floating container bezel already renders a system Globe button at the bottom-left,
+        // matching the native iPad Floating layout (123, Space, Return).
+        let shouldIncludeGlobe = (context.deviceType == .pad && context.isKeyboardFloating)
+            ? false
+            : context.needsInputModeSwitchKey
         let canShowPhoneEmoji = context.deviceType == .phone && !context.isKeyboardFloating && SystemKeyboardSettings.isEmojiKeyboardEnabled
 
         #if os(iOS) || os(tvOS) || os(visionOS)
@@ -153,10 +154,10 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
     
     override func bottomSystemButtonWidth(for context: KeyboardContext) -> KeyboardLayout.ItemWidth {
         if context.isKeyboardFloating {
-            return .percentage(0.12825)
+            return .percentage(0.125)
         }
         let isPortrait = context.interfaceOrientation.isPortrait
-        return .percentage(isPortrait ? 0.118 : 0.11)
+        return .percentage(isPortrait ? 0.12575 : 0.09435)
     }
     
     override func itemSizeWidth(
@@ -168,23 +169,22 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
         switch action {
         case .nextKeyboard:
             if context.isKeyboardFloating {
-                return .percentage(0.12825)
+                return .percentage(0.125)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
-            return .percentage(isPortrait ? 0.118 : 0.095)
+            return .percentage(isPortrait ? 0.12575 : 0.09435)
         case .keyboardType(let type):
             // Row 2 contains the #+= (symbolic) or 123 (numeric) switcher button
             if row != 3 {
                 return lowerSystemButtonWidth(for: context)
             }
-            if context.isKeyboardFloating {
-                return .percentage(0.12825)
-            }
             let isPortrait = context.interfaceOrientation.isPortrait
             if type == .emojis {
-                return .percentage(isPortrait ? 0.118 : 0.095)
+                return .percentage(context.isKeyboardFloating ? 0.125 : (isPortrait ? 0.12575 : 0.09435))
             }
-            let shouldIncludeGlobe = context.isKeyboardFloating || context.needsInputModeSwitchKey
+            let shouldIncludeGlobe = (context.deviceType == .pad && context.isKeyboardFloating)
+                ? false
+                : context.needsInputModeSwitchKey
             let canShowPhoneEmoji = context.deviceType == .phone && !context.isKeyboardFloating && SystemKeyboardSettings.isEmojiKeyboardEnabled
             #if os(iOS) || os(tvOS) || os(visionOS)
             let effectiveType = DemoStyleProvider.effectiveProxyKeyboardType(for: context)
@@ -194,15 +194,21 @@ final class CrimeanTatarIPhoneKeyboardLayoutProvider: iPhoneKeyboardLayoutProvid
             let isURL = false
             #endif
             if !shouldIncludeGlobe && !canShowPhoneEmoji && !isURL {
-                return .percentage(isPortrait ? 0.242 : 0.195)
+                if context.isKeyboardFloating {
+                    return .percentage(0.247)
+                }
+                return .percentage(isPortrait ? 0.2515 : 0.1887)
             }
-            return .percentage(isPortrait ? 0.118 : 0.11)
+            if context.isKeyboardFloating {
+                return .percentage(0.1235)
+            }
+            return .percentage(isPortrait ? 0.12575 : 0.09435)
         case .primary:
             if context.isKeyboardFloating {
-                return .percentage(0.2565)
+                return .percentage(0.247)
             }
             let isPortrait = context.interfaceOrientation.isPortrait
-            return .percentage(isPortrait ? 0.242 : 0.195)
+            return .percentage(isPortrait ? 0.2515 : 0.1887)
         case .space:
             return .available
         case .custom(let name) where name == "url_domain":

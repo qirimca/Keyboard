@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QırımKey — Interactive Minimalist Keyboard, Motion & Theme Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-page: #F2EFE9;
+            --bg-surface: #FAF8F5;
+            --bg-card: #FFFFFF;
+            --ink-primary: #141413;
+            --ink-secondary: #5E5D59;
+            --ink-tertiary: #8E8D87;
+            --accent-primary: #0087DB;
+            --accent-gold: #D49B1A;
+            --accent-cyrillic: #5956D6;
+            --border-hairline: rgba(20, 20, 19, 0.08);
+            --kb-bg: rgba(212, 216, 224, 0.65);
+            --key-bg: rgba(255, 255, 255, 0.95);
+            --key-sys-bg: rgba(0, 0, 0, 0.14);
+            --key-ink: #111111;
+            --key-flick: rgba(17, 17, 17, 0.24);
+            --key-rim: rgba(255, 255, 255, 0.85);
+            --comet-rgb: 18, 149, 216;
+            --pill-bg: rgba(255, 255, 255, 0.88);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-page);
+            color: var(--ink-primary);
+            min-height: 100vh;
+            transition: background 0.35s cubic-bezier(0.22, 1, 0.36, 1), color 0.35s ease;
+            padding: 28px 32px 60px;
+        }
+
+        /* Studio Header */
+        .studio-header {
+            max-width: 1380px;
+            margin: 0 auto 28px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-hairline);
+        }
+
+        .studio-title-block h1 {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 38px;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+            line-height: 1.08;
+            margin-bottom: 6px;
+        }
+
+        .studio-title-block p {
+            color: var(--ink-secondary);
+            font-size: 14.5px;
+            max-width: 68ch;
+            line-height: 1.45;
+        }
+
+        .telemetry-strip {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .telemetry-badge {
+            padding: 6px 11px;
+            border-radius: 999px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-hairline);
+            color: var(--ink-secondary);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .telemetry-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+        }
+
+        /* Control Dock */
+        .control-dock {
+            max-width: 1380px;
+            margin: 0 auto 26px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 14px;
+        }
+
+        .dock-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-hairline);
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.025);
+        }
+
+        .dock-card-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--ink-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pill-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pill-btn {
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 500;
+            padding: 6px 11px;
+            border-radius: 9px;
+            border: 1px solid var(--border-hairline);
+            background: var(--bg-surface);
+            color: var(--ink-primary);
+            cursor: pointer;
+            transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .pill-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .pill-btn.active {
+            background: var(--accent-primary);
+            color: #FFFFFF;
+            border-color: transparent;
+            box-shadow: 0 3px 10px rgba(0, 135, 219, 0.26);
+        }
+
+        /* Main Two-Column Workbench */
+        .workbench {
+            max-width: 1380px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        @media (max-width: 1080px) {
+            .workbench {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stage-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-hairline);
+            border-radius: 22px;
+            padding: 22px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .panel-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .panel-subtitle {
+            font-size: 12.5px;
+            color: var(--ink-secondary);
+        }
+
+        /* Sandbox Writing Field */
+        .sandbox-editor {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-hairline);
+            border-radius: 14px;
+            padding: 12px 14px;
+            min-height: 68px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .sandbox-text {
+            font-size: 15.5px;
+            line-height: 1.45;
+            color: var(--ink-primary);
+            min-height: 24px;
+            word-break: break-word;
+        }
+
+        .sandbox-placeholder {
+            color: var(--ink-tertiary);
+        }
+
+        .sandbox-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .speed-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 11.5px;
+            font-weight: 600;
+            background: rgba(0, 135, 219, 0.12);
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Keyboard Frame */
+        .keyboard-chassis {
+            position: relative;
+            background: var(--kb-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-radius: 20px;
+            padding: 6px 6px 10px;
+            border: 1px solid var(--border-hairline);
+            user-select: none;
+            overflow: hidden;
+            transition: background 0.35s ease;
+        }
+
+        /* Top Suggestion / Daily Phrase Toolbar (Strict Mutual Exclusion) */
+        .kb-toolbar {
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 8px;
+            margin-bottom: 4px;
+            position: relative;
+        }
+
+        /* Unplattered Daily Wisdom Banner (Color.clear) — centered adjacent to sparkles */
+        .wisdom-banner {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            width: auto;
+            height: 32px;
+            padding: 0 10px;
+            background: transparent;
+            border: none;
+            color: var(--key-ink);
+            font-size: 16px;
+            font-weight: 400;
+            cursor: pointer;
+            border-radius: 14px;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .wisdom-banner:active {
+            background: rgba(128, 134, 145, 0.24);
+            transform: scale(0.99);
+        }
+
+        .sparkles-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--key-ink);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .sparkles-btn:hover {
+            background: rgba(128, 134, 145, 0.16);
+        }
+
+        /* 3-Slot Autocomplete Bar */
+        .suggestions-bar {
+            display: grid;
+            grid-template-columns: 1fr 1px 1.15fr 1px 1fr;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        .slot-btn {
+            height: 100%;
+            border: none;
+            background: transparent;
+            color: var(--key-ink);
+            font-family: inherit;
+            font-size: 16.5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+        }
+
+        .slot-pill-autocorrect {
+            background: var(--pill-bg);
+            border-radius: 14px;
+            padding: 4px 16px;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .slot-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-hairline);
+        }
+
+        /* 12-Column Key Rows */
+        .kb-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            position: relative;
+        }
+
+        .kb-row {
+            display: grid;
+            gap: 5px;
+            height: 44px;
+        }
+
+        .kb-row.cols-12 {
+            grid-template-columns: repeat(12, 1fr);
+        }
+
+        .kb-row.cols-bottom {
+            grid-template-columns: 1.25fr 1.1fr 1.1fr 5.1fr 1.1fr 2.35fr;
+        }
+
+        .keycap {
+            position: relative;
+            background: var(--key-bg);
+            color: var(--key-ink);
+            border-radius: 8.5px;
+            border: none;
+            border-top: 1px solid var(--key-rim);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+            overflow: hidden;
+        }
+
+        .keycap.system-key {
+            background: var(--key-sys-bg);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .keycap.primary-key {
+            background: var(--accent-primary);
+            color: #FFFFFF;
+            font-weight: 600;
+        }
+
+        .keycap:active, .keycap.pressed {
+            transform: scale(0.95);
+        }
+
+        /* Magnetic Anchor Glow during Swipe v2 */
+        .keycap.anchor-glow {
+            box-shadow: 0 0 0 1.6px var(--accent-gold), 0 0 14px rgba(255, 215, 0, 0.38);
+        }
+
+        .key-main {
+            font-size: 20px;
+            font-weight: 400;
+            line-height: 1.05;
+        }
+
+        .key-flick {
+            position: absolute;
+            top: 3px;
+            right: 5px;
+            font-size: 9.5px;
+            font-weight: 600;
+            color: var(--key-flick);
+            transition: color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .keycap:hover .key-flick {
+            color: var(--accent-primary);
+        }
+
+        /* Mode 2: Typographic Air (Borderless Minimalist Mode) */
+        .keyboard-chassis.mode-borderless .keycap:not(.system-key):not(.primary-key):not(.space-key) {
+            background: transparent;
+            border-top-color: transparent;
+            box-shadow: none;
+        }
+
+        .keyboard-chassis.mode-borderless .keycap:not(.system-key):hover {
+            background: rgba(128, 134, 145, 0.12);
+        }
+
+        /* Mode 3: Sculpted Chamfer Monolith */
+        .keyboard-chassis.mode-monolith .keycap {
+            border: 1px solid var(--border-hairline);
+            border-top: 1.5px solid var(--key-rim);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.14);
+        }
+
+        /* Spacebar with Breathing Taraq Tamğa & 2-char corner code */
+        .keycap.space-key {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .space-fullname {
+            position: absolute;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+
+        .space-key.showing-fullname .space-fullname {
+            opacity: 0.88;
+        }
+
+        .space-key.showing-fullname .space-tamga-wrap,
+        .space-key.showing-fullname .space-corner-code {
+            opacity: 0;
+        }
+
+        .space-tamga-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: opacity 0.35s ease;
+        }
+
+        .tamga-ripple-svg {
+            position: absolute;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .tamga-ripple-svg.rippling {
+            animation: goldenRippleWave 0.42s cubic-bezier(0.16, 1.0, 0.3, 1.0) forwards;
+        }
+
+        @keyframes goldenRippleWave {
+            0% {
+                opacity: 0.65;
+                transform: scale(1.0);
+            }
+            100% {
+                opacity: 0.0;
+                transform: scale(1.65);
+            }
+        }
+
+        .space-corner-code {
+            position: absolute;
+            right: 8.5px;
+            bottom: 4.5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            transform: scaleX(0.86);
+            transform-origin: bottom right;
+            opacity: 0.26;
+            transition: opacity 0.35s ease;
+        }
+
+        /* Swipe v2 Canvas Overlay */
+        #swipe-canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Right Column: HomeView Editorial Bento Proposals */
+        .bento-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .bento-group-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-hairline);
+            border-radius: 16px;
+            padding: 14px;
+        }
+
+        .bento-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .badge-3d {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13.5px;
+            color: #FFFFFF;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 3px 8px rgba(0,0,0,0.12);
+            flex-shrink: 0;
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+            overflow: hidden;
+        }
+
+        .badge-crh-sky {
+            background: linear-gradient(145deg, #1295D8, #0B72B5);
+        }
+
+        .badge-cyr-indigo {
+            background: linear-gradient(145deg, #5956D6, #4340B8);
+        }
+
+        .badge-ukr-blue {
+            background: linear-gradient(145deg, #0087DB, #0062A8);
+            border-bottom: 2.5px solid #FFD700;
+        }
+
+        /* iPad [абв] Keycap Selector Button (settings.cyrillic.abvSelector & settings.ukrainianCyrillic.abvSelector) */
+        .abv-keycap-selector {
+            height: 27px;
+            padding: 0 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-hairline);
+            background: rgba(173, 178, 191, 0.35);
+            color: var(--ink-primary);
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .abv-keycap-selector.active-cyr {
+            background: #5956D6;
+            color: #FFFFFF;
+            border-color: transparent;
+            box-shadow: 0 2px 6px rgba(89, 86, 214, 0.32);
+        }
+
+        .abv-keycap-selector.active-ukr {
+            background: var(--accent-primary);
+            color: #FFFFFF;
+            border-color: transparent;
+            box-shadow: 0 2px 6px rgba(0, 135, 219, 0.32);
+        }
+
+        .ios-switch {
+            width: 44px;
+            height: 26px;
+            border-radius: 999px;
+            background: #34C759;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .ios-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* 2-Tile Collapsed Statistics Grid */
+        .stats-2tile-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .stat-tile {
+            background: var(--bg-card);
+            border: 1px solid var(--border-hairline);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 6px;
+        }
+
+        .stat-tile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--ink-secondary);
+            font-weight: 500;
+        }
+
+        .stat-big-value {
+            font-size: 22px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.03em;
+        }
+
+        .stat-subtitle {
+            font-size: 11.5px;
+            color: var(--ink-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mini-capsules {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 5px;
+        }
+
+        .mini-capsule {
+            font-size: 10.5px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: rgba(0, 135, 219, 0.09);
+            color: var(--ink-secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="studio-header">
+        <div class="studio-title-block">
+            <h1>QırımKey — Lithic Glass & Kinetic Typography Lab</h1>
+            <p>
+                Interactive visual proposal workbench combining <strong>claude-frontend-design</strong>, <strong>claude-canvas-design</strong>, <strong>claude-algorithmic-art</strong>, and <strong>claude-theme-factory</strong>. Drag across the 12-column keyboard to test the <strong>Swipe v2 Luminescent Comet + Anchor Key Glow</strong> and watch the <strong>Taraq Tamğa</strong> spacebar breathe faster.
+            </p>
+        </div>
+        <div class="telemetry-strip">
+            <span class="telemetry-badge"><span class="telemetry-dot"></span> 120Hz Motion Spec</span>
+            <span class="telemetry-badge" id="tamga-speed-readout">Tamğa Breath: 1.00x</span>
+            <span class="telemetry-badge" id="anchor-angle-readout">Turn Anchors (≥22°): 0</span>
+        </div>
+    </header>
+
+    <!-- Control Dock -->
+    <section class="control-dock">
+        <div class="dock-card">
+            <div class="dock-card-title">
+                <span>1. Minimalist Keyboard Architecture</span>
+            </div>
+            <div class="pill-group" id="mode-selector">
+                <button class="pill-btn active" onclick="setKeyboardMode('whisper', this)">Liquid Whisper (Rim-Lit)</button>
+                <button class="pill-btn" onclick="setKeyboardMode('borderless', this)">Typographic Air (Borderless)</button>
+                <button class="pill-btn" onclick="setKeyboardMode('monolith', this)">Sculpted Monolith</button>
+            </div>
+        </div>
+
+        <div class="dock-card">
+            <div class="dock-card-title">
+                <span>2. Theme Factory Palette (6 Cultural Themes)</span>
+            </div>
+            <div class="pill-group" id="theme-selector">
+                <button class="pill-btn active" onclick="setTheme('liquid', this)">Liquid Glass</button>
+                <button class="pill-btn" onclick="setTheme('bagcasaray', this)">Bağçasaray Gold</button>
+                <button class="pill-btn" onclick="setTheme('qaradeniz', this)">Qara Deñiz Midnight</button>
+                <button class="pill-btn" onclick="setTheme('aqmescit', this)">Aqmescit Paper</button>
+                <button class="pill-btn" onclick="setTheme('steppe', this)">Steppe Dawn</button>
+                <button class="pill-btn" onclick="setTheme('obsidian', this)">Obsidian</button>
+            </div>
+        </div>
+
+        <div class="dock-card">
+            <div class="dock-card-title">
+                <span>3. Script & Top Bar Mutual Exclusion</span>
+            </div>
+            <div class="pill-group">
+                <button class="pill-btn active" id="script-latn" onclick="setScript('latn')">Qırımtatarca (QT)</button>
+                <button class="pill-btn" id="script-cyrl" onclick="setScript('cyrl')">Къырымтатарджа (КЪ)</button>
+                <button class="pill-btn" id="script-uk" onclick="setScript('uk')">Кʼиримтатарджа (Кʼ)</button>
+                <button class="pill-btn" id="bar-toggle" onclick="toggleTopBarMode()">Bar: Daily Wisdom</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Workbench -->
+    <main class="workbench">
+        <!-- Left: Live Interactive 12-Column Keyboard & Swipe v2 Lab -->
+        <section class="stage-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Interactive 12-Column Keyboard & Swipe v2 Comet Trail</h2>
+                    <div class="panel-subtitle">Click keys or drag across letters to trigger Bezier + Chaikin comet & Δθ ≥ 22° anchor glow</div>
+                </div>
+                <button class="pill-btn" onclick="clearSandbox()">Clear Text</button>
+            </div>
+
+            <!-- Sandbox Text View -->
+            <div class="sandbox-editor">
+                <div class="sandbox-text" id="sandbox-output">
+                    <span class="sandbox-placeholder">Tap keys, press the daily wisdom banner, or swipe across the keyboard...</span>
+                </div>
+                <div class="sandbox-footer">
+                    <span class="speed-pill" id="live-wpm-pill">55 сл/хв · Tier 4/5</span>
+                    <span class="panel-subtitle" id="last-swipe-info">Swipe v2 Ready (exact 320 / neighbor 140 pool)</span>
+                </div>
+            </div>
+
+            <!-- Keyboard Chassis -->
+            <div class="keyboard-chassis" id="kb-chassis">
+                <canvas id="swipe-canvas"></canvas>
+
+                <!-- Top Bar: Strictly Mutually Exclusive (Daily Phrase OR 3-Slot Suggestions) -->
+                <div class="kb-toolbar" id="kb-toolbar">
+                    <!-- Rendered dynamically by JS -->
+                </div>
+
+                <!-- Key Rows -->
+                <div class="kb-rows" id="kb-rows">
+                    <!-- Rendered dynamically by JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Right: HomeView Editorial Bento & WPM Mastery Ring Proposals -->
+        <section class="stage-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>HomeView Editorial Bento & Telemetry Proposals</h2>
+                    <div class="panel-subtitle">Closed-loop vector emblems, stacked Къ/Кʼ rows with iPad [абв] selectors, and 2-tile Statistics</div>
+                </div>
+            </div>
+
+            <div class="bento-stack">
+                <!-- Interface Language Row with Closed-Loop Vector Emblems (Taraq Tamğa / Tryzub / Union Jack) -->
+                <div class="bento-group-card">
+                    <div class="bento-row">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="badge-3d badge-crh-sky" id="lang-emblem-badge" title="Closed-loop vector emblem: Taraq Tamğa (crh) / Tryzub (uk) / Union Jack (en)">
+                                <svg width="20" height="22" viewBox="0 0 24 28" fill="none">
+                                    <path d="M12 1L13.8 8.5L13.2 19.5L12 26L10.8 19.5L10.2 8.5L12 1Z" fill="#FFD700"/>
+                                    <path d="M4 4H7.2V17L10.8 19V21.5L4 19V4Z" fill="#FFD700"/>
+                                    <path d="M20 4H16.8V17L13.2 19V21.5L20 19V4Z" fill="#FFD700"/>
+                                    <rect x="5.5" y="14.2" width="13" height="2.4" fill="#FFD700"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-size:15px; font-weight:600;">Мова інтерфейсу</div>
+                                <div style="font-size:12px; color:var(--ink-secondary);" id="lang-emblem-caption">Vector Tryzub (uk) · Zero spurious Къ/Кʼ re-trigger</div>
+                            </div>
+                        </div>
+                        <div class="pill-group">
+                            <button class="pill-btn" onclick="animateLangEmblem('crh', this)">QT</button>
+                            <button class="pill-btn active" onclick="animateLangEmblem('uk', this)">УК</button>
+                            <button class="pill-btn" onclick="animateLangEmblem('en', this)">EN</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- keyboardSettingsSection: Primary Status Row + Stacked Bottom Cyrillic & Ukrainian Rows -->
+                <div class="bento-group-card">
+                    <!-- status.primaryKeyboard.row (exclusive home of addedBadges) -->
+                    <div class="bento-row" style="padding-bottom:10px; border-bottom:1px solid var(--border-hairline);">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="badge-3d badge-crh-sky">Q</div>
+                            <div>
+                                <div style="font-size:15px; font-weight:600;">Стандартна розкладка</div>
+                                <div class="mini-capsules">
+                                    <span class="mini-capsule">ğ</span>
+                                    <span class="mini-capsule">ñ</span>
+                                    <span class="mini-capsule">ş</span>
+                                    <span class="mini-capsule">ç</span>
+                                    <span class="mini-capsule">ö</span>
+                                    <span class="mini-capsule">ü</span>
+                                    <span class="mini-capsule">â</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span class="speed-pill" style="background:rgba(52,199,89,0.14); color:#248A3D;">Къ Додано</span>
+                            <span class="speed-pill" id="ukr-added-badge">Кʼ Додано</span>
+                        </div>
+                    </div>
+
+                    <!-- Stacked Bottom Row 1: Кирилична клавіатура (settings.cyrillic.statusRow) -->
+                    <div class="bento-row" style="padding-top:10px; padding-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="badge-3d badge-cyr-indigo" id="badge-kyr">Къ</div>
+                            <div>
+                                <div style="font-size:14.5px; font-weight:600;">Кирилична клавіатура</div>
+                                <div class="mini-capsules">
+                                    <span class="mini-capsule">гъ→ğ</span>
+                                    <span class="mini-capsule">къ→q</span>
+                                    <span class="mini-capsule">нъ→ñ</span>
+                                    <span class="mini-capsule">дж→c</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button class="abv-keycap-selector" id="abv-sel-cyr" title="settings.cyrillic.abvSelector" onclick="selectAbvRow('cyrl')">абв</button>
+                            <div class="ios-switch" title="settings.cyrillic.toggle"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stacked Bottom Row 2: Українська розкладка (settings.ukrainianCyrillic.statusRow — strictly when language == 'uk') -->
+                    <div class="bento-row" id="ukr-layout-bottom-row" style="padding-top:10px; border-top:1px solid var(--border-hairline);">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <div class="badge-3d badge-ukr-blue" id="badge-ukr">Кʼ</div>
+                            <div>
+                                <div style="font-size:14.5px; font-weight:600;">Українська розкладка</div>
+                                <div class="mini-capsules">
+                                    <span class="mini-capsule">ґ→g</span>
+                                    <span class="mini-capsule">г→ğ</span>
+                                    <span class="mini-capsule">кʼ→q</span>
+                                    <span class="mini-capsule">нʼ→ñ</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button class="abv-keycap-selector active-ukr" id="abv-sel-ukr" title="settings.ukrainianCyrillic.abvSelector" onclick="selectAbvRow('uk')">абв</button>
+                            <div class="ios-switch" title="settings.ukrainianCyrillic.toggle"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unified 2-Tile Collapsed Statistics Grid (bentoCollapsedStatisticsGrid) -->
+                <div class="bento-group-card">
+                    <div class="bento-row">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div class="badge-3d" style="background:linear-gradient(145deg,#944AEA,#6E28C8); width:32px; height:32px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.4" stroke-linecap="round">
+                                    <line x1="6" y1="18" x2="6" y2="12"/><line x1="12" y1="18" x2="12" y2="6"/><line x1="18" y1="18" x2="18" y2="10"/>
+                                </svg>
+                            </div>
+                            <span style="font-size:15px; font-weight:600;">Статистика</span>
+                        </div>
+                        <span style="font-size:12px; color:var(--ink-secondary);">5-Tier Norms: 15 · 25 · 40 · 55 · 75 WPM</span>
+                    </div>
+
+                    <div class="stats-2tile-grid">
+                        <!-- Tile 1: Words Written + Unique Words Subtitle + Sparkline -->
+                        <div class="stat-tile">
+                            <div class="stat-tile-header">
+                                <span>Написано слів</span>
+                                <svg width="46" height="16" viewBox="0 0 46 16" fill="none">
+                                    <polyline points="2,13 10,10 18,12 26,6 34,8 44,2" stroke="var(--accent-primary)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="stat-big-value" id="stat-words-count">1 284</div>
+                            <div class="stat-subtitle">
+                                <span id="stat-unique-count">Унікальних: 312</span>
+                                <span style="color:var(--accent-gold); font-weight:600;">вивч.: 28</span>
+                            </div>
+                        </div>
+
+                        <!-- Tile 2: Typing Speed (WPM only, no CPM) + 5-Tier Mastery Ring -->
+                        <div class="stat-tile">
+                            <div class="stat-tile-header">
+                                <span>Швидкість друку</span>
+                                <svg width="22" height="22" viewBox="0 0 36 36">
+                                    <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(128,128,128,0.18)" stroke-width="4"/>
+                                    <circle id="wpm-ring-arc" cx="18" cy="18" r="14" fill="none" stroke="#F25260" stroke-width="4" stroke-dasharray="64 88" stroke-linecap="round" transform="rotate(-90 18 18)"/>
+                                </svg>
+                            </div>
+                            <div class="stat-big-value" id="stat-wpm-value">55 сл/хв</div>
+                            <div class="stat-subtitle">
+                                <span>Рівень 4/5 (Ціль: 75 сл/хв)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // KEYBOARD LAYOUTS, DAILY PHRASES & THEME TOKENS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        const LAYOUTS = {
+            latn: {
+                fullName: "Qırımtatarca",
+                code: "QT",
+                rows: [
+                    [
+                        {m:'q',f:'1'},{m:'w',f:'2'},{m:'e',f:'3'},{m:'r',f:'4'},{m:'t',f:'5'},{m:'y',f:'6'},
+                        {m:'u',f:'7'},{m:'i',f:'8'},{m:'o',f:'9'},{m:'p',f:'0'},{m:'ğ',f:'-'},{m:'ü',f:'='}
+                    ],
+                    [
+                        {m:'a',f:'@'},{m:'s',f:'#'},{m:'d',f:'$'},{m:'f',f:'%'},{m:'g',f:'&'},{m:'h',f:'*'},
+                        {m:'j',f:'('},{m:'k',f:')'},{m:'l',f:'_'},{m:'ş',f:'+'},{m:'ı',f:'/'},{m:'â',f:':'}
+                    ],
+                    [
+                        {m:'⇧',sys:true},{m:'z',f:'"'},{m:'x',f:'\''},{m:'c',f:';'},{m:'v',f:'!'},{m:'b',f:'?'},
+                        {m:'n',f:','},{m:'m',f:'.'},{m:'ö',f:'«'},{m:'ç',f:'»'},{m:'ñ',f:'~'},{m:'⌫',sys:true}
+                    ]
+                ]
+            },
+            cyrl: {
+                fullName: "Къырымтатарджа",
+                code: "КЪ",
+                rows: [
+                    [
+                        {m:'й',f:'1'},{m:'ц',f:'2'},{m:'у',f:'3'},{m:'к',f:'4'},{m:'е',f:'5'},{m:'н',f:'6'},
+                        {m:'г',f:'7'},{m:'ш',f:'8'},{m:'щ',f:'9'},{m:'з',f:'0'},{m:'х',f:'-'},{m:'ъ',f:'='}
+                    ],
+                    [
+                        {m:'ф',f:'@'},{m:'ы',f:'#'},{m:'в',f:'$'},{m:'а',f:'%'},{m:'п',f:'&'},{m:'р',f:'*'},
+                        {m:'о',f:'('},{m:'л',f:')'},{m:'д',f:'_'},{m:'ж',f:'+'},{m:'э',f:'/'},{m:'ё',f:':'}
+                    ],
+                    [
+                        {m:'⇧',sys:true},{m:'я',f:'"'},{m:'ч',f:'\''},{m:'с',f:';'},{m:'м',f:'!'},{m:'и',f:'?'},
+                        {m:'т',f:','},{m:'ь',f:'.'},{m:'б',f:'«'},{m:'ю',f:'»'},{m:'гъ',f:'къ'},{m:'⌫',sys:true}
+                    ]
+                ]
+            },
+            uk: {
+                fullName: "Кʼиримтатарджа",
+                code: "Кʼ",
+                rows: [
+                    [
+                        {m:'й',f:'1'},{m:'ц',f:'2'},{m:'у',f:'3'},{m:'к',f:'4'},{m:'е',f:'5'},{m:'н',f:'6'},
+                        {m:'г',f:'7'},{m:'ш',f:'8'},{m:'щ',f:'9'},{m:'з',f:'0'},{m:'х',f:'-'},{m:'ї',f:'yi'}
+                    ],
+                    [
+                        {m:'ф',f:'@'},{m:'і',f:'i'},{m:'в',f:'$'},{m:'а',f:'%'},{m:'п',f:'&'},{m:'р',f:'*'},
+                        {m:'о',f:'('},{m:'л',f:')'},{m:'д',f:'_'},{m:'ж',f:'+'},{m:'є',f:'ye'},{m:'ʼ',f:'q/ñ'}
+                    ],
+                    [
+                        {m:'⇧',sys:true},{m:'я',f:'"'},{m:'ч',f:'\''},{m:'с',f:';'},{m:'м',f:'!'},{m:'и',f:'ı'},
+                        {m:'т',f:','},{m:'ь',f:'.'},{m:'б',f:'«'},{m:'ю',f:'»'},{m:'ґ',f:'g'},{m:'⌫',sys:true}
+                    ]
+                ]
+            }
+        };
+
+        const DAILY_PHRASES = [
+            { text: "Atalar sözünde altın bar.", attr: "Qırımtatar atalar sözü", ua: "«У словах предків є золото.»" },
+            { text: "Til — yürekniñ anahtarı.", attr: "Qırımtatar atalar sözü", ua: "«Мова — ключ до серця.»" },
+            { text: "Yahşı söz — can azığı.", attr: "Qırımtatar atalar sözü", ua: "«Добре слово — пожива для душі.»" },
+            { text: "Közü yoq — körsete, sözü yoq — ögrete.", insertReveal: ": Kitap.", attr: "Tapmaca (#65)", ua: "«Очей немає — показує, слів немає — навчає: Книга.»" }
+        ];
+
+        const THEMES = {
+            liquid: {
+                page:'#F2EFE9', surface:'#FAF8F5', card:'#FFFFFF', ink:'#141413', sec:'#5E5D59',
+                accent:'#0087DB', gold:'#D49B1A', kb:'rgba(212, 216, 224, 0.72)', key:'rgba(255, 255, 255, 0.95)',
+                sys:'rgba(0, 0, 0, 0.14)', keyInk:'#111111', flick:'rgba(17, 17, 17, 0.25)', rim:'rgba(255,255,255,0.9)',
+                comet:'18, 149, 216', pill:'rgba(255,255,255,0.88)'
+            },
+            bagcasaray: {
+                page:'#EDE5D8', surface:'#F6F1E7', card:'#FBF8F3', ink:'#231F1B', sec:'#6E6256',
+                accent:'#C88A14', gold:'#D49B1A', kb:'#EAE0D0', key:'#FBF8F3',
+                sys:'#DED3C1', keyInk:'#231F1B', flick:'rgba(35, 31, 27, 0.28)', rim:'rgba(255,250,240,0.95)',
+                comet:'200, 138, 20', pill:'#FFFFFF'
+            },
+            qaradeniz: {
+                page:'#070C14', surface:'#0E1726', card:'#131F31', ink:'#EDF4FC', sec:'#8CA3BA',
+                accent:'#1295D8', gold:'#FFD700', kb:'#0B131E', key:'rgba(24, 38, 58, 0.92)',
+                sys:'rgba(15, 24, 38, 0.95)', keyInk:'#EDF4FC', flick:'rgba(237, 244, 252, 0.28)', rim:'rgba(56, 189, 248, 0.28)',
+                comet:'56, 189, 248', pill:'rgba(32, 52, 78, 0.92)'
+            },
+            aqmescit: {
+                page:'#EFECE6', surface:'#F7F6F2', card:'#FFFFFF', ink:'#141413', sec:'#5A5955',
+                accent:'#1D4ED8', gold:'#B45309', kb:'#F3F1EC', key:'#FFFFFF',
+                sys:'#E5E2DA', keyInk:'#141413', flick:'rgba(20, 20, 19, 0.22)', rim:'rgba(0,0,0,0.06)',
+                comet:'29, 78, 216', pill:'#EAE7DF'
+            },
+            steppe: {
+                page:'#EFEAE4', surface:'#F7F3EE', card:'#FFFDFB', ink:'#262322', sec:'#6E6662',
+                accent:'#4A7C6F', gold:'#E07A5F', kb:'#E8E0D8', key:'#FFFDFB',
+                sys:'#DDD3C9', keyInk:'#262322', flick:'rgba(38, 35, 34, 0.26)', rim:'rgba(255,255,255,0.9)',
+                comet:'224, 122, 95', pill:'#FFFFFF'
+            },
+            obsidian: {
+                page:'#050506', surface:'#0D0D10', card:'#121216', ink:'#FFFFFF', sec:'#A1A1AA',
+                accent:'#FFD700', gold:'#FFD700', kb:'#08080A', key:'#16161B',
+                sys:'#0F0F13', keyInk:'#FFFFFF', flick:'rgba(255, 255, 255, 0.32)', rim:'rgba(255, 215, 0, 0.35)',
+                comet:'255, 215, 0', pill:'#24242C'
+            }
+        };
+
+        let currentScript = 'latn';
+        let currentPhraseIdx = 0;
+        let showDailyWisdom = true;
+        let sandboxText = "";
+        let totalWordsCount = 1284;
+        let uniqueWordsCount = 312;
+        let currentWPM = 55;
+        let collapseTimer = null;
+
+        // Breathing Tamğa state (exact SpaceBarLabel.swift math)
+        let tamgaExertion = 0.0;
+        let tamgaTargetExertion = 0.0;
+        let tamgaPhase = 0.0;
+
+        const SVG_ICONS = {
+            insertArrow: `<svg width="13" height="13" viewBox="0 0 16 16" fill="none" style="opacity:0.65;flex-shrink:0;"><circle cx="8" cy="8" r="7" fill="currentColor" fill-opacity="0.22"/><path d="M10.5 10.5L5.5 5.5M5.5 5.5H9.5M5.5 5.5V9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+            sparkles: `<svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2L10.8 7.2L16 9L10.8 10.8L9 16L7.2 10.8L2 9L7.2 7.2L9 2Z"/><path d="M15.5 2.5L16.3 4.7L18.5 5.5L16.3 6.3L15.5 8.5L14.7 6.3L12.5 5.5L14.7 4.7L15.5 2.5Z"/></svg>`,
+            shift: `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L3 10h4v6h6v-6h4L10 3z"/></svg>`,
+            backspace: `<svg width="18" height="16" viewBox="0 0 22 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7l-6-7 6-7z"/><path d="M11 6.5l5 5M16 6.5l-5 5"/></svg>`,
+            globe: `<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><ellipse cx="10" cy="10" rx="3.5" ry="7.5"/><line x1="2.8" y1="10" x2="17.2" y2="10"/></svg>`,
+            tamgaGold: `<svg width="22" height="13" viewBox="0 0 90 50" fill="none"><path d="M10 0 H80 V30 H90 V40 H70 V10 H50 V40 H60 V50 H30 V40 H40 V10 H20 V40 H0 V30 H10 Z" fill="#FFD700"/></svg>`,
+            tryzubGold: `<svg width="20" height="22" viewBox="0 0 24 28" fill="none"><path d="M12 1L13.8 8.5L13.2 19.5L12 26L10.8 19.5L10.2 8.5L12 1Z" fill="#FFD700"/><path d="M4 4H7.2V17L10.8 19V21.5L4 19V4Z" fill="#FFD700"/><path d="M20 4H16.8V17L13.2 19V21.5L20 19V4Z" fill="#FFD700"/><rect x="5.5" y="14.2" width="13" height="2.4" fill="#FFD700"/></svg>`,
+            unionJack: `<svg width="36" height="36" viewBox="0 0 36 36" fill="none"><rect width="36" height="36" fill="#012169"/><path d="M0 0L36 36M36 0L0 36" stroke="#FFFFFF" stroke-width="5"/><path d="M0 0L36 36M36 0L0 36" stroke="#C8102E" stroke-width="2.2"/><rect x="14" y="0" width="8" height="36" fill="#FFFFFF"/><rect x="0" y="14" width="36" height="8" fill="#FFFFFF"/><rect x="15.5" y="0" width="5" height="36" fill="#C8102E"/><rect x="0" y="15.5" width="36" height="5" fill="#C8102E"/></svg>`
+        };
+
+        function triggerWordCommitGoldenRipple() {
+            const ripple = document.getElementById('space-tamga-ripple');
+            if (!ripple) return;
+            ripple.classList.remove('rippling');
+            void ripple.offsetWidth;
+            ripple.classList.add('rippling');
+        }
+
+        function renderTopBar() {
+            const bar = document.getElementById('kb-toolbar');
+            if (showDailyWisdom) {
+                const p = DAILY_PHRASES[currentPhraseIdx];
+                bar.innerHTML = `
+                    <button class="wisdom-banner" onclick="insertWisdomPhrase()">
+                        <svg width="15" height="9" viewBox="0 0 90 50">
+                            <path class="tamga-top-path" d="M10 0 H80 V30 H90 V40 H70 V10 H50 V40 H60 V50 H30 V40 H40 V10 H20 V40 H0 V30 H10 Z" fill="currentColor" opacity="0.78"/>
+                        </svg>
+                        <span>${p.text}</span>
+                        ${SVG_ICONS.insertArrow}
+                    </button>
+                    <button class="sparkles-btn" title="Наступна фраза (sparkles)" onclick="cycleWisdomPhrase(event)">${SVG_ICONS.sparkles}</button>
+                `;
+            } else {
+                const slots = currentScript === 'latn'
+                    ? ['“selam”', 'selâm', 'selâmlar']
+                    : (currentScript === 'cyrl' ? ['“селям”', 'селям', 'селямлар'] : ['“селям”', 'селям', 'кʼирим']);
+                bar.innerHTML = `
+                    <div class="suggestions-bar">
+                        <button class="slot-btn" onclick="commitWord('${slots[0]}')">${slots[0]}</button>
+                        <div class="slot-divider"></div>
+                        <button class="slot-btn" onclick="commitWord('${slots[1]}')"><span class="slot-pill-autocorrect">${slots[1]}</span></button>
+                        <div class="slot-divider"></div>
+                        <button class="slot-btn" onclick="commitWord('${slots[2]}')">${slots[2]}</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderKeyboard() {
+            const layout = LAYOUTS[currentScript];
+            const container = document.getElementById('kb-rows');
+            let html = '';
+
+            layout.rows.forEach((row, rIdx) => {
+                html += `<div class="kb-row cols-12">`;
+                row.forEach((k, cIdx) => {
+                    const sysClass = k.sys ? 'system-key' : '';
+                    const flickHtml = k.f ? `<span class="key-flick">${k.f}</span>` : '';
+                    const mainLabel = k.m === '⇧' ? SVG_ICONS.shift : (k.m === '⌫' ? SVG_ICONS.backspace : k.m);
+                    const keyToken = k.m === '⇧' ? 'SHIFT' : (k.m === '⌫' ? 'BACKSPACE' : k.m);
+                    html += `
+                        <button class="keycap ${sysClass}" data-char="${keyToken}" data-row="${rIdx}" data-col="${cIdx}" onclick="handleKeyTap('${keyToken}', this)">
+                            ${flickHtml}
+                            <span class="key-main" style="display:flex;align-items:center;justify-content:center;">${mainLabel}</span>
+                        </button>
+                    `;
+                });
+                html += `</div>`;
+            });
+
+            // Match DemoStyleProvider.swift line 373: "abc" when Cyrillic is active, "абв" when Latin is active
+            const scriptKeyLabel = currentScript === 'latn' ? 'абв' : 'abc';
+
+            // Row 3: Bottom Bar with Breathing Taraq Tamğa, Word-Commit Golden Ripple & 2-Char Corner Code
+            html += `
+                <div class="kb-row cols-bottom">
+                    <button class="keycap system-key" onclick="handleKeyTap('123', this)">123</button>
+                    <button class="keycap system-key" onclick="cycleScript()" title="Перемкнути мову">${SVG_ICONS.globe}</button>
+                    <button class="keycap system-key" onclick="cycleScript()">${scriptKeyLabel}</button>
+                    <button class="keycap space-key" id="spacebar-key" onclick="handleKeyTap(' ', this)">
+                        <span class="space-fullname">${layout.fullName}</span>
+                        <span class="space-tamga-wrap">
+                            <svg id="space-tamga-svg" width="22" height="12.5" viewBox="0 0 90 50">
+                                <path d="M10 0 H80 V30 H90 V40 H70 V10 H50 V40 H60 V50 H30 V40 H40 V10 H20 V40 H0 V30 H10 Z" fill="currentColor"/>
+                            </svg>
+                            <svg id="space-tamga-ripple" class="tamga-ripple-svg" width="26" height="15" viewBox="0 0 90 50">
+                                <path d="M10 0 H80 V30 H90 V40 H70 V10 H50 V40 H60 V50 H30 V40 H40 V10 H20 V40 H0 V30 H10 Z" fill="none" stroke="#FFD700" stroke-width="5"/>
+                            </svg>
+                        </span>
+                        <span class="space-corner-code">${layout.code}</span>
+                    </button>
+                    <button class="keycap" data-char="." onclick="handleKeyTap('.', this)"><span class="key-main">.</span></button>
+                    <button class="keycap primary-key" onclick="handleKeyTap('RETURN', this)">Return</button>
+                </div>
+            `;
+
+            container.innerHTML = html;
+            resizeSwipeCanvas();
+        }
+
+        function triggerSpacebarFullnameCollapse() {
+            clearTimeout(collapseTimer);
+            const sb = document.getElementById('spacebar-key');
+            if (!sb) return;
+            sb.classList.add('showing-fullname');
+            collapseTimer = setTimeout(() => {
+                const el = document.getElementById('spacebar-key');
+                if (el) el.classList.remove('showing-fullname');
+            }, 3000);
+        }
+
+        function handleKeyTap(ch, btnEl) {
+            registerExertionImpulse(0.08);
+            const sb = document.getElementById('spacebar-key');
+            if (sb) sb.classList.remove('showing-fullname');
+
+            if (ch === 'BACKSPACE') {
+                sandboxText = sandboxText.slice(0, -1);
+            } else if (ch === 'RETURN') {
+                sandboxText += '\n';
+            } else if (ch === 'SHIFT' || ch === '123') {
+                // mode toggle visual
+            } else {
+                sandboxText += ch;
+                if (ch === ' ') {
+                    incrementWordStats(1);
+                    triggerWordCommitGoldenRipple();
+                }
+            }
+            if (sandboxText.length > 0 && showDailyWisdom) {
+                showDailyWisdom = false;
+                document.getElementById('bar-toggle').textContent = 'Bar: 3-Slot Suggestions';
+                renderTopBar();
+            } else if (sandboxText.length === 0 && !showDailyWisdom) {
+                showDailyWisdom = true;
+                document.getElementById('bar-toggle').textContent = 'Bar: Daily Wisdom';
+                renderTopBar();
+            }
+            updateSandboxDisplay();
+        }
+
+        function commitWord(word) {
+            registerExertionImpulse(0.22);
+            const sb = document.getElementById('spacebar-key');
+            if (sb) sb.classList.remove('showing-fullname');
+            sandboxText = (sandboxText.trim() + ' ' + word.replace(/[“”]/g, '') + ' ').trimStart();
+            incrementWordStats(1);
+            triggerWordCommitGoldenRipple();
+            updateSandboxDisplay();
+        }
+
+        function insertWisdomPhrase() {
+            const p = DAILY_PHRASES[currentPhraseIdx];
+            const base = p.insertReveal ? (p.text.replace(/\.$/, '') + p.insertReveal) : p.text;
+            const formatted = `«${base}» (${p.attr})\n— ${p.ua}`;
+            sandboxText = formatted;
+            showDailyWisdom = false;
+            document.getElementById('bar-toggle').textContent = 'Bar: 3-Slot Suggestions';
+            renderTopBar();
+            updateSandboxDisplay();
+        }
+
+        function cycleWisdomPhrase(e) {
+            e.stopPropagation();
+            currentPhraseIdx = (currentPhraseIdx + 1) % DAILY_PHRASES.length;
+            renderTopBar();
+        }
+
+        function toggleTopBarMode() {
+            showDailyWisdom = !showDailyWisdom;
+            document.getElementById('bar-toggle').textContent = showDailyWisdom ? 'Bar: Daily Wisdom' : 'Bar: 3-Slot Suggestions';
+            renderTopBar();
+        }
+
+        function updateSandboxDisplay() {
+            const out = document.getElementById('sandbox-output');
+            if (!sandboxText) {
+                out.innerHTML = `<span class="sandbox-placeholder">Tap keys, press the daily wisdom banner, or swipe across the keyboard...</span>`;
+            } else {
+                out.textContent = sandboxText;
+            }
+        }
+
+        function clearSandbox() {
+            sandboxText = "";
+            showDailyWisdom = true;
+            document.getElementById('bar-toggle').textContent = 'Bar: Daily Wisdom';
+            renderTopBar();
+            updateSandboxDisplay();
+        }
+
+        function incrementWordStats(delta) {
+            totalWordsCount += delta;
+            if (Math.random() > 0.4) uniqueWordsCount += 1;
+            currentWPM = Math.min(75, Math.max(18, Math.round(28 + tamgaExertion * 47)));
+            document.getElementById('stat-words-count').textContent = totalWordsCount.toLocaleString('uk-UA');
+            document.getElementById('stat-unique-count').textContent = `Унікальних: ${uniqueWordsCount}`;
+            document.getElementById('stat-wpm-value').textContent = `${currentWPM} сл/хв`;
+            document.getElementById('live-wpm-pill').textContent = `${currentWPM} сл/хв · Max 75 WPM`;
+            const arc = document.getElementById('wpm-ring-arc');
+            if (arc) {
+                const dash = Math.round((currentWPM / 75) * 88);
+                arc.setAttribute('stroke-dasharray', `${dash} 88`);
+            }
+        }
+
+        function setKeyboardMode(mode, btn) {
+            document.querySelectorAll('#mode-selector .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const chassis = document.getElementById('kb-chassis');
+            chassis.classList.remove('mode-borderless', 'mode-monolith');
+            if (mode === 'borderless') chassis.classList.add('mode-borderless');
+            if (mode === 'monolith') chassis.classList.add('mode-monolith');
+        }
+
+        function setTheme(themeKey, btn) {
+            document.querySelectorAll('#theme-selector .pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const t = THEMES[themeKey];
+            const r = document.documentElement.style;
+            r.setProperty('--bg-page', t.page);
+            r.setProperty('--bg-surface', t.surface);
+            r.setProperty('--bg-card', t.card);
+            r.setProperty('--ink-primary', t.ink);
+            r.setProperty('--ink-secondary', t.sec);
+            r.setProperty('--accent-primary', t.accent);
+            r.setProperty('--accent-gold', t.gold);
+            r.setProperty('--kb-bg', t.kb);
+            r.setProperty('--key-bg', t.key);
+            r.setProperty('--key-sys-bg', t.sys);
+            r.setProperty('--key-ink', t.keyInk);
+            r.setProperty('--key-flick', t.flick);
+            r.setProperty('--key-rim', t.rim);
+            r.setProperty('--comet-rgb', t.comet);
+            r.setProperty('--pill-bg', t.pill);
+        }
+
+        function setScript(sc) {
+            currentScript = sc;
+            isDemoCometVisible = false;
+            swipeSamples = [];
+            ['latn', 'cyrl', 'uk'].forEach(k => {
+                document.getElementById('script-' + k).classList.toggle('active', k === sc);
+            });
+            renderTopBar();
+            renderKeyboard();
+            triggerSpacebarFullnameCollapse();
+        }
+
+        function cycleScript() {
+            const order = ['latn', 'cyrl', 'uk'];
+            const next = order[(order.indexOf(currentScript) + 1) % order.length];
+            setScript(next);
+        }
+
+        function animateLangEmblem(lang, btn) {
+            btn.parentElement.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const badge = document.getElementById('lang-emblem-badge');
+            const caption = document.getElementById('lang-emblem-caption');
+            const ukrRow = document.getElementById('ukr-layout-bottom-row');
+            const ukrAddedBadge = document.getElementById('ukr-added-badge');
+            badge.style.transform = 'rotateY(180deg) scale(1.08)';
+            setTimeout(() => {
+                if (lang === 'crh') {
+                    badge.innerHTML = SVG_ICONS.tamgaGold;
+                    caption.textContent = 'National Gold (#FFD700) Taraq Tamğa on Sky-Blue';
+                } else if (lang === 'uk') {
+                    badge.innerHTML = SVG_ICONS.tryzubGold;
+                    caption.textContent = 'Vector Tryzub (uk) · Zero spurious Къ/Кʼ re-trigger';
+                } else {
+                    badge.innerHTML = SVG_ICONS.unionJack;
+                    caption.textContent = 'Vector Union Jack (en) · Closed-loop path';
+                }
+                // Українська розкладка bottom row and status.ukrainianKeyboard.addedBadge are strictly gated on language == "uk"
+                if (ukrRow) ukrRow.style.display = (lang === 'uk') ? 'flex' : 'none';
+                if (ukrAddedBadge) ukrAddedBadge.style.display = (lang === 'uk') ? 'inline-flex' : 'none';
+                badge.style.transform = 'rotateY(0deg) scale(1.0)';
+            }, 160);
+        }
+
+        function selectAbvRow(targetScript) {
+            const cyrBtn = document.getElementById('abv-sel-cyr');
+            const ukrBtn = document.getElementById('abv-sel-ukr');
+            if (targetScript === 'cyrl') {
+                cyrBtn.classList.add('active-cyr');
+                ukrBtn.classList.remove('active-ukr');
+                setScript('cyrl');
+                const b = document.getElementById('badge-kyr');
+                b.style.transform = 'scale(1.16)';
+                setTimeout(() => b.style.transform = 'scale(1)', 220);
+            } else {
+                ukrBtn.classList.add('active-ukr');
+                cyrBtn.classList.remove('active-cyr');
+                setScript('uk');
+                const b = document.getElementById('badge-ukr');
+                b.style.transform = 'scale(1.16)';
+                setTimeout(() => b.style.transform = 'scale(1)', 220);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // TARAQ TAMĞA PHASE-CONTINUOUS BREATHING & SWIPE V2 COMET ENGINE
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function registerExertionImpulse(impulse) {
+            tamgaTargetExertion = Math.min(1.0, tamgaTargetExertion + impulse);
+        }
+
+        let swipeSamples = [];
+        let isPointerSwiping = false;
+        let anchorCount = 0;
+
+        const chassisEl = document.getElementById('kb-chassis');
+        const swipeCanvas = document.getElementById('swipe-canvas');
+        const sCtx = swipeCanvas.getContext('2d');
+
+        function resizeSwipeCanvas() {
+            const rect = chassisEl.getBoundingClientRect();
+            swipeCanvas.width = rect.width * window.devicePixelRatio;
+            swipeCanvas.height = rect.height * window.devicePixelRatio;
+            sCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+        }
+
+        window.addEventListener('resize', resizeSwipeCanvas);
+
+        let isDemoCometVisible = true;
+
+        chassisEl.addEventListener('pointerdown', (e) => {
+            const rect = chassisEl.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            if (y < 48) return; // top toolbar
+            if (isDemoCometVisible) {
+                isDemoCometVisible = false;
+                document.querySelectorAll('.keycap.anchor-glow').forEach(k => k.classList.remove('anchor-glow'));
+            }
+            isPointerSwiping = true;
+            anchorCount = 0;
+            swipeSamples = [{ x, y, t: performance.now() / 1000 }];
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isPointerSwiping) return;
+            const rect = chassisEl.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const now = performance.now() / 1000;
+            const last = swipeSamples[swipeSamples.length - 1];
+            if (!last || Math.hypot(x - last.x, y - last.y) >= 4) {
+                swipeSamples.push({ x, y, t: now });
+                registerExertionImpulse(0.018);
+                detectTurningAnchorAndGlow(x, y);
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (!isPointerSwiping) return;
+            isPointerSwiping = false;
+            if (swipeSamples.length >= 6) {
+                const words = currentScript === 'latn'
+                    ? ['selâm', 'qırımtatarca', 'bağçasaray', 'aqmescit', 'bereket']
+                    : (currentScript === 'cyrl' ? ['селям', 'къырым', 'багъчасарай'] : ['селям', 'кʼирим', 'багʼчасарай']);
+                const chosen = words[Math.floor(Math.random() * words.length)];
+                commitWord(chosen);
+                document.getElementById('last-swipe-info').textContent = `Swiped "${chosen}" · ${anchorCount} anchors (Δθ ≥ 22°)`;
+            }
+            setTimeout(() => {
+                document.querySelectorAll('.keycap.anchor-glow').forEach(k => k.classList.remove('anchor-glow'));
+            }, 260);
+        });
+
+        function detectTurningAnchorAndGlow(x, y) {
+            const n = swipeSamples.length;
+            if (n < 3) return;
+            const p0 = swipeSamples[n - 3];
+            const p1 = swipeSamples[n - 2];
+            const p2 = swipeSamples[n - 1];
+            const a1 = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+            const a2 = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            let diff = Math.abs(a2 - a1) * (180 / Math.PI);
+            if (diff > 180) diff = 360 - diff;
+
+            if (diff >= 22) {
+                anchorCount++;
+                document.getElementById('anchor-angle-readout').textContent = `Turn Anchors (≥22°): ${anchorCount}`;
+                const rect = chassisEl.getBoundingClientRect();
+                const el = document.elementFromPoint(rect.left + p1.x, rect.top + p1.y);
+                const key = el ? el.closest('.keycap') : null;
+                if (key && !key.classList.contains('anchor-glow')) {
+                    key.classList.add('anchor-glow');
+                }
+            }
+        }
+
+        function smoothChaikinSpine(rawSamples) {
+            if (rawSamples.length < 3) return rawSamples;
+            let pts = rawSamples.map(s => ({ x: s.x, y: s.y, t: s.t }));
+            for (let pass = 0; pass < 2; pass++) {
+                const next = [pts[0]];
+                for (let i = 0; i < pts.length - 1; i++) {
+                    const p0 = pts[i];
+                    const p1 = pts[i + 1];
+                    next.push({
+                        x: 0.75 * p0.x + 0.25 * p1.x,
+                        y: 0.75 * p0.y + 0.25 * p1.y,
+                        t: 0.75 * p0.t + 0.25 * p1.t
+                    });
+                    next.push({
+                        x: 0.25 * p0.x + 0.75 * p1.x,
+                        y: 0.25 * p0.y + 0.75 * p1.y,
+                        t: 0.25 * p0.t + 0.75 * p1.t
+                    });
+                }
+                next.push(pts[pts.length - 1]);
+                pts = next;
+            }
+            return pts;
+        }
+
+        function seedInitialDemoSwipe() {
+            const cRect = chassisEl.getBoundingClientRect();
+            const keys = ['s', 'e', 'l', 'a', 'm'];
+            const keyCenters = [];
+            keys.forEach(ch => {
+                const el = chassisEl.querySelector(`.keycap[data-char="${ch}"]`);
+                if (el) {
+                    el.classList.add('anchor-glow');
+                    const r = el.getBoundingClientRect();
+                    keyCenters.push({
+                        x: r.left - cRect.left + r.width * 0.5,
+                        y: r.top - cRect.top + r.height * 0.5
+                    });
+                }
+            });
+            if (keyCenters.length < 2) return;
+            const now = performance.now() / 1000;
+            const dense = [];
+            for (let i = 0; i < keyCenters.length - 1; i++) {
+                const p0 = keyCenters[i];
+                const p1 = keyCenters[i + 1];
+                const steps = 14;
+                for (let s = 0; s < steps; s++) {
+                    const f = s / steps;
+                    dense.push({
+                        x: p0.x + (p1.x - p0.x) * f,
+                        y: p0.y + (p1.y - p0.y) * f,
+                        t: now - 0.28 + ((i + f) / (keyCenters.length - 1)) * 0.28
+                    });
+                }
+            }
+            const last = keyCenters[keyCenters.length - 1];
+            dense.push({ x: last.x, y: last.y, t: now });
+            swipeSamples = dense;
+            anchorCount = 5;
+            tamgaExertion = 0.73;
+            tamgaTargetExertion = 0.73;
+            tamgaPhase = 2.4;
+            document.getElementById('anchor-angle-readout').textContent = `Turn Anchors (≥22°): 5`;
+            document.getElementById('last-swipe-info').textContent = `Demo Swipe "selâm" · 5 anchors (Δθ ≥ 22°)`;
+            const sb = document.getElementById('spacebar-key');
+            if (sb) sb.classList.remove('showing-fullname');
+        }
+
+        function animateLoop() {
+            const now = performance.now() / 1000;
+
+            // 1. Step Tamğa breathing (matches SpaceBarLabel.swift 2.2s half-cycle / 4.4s group, 1.0x..2.9x speed)
+            tamgaExertion += (tamgaTargetExertion - tamgaExertion) * 0.08;
+            if (!isDemoCometVisible) {
+                tamgaTargetExertion *= 0.985;
+            }
+            const speed = 1.0 + tamgaExertion * 1.9;
+            tamgaPhase += (1 / 60) * speed * (Math.PI * 2 / 4.4);
+            const wave = 0.5 - 0.5 * Math.cos(tamgaPhase);
+            const op = 0.25 + (0.52 - 0.25) * wave;
+            const sc = 0.975 + (1.045 - 0.975) * wave;
+
+            const svg = document.getElementById('space-tamga-svg');
+            if (svg) {
+                svg.style.opacity = op.toFixed(3);
+                svg.style.transform = `scale(${sc.toFixed(3)})`;
+            }
+            document.getElementById('tamga-speed-readout').textContent = `Tamğa Breath: ${speed.toFixed(2)}x`;
+
+            // 2. Render Swipe v2 Comet Trail with Chaikin Spine Smoothing (tailDuration = 0.36s, maxHeadRadius = 8.25pt)
+            const w = swipeCanvas.width / window.devicePixelRatio;
+            const h = swipeCanvas.height / window.devicePixelRatio;
+            sCtx.clearRect(0, 0, w, h);
+
+            const tailDuration = 0.36;
+            if (isDemoCometVisible && swipeSamples.length >= 2) {
+                // Keep demo comet timestamps fresh until user interacts
+                for (let i = 0; i < swipeSamples.length; i++) {
+                    const frac = i / (swipeSamples.length - 1);
+                    swipeSamples[i].t = now - 0.26 * (1 - frac);
+                }
+            } else {
+                swipeSamples = swipeSamples.filter(s => (now - s.t) <= tailDuration);
+            }
+
+            if (swipeSamples.length >= 2) {
+                const spine = smoothChaikinSpine(swipeSamples);
+                const rgb = getComputedStyle(document.documentElement).getPropertyValue('--comet-rgb').trim() || '18, 149, 216';
+                for (let i = 1; i < spine.length; i++) {
+                    const p0 = spine[i - 1];
+                    const p1 = spine[i];
+                    const s = i / (spine.length - 1);
+                    const age = Math.max(0, now - p1.t);
+                    const u = Math.max(0, 1 - age / tailDuration);
+                    const p = s * Math.pow(u, 0.55);
+                    const radius = Math.max(0.6, 8.25 * Math.pow(p, 0.85));
+                    const alpha = 0.55 * (0.05 + 0.95 * Math.pow(p, 0.72));
+
+                    sCtx.beginPath();
+                    sCtx.moveTo(p0.x, p0.y);
+                    sCtx.lineTo(p1.x, p1.y);
+                    sCtx.strokeStyle = `rgba(${rgb}, ${alpha.toFixed(3)})`;
+                    sCtx.lineWidth = radius * 2.0;
+                    sCtx.lineCap = 'round';
+                    sCtx.lineJoin = 'round';
+                    sCtx.stroke();
+                }
+            }
+
+            requestAnimationFrame(animateLoop);
+        }
+
+        renderTopBar();
+        renderKeyboard();
+        setTimeout(() => {
+            resizeSwipeCanvas();
+            seedInitialDemoSwipe();
+        }, 120);
+        requestAnimationFrame(animateLoop);
+    </script>
+</body>
+</html>

@@ -100,6 +100,13 @@ public extension CalloutContext.InputContext {
         }
     }
     
+    /// Update the current input for a certain action with an explicit button frame.
+    func updateInput(for action: KeyboardAction?, buttonFrame: CGRect) {
+        self.lastActionDate = Date()
+        self.action = action
+        self.buttonFrame = buttonFrame
+    }
+
     /// Update the current input for a certain action.
     func updateInput(for action: KeyboardAction?, in geo: GeometryProxy, fallbackFrame: CGRect? = nil) {
         if let fallbackFrame = fallbackFrame, fallbackFrame.width > 1 && fallbackFrame.height > 1 {

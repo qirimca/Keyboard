@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.SwiftUI.sceneID</key>
+	<string>SwiftUI.WindowGroup&lt;SwiftUI.ModifiedContent&lt;SwiftUI.ModifiedContent&lt;SwiftUI.NavigationStack&lt;SwiftUI.NavigationPath, SwiftUI.ModifiedContent&lt;QTatar.HomeView, SwiftUI.NavigationDestinationModifier&lt;QTatar.DemoRoute, SwiftUI._ConditionalContent&lt;QTatar.AboutView, QTatar.OnboardingView&gt;&gt;&gt;&gt;, SwiftUI._FlexFrameLayout&gt;, SwiftUI._BackgroundModifier&lt;SwiftUI.ModifiedContent&lt;SwiftUI.Color, SwiftUI._SafeAreaRegionsIgnoringLayout&gt;&gt;&gt;&gt;-1</string>
+</dict>
+</plist>

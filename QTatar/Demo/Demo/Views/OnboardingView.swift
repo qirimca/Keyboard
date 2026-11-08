@@ -14,8 +14,15 @@ struct OnboardingView: View {
         case removeCyrillic
     }
 
+    enum TargetKeyboard: String, Equatable, Hashable {
+        case primary
+        case cyrillic
+        case ukrainian
+    }
+
     var mode: Mode = .add
     var initialPage: String = "Onboard1"
+    var targetKeyboard: TargetKeyboard = .cyrillic
 
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) var openURL
@@ -23,9 +30,10 @@ struct OnboardingView: View {
     @State private var selected: String
     @State private var text = ""
 
-    init(mode: Mode = .add, initialPage: String = "Onboard1") {
+    init(mode: Mode = .add, initialPage: String = "Onboard1", targetKeyboard: TargetKeyboard = .cyrillic) {
         self.mode = mode
         self.initialPage = initialPage
+        self.targetKeyboard = targetKeyboard
         let validPage = Page(rawValue: initialPage)?.rawValue ?? Page.onboard1.rawValue
         self._selected = State(initialValue: validPage)
     }
@@ -77,7 +85,7 @@ struct OnboardingView: View {
             Color(.systemGroupedBackground).ignoresSafeArea()
             if mode == .removeCyrillic {
                 removeCyrillicGuideView
-                    .padding(16)
+                    .padding(12)
             } else {
                 TabView(selection: $selected) {
                     ForEach(Page.allCases, id: \.rawValue) { page in
@@ -127,30 +135,59 @@ struct OnboardingView: View {
         }
     }
 
-    private var removeCyrillicGuideView: some View {
-        VStack(spacing: 16) {
-            formattedInstructionText(for: L10n.tr("onb_remove_cyrillic_desc", table: "Onboarding"))
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .layoutPriority(1)
-                .padding(.horizontal, 16)
+    private var targetBadgeColor: Color {
+        switch targetKeyboard {
+        case .primary:
+            return Color(red: 0.07, green: 0.58, blue: 0.85)
+        case .cyrillic:
+            return Color(red: 0.35, green: 0.34, blue: 0.84)
+        case .ukrainian:
+            return Color(red: 0.16, green: 0.48, blue: 0.90)
+        }
+    }
 
-            navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
-                HomeView.openKeyboardSettings()
+    private var removeCyrillicGuideView: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(targetBadgeColor.opacity(0.14))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: "switch.2")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(targetBadgeColor)
+                    }
+                    formattedInstructionText(for: L10n.tr("onb_remove_cyrillic_desc", table: "Onboarding"))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                        .accessibilityIdentifier("onboarding.instruction.text")
+                    Spacer(minLength: 0)
+                }
+
+                navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola, isElevatedCardButton: true) {
+                    HomeView.openKeyboardSettings()
+                }
+                .accessibilityIdentifier("onboarding.openSettings.button")
             }
-            .padding(.horizontal, 20)
-            .accessibilityIdentifier("onboarding.openSettings.button")
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            }
 
             Image("Onboard2")
                 .resizable()
                 .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .accessibilityHidden(true)
-                .padding(.bottom, 8)
 
             navButton(text: Onboarding.onb_finish_key.localized, gradient: Color.crayola) {
                 dismiss()
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 4)
             .accessibilityIdentifier("onboarding.finish.button")
         }
         .frame(maxWidth: Device.iPad ? 620 : .infinity)
@@ -177,47 +214,62 @@ private extension OnboardingView {
     }
     
     private func onboardingPage(_ page: Page) -> some View {
-        VStack {
-            formattedInstructionText(for: page.instruction)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .layoutPriority(1)
-                .padding(.horizontal, 20)
-                .accessibilityIdentifier("onboarding.instruction.text")
-
-            if Device.iPad && page == .onboard1 {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "ipad.landscape")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.07, green: 0.58, blue: 0.85))
-                        .padding(.top, 2)
-                    Text(iPadFloatingOnlyNote)
-                        .font(InterfaceFont.font("GeneralSans-Medium", size: 14, text: iPadFloatingOnlyNote))
-                        .foregroundStyle(Color(.secondaryLabel))
+        VStack(spacing: 12) {
+            VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(targetBadgeColor.opacity(0.14))
+                            .frame(width: 40, height: 40)
+                        Image(systemName: page == .onboard2 ? "lock.open.display" : (page == .onboard3 ? "globe" : "keyboard.badge.ellipsis"))
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(targetBadgeColor)
+                    }
+                    formattedInstructionText(for: page.instruction)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                        .accessibilityIdentifier("onboarding.instruction.text")
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(Color(red: 0.07, green: 0.58, blue: 0.85).opacity(0.28), lineWidth: 1)
+
+                if Device.iPad && page == .onboard1 && targetKeyboard != .primary {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "ipad.landscape")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(targetBadgeColor)
+                            .padding(.top, 2)
+                        Text(iPadFloatingOnlyNote)
+                            .font(InterfaceFont.font("GeneralSans-Medium", size: 14, text: iPadFloatingOnlyNote))
+                            .foregroundStyle(Color(.secondaryLabel))
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(targetBadgeColor.opacity(0.28), lineWidth: 1)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(iPadFloatingOnlyNote)
+                    .accessibilityIdentifier("onboarding.ipadFloatingNote.text")
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 4)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(iPadFloatingOnlyNote)
-                .accessibilityIdentifier("onboarding.ipadFloatingNote.text")
+
+                if page == .onboard1 || page == .onboard2 {
+                    navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola, isElevatedCardButton: true) {
+                        HomeView.openKeyboardSettings()
+                    }
+                    .accessibilityIdentifier("onboarding.openSettings.button")
+                }
             }
-            
-            if page == .onboard1 || page == .onboard2 {
-                navButton(text: Onboarding.onb_open_key.localized, gradient: Color.crayola) {
-                    HomeView.openKeyboardSettings()
-                }
-                .padding(.horizontal, 20)
-                .accessibilityIdentifier("onboarding.openSettings.button")
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
             }
             
             if page == .onboard3 {
@@ -239,8 +291,9 @@ private extension OnboardingView {
             Image(page.imageName)
                 .resizable()
                 .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .accessibilityHidden(true)
-                .padding(.bottom, 10)
+                .padding(.bottom, 6)
             
             HStack {
                 navButton(text: Onboarding.onb_back_key.localized, gradient: Color.coral) {
@@ -275,13 +328,14 @@ private extension OnboardingView {
                         dismiss()
                     }
                 }
+                .accessibilityIdentifier(page == .onboard4 ? "onboarding.finish.button" : "onboarding.next.button")
             }
         }
         .frame(maxWidth: Device.iPad ? 620 : .infinity)
         .frame(maxWidth: .infinity)
     }
     
-    private func navButton(text: String, gradient: Color, action: @escaping () -> Void) -> some View {
+    private func navButton(text: String, gradient: Color, isElevatedCardButton: Bool = false, action: @escaping () -> Void) -> some View {
         Button {
             HapticFeedback.playSelection()
             action()
@@ -293,7 +347,7 @@ private extension OnboardingView {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity)
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(isElevatedCardButton ? Color(.tertiarySystemGroupedBackground) : Color(.secondarySystemGroupedBackground))
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(LinearGradient(
                     colors: [gradient, Color.primary.opacity(0.4)],
@@ -309,7 +363,7 @@ private extension OnboardingView {
         let description = parts.count > 1
             ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines)
             : ""
-        let size: CGFloat = Device.iPad ? 20 : 16
+        let size: CGFloat = 15
         
         var result = Text.customFontText(
             title,
