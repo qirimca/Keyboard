@@ -129,11 +129,11 @@ def is_stale_or_non_build18_source(path: Optional[str]) -> Tuple[bool, str]:
     lower_norm = norm_path.lower()
 
     explicit_old_builds = ("build12", "build13", "build14", "build15", "build16", "build17")
-    has_r19_or_r21 = any(m in lower_bname for m in ("_r19", "r19_", "_r21", "r21_", "_r22", "r22_"))
+    has_r21_or_r22 = any(m in lower_bname for m in ("_r19", "r19_", "_r21", "r21_", "_r22", "r22_"))
     app_switcher_markers = ("iphone_0.png", "ipad_0.png", "_iphone_0_", "_ipad_0_")
     if (
         any(m in bname or m in norm_path for m in VALID_BUILD18_MARKERS)
-        and (has_r19_or_r21 or not any(ob in lower_bname or ob in lower_norm for ob in explicit_old_builds))
+        and (has_r21_or_r22 or not any(ob in lower_bname or ob in lower_norm for ob in explicit_old_builds))
         and "2026-11-01/physical" not in norm_path
         and "sim_safari_light_" not in lower_bname
         and "reconstructed" not in lower_bname
@@ -269,7 +269,8 @@ def has_valid_keyboard_grid(
             return False
     r0 = row_keys[0]
     gaps0 = [r0[i + 1][0] - r0[i][1] for i in range(len(r0) - 1)]
-    if gaps0 and max(gaps0) > 65:
+    max_gap_limit = 165 if "keypress_callout" in pat_lower else 65
+    if gaps0 and max(gaps0) > max_gap_limit:
         return False
     return True
 
@@ -305,10 +306,12 @@ def resolve_latest_proof(
     expanded_patterns: List[str] = []
     for p in patterns:
         if "Build18" in p:
-            b19_p = p.replace("Build18", "Build19")
-            if b19_p not in expanded_patterns:
-                expanded_patterns.append(b19_p)
-        expanded_patterns.append(p)
+            for repl in ("Build19", "R22", "R21"):
+                cand_p = p.replace("Build18", repl)
+                if cand_p not in expanded_patterns:
+                    expanded_patterns.append(cand_p)
+        if p not in expanded_patterns:
+            expanded_patterns.append(p)
 
     app_switcher_markers = ("iphone_0.png", "ipad_0.png", "_iphone_0_", "_ipad_0_")
     for pat in expanded_patterns:
@@ -349,6 +352,21 @@ def resolve_latest_proof(
                 try:
                     with Image.open(candidate) as im_chk:
                         im_rgb = im_chk.convert("RGB")
+                    if (require_landscape or ("landscape" in lower_bname)) and im_rgb.width < im_rgb.height:
+                        for rot_op in (Image.Transpose.ROTATE_270, Image.Transpose.ROTATE_90):
+                            im_rot = im_rgb.transpose(rot_op)
+                            if has_valid_keyboard_grid(
+                                im_rot,
+                                lower_bname,
+                                require_landscape=True,
+                                min_r0_keys=min_r0_keys,
+                                min_r1_keys=min_r1_keys,
+                            ):
+                                st = os.stat(candidate)
+                                im_rot.save(candidate)
+                                os.utime(candidate, (st.st_atime, st.st_mtime))
+                                im_rgb = im_rot
+                                break
                     if require_size is not None and im_rgb.size != require_size:
                         continue
                     if not has_valid_keyboard_grid(
@@ -425,8 +443,7 @@ def detect_platter_top_y(
                     continue
                 tot += 1
                 is_cool_px = (
-                    (210 <= r <= 233 and 212 <= g <= 234 and 218 <= b <= 238 and (b - r) >= 3)
-                    or (231 <= r <= 236 and 232 <= g <= 237 and 238 <= b <= 243 and (b - r) >= 5)
+                    210 <= r <= 232 and 212 <= g <= 233 and 218 <= b <= 237 and (b - r) >= 4
                 )
                 if is_cool_px:
                     cool += 1
@@ -806,20 +823,23 @@ def draw_dashed_hline(draw: ImageDraw.ImageDraw, x0: int, x1: int, y: int, color
 
 def _detect_glyph_vertical_span(key_crop: Image.Image, margin: int, kw: int, kh: int) -> Optional[Tuple[int, int]]:
     """
-    Detects the vertical (y_top, y_bot) span of the character glyph inside a keycap crop
+    Detects the vertical (y_top, y_bot) span of the main character glyph inside a keycap crop
     whose top-left corner is at (margin, margin) with size (kw, kh).
+    On iPad Docked (kh >= 90), starts below the top secondary flick symbol (@, #, $, 1, 2, 3)
+    and uses a main-glyph contrast threshold so secondary flick symbols are never mistaken for the main glyph.
     """
     rgb = key_crop.convert("RGB")
     px = rgb.load()
     w, h = rgb.size
     x0 = max(0, margin + int(kw * 0.22))
     x1 = min(w, margin + int(kw * 0.78))
-    y0 = max(0, margin + int(kh * 0.16))
-    y1 = min(h, margin + int(kh * 0.84))
+    y0_frac = 0.40 if kh >= 90 else 0.18
+    y0 = max(0, margin + int(kh * y0_frac))
+    y1 = min(h, margin + int(kh * 0.86))
     if x1 <= x0 or y1 <= y0:
         return None
     bg_samples = []
-    for sy in (y0, max(y0, y1 - 1)):
+    for sy in (max(0, margin + 4), max(y0, y1 - 1)):
         for sx in range(x0, x1, max(1, (x1 - x0) // 6)):
             r, g, b = px[sx, sy]
             bg_samples.append(0.299 * r + 0.587 * g + 0.114 * b)
@@ -833,7 +853,7 @@ def _detect_glyph_vertical_span(key_crop: Image.Image, margin: int, kw: int, kh:
         for x in range(x0, x1):
             r, g, b = px[x, y]
             l = 0.299 * r + 0.587 * g + 0.114 * b
-            if abs(l - bg_l) >= 42.0:
+            if abs(l - bg_l) >= 75.0:
                 contrasting += 1
         if contrasting >= 2:
             glyph_ys.append(y)
@@ -939,7 +959,7 @@ def render_single_row_and_key_strip(
     Renders the bottom verification strip containing:
     - Left & Middle: 1:1 Single-Row ("1 рядок") 50%/50% overlays ONLY for rows with matching key counts
       (`len(sys_row) == len(qk_row)`, e.g. `SYS 12k vs QK 12k` or Ukrainian iPad `SYS 13k vs QK 13k`).
-      Never overlays rows with differing key counts (Comment 2 / 20.94.4).
+      Never overlays rows with differing key counts or cross-row staggered modifiers (Comment 2 / 20.94.4).
     - Right: 1:1 Single-Key ("1 клавіша") 50%/50% overlays of 3 standard letter keys from equal-key-count
       rows, aligned by their TOP-LEFT KEYCAP CORNER `(margin, margin)` so keycap width/height (`dw`, `dh`)
       and letter glyph size/alignment inside the keycap are directly comparable (Comment 8 / 20.94.8).
@@ -967,19 +987,6 @@ def render_single_row_and_key_strip(
             qk = q_m["row_keys"][r] if r < len(q_m.get("row_keys", [])) else []
             if len(sk) == len(qk) and len(sk) >= 8:
                 pairs.append((r, r, f"1 РЯДОК (Row {r})"))
-        if len(pairs) < 2:
-            for sr in range(min(3, len(s_m.get("rows", [])))):
-                for qr in range(min(3, len(q_m.get("rows", [])))):
-                    if sr == qr:
-                        continue
-                    sk = s_m["row_keys"][sr] if sr < len(s_m.get("row_keys", [])) else []
-                    qk = q_m["row_keys"][qr] if qr < len(q_m.get("row_keys", [])) else []
-                    if len(sk) == len(qk) and len(sk) >= 8:
-                        pairs.append((sr, qr, f"1 РЯДОК (SYS R{sr} vs QK R{qr})"))
-                        if len(pairs) >= 2:
-                            break
-                if len(pairs) >= 2:
-                    break
         return pairs
 
     matched_row_pairs = _find_matching_row_pairs(strip_sys_m, strip_qk_m)
@@ -996,20 +1003,75 @@ def render_single_row_and_key_strip(
         font=f_hdr,
     )
 
-    def draw_equal_row_overlay_box(s_row_idx: int, q_row_idx: int, bx0: int, title_prefix: str):
+    def draw_equal_row_overlay_box(
+        s_row_idx: int,
+        q_row_idx: int,
+        bx0: int,
+        title_prefix: str,
+        letters_only_slice: Optional[Tuple[int, int]] = None,
+    ):
         sd.rectangle([bx0, box_y0, bx0 + col_w, box_y0 + box_h], fill=(14, 16, 22), outline=(60, 68, 88), width=1)
         if s_row_idx >= len(strip_sys_m["rows"]) or q_row_idx >= len(strip_qk_m["rows"]):
             return
         s_top, s_bot = strip_sys_m["rows"][s_row_idx]
         q_top, q_bot = strip_qk_m["rows"][q_row_idx]
-        s_keys = strip_sys_m["row_keys"][s_row_idx]
-        q_keys = strip_qk_m["row_keys"][q_row_idx]
-        if not s_keys or not q_keys or len(s_keys) != len(q_keys):
+        s_keys_all = strip_sys_m["row_keys"][s_row_idx]
+        q_keys_all = strip_qk_m["row_keys"][q_row_idx]
+        if not s_keys_all or not q_keys_all or len(s_keys_all) != len(q_keys_all):
             return
 
-        rx0 = max(0, min(s_keys[0][0], q_keys[0][0]) - 14)
-        rx1 = min(strip_sys_img.width, strip_qk_img.width, max(s_keys[-1][1], q_keys[-1][1]) + 14)
-        if s_row_idx == q_row_idx:
+        if letters_only_slice is not None:
+            sl0, sl1 = letters_only_slice
+            s_keys = s_keys_all[sl0:sl1]
+            q_keys = q_keys_all[sl0:sl1]
+            if not s_keys or not q_keys or len(s_keys) != len(q_keys):
+                return
+            # Align both letter-key strips at the top-left corner of the first letter key (Ф vs A)
+            margin_x, margin_y = 10, 8
+            sw_let = s_keys[-1][1] - s_keys[0][0] + 1
+            qw_let = q_keys[-1][1] - q_keys[0][0] + 1
+            sh_let = s_bot - s_top + 1
+            qh_let = q_bot - q_top + 1
+            cw_let = max(sw_let, qw_let) + margin_x * 2
+            ch_let = max(sh_let, qh_let) + margin_y * 2
+            c_sys = Image.new("RGB", (cw_let, ch_let), (210, 213, 220))
+            c_qk = Image.new("RGB", (cw_let, ch_let), (210, 213, 220))
+            sx0 = max(0, s_keys[0][0] - margin_x)
+            sy0 = max(0, s_top - margin_y)
+            c_sys.paste(
+                strip_sys_img.crop((sx0, sy0, min(strip_sys_img.width, sx0 + cw_let), min(strip_sys_img.height, sy0 + ch_let))),
+                (sx0 - (s_keys[0][0] - margin_x), sy0 - (s_top - margin_y)),
+            )
+            qx0 = max(0, q_keys[0][0] - margin_x)
+            qy0 = max(0, q_top - margin_y)
+            c_qk.paste(
+                strip_qk_img.crop((qx0, qy0, min(strip_qk_img.width, qx0 + cw_let), min(strip_qk_img.height, qy0 + ch_let))),
+                (qx0 - (q_keys[0][0] - margin_x), qy0 - (q_top - margin_y)),
+            )
+            blend = Image.blend(c_sys, c_qk, 0.5)
+            bd = ImageDraw.Draw(blend)
+            for (kx0, kx1) in s_keys:
+                bd.rectangle(
+                    [kx0 - s_keys[0][0] + margin_x, margin_y, kx1 - s_keys[0][0] + margin_x, margin_y + sh_let - 1],
+                    outline=(0, 220, 255),
+                    width=2,
+                )
+            for (kx0, kx1) in q_keys:
+                bd.rectangle(
+                    [kx0 - q_keys[0][0] + margin_x, margin_y, kx1 - q_keys[0][0] + margin_x, margin_y + qh_let - 1],
+                    outline=(255, 60, 180),
+                    width=2,
+                )
+            dy_t = q_top - s_top
+            dy_b = q_bot - s_bot
+            dx_l = 0
+            dx_r = qw_let - sw_let
+            unit_lbl = "Let"
+        else:
+            s_keys = s_keys_all
+            q_keys = q_keys_all
+            rx0 = max(0, min(s_keys[0][0], q_keys[0][0]) - 14)
+            rx1 = min(strip_sys_img.width, strip_qk_img.width, max(s_keys[-1][1], q_keys[-1][1]) + 14)
             ry0 = max(0, min(s_top, q_top) - 8)
             ry1 = min(strip_sys_img.height, strip_qk_img.height, max(s_bot, q_bot) + 8)
             c_sys = strip_sys_img.crop((rx0, ry0, rx1, ry1))
@@ -1018,27 +1080,15 @@ def render_single_row_and_key_strip(
             q_box_y0, q_box_y1 = q_top - ry0, q_bot - ry0
             dy_t = q_top - s_top
             dy_b = q_bot - s_bot
-        else:
-            sh_r = s_bot - s_top + 1
-            qh_r = q_bot - q_top + 1
-            crop_h_r = max(sh_r, qh_r) + 16
-            sy0_r = max(0, s_top - 8)
-            qy0_r = max(0, q_top - 8)
-            c_sys = strip_sys_img.crop((rx0, sy0_r, rx1, min(strip_sys_img.height, sy0_r + crop_h_r)))
-            c_qk = strip_qk_img.crop((rx0, qy0_r, rx1, min(strip_qk_img.height, qy0_r + crop_h_r)))
-            if c_qk.size != c_sys.size:
-                c_qk = c_qk.resize(c_sys.size, Image.Resampling.LANCZOS)
-            s_box_y0, s_box_y1 = s_top - sy0_r, s_bot - sy0_r
-            q_box_y0, q_box_y1 = q_top - qy0_r, q_bot - qy0_r
-            dy_t = (q_bot - q_top) - (s_bot - s_top)
-            dy_b = 0
-
-        blend = Image.blend(c_sys, c_qk, 0.5)
-        bd = ImageDraw.Draw(blend)
-        for (kx0, kx1) in s_keys:
-            bd.rectangle([kx0 - rx0, s_box_y0, kx1 - rx0, s_box_y1], outline=(0, 220, 255), width=2)
-        for (kx0, kx1) in q_keys:
-            bd.rectangle([kx0 - rx0, q_box_y0, kx1 - rx0, q_box_y1], outline=(255, 60, 180), width=2)
+            blend = Image.blend(c_sys, c_qk, 0.5)
+            bd = ImageDraw.Draw(blend)
+            for (kx0, kx1) in s_keys:
+                bd.rectangle([kx0 - rx0, s_box_y0, kx1 - rx0, s_box_y1], outline=(0, 220, 255), width=2)
+            for (kx0, kx1) in q_keys:
+                bd.rectangle([kx0 - rx0, q_box_y0, kx1 - rx0, q_box_y1], outline=(255, 60, 180), width=2)
+            dx_l = q_keys[0][0] - s_keys[0][0]
+            dx_r = q_keys[-1][1] - s_keys[-1][1]
+            unit_lbl = "k"
 
         avail_w = col_w - 16
         avail_h = box_h - 46
@@ -1048,18 +1098,16 @@ def render_single_row_and_key_strip(
         resized = blend.resize((rw, rh), Image.Resampling.LANCZOS)
         strip.paste(resized, (bx0 + (col_w - rw) // 2, box_y0 + 36 + (avail_h - rh) // 2))
 
-        dx_l = q_keys[0][0] - s_keys[0][0]
-        dx_r = q_keys[-1][1] - s_keys[-1][1]
         tag_sfx = f" [{layout_tag}]" if layout_tag else ""
         sd.text(
             (bx0 + 8, box_y0 + 6),
-            f"{title_prefix}{tag_sfx}: SYS {len(s_keys)}k vs QK {len(q_keys)}k [{s_keys[0][0]}..{s_keys[-1][1]}] vs [{q_keys[0][0]}..{q_keys[-1][1]}]",
+            f"{title_prefix}{tag_sfx}: SYS {len(s_keys)}{unit_lbl} vs QK {len(q_keys)}{unit_lbl} [{s_keys[0][0]}..{s_keys[-1][1]}] vs [{q_keys[0][0]}..{q_keys[-1][1]}]",
             fill=(220, 235, 255),
             font=f_lbl,
         )
         sd.text(
             (bx0 + 8, box_y0 + 21),
-            f"Equal {len(s_keys)}k == {len(q_keys)}k | dy=[{dy_t:+d},{dy_b:+d}]px | dx_L={dx_l:+d}px, dx_R={dx_r:+d}px",
+            f"Equal {len(s_keys)}{unit_lbl} == {len(q_keys)}{unit_lbl} | dy=[{dy_t:+d},{dy_b:+d}]px | dx_L={dx_l:+d}px, dx_R={dx_r:+d}px",
             fill=(130, 240, 170) if (abs(dy_t) <= 2 and abs(dx_l) <= 4 and abs(dx_r) <= 4) else (255, 200, 110),
             font=f_lbl,
         )
@@ -1072,7 +1120,13 @@ def render_single_row_and_key_strip(
         draw_equal_row_overlay_box(sr1, qr1, 18 + col_w, lbl1)
     elif len(matched_row_pairs) == 1:
         sr0, qr0, lbl0 = matched_row_pairs[0]
-        draw_equal_row_overlay_box(sr0, qr0, 18 + col_w, f"{lbl0} (Verified)")
+        n_keys0 = len(strip_sys_m["row_keys"][sr0])
+        if n_keys0 >= 13:
+            draw_equal_row_overlay_box(
+                sr0, qr0, 18 + col_w, f"1 РЯДОК (Row {sr0} Letters)", letters_only_slice=(1, n_keys0 - 1)
+            )
+        else:
+            draw_equal_row_overlay_box(sr0, qr0, 18 + col_w, f"{lbl0} (Verified)")
 
     # Right box: 3 Single-Key ("1 клавіша") overlays aligned by TOP-LEFT KEYCAP CORNER (margin, margin)
     bx2 = 26 + col_w * 2
@@ -1935,7 +1989,6 @@ def mirror_tmp_artifacts_to_proofs(collage_ts_tag: str) -> Dict[str, str]:
 
 EXCLUDED_STALE_CALLOUT_FILES = {
     "Proof_20_83_Build18_R16_ipad_09p_ipad_floating_keypress_callout.png",
-    "Proof_20_83_Build18_R16_ipad_03p_qirimkey_keypress_callout.png",
     "Proof_20_83_Build18_R16_ipad_03sp_system_keypress_callout.png",
     "Proof_2026-11-08_09-45_Build17_R16_iphone_03p_qirimkey_keypress_callout.png",
     "Proof_2026-11-07_23-23_Build16_R16_iphone_03p_qirimkey_keypress_callout.png",
@@ -2001,6 +2054,27 @@ def has_lightbulb_neck_profile(img_path: Optional[str]) -> bool:
                 max_bulb = max(bulb_ws)
                 med_stem = sorted(stem_ws)[len(stem_ws) // 2]
                 return max_bulb >= 64 and 28 <= med_stem <= 50 and (max_bulb - med_stem) >= 16
+            return False
+        if W in (1178, 1179) and H == 2556:
+            # Verify whether a 1178x2556 iPhone capture has a connected lightbulb neck (head wider than stem)
+            for xc_cand in (540, 244, 342, 440, 638):
+                bulb_ws = [
+                    (wx[-1] - wx[0] + 1)
+                    for y in range(1600, 1740, 4)
+                    for wx in [[x for x in range(max(0, xc_cand - 75), min(W, xc_cand + 76)) if px[x, y][0] >= 248 and px[x, y][1] >= 248 and px[x, y][2] >= 248]]
+                    if wx
+                ]
+                stem_ws = [
+                    (wx[-1] - wx[0] + 1)
+                    for y in range(1755, 1845, 4)
+                    for wx in [[x for x in range(max(0, xc_cand - 55), min(W, xc_cand + 56)) if px[x, y][0] >= 248 and px[x, y][1] >= 248 and px[x, y][2] >= 248]]
+                    if wx
+                ]
+                if bulb_ws and stem_ws:
+                    max_bulb = max(bulb_ws)
+                    med_stem = sorted(stem_ws)[len(stem_ws) // 2]
+                    if max_bulb >= 110 and 60 <= med_stem <= 96 and (max_bulb - med_stem) >= 24:
+                        return True
             return False
         return True
     except Exception:
@@ -2099,28 +2173,24 @@ def build_input_callout_4panel(collage_ts_tag: str = "", strict_build18: bool = 
             "*Build17*ipad_09s_system_ipad_floating.png",
         ], strict_build18=strict_build18)
 
-    # Prioritize physical iPad Air 3 (1668x2224) R22 03p (depressed 'e') and R17 03sp over 17:54 simulator R16_ipad_03*
-    r22_ipad_03p = os.path.join(PROOFS_DIR, "Proof_20_94_Build18_R22_ipad_03p_qirimkey_keypress_callout.png")
-    if os.path.exists(r22_ipad_03p):
-        ipad_qk = r22_ipad_03p
-    else:
-        ipad_qk = resolve_latest_proof([
-            "*R22*ipad_03p_qirimkey_keypress_callout.png",
-            "*Build18*ipad_03p_qirimkey_keypress_callout.png",
-            "*Build17*ipad_03p_qirimkey_keypress_callout.png",
-            "*R17*ipad_03p_qirimkey_keypress_callout.png",
-        ], strict_build18=strict_build18, require_size=(1668, 2224))
-    req_ipad_c_size = Image.open(ipad_qk).size if ipad_qk and os.path.exists(ipad_qk) else (1668, 2224)
-    r17_ipad_03sp = os.path.join(PROOFS_DIR, "Proof_2026-11-08_09-44_Build17_R17_ipad_03sp_system_keypress_callout.png")
-    if os.path.exists(r17_ipad_03sp) and req_ipad_c_size == (1668, 2224):
-        ipad_sys = r17_ipad_03sp
-    else:
-        ipad_sys = resolve_latest_proof([
-            "*R22*ipad_03sp_system_keypress_callout.png",
-            "*Build18*ipad_03sp_system_keypress_callout.png",
-            "*Build17*ipad_03sp_system_keypress_callout.png",
-            "*R17*ipad_03sp_system_keypress_callout.png",
-        ], strict_build18=False, require_size=req_ipad_c_size)
+    # Prioritize physical iPad Air 3 (1668x2224) Build 18 / R22 03p (depressed 'e'), falling back to Build 18 / R22 iPad 03p/03sp pair
+    ipad_qk = resolve_latest_proof([
+        "*R22*ipad_03p_qirimkey_keypress_callout.png",
+        "*Build18*ipad_03p_qirimkey_keypress_callout.png",
+        "*Build17*ipad_03p_qirimkey_keypress_callout.png",
+        "*R17*ipad_03p_qirimkey_keypress_callout.png",
+    ], strict_build18=strict_build18)
+    req_ipad_c_size = Image.open(ipad_qk).size if ipad_qk and os.path.exists(ipad_qk) else None
+    ipad_sys = resolve_latest_proof([
+        "*R22*ipad_03sp_system_keypress_callout.png",
+        "*Build18*ipad_03sp_system_keypress_callout.png",
+        "*Build17*ipad_03sp_system_keypress_callout.png",
+        "*R17*ipad_03sp_system_keypress_callout.png",
+    ], strict_build18=strict_build18, require_size=req_ipad_c_size)
+    if not ipad_sys:
+        r17_ipad_03sp = os.path.join(PROOFS_DIR, "Proof_2026-11-08_09-44_Build17_R17_ipad_03sp_system_keypress_callout.png")
+        if not strict_build18 and os.path.exists(r17_ipad_03sp):
+            ipad_sys = r17_ipad_03sp
 
     iphone_qk_os27 = resolve_latest_proof([
         "*Build18*iphone_sim*03p_qirimkey_keypress_callout*.png",
@@ -2130,10 +2200,12 @@ def build_input_callout_4panel(collage_ts_tag: str = "", strict_build18: bool = 
     ], strict_build18=strict_build18)
 
     staleness = evaluate_collage_staleness({
+        "ipad_sys": ipad_sys,
         "ipad_qk": ipad_qk,
         "iphone_qk_os26": iphone_qk_os26,
         "iphone_qk_os27": iphone_qk_os27,
         "ipad_float_callout": ipad_float_callout,
+        "ipad_sys_float": ipad_sys_float,
     })
     if staleness["build_mismatch_warning"]:
         print(f"  [input_callout] {staleness['build_mismatch_warning']}", file=sys.stderr)
@@ -2149,6 +2221,7 @@ def build_input_callout_4panel(collage_ts_tag: str = "", strict_build18: bool = 
             "iphone_qk_os26": iphone_qk_os26,
             "iphone_qk_os27": iphone_qk_os27,
             "ipad_float_callout": ipad_float_callout,
+            "ipad_sys_float": ipad_sys_float,
             "uses_stale_fallback_sources": staleness["uses_stale_fallback_sources"],
             "stale_source_details": staleness["stale_source_details"],
             "build_mismatch_warning": staleness["build_mismatch_warning"],
@@ -2204,9 +2277,22 @@ def build_input_callout_4panel(collage_ts_tag: str = "", strict_build18: bool = 
     bx1 = int(round((bulb_crop_box[2] - f_crop_box[0]) * scale_x))
     by1 = int(round((bulb_crop_box[3] - f_crop_box[1]) * scale_y))
     d2.rectangle([bx0, by0, bx1, by1], outline=(40, 235, 120), width=3)
-    d2.rectangle([bx1 + 8, max(8, by0), min(pw - 8, bx1 + 360), max(8, by0) + 52], fill=(18, 36, 26), outline=(40, 235, 120), width=2)
-    d2.text((bx1 + 16, max(8, by0) + 6), "OS 26 — Classic Lightbulb (Лампа)", fill=(120, 255, 170), font=f_badge)
-    d2.text((bx1 + 16, max(8, by0) + 28), "Connected paddle: Head 81px -> Neck 51px -> Stem 37px", fill=(220, 245, 230), font=f_sm)
+    badge_x1 = min(pw - 8, bx1 + 450)
+    badge_max_w = max(80, badge_x1 - (bx1 + 16) - 8)
+    d2.rectangle([bx1 + 8, max(8, by0), badge_x1, max(8, by0) + 52], fill=(18, 36, 26), outline=(40, 235, 120), width=2)
+    draw_fitted_text_on_draw(
+        d2, bx1 + 16, max(8, by0) + 6, "OS 26 — Classic Lightbulb (Лампа)", (120, 255, 170), 14, badge_max_w, bold=True
+    )
+    draw_fitted_text_on_draw(
+        d2,
+        bx1 + 16,
+        max(8, by0) + 28,
+        "Connected paddle: Head 81px -> Neck 51px -> Stem 37px",
+        (220, 245, 230),
+        13,
+        badge_max_w,
+        bold=True,
+    )
 
     # Panel 3: Left = 50%/50% OS 26 Lightbulb overlay; Right = 2.6x Zoomed OS 26 Lightbulb Neck Profile
     p3 = Image.new("RGB", (pw, ph), (20, 22, 30))
@@ -2357,6 +2443,7 @@ def build_input_callout_4panel(collage_ts_tag: str = "", strict_build18: bool = 
         "iphone_qk_os26": iphone_qk_os26,
         "iphone_qk_os27": iphone_qk_os27,
         "ipad_float_callout": ipad_float_callout,
+        "ipad_sys_float": ipad_sys_float,
         "uses_stale_fallback_sources": staleness["uses_stale_fallback_sources"],
         "stale_source_details": staleness["stale_source_details"],
         "build_mismatch_warning": staleness["build_mismatch_warning"],
@@ -2373,6 +2460,7 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
       - Proof_20_20_StageManager_Lang_UK_ipad_air3_b18.png
       - Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png
       - Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png
+      - Proof_20_83_Build18_R16_ipad_02c_abv_bridge_post_drag.png
     over stale Nov 2-3 screenshots in docs/release/2026-11-01/physical/.
     """
     user_ref_tamga = os.path.join(PROOFS_DIR, "UserComment_2026-11-08_08-28_media_0.png")
@@ -2381,12 +2469,12 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
 
     home_light_b18 = resolve_latest_proof(
         ["Proof_20_33_Unified_HomeView_Light_ipad_air3_b18.png", "*Build18*ipad_01_home*.png"],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
         strict_build18=strict_build18,
     )
     home_dark_b18 = resolve_latest_proof(
         ["Proof_20_33_Unified_HomeView_Dark_ipad_air3_b18.png"],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
         strict_build18=strict_build18,
     )
     lang_crh_b18 = resolve_latest_proof(
@@ -2396,7 +2484,7 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
             "*Build18*iphone_01_home*.png",
             "*Build18*ipad_01_home*.png",
         ],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
         strict_build18=strict_build18,
     )
     lang_uk_b18 = resolve_latest_proof(
@@ -2406,26 +2494,34 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
             "*Build18*ipad*02c_abv_bridge_post_drag.png",
             "*Build18*ipad*02b_switcher_uk_post_drag.png",
         ],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
+        strict_build18=strict_build18,
+    )
+    abv_post_drag_b18 = resolve_latest_proof(
+        [
+            "*Build18*ipad_02c_abv_bridge_post_drag.png",
+            "*R22*ipad_02c_abv_bridge_post_drag.png",
+        ],
+        search_dirs=[PROOFS_2026_11_08_DIR, PROOFS_DIR],
         strict_build18=strict_build18,
     )
     lang_en_b18 = resolve_latest_proof(
         ["Proof_20_20_StageManager_Lang_EN_ipad_air3_b18.png"],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
         strict_build18=strict_build18,
     )
     stats_expanded_b18 = resolve_latest_proof(
         ["Proof_20_18_Stats_LearnedWordsTile_ipad_air3_b18.png", "*Build18*ipad_02_stats_expanded*.png"],
-        search_dirs=[PROOFS_DIR],
+        search_dirs=[PROOFS_DIR, PROOFS_2026_11_08_DIR],
         strict_build18=strict_build18,
     )
 
     latest_home_sugg = lang_crh_b18 or home_light_b18
-    abv_uk_shot = lang_uk_b18 or home_light_b18
+    abv_uk_shot = lang_uk_b18 or abv_post_drag_b18 or home_light_b18
     if not abv_uk_shot and not strict_build18:
         abv_uk_shot = os.path.join(PHYSICAL_2026_11_01_DIR, "Proof_20_71_iPad_Lang_UK_AbvBridgeShown.png")
 
-    abv_cyr_shot = home_dark_b18 or stats_expanded_b18 or lang_en_b18
+    abv_cyr_shot = home_dark_b18 or abv_post_drag_b18 or stats_expanded_b18 or lang_en_b18
     if not abv_cyr_shot and not strict_build18:
         abv_cyr_shot = os.path.join(PHYSICAL_2026_11_01_DIR, "Proof_20_59_iPad_AbvCyrillic_Selected_ipad_sim_ios27.png")
 
@@ -2468,7 +2564,7 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
         cd,
         pad,
         44,
-        f"Physical iPad Air 3 Build 18 (2224x1668): CRH/UK/EN Switchers, Light/Dark HomeView & Expanded Stats | Built: {now_str}",
+        f"Physical iPad Air 3 Build 18 (2224x1668 & 1668x2224): CRH/UK/EN Switchers, 3-Segment abv Bridge & Stats | Built: {now_str}",
         (185, 205, 255),
         14,
         max_hdr_w,
@@ -2479,8 +2575,39 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
         if im.width >= 2000:
             return im.crop((1780, 50, 2195, 165))
         if im.width >= 1500:
-            return im.crop((1020, 120, 1620, 290))
+            return im.crop((1020, 55, 1620, 205))
         return im.crop((670, 175, 1135, 345))
+
+    def crop_abv_liquid_glass_bridge(im: Image.Image) -> Image.Image:
+        """
+        Extracts a close-up crop of the 3-segment iPadAbvLiquidGlassBridge
+        (`Клавіша «абв» перемикає на: [ ↙ Кирилицю | ⇪ Caps Lock | Українську ↘ ]`)
+        and the Cyrillic/Ukrainian layout cards below it.
+        Automatically locates the blue/gray bridge capsule in the lower half of Portrait screenshots
+        so it never crops the top header or mid-screen achievement cards.
+        """
+        w, h = im.size
+        if w >= 2000:
+            return im.crop((int(w * 0.47), int(h * 0.25), int(w * 0.98), int(h * 0.62)))
+        px = im.load()
+        pill_ys: List[int] = []
+        for y in range(h // 2, h - 30, 2):
+            blue_cnt = 0
+            gray_cnt = 0
+            for x in range(int(w * 0.08), int(w * 0.92), 4):
+                r, g, b = px[x, y]
+                if r < 60 and 110 <= g <= 175 and b >= 200:
+                    blue_cnt += 1
+                elif 115 <= r <= 140 and 120 <= g <= 148 and 130 <= b <= 160 and (b - r) >= 6:
+                    gray_cnt += 1
+            if blue_cnt >= 35 or gray_cnt >= 35:
+                pill_ys.append(y)
+        if pill_ys:
+            py0, py1 = min(pill_ys), max(pill_ys)
+            cy0 = max(h // 2, py0 - int(h * 0.095))
+            cy1 = min(h - 12, py1 + int(h * 0.125))
+            return im.crop((int(w * 0.04), cy0, int(w * 0.96), cy1))
+        return im.crop((int(w * 0.04), int(h * 0.72), int(w * 0.96), int(h * 0.98)))
 
     def paste_centered(dest: Image.Image, src: Image.Image, box: Tuple[int, int, int, int]):
         bx0, by0, bx1, by1 = box
@@ -2519,45 +2646,42 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
             sw_im = crop_switcher_pill(pth)
             paste_centered(p2, sw_im, (150, y_top + 4, pw - 12, y_top + band_h - 4))
 
-    # Panel 3: Unified HomeView Light (home_light_b18) + iPadAbvLiquidGlassBridge Light (lang_uk_b18)
+    # Panel 3: Unified HomeView Light (home_light_b18) + iPadAbvLiquidGlassBridge Light (lang_uk_b18 & abv_post_drag_b18)
     p3 = Image.new("RGB", (pw, ph), (28, 30, 38))
     abv_crop_out = os.path.join(PROOFS_DIR, f"Crop_{ts_tag}_Build18_20_90_iPadAbvLiquidGlassBridge.png")
     if home_light_b18 and os.path.exists(home_light_b18) and abv_uk_shot and os.path.exists(abv_uk_shot):
         hl_im = Image.open(home_light_b18).convert("RGB")
         paste_centered(p3, hl_im, (8, 8, pw // 2 - 4, ph - 8))
         abv_im = Image.open(abv_uk_shot).convert("RGB")
-        w, h = abv_im.size
-        bridge_crop = (
-            abv_im.crop((int(w * 0.47), int(h * 0.25), int(w * 0.98), int(h * 0.62)))
-            if w >= 2000
-            else abv_im.crop((int(w * 0.02), int(h * 0.45), int(w * 0.98), int(h * 0.78)))
-        )
-        bridge_crop.save(abv_crop_out)
-        paste_centered(p3, bridge_crop, (pw // 2 + 4, 8, pw - 8, ph - 8))
+        bridge_crop = crop_abv_liquid_glass_bridge(abv_im)
+        if abv_post_drag_b18 and os.path.exists(abv_post_drag_b18) and abv_post_drag_b18 != abv_uk_shot:
+            post_drag_crop = crop_abv_liquid_glass_bridge(Image.open(abv_post_drag_b18).convert("RGB"))
+            # Save combined pre-drag (Caps Lock) + post-drag (Українську ↘) 3-segment bridge proof crop
+            comb_w = max(bridge_crop.width, post_drag_crop.width)
+            comb_h = bridge_crop.height + post_drag_crop.height + 16
+            comb_crop = Image.new("RGB", (comb_w, comb_h), (242, 244, 248))
+            comb_crop.paste(bridge_crop, ((comb_w - bridge_crop.width) // 2, 0))
+            comb_crop.paste(post_drag_crop, ((comb_w - post_drag_crop.width) // 2, bridge_crop.height + 16))
+            comb_crop.save(abv_crop_out)
+            paste_centered(p3, bridge_crop, (pw // 2 + 4, 6, pw - 8, ph // 2 - 2))
+            paste_centered(p3, post_drag_crop, (pw // 2 + 4, ph // 2 + 2, pw - 8, ph - 6))
+        else:
+            bridge_crop.save(abv_crop_out)
+            paste_centered(p3, bridge_crop, (pw // 2 + 4, 8, pw - 8, ph - 8))
     elif abv_uk_shot and os.path.exists(abv_uk_shot):
         abv_im = Image.open(abv_uk_shot).convert("RGB")
-        w, h = abv_im.size
-        bridge_crop = (
-            abv_im.crop((int(w * 0.47), int(h * 0.25), int(w * 0.98), int(h * 0.62)))
-            if w >= 2000
-            else abv_im.crop((int(w * 0.02), int(h * 0.45), int(w * 0.98), int(h * 0.78)))
-        )
+        bridge_crop = crop_abv_liquid_glass_bridge(abv_im)
         bridge_crop.save(abv_crop_out)
         paste_centered(p3, bridge_crop, (10, 10, pw - 10, ph - 10))
 
-    # Panel 4: Unified HomeView Dark (home_dark_b18) + Expanded Statistics LearnedWordsTile (stats_expanded_b18)
+    # Panel 4: Unified HomeView Dark 3-Segment Bridge (home_dark_b18) + Expanded Statistics LearnedWordsTile (stats_expanded_b18)
     p4 = Image.new("RGB", (pw, ph), (28, 30, 38))
     if abv_cyr_shot and os.path.exists(abv_cyr_shot):
         st_im = Image.open(abv_cyr_shot).convert("RGB")
         bname_cyr = os.path.basename(abv_cyr_shot)
         if st_im.width > st_im.height and "_ipad_air3_b18" not in bname_cyr:
             st_im = st_im.transpose(Image.Transpose.ROTATE_90)
-        w, h = st_im.size
-        cyr_crop = (
-            st_im.crop((int(w * 0.47), int(h * 0.25), int(w * 0.98), int(h * 0.62)))
-            if w >= 2000
-            else st_im.crop((int(w * 0.02), int(h * 0.45), int(w * 0.98), int(h * 0.78)))
-        )
+        cyr_crop = crop_abv_liquid_glass_bridge(st_im)
         if stats_expanded_b18 and os.path.exists(stats_expanded_b18):
             exp_im = Image.open(stats_expanded_b18).convert("RGB")
             ew, eh = exp_im.size
@@ -2574,8 +2698,8 @@ def build_bento_stats_and_switcher_collages(collage_ts_tag: str = "", strict_bui
     panels = [
         (p1, f"PANEL 1: Owner Target Reference ({os.path.basename(user_ref_tamga)})", pad, header_h),
         (p2, "PANEL 2: iPad Air 3 Build 18 Switchers (CRH / UK / EN)", pad * 2 + pw, header_h),
-        (p3, "PANEL 3: Unified HomeView Light + iPadAbvLiquidGlassBridge (Build 18)", pad, header_h + ph + label_h + pad),
-        (p4, "PANEL 4: Unified HomeView Dark + Expanded Stats LearnedWordsTile (Build 18)", pad * 2 + pw, header_h + ph + label_h + pad),
+        (p3, "PANEL 3: Unified HomeView Light + 3-Segment iPadAbvLiquidGlassBridge (Caps Lock & Українську)", pad, header_h + ph + label_h + pad),
+        (p4, "PANEL 4: Unified HomeView Dark 3-Segment Bridge + Expanded Stats LearnedWordsTile", pad * 2 + pw, header_h + ph + label_h + pad),
     ]
     for p_img, p_title, px_pos, py_pos in panels:
         cd.rectangle([px_pos, py_pos, px_pos + pw, py_pos + label_h - 4], fill=(30, 34, 46))
@@ -2614,10 +2738,12 @@ def build_20_90_switcher_collage(collage_ts_tag: str = "", strict_build18: bool 
 
 def ensure_physical_iphone_landscape_rotations() -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
     """
-    Ensures genuine physical iPhone 15 Pro landscape captures from /tmp/qk_b17_iphone_attachments
-    are rotated to 2556x1178 landscape if stored as 1178x2556 portrait buffer, ONLY when
-    the rotated image passes `has_valid_keyboard_grid`. Restores any sideways portrait image
-    (`Proof_20_83_Build17_R16_iphone_10_landscape_std_sugg1.png`) back to upright portrait.
+    Ensures genuine physical iPhone 15 Pro landscape captures (both in PROOFS_2026_11_08_DIR,
+    PROOFS_DIR, and /tmp/qk_b17_iphone_attachments) are rotated to 2556x1178 landscape if stored
+    as a 1178x2556 portrait XCUIScreenshot buffer, ONLY when the rotated image passes
+    `has_valid_keyboard_grid(..., require_landscape=True)`. Also syncs fresh Nov 8 physical
+    device `Proof_20_83_Build18_R16_*.png` captures to `Proof_20_94_Build18_R22_*.png` aliases
+    preserving capture timestamps.
     Returns (sys_s1_path, sys_s0_path, qk_s0_path, qk_s1_path).
     """
     att_dir = "/tmp/qk_b17_iphone_attachments"
@@ -2642,27 +2768,55 @@ def ensure_physical_iphone_landscape_rotations() -> Tuple[Optional[str], Optiona
     s0 = rotate_if_needed(sys_s0_raw, "Proof_20_83_Build17_R16_iphone_10s_system_landscape_std_sugg0.png")
     q0 = rotate_if_needed(qk_s0_raw, "Proof_20_83_Build17_R16_iphone_10_landscape_std_sugg0.png")
 
-    # Validate any existing *Build17*landscape*.png in PROOFS_DIR:
-    # if stored as portrait buffer and rotating produces a valid landscape keyboard, rotate it;
+    # Validate any existing *Build19*, *R22*, *Build18*, or *Build17* landscape*.png in PROOFS_2026_11_08_DIR and PROOFS_DIR:
+    # if stored as portrait buffer and rotating 270 or 90 deg produces a valid landscape keyboard, rotate it in place;
     # if stored as sideways portrait (w > h but invalid landscape keyboard), restore to upright portrait.
-    for p_b17 in sorted(glob.glob(os.path.join(PROOFS_DIR, "*Build17*landscape*.png"))):
-        try:
-            st = os.stat(p_b17)
-            im_b17 = Image.open(p_b17).convert("RGB")
-            bname_l = os.path.basename(p_b17).lower()
-            if im_b17.width < im_b17.height:
-                im_rot = im_b17.transpose(Image.Transpose.ROTATE_270)
-                if has_valid_keyboard_grid(im_rot, bname_l, require_landscape=True):
-                    im_rot.save(p_b17)
-                    os.utime(p_b17, (st.st_atime, st.st_mtime))
-            elif not has_valid_keyboard_grid(im_b17, bname_l, require_landscape=True):
-                im_b17.transpose(Image.Transpose.ROTATE_90).save(p_b17)
-                os.utime(p_b17, (st.st_atime, st.st_mtime))
-        except Exception:
-            pass
+    for d_land in (PROOFS_2026_11_08_DIR, PROOFS_DIR):
+        if not os.path.isdir(d_land):
+            continue
+        for pat_l in ("*Build19*landscape*.png", "*R22*landscape*.png", "*Build18*landscape*.png", "*Build17*landscape*.png"):
+            for p_land in sorted(glob.glob(os.path.join(d_land, pat_l))):
+                try:
+                    st = os.stat(p_land)
+                    im_l = Image.open(p_land).convert("RGB")
+                    bname_l = os.path.basename(p_land).lower()
+                    if im_l.width < im_l.height:
+                        for rot_op in (Image.Transpose.ROTATE_270, Image.Transpose.ROTATE_90):
+                            im_rot = im_l.transpose(rot_op)
+                            if has_valid_keyboard_grid(im_rot, bname_l, require_landscape=True):
+                                im_rot.save(p_land)
+                                os.utime(p_land, (st.st_atime, st.st_mtime))
+                                break
+                    elif not has_valid_keyboard_grid(im_l, bname_l, require_landscape=True):
+                        im_l.transpose(Image.Transpose.ROTATE_90).save(p_land)
+                        os.utime(p_land, (st.st_atime, st.st_mtime))
+                except Exception:
+                    pass
+
+        # Sync fresh physical device Proof_20_83_Build18_R16_*.png captures to Proof_20_94_Build18_R22_*.png
+        for p_b18 in sorted(glob.glob(os.path.join(d_land, "Proof_20_83_Build18_R16_*.png"))):
+            try:
+                st_b18 = os.stat(p_b18)
+                if st_b18.st_mtime < 1794160000:
+                    continue
+                bname_b18 = os.path.basename(p_b18)
+                r22_name = bname_b18.replace("Proof_20_83_Build18_R16_", "Proof_20_94_Build18_R22_")
+                for target_dir in (PROOFS_2026_11_08_DIR, PROOFS_DIR):
+                    if not os.path.isdir(target_dir):
+                        continue
+                    r22_dst = os.path.join(target_dir, r22_name)
+                    if not os.path.exists(r22_dst) or os.path.getmtime(r22_dst) < st_b18.st_mtime:
+                        shutil.copy2(p_b18, r22_dst)
+                        os.utime(r22_dst, (st_b18.st_atime, st_b18.st_mtime))
+            except Exception:
+                pass
 
     q1 = resolve_latest_proof(
-        ["*Build17*iphone_10_landscape_std_sugg1.png", "*Build16*iphone_10_landscape_std_sugg1.png"],
+        [
+            "*Build18*iphone_10_landscape_std_sugg1.png",
+            "*Build17*iphone_10_landscape_std_sugg1.png",
+            "*Build16*iphone_10_landscape_std_sugg1.png",
+        ],
         require_landscape=True,
     )
     return (s1, s0, q0, q1)
@@ -2732,8 +2886,7 @@ def main():
         pass
 
     exported_xcresult = export_build18_xcresult_attachments()
-    if not strict_b18:
-        ensure_physical_iphone_landscape_rotations()
+    ensure_physical_iphone_landscape_rotations()
     mirrored_tmp = mirror_tmp_artifacts_to_proofs(collage_ts_tag)
 
     results = {}
@@ -3173,6 +3326,21 @@ def main():
     shutil.copy2(args.json_out, proofs_json)
     shutil.copy2(args.json_out, os.path.join(PROOFS_DIR, "collage_4panel_audit_report.json"))
     shutil.copy2(args.json_out, os.path.join(PROOFS_DIR, "collage_4panel_audit_report_2026-11-08_11-18_Build18.json"))
+
+    # Auto-sync all generated Collage_<ts_tag>_Build18_*.png, Crop_<ts_tag>_Build18_*.png, and JSON reports to PROOFS_2026_11_08_DIR
+    if os.path.isdir(PROOFS_2026_11_08_DIR):
+        for sync_pat in (
+            f"Collage_{collage_ts_tag}_Build18_*.png",
+            f"Crop_{collage_ts_tag}_Build18_*.png",
+            f"collage_4panel_audit_report_{collage_ts_tag}_Build18.json",
+            "collage_4panel_audit_report.json",
+        ):
+            for sync_src in glob.glob(os.path.join(PROOFS_DIR, sync_pat)):
+                sync_dst = os.path.join(PROOFS_2026_11_08_DIR, os.path.basename(sync_src))
+                try:
+                    shutil.copy2(sync_src, sync_dst)
+                except Exception:
+                    pass
 
     collage_keys = [k for k in results.keys() if not k.startswith("_") and k not in ("uses_stale_fallback_sources", "strict_build18", "build_mismatch_warnings")]
     pure_b18_count = sum(
