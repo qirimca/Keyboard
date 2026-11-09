@@ -7870,7 +7870,18 @@ private struct SandboxTextView: UIViewRepresentable {
     }
 
     private final class SandboxUITextView: UITextView {
-        override var undoManager: UndoManager? { nil }
+        var allowPadUndoManager: Bool = true
+        var savedLeadingGroups: [UIBarButtonItemGroup]?
+        var savedTrailingGroups: [UIBarButtonItemGroup]?
+
+        override var undoManager: UndoManager? {
+            (UIDevice.current.userInterfaceIdiom == .pad && allowPadUndoManager) ? super.undoManager : nil
+        }
+    }
+
+    private static var shouldHideInputAssistantBarOnIPad: Bool {
+        let args = ProcessInfo.processInfo.arguments
+        return args.contains("-qt_hide_assistant_bar") || args.contains("-qt_suppress_wrong_keyboard_warning")
     }
 
     func makeUIView(context: Context) -> UITextView {
@@ -7884,8 +7895,12 @@ private struct SandboxTextView: UIViewRepresentable {
         textView.text = currentText
         textView.autocorrectionType = .default
         textView.spellCheckingType = .default
-        textView.inputAssistantItem.leadingBarButtonGroups = []
-        textView.inputAssistantItem.trailingBarButtonGroups = []
+        textView.savedLeadingGroups = textView.inputAssistantItem.leadingBarButtonGroups
+        textView.savedTrailingGroups = textView.inputAssistantItem.trailingBarButtonGroups
+        if UIDevice.current.userInterfaceIdiom != .pad || Self.shouldHideInputAssistantBarOnIPad {
+            textView.inputAssistantItem.leadingBarButtonGroups = []
+            textView.inputAssistantItem.trailingBarButtonGroups = []
+        }
 
         applyTraits(to: textView, coordinator: context.coordinator)
 
@@ -7931,11 +7946,13 @@ private struct SandboxTextView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.textView = uiView
         uiView.textColor = .label
-        if !uiView.inputAssistantItem.leadingBarButtonGroups.isEmpty {
-            uiView.inputAssistantItem.leadingBarButtonGroups = []
-        }
-        if !uiView.inputAssistantItem.trailingBarButtonGroups.isEmpty {
-            uiView.inputAssistantItem.trailingBarButtonGroups = []
+        if UIDevice.current.userInterfaceIdiom != .pad || Self.shouldHideInputAssistantBarOnIPad {
+            if !uiView.inputAssistantItem.leadingBarButtonGroups.isEmpty {
+                uiView.inputAssistantItem.leadingBarButtonGroups = []
+            }
+            if !uiView.inputAssistantItem.trailingBarButtonGroups.isEmpty {
+                uiView.inputAssistantItem.trailingBarButtonGroups = []
+            }
         }
         context.coordinator.refreshActiveInputMode(for: uiView)
         if currentText != context.coordinator.lastSyncedText {
@@ -8085,6 +8102,31 @@ private struct SandboxTextView: UIViewRepresentable {
         }
 
         let isStructuredField = (fieldMode == .email || fieldMode == .url || fieldMode == .numbers)
+        let showPadAssistantBar = (UIDevice.current.userInterfaceIdiom == .pad)
+            && !Self.shouldHideInputAssistantBarOnIPad
+            && !isStructuredField
+            && !forceNoSuggestions
+        if let sandboxTV = textView as? SandboxUITextView {
+            sandboxTV.allowPadUndoManager = showPadAssistantBar
+            if showPadAssistantBar {
+                if let savedL = sandboxTV.savedLeadingGroups, textView.inputAssistantItem.leadingBarButtonGroups.isEmpty {
+                    textView.inputAssistantItem.leadingBarButtonGroups = savedL
+                }
+                if let savedT = sandboxTV.savedTrailingGroups, textView.inputAssistantItem.trailingBarButtonGroups.isEmpty {
+                    textView.inputAssistantItem.trailingBarButtonGroups = savedT
+                }
+            } else {
+                if !textView.inputAssistantItem.leadingBarButtonGroups.isEmpty {
+                    textView.inputAssistantItem.leadingBarButtonGroups = []
+                }
+                if !textView.inputAssistantItem.trailingBarButtonGroups.isEmpty {
+                    textView.inputAssistantItem.trailingBarButtonGroups = []
+                }
+            }
+        }
+        if (KeyboardPreferences.defaults.object(forKey: "crh.key.test.hasSystemAssistantBar") as? Bool) != showPadAssistantBar {
+            KeyboardPreferences.defaults.set(showPadAssistantBar, forKey: "crh.key.test.hasSystemAssistantBar")
+        }
         textView.autocapitalizationType = isStructuredField ? .none : .sentences
         textView.autocorrectionType = (isStructuredField || forceNoSuggestions) ? .no : .default
         textView.spellCheckingType = (isStructuredField || forceNoSuggestions) ? .no : .default
@@ -8593,8 +8635,8 @@ private struct SandboxTextView: UIViewRepresentable {
                 if delta <= 2 && !KeyboardUsageStats.wasRecentlyInjected() {
                     recordTypedCharacters(delta)
                 }
+                CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
                 let wasExplicitSlot0 = (Date().timeIntervalSince1970 - KeyboardPreferences.defaults.double(forKey: "crh.key.lastExplicitSlot0ConfirmTimestamp")) < 1.2
-                    || (now - lastBatchWordInsertTime) < 0.35
                 KeyboardUsageStats.recordSandboxCommittedWordIfNeeded(
                     oldText: oldText,
                     newText: newText,

@@ -444,7 +444,7 @@ private extension SystemKeyboard {
             leadingInset: leadingInset
         )
         #if os(iOS) || os(macOS) || os(watchOS)
-        if size.width > 0 {
+        if size.width > 0, SwipeTypingState.shared.isFormFactorEligible {
             for (idx, element) in itemRow.enumerated() where idx < rowFrames.count {
                 if case .character(let ch) = element.action, !ch.isEmpty {
                     SwipeTypingState.shared.registerKeyFrame(character: ch, frame: rowFrames[idx])
@@ -552,10 +552,9 @@ private struct SwipeTrailOverlay: View {
     private var isHoldCalloutTest: Bool {
         CommandLine.arguments.contains("-qt_hold_callout")
             || (UserDefaults(suiteName: "group.crh.key.keyboardplus")?.bool(forKey: "crh.key.test.holdCallout") ?? false)
-            || (UserDefaults(suiteName: "group.crh.key.keyboardplus")?.bool(forKey: "crh.key.test.isUITesting") ?? false)
     }
     private var tailDuration: TimeInterval { isHoldCalloutTest ? 1.80 : 0.36 }
-    private var releaseFadeDuration: TimeInterval { isHoldCalloutTest ? 1.80 : 0.24 }
+    private var releaseFadeDuration: TimeInterval { isHoldCalloutTest ? 1.80 : 0.15 }
     private let maxCometArcLength: CGFloat = 340.0
     private let maxHeadRadius: CGFloat = 8.25
 
@@ -577,17 +576,24 @@ private struct SwipeTrailOverlay: View {
                     guard allSamples.count >= 2, let head = allSamples.last else { return }
 
                     let isDemo = head.timestamp > now + 0.5
-                    let headAge = (isDemo || swipeState.isSwiping) ? 0.0 : max(0.0, now - head.timestamp)
-                    let headFade = max(0.0, min(1.0, 1.0 - (headAge / releaseFadeDuration)))
+                    let releaseAnchor = swipeState.lastReleaseTimestamp > 0 ? swipeState.lastReleaseTimestamp : head.timestamp
+                    let headAge = (isDemo || swipeState.isSwiping) ? 0.0 : max(0.0, now - releaseAnchor)
+                    let t = min(1.0, max(0.0, headAge / releaseFadeDuration))
+                    let headFade = CGFloat((1.0 - t) * (1.0 - t))
                     guard headFade > 0.01 else { return }
 
-                    // 1. Extract live window with continuous tail-tip interpolation at cutoffTime = now - tailDuration
+                    // Freeze sample clock at finger release so control points never pop/step in 18pt jumps during post-lift fade.
+                    let sampleClockNow: TimeInterval = (!swipeState.isSwiping && swipeState.lastReleaseTimestamp > 0)
+                        ? swipeState.lastReleaseTimestamp
+                        : now
+
+                    // 1. Extract live window with continuous tail-tip interpolation at cutoffTime = sampleClockNow - tailDuration
                     //    so the tail tip glides smoothly into the finger without discrete vertex snapping.
                     var windowedPts: [TimedVertex] = []
                     if isDemo {
                         windowedPts = allSamples.map { TimedVertex(point: $0.point, timestamp: $0.timestamp) }
                     } else {
-                        let cutoffTime = now - tailDuration
+                        let cutoffTime = sampleClockNow - tailDuration
                         if let firstLiveIdx = allSamples.firstIndex(where: { $0.timestamp >= cutoffTime }) {
                             if firstLiveIdx > 0 {
                                 let prevSample = allSamples[firstLiveIdx - 1]
@@ -760,7 +766,7 @@ private struct SwipeTrailOverlay: View {
                         if isDemo {
                             p = s
                         } else {
-                            let age = max(0.0, now - spine[i].timestamp)
+                            let age = max(0.0, sampleClockNow - spine[i].timestamp)
                             let u = min(1.0, max(0.0, 1.0 - (age / tailDuration)))
                             p = s * CGFloat(pow(u, 0.55))
                         }

@@ -379,14 +379,6 @@ class DemoActionHandler: StandardKeyboardActionHandler {
         }
 
         autocompleteContext.suggestions = toolbarSuggestions
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in
-            guard let self, self.lastSwipedWordInsertion == textToInsert else { return }
-            self.autocompleteContext.suggestions = toolbarSuggestions
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
-            guard let self, self.lastSwipedWordInsertion == textToInsert else { return }
-            self.autocompleteContext.suggestions = toolbarSuggestions
-        }
     }
 
     func handleBackspaceSlideLeft() {
@@ -795,8 +787,11 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             ?? (beforeTrimmed.isEmpty ? lastCompletedTypedWord : nil)
         let replacement = suggestion.text
         let savedChars = max(replacement.count - currentWord.count + 1, 2)
+        if suggestion.isUnknown {
+            KeyboardPreferences.defaults.set(Date().timeIntervalSince1970, forKey: "crh.key.lastExplicitSlot0ConfirmTimestamp")
+            CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+        }
         KeyboardUsageStats.markInjectedText(replacement)
-        KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: savedChars)
         TextHistoryManager.shared.recordReplace(oldText: currentWord, newText: replacement)
         lastCompletedTypedWord = replacement
         typedWordBuffer = ""
@@ -806,6 +801,7 @@ class DemoActionHandler: StandardKeyboardActionHandler {
             proxy: proxy,
             explicitlyConfirmed: suggestion.isUnknown
         )
+        KeyboardUsageStats.recordSuggestedWordCompleted(savedCharacters: savedChars)
         super.handle(suggestion)
     }
 

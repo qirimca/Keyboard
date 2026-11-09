@@ -1184,7 +1184,16 @@ class KeyboardViewController: KeyboardInputViewController, UIGestureRecognizerDe
                 applyPreferences(syncDisk: false)
             } else {
                 updateKeyboardHeightConstraint()
-                state.keyboardContext.renderVersion &+= 1
+                let layoutChanged = forceRender
+                    || lastRenderSignature?.keyboardType != signature.keyboardType
+                    || lastRenderSignature?.returnKeyType != signature.returnKeyType
+                    || lastRenderSignature?.autoReturnKey != signature.autoReturnKey
+                    || lastRenderSignature?.isDark != signature.isDark
+                    || lastRenderSignature?.isFloating != signature.isFloating
+                    || lastRenderSignature?.localeIdentifier != signature.localeIdentifier
+                if layoutChanged {
+                    state.keyboardContext.renderVersion &+= 1
+                }
             }
             lastRenderSignature = signature
             view.setNeedsLayout()

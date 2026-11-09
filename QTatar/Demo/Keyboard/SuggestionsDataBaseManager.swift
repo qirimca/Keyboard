@@ -163,6 +163,8 @@ final class SuggestionsDataBaseManager {
         return nil
     }
 
+    private static var isGeneratingLocalLexiconNotification = false
+
     init() {
         CFNotificationCenterAddObserver(
             CFNotificationCenterGetDarwinNotifyCenter(),
@@ -180,6 +182,7 @@ final class SuggestionsDataBaseManager {
             CFNotificationCenterGetDarwinNotifyCenter(),
             nil,
             { _, _, _, _, _ in
+                guard !SuggestionsDataBaseManager.isGeneratingLocalLexiconNotification else { return }
                 SuggestionsDataBaseManager.shared.refreshAfterExternalLexiconChange()
             },
             "crh.key.userLexiconDidChange" as CFString,
@@ -963,7 +966,7 @@ final class SuggestionsDataBaseManager {
                 }
                 return nil
             }()
-            let shouldMarkCustom = explicitlyConfirmed && !Self.legacyDemotedSeedWordsLower.contains(normalizedWord)
+            let shouldMarkCustom = explicitlyConfirmed
             self.recordLearnedEntry(
                 word: trimmedWord,
                 normalizedWord: normalizedWord,
@@ -978,6 +981,8 @@ final class SuggestionsDataBaseManager {
             KeyboardPreferences.defaults.set(max(0, totalUnique), forKey: KeyboardUsageStats.uniqueWordsKey)
             if explicitlyConfirmed {
                 CFPreferencesAppSynchronize(AppConfiguration.appGroupID as CFString)
+                Self.isGeneratingLocalLexiconNotification = true
+                defer { Self.isGeneratingLocalLexiconNotification = false }
                 CFNotificationCenterPostNotification(
                     CFNotificationCenterGetDarwinNotifyCenter(),
                     CFNotificationName(KeyboardUsageStats.userLexiconChangedNotification as CFString),
@@ -1016,14 +1021,13 @@ final class SuggestionsDataBaseManager {
             isSuspended = false
             ensureDB()
             ensureUserDB()
-            let baseFreq = bundledFrequency(of: trimmedWord)
-            let shouldMarkCustom = explicitlyConfirmed && (baseFreq == 0 || !Self.legacyDemotedSeedWordsLower.contains(normalizedWord))
+            let shouldMarkCustom = explicitlyConfirmed
             recordLearnedEntry(
                 word: trimmedWord,
                 normalizedWord: normalizedWord,
                 previousWord: normalizedPrev,
                 timestamp: now,
-                isCustom: shouldMarkCustom && (baseFreq == 0),
+                isCustom: shouldMarkCustom,
                 updateCasing: true
             )
             let totalCustom = countCustomUserUnigrams()
@@ -1041,9 +1045,12 @@ final class SuggestionsDataBaseManager {
 
     private func demoteBundledCustomWordsIfNeeded() {
         guard !didDemoteBundledCustomWords else { return }
+        didDemoteBundledCustomWords = true
+        let migrationKey = "crh.key.didRunLegacySeedDemotionV2"
+        guard !KeyboardPreferences.defaults.bool(forKey: migrationKey) else { return }
         ensureUserDB()
         guard let userDB, db != nil else { return }
-        didDemoteBundledCustomWords = true
+        KeyboardPreferences.defaults.set(true, forKey: migrationKey)
         let legacySeedWords = ["selam", "qirim", "bağçasaray", "aqmescit", "Qırım", "Aqmescit", "Bağçasaray"]
         for word in legacySeedWords {
             var upd: OpaquePointer?
@@ -4718,13 +4725,37 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 if #available(iOS 27.0, *) { return true }
                 return false
             }()
-            let useOS26CompactRowsWithToolbar = hasToolbar && !isiOS27OrNewer
-            let toolbarH: CGFloat = isPortrait
-                ? (useOS26CompactRowsWithToolbar ? 33.0 : 38.0)
-                : (useOS26CompactRowsWithToolbar ? 36.0 : 41.0)
+            // Two-case Docked iPad height rule on iPadOS 26 (!isiOS27OrNewer):
+            // 1. When system Undo/Redo/Paste buttons ARE present (`hasSystemAssistantBar == true`, default for external apps
+            //    like Spotlight/Safari/Notes and HomeView Текст/Пошук with inputAssistantItem restored):
+            //    iOS renders the 55 pt UIKeyboardAssistantBar above our extension while our suggestions sit on a second row
+            //    inside our extension (`two different levels`), so we shrink letter/bottom rows (`57/56 pt` Portrait -> `262 pt`
+            //    extension + `55 pt` system bar = `317 pt`; `77/76 pt` Landscape -> `347 pt` extension).
+            // 2. When system Undo/Redo/Paste buttons are ABSENT (`hasSystemAssistantBar == false`, e.g. when a host view clears
+            //    inputAssistantItem groups or `-qt_hide_assistant_bar`):
+            //    the system keyboard still shows its 55 pt suggestion bar (`317 pt` total), whereas iOS hides UIKeyboardAssistantBar
+            //    for third-party extensions. Therefore, QırımKey keeps full-size key rows (`64/64 pt` = `262 pt` Portrait,
+            //    `84.5/84.5 pt` = `347 pt` Landscape) plus a `55.0 pt` toolbar so QırımKey never becomes shorter (`262 + 55 = 317 pt`).
+            let hasSystemAssistantBar: Bool = {
+                if let sandboxVal = KeyboardPreferences.defaults.object(forKey: "crh.key.test.hasSystemAssistantBar") as? Bool,
+                   (KeyboardPreferences.defaults.object(forKey: "crh.key.test.sandboxFocused") as? Bool) == true {
+                    return sandboxVal
+                }
+                return true
+            }()
+            let useOS26CompactRowsWithToolbar = hasToolbar && !isiOS27OrNewer && hasSystemAssistantBar
+            let toolbarH: CGFloat = {
+                if isiOS27OrNewer {
+                    return isPortrait ? 38.0 : 41.0
+                }
+                if useOS26CompactRowsWithToolbar {
+                    return isPortrait ? 33.0 : 36.0
+                }
+                return 55.0
+            }()
             if isPortrait {
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt) -> 296.0 pt invariant on iPadOS 26 / 334.0 pt with 38.0 pt toolbar on iPadOS 27
+                    // 12.9" / 13" iPad Pro & iPad Air 13" (1024-1032 pt)
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 65.5 : 73.0,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 64.5 : 72.0,
@@ -4737,7 +4768,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 8.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini (744 pt) & 9.7" iPad (768 pt) -> 258.0 pt invariant on iPadOS 26 / 296.0 pt with 38.0 pt toolbar on iPadOS 27
+                    // iPad mini (744 pt) & 9.7" iPad (768 pt)
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 56.0 : 64.0,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 55.0 : 63.0,
@@ -4751,9 +4782,6 @@ struct KeyboardAdaptiveGeometry: Equatable {
                     )
                 } else {
                     // 10.5" iPad Air 3 (834 pt), 10.9"/11" iPad A16 (820 pt), 11" iPad Pro (834 pt):
-                    // On iPadOS 26 (!isiOS27OrNewer): when hasToolbar == true, reduce letterRowHeight (57.0 vs 64.0),
-                    // bottomRowHeight (56.0 vs 64.0), and edgeTopBottomInset (1.0 vs 3.0) with toolbarH = 33.0
-                    // so total Docked height stays invariant at 262.0 pt (3*57 + 56 + 33 + 2 = 262.0 pt, dy = 0 px).
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 57.0 : 64.0,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 56.0 : 64.0,
@@ -4768,7 +4796,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                 }
             } else {
                 if portraitWidth >= 960.0 {
-                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt) -> 378.0 pt invariant on iPadOS 26 / 419.0 pt with 41.0 pt toolbar on iPadOS 27
+                    // 12.9" / 13" iPad Pro Landscape (1366-1376 pt)
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 85.0 : 94.0,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 85.0 : 94.0,
@@ -4781,7 +4809,7 @@ struct KeyboardAdaptiveGeometry: Equatable {
                         cornerRadius: 10.0
                     )
                 } else if portraitWidth <= 768.0 {
-                    // iPad mini / 9.7" Landscape -> 338.0 pt invariant on iPadOS 26 / 379.0 pt with 41.0 pt toolbar on iPadOS 27
+                    // iPad mini / 9.7" Landscape
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 75.5 : 83.5,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 76.5 : 85.5,
@@ -4795,9 +4823,6 @@ struct KeyboardAdaptiveGeometry: Equatable {
                     )
                 } else {
                     // 10.5" iPad Air 3 / 11" iPad A16 / 11" iPad Pro Landscape (1112-1210 pt):
-                    // On iPadOS 26 (!isiOS27OrNewer): when hasToolbar == true, reduce letterRowHeight (77.0 vs 84.5),
-                    // bottomRowHeight (76.0 vs 84.5), and edgeTopBottomInset (2.0 vs 4.5) with toolbarH = 36.0
-                    // so total Docked height stays invariant at 347.0 pt (3*77 + 76 + 36 + 4 = 347.0 pt, dy = 0 px).
                     return KeyboardAdaptiveGeometry(
                         letterRowHeight: useOS26CompactRowsWithToolbar ? 77.0 : 84.5,
                         bottomRowHeight: useOS26CompactRowsWithToolbar ? 76.0 : 84.5,

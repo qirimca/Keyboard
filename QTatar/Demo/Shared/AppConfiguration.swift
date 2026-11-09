@@ -828,7 +828,7 @@ enum KeyboardUsageStats {
             recordManualWordCompleted()
         }
 
-        if isFullAccessGranted && recentlyInjected && !explicitlyConfirmed {
+        if isFullAccessGranted && isSuggestionCommit {
             return
         }
         guard KeyboardPreferences.wordLearningEnabled else { return }
@@ -840,10 +840,8 @@ enum KeyboardUsageStats {
 
         let trLocale = Locale(identifier: "tr")
         let lowerWord = committedWord.lowercased(with: trLocale)
-        let legacyDemoted: Set<String> = ["selam", "qirim", "bağçasaray", "aqmescit", "qırım"]
         syncQueue.async {
-            let isInBundled = isWordPresentInBundledLexicon(lowerWord)
-            let markAsCustom = explicitlyConfirmed && letterCount >= 2 && !isInBundled && !legacyDemoted.contains(lowerWord)
+            let markAsCustom = explicitlyConfirmed && letterCount >= 2
             guard let dbURL = writableUserLexiconDatabaseURL() else { return }
             var db: OpaquePointer?
             let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_NOMUTEX

@@ -1089,6 +1089,12 @@ struct NativeAutocompleteToolbar: View {
 
     @ViewBuilder
     private func suggestionSlotButton(index: Int, suggestion: Autocomplete.Suggestion?, width: CGFloat) -> some View {
+        let isPad = keyboardContext.deviceType == .pad && !isFloating
+        let pillMinWidth: CGFloat = isPad ? 138 : min(88, max(width - 12, 48))
+        let pillMaxWidth: CGFloat = isPad ? max(168, width - 20) : .infinity
+        let pillMaxHeight: CGFloat = isPad ? min(32, max(26, height - 2)) : selectionHeight
+        let pillHorizInset: CGFloat = isFloating ? 4 : (isDockedPad ? 10 : 6)
+
         Button {
             if let suggestion {
                 autocompleteAction(suggestion)
@@ -1102,7 +1108,6 @@ struct NativeAutocompleteToolbar: View {
                     let displayTitle = suggestion.isUnknown
                         ? (isMathUnknown ? "«\(suggestion.title)»" : "“\(suggestion.title)”")
                         : suggestion.title
-                    let isPad = keyboardContext.deviceType == .pad && !isFloating
                     let allowTwoLines = displayTitle.count >= 18 || (displayTitle.contains("-") && displayTitle.count >= 13)
                     let autocorrectTextColor = isDark ? Color.white.opacity(0.96) : Color.black.opacity(0.92)
                     let candidateTextColor = isDark ? Color.white.opacity(0.90) : Color.black.opacity(0.88)
@@ -1117,13 +1122,13 @@ struct NativeAutocompleteToolbar: View {
                             .padding(.horizontal, isFloating ? 8 : 10)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(
-                                minWidth: isPad ? 138 : min(88, max(width - 12, 48)),
-                                maxWidth: isPad ? max(168, width - 20) : .infinity,
+                                minWidth: pillMinWidth,
+                                maxWidth: pillMaxWidth,
                                 minHeight: selectionHeight,
-                                maxHeight: isPad ? min(32, max(26, height - 2)) : selectionHeight
+                                maxHeight: pillMaxHeight
                             )
                             .background(greetingPlatterBackground)
-                            .padding(.horizontal, isFloating ? 4 : (isDockedPad ? 10 : 6))
+                            .padding(.horizontal, pillHorizInset)
                     } else {
                         Text(displayTitle)
                             .font(.system(size: isFloating ? 15.5 : (isDockedPad ? 18.0 : 17.0), weight: .regular))
@@ -1140,7 +1145,15 @@ struct NativeAutocompleteToolbar: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
         }
-        .buttonStyle(FullSlotButtonStyle(isDark: isDark))
+        .buttonStyle(
+            FullSlotButtonStyle(
+                isDark: isDark,
+                hasSuggestion: suggestion != nil && suggestion?.isAutocorrect != true,
+                selectionHeight: selectionHeight,
+                pillMaxHeight: pillMaxHeight,
+                pillHorizInset: pillHorizInset
+            )
+        )
         .frame(width: width, height: height)
         .contentShape(Rectangle())
         .accessibilityLabel(suggestion?.title ?? "")
@@ -1267,6 +1280,21 @@ struct NativeAutocompleteToolbar: View {
 
     private struct FullSlotButtonStyle: ButtonStyle {
         let isDark: Bool
+        var hasSuggestion: Bool = true
+        var selectionHeight: CGFloat = 34.0
+        var pillMaxHeight: CGFloat = 34.0
+        var pillHorizInset: CGFloat = 6.0
+
+        @ViewBuilder
+        private var pillPlatterBackground: some View {
+            let useClassic = DemoStyleProvider.usesClassicSystemKeyStyle
+            let fillColor: Color = useClassic
+                ? (isDark ? Color.white.opacity(0.24) : Color.white.opacity(0.92))
+                : (isDark ? Color(white: 0.71).opacity(0.24) : Color.white.opacity(0.84))
+            RoundedRectangle(cornerRadius: 14.0, style: .continuous)
+                .fill(fillColor)
+                .shadow(color: Color.black.opacity(useClassic ? (isDark ? 0.18 : 0.06) : 0.0), radius: 1.5, x: 0, y: 0.5)
+        }
 
         func makeBody(configuration: Configuration) -> some View {
             configuration.label
@@ -1274,16 +1302,16 @@ struct NativeAutocompleteToolbar: View {
                 .background(
                     ZStack {
                         Color.primary.opacity(0.001)
-                        if configuration.isPressed {
-                            RoundedRectangle(cornerRadius: 14.0, style: .continuous)
-                                .fill(isDark ? Color.white.opacity(0.32) : Color(red: 0.50, green: 0.53, blue: 0.59).opacity(0.42))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
+                        if configuration.isPressed && hasSuggestion {
+                            pillPlatterBackground
+                                .frame(minHeight: selectionHeight, maxHeight: pillMaxHeight)
+                                .padding(.horizontal, pillHorizInset)
                         }
                     }
                 )
                 .contentShape(Rectangle())
-                .opacity(configuration.isPressed ? 0.88 : 1.0)
+                .scaleEffect(configuration.isPressed && hasSuggestion ? 0.985 : 1.0)
+                .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
         }
     }
 

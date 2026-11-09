@@ -436,11 +436,15 @@ public final class SwipeTypingState: ObservableObject {
                 "keyFrames": framesSnapshot
             ]
         )
+        if !holdCalloutActive {
+            lastReleaseTimestamp = ProcessInfo.processInfo.systemUptime
+        }
         return seq
     }
 
     public func reset(clearTrailImmediately: Bool = false) {
         let fullSnapshot = fullSwipeSamples
+        let wasActiveSwipe = isSwiping
         visitedKeys.removeAll(keepingCapacity: true)
         pendingSamples.removeAll(keepingCapacity: true)
         fullSwipeSamples.removeAll(keepingCapacity: true)
@@ -448,16 +452,18 @@ public final class SwipeTypingState: ObservableObject {
         totalDragDistance = 0
         isSwiping = false
         if clearTrailImmediately {
+            lastReleaseTimestamp = 0
             if !activeTrailSamples.isEmpty { activeTrailSamples = [] }
         } else if !activeTrailSamples.isEmpty || !fullSnapshot.isEmpty {
+            if wasActiveSwipe {
+                lastReleaseTimestamp = ProcessInfo.processInfo.systemUptime
+            }
             let gen = swipeGeneration
             let defaults = UserDefaults(suiteName: "group.crh.key.keyboardplus")
-            let isUITest = CommandLine.arguments.contains("-UITesting")
-                || CommandLine.arguments.contains("-qt_hold_callout")
+            let isUITest = CommandLine.arguments.contains("-qt_hold_callout")
                 || CommandLine.arguments.contains("-qt_extend_input_callout")
                 || (defaults?.bool(forKey: "crh.key.test.holdCallout") ?? false)
                 || (defaults?.bool(forKey: "crh.key.test.extendInputCalloutDuration") ?? false)
-                || (defaults?.bool(forKey: "crh.key.test.isUITesting") ?? false)
             if isUITest {
                 let now = ProcessInfo.processInfo.systemUptime
                 let baseSamples = fullSnapshot.count >= activeTrailSamples.count ? fullSnapshot : activeTrailSamples
@@ -467,7 +473,7 @@ public final class SwipeTypingState: ObservableObject {
                     return TrailSample(point: sample.point, timestamp: now + 1.50 + frac * 0.30)
                 }
             }
-            let holdDelay: TimeInterval = isUITest ? 1.80 : 0.44
+            let holdDelay: TimeInterval = isUITest ? 1.80 : 0.17
             DispatchQueue.main.asyncAfter(deadline: .now() + holdDelay) { [weak self] in
                 guard let self, self.swipeGeneration == gen, !self.isSwiping else { return }
                 if !self.activeTrailSamples.isEmpty { self.activeTrailSamples = [] }

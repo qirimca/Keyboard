@@ -33,7 +33,7 @@ final class DemoAppDelegate: NSObject, UIApplicationDelegate {
         }
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-qt_force_landscape") {
-            return .landscapeLeft
+            return .landscape
         }
         if args.contains("-qt_keep_orientation") {
             return .allButUpsideDown

@@ -78,6 +78,14 @@ private extension KeyboardContext {
     var preferredKeyboardTypeAfterNumericOrSymbolicSpaceOrReturn: Keyboard.KeyboardType? {
         #if os(iOS) || os(tvOS) || os(visionOS)
         guard keyboardType == .numeric || keyboardType == .symbolic else { return nil }
+        if let proxyKeyboardType = proxyKeyboardTypeOverride ?? textDocumentProxy.keyboardType {
+            switch proxyKeyboardType {
+            case .numberPad, .decimalPad, .phonePad, .asciiCapableNumberPad:
+                return nil
+            default:
+                break
+            }
+        }
         guard let before = textDocumentProxy.documentContextBeforeInput else { return nil }
         let preferred = preferredAutocapitalizedKeyboardType(requiresAlphabetic: false)
         if before.hasSuffix(" ") && !before.hasSuffix("  ") { return preferred }
