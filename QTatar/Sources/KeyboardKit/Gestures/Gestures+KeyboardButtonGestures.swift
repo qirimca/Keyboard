@@ -138,6 +138,8 @@ public final class SwipeTypingState: ObservableObject {
         public let timestamp: TimeInterval
     }
 
+    public var lastReleaseTimestamp: TimeInterval = 0
+
     public var isFormFactorEligible: Bool = false {
         didSet {
             if !isFormFactorEligible && (isSwiping || !visitedKeys.isEmpty) {
